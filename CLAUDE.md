@@ -29,6 +29,8 @@ Frontend Work Package必须从已初始化本Submodule的YearningX工作区开�
 
 旧前端参考仓库必须通过父仓库的`scripts/development/prepare_legacy_repositories.sh`发现或下载，不得写死开发者机器绝对路径，也不得把旧`gemini-next`复制进本仓库。
 
+UI基线前置：开始任何前端UI实现前，必须读取`../docs/frontend/yearning-ui-design-spec.md`，安装并启用官方Shadcn Dashboard Agent Skill与上游最新`shadcndashboard-mcp`服务（不钉死版本，安装时记录实际解析来源与版本），验证`listBlocks`、`listComponents`、`searchBlocks`、`getBlockInstall`、`listInstalledBlocks`和`get_audit_checklist`六件工具；运行`../scripts/development/prepare_ui_reference_repository.sh`获取Shadcn Dashboard只读参考Checkout（首次下载取上游默认分支最新并冻结该Commit，冻结坐标以`../api/contracts/ui-template-baseline.json`为机器权威，脚本输出`YEARNING_UI_TEMPLATE_ROOT`，Checkout位于本仓库与YearningX工作树之外）。Skill、MCP缺失或模板Checkout校验失败时先补齐安装或记录阻塞，不得凭记忆猜测Block名称、安装命令或模板组件实现；Skill和MCP只用于开发理解与发现，不得进入CI、生产构建或运行时依赖。
+
 ## 实施边界
 
 - 只实施当前Frontend Work Package，不提前开始后续Package。

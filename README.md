@@ -12,7 +12,7 @@ YearningX Frontend 是 Yearning v4 的全新 Web 前端，面向数据库变更�
 
 - React
 - TypeScript
-- Ant Design
+- Vite、Tailwind CSS v4、shadcn/ui 与 Base UI；非业务视觉采用冻结 Commit 的 Shadcn Dashboard 基线
 - 基于共享 OpenAPI 契约生成或严格映射 API Client
 - 基于 i18n 资源提供中文和英文界面
 - 前端源码测试、组件测试、E2E、视觉回归和无障碍检查在本仓库执行
@@ -33,7 +33,7 @@ YearningX Frontend 是 Yearning v4 的全新 Web 前端，面向数据库变更�
 - 使用 AI 增强 SQL 预审、Finding、Evidence 和建议流程，不做聊天壳。
 - 用户提交工单前必须显式完成 AI 预审；打开或编辑草稿不得自动触发 AI。
 - 界面文本遵守 i18n；选择中文时应尽量使用完整中文描述。
-- UI 基于 Ant Design 建立统一的背景色、主体色、强调色、间距和状态反馈。
+- 非业务视觉（布局、主题、色彩、间距、圆角、阴影和通用组件外观）继承冻结 Commit 的 Shadcn Dashboard 基线，通过 Tailwind CSS v4 语义变量和 shadcn Variant 统一管理，不为品牌感重建第二套主题。
 - 全局页脚展示YearningX整体产品的AGPL-3.0许可声明；本前端独立仓库继续使用MIT许可证。
 
 ## 安全边界
@@ -54,7 +54,7 @@ YearningX Frontend 是 Yearning v4 的全新 Web 前端，面向数据库变更�
 5. `docs/contracts/frontend-ui-migration-contract.md`
 6. `docs/contracts/repository-topology-contract.md`
 7. `docs/development/ai-work-package-runbook.md`
-8. 当前 Frontend Work Package、Requirement Matrix 和相关机器契约
+8. `api/contracts/ui-template-baseline.json` 及当前 Frontend Work Package、Requirement Matrix 和相关机器契约
 
 不得在没有满足 Work Package 依赖、任务快照和路径边界检查的情况下开始实现。
 
