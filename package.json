@@ -17,13 +17,19 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "screenshots": "playwright test tests/e2e/screenshots.spec.ts",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:tokens": "node scripts/check-token-contrast.mjs",
+    "check:colors": "node scripts/scan-raw-colors.mjs",
+    "check:prohibited": "node scripts/scan-prohibited.mjs",
+    "check:assets": "node scripts/check-assets.mjs",
+    "check:registry": "node scripts/generate-registry-inventory.mjs --check",
     "api:generate": "orval --config orval.config.ts && node scripts/generate-projections.mjs && node scripts/generate-contract-manifest.mjs",
     "api:manifest": "node scripts/generate-contract-manifest.mjs",
     "api:breaking": "node scripts/api-breaking.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
-    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@tanstack/react-query": "5.102.8",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -40,6 +46,7 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
     "@eslint/js": "10.0.1",
     "@faker-js/faker": "10.1.0",
     "@oasdiff-js/oasdiff-js": "1.0.0",

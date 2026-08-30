@@ -16,16 +16,22 @@ const frontendRoot = resolve(here, "..");
 const componentsJson = JSON.parse(readFileSync(join(frontendRoot, "components.json"), "utf8"));
 const COMPONENTS = [
   "alert",
+  "avatar",
   "badge",
   "button",
   "card",
   "dropdown-menu",
+  "empty",
   "input",
   "label",
   "separator",
+  "sheet",
+  "sidebar",
   "skeleton",
   "sonner",
+  "spinner",
   "tooltip",
+  "use-mobile",
 ];
 const REGISTRY_BASE = "https://ui.shadcn.com/r/styles";
 
@@ -45,6 +51,47 @@ const inventory = {
 };
 
 const checkOnly = process.argv.includes("--check");
+
+// Map a registry item file path (e.g. "registry/base-lyra/ui/sidebar.tsx",
+// "registry/base-lyra/hooks/use-mobile") to its landed repo path using the
+// aliases pinned in components.json — the same substitution the shadcn CLI
+// performs when writing files.
+const aliasRoot = (alias) => alias.replace(/^@\//, "src/");
+const landedPathFor = (registryPath) => {
+  const relative = registryPath.replace(new RegExp(`^registry/${style}/`), "");
+  if (relative.startsWith("ui/")) return `${aliasRoot(componentsJson.aliases.ui)}/${relative.slice(3)}`;
+  if (relative.startsWith("hooks/")) {
+    const name = relative.slice(6);
+    return `${aliasRoot(componentsJson.aliases.hooks)}/${name}${name.includes(".") ? "" : ".ts"}`;
+  }
+  if (relative.startsWith("lib/")) return `${aliasRoot(componentsJson.aliases.lib)}/${relative.slice(4)}.ts`;
+  return `src/${relative}`;
+};
+
+const fetchRegistryItem = (name) => {
+  const url = `${REGISTRY_BASE}/${style}/${name}.json`;
+  const content = execFileSync("curl", ["-sf", url], { encoding: "buffer", maxBuffer: 10 * 1024 * 1024 });
+  return { content, item: JSON.parse(content.toString("utf8")) };
+};
+
+if (!checkOnly) {
+  for (const name of COMPONENTS) {
+    const { content, item } = fetchRegistryItem(name);
+    const files = (item.files ?? [])
+      .filter((file) => file && typeof file.path === "string")
+      .map((file) => landedPathFor(file.path))
+      .map((relativePath) => ({
+        path: relativePath.split("\\").join("/"),
+        sha256: sha256File(join(frontendRoot, relativePath)),
+      }));
+    inventory.components.push({
+      name,
+      registry_type: item.type,
+      content_sha256: sha256(content),
+      files,
+    });
+  }
+}
 
 if (checkOnly) {
   // Real verification: compare the recorded inventory against (a) the landed

@@ -17,6 +17,17 @@
       ]
     },
     {
+      "name": "avatar",
+      "registry_type": "registry:ui",
+      "content_sha256": "8925f8918231b3e7119de99679ae78daf2c87a4feb52e1f89aab1fe46a2e2ae4",
+      "files": [
+        {
+          "path": "src/shared/components/ui/avatar.tsx",
+          "sha256": "6ec89da79c88ba827eedfeb7bd45ef71b40f44d591ef83a42ab0151736fc0146"
+        }
+      ]
+    },
+    {
       "name": "badge",
       "registry_type": "registry:ui",
       "content_sha256": "143a4fc800dc91948674c83f76a996d9295d8fa3e4992d735d72c876459f19f0",
@@ -61,6 +72,17 @@
       ]
     },
     {
+      "name": "empty",
+      "registry_type": "registry:ui",
+      "content_sha256": "9a4f849f3da667623103ecf4126fe6d68fb7decfe2b1647d55ee6ad795734062",
+      "files": [
+        {
+          "path": "src/shared/components/ui/empty.tsx",
+          "sha256": "fd5c2fae0dbf6efc6a7d0bffba05a7a13364287ece5c0cc9e334f4072cbc62f9"
+        }
+      ]
+    },
+    {
       "name": "input",
       "registry_type": "registry:ui",
       "content_sha256": "c2520a1249136ee2403437a1b88a867c25cf745256f12b9bdf67b435ef754860",
@@ -94,6 +116,28 @@
       ]
     },
     {
+      "name": "sheet",
+      "registry_type": "registry:ui",
+      "content_sha256": "affae6721df41b77c95889acd716a4494a9fa67c6ecbabac96d43bf74f177dc5",
+      "files": [
+        {
+          "path": "src/shared/components/ui/sheet.tsx",
+          "sha256": "a95fcfdbd17663225e02442018a7a85c338e6c34342fbfb6e900c5c234f58826"
+        }
+      ]
+    },
+    {
+      "name": "sidebar",
+      "registry_type": "registry:ui",
+      "content_sha256": "21c18db96095a245cc0ffc18e864e976f672bb7de6079e30ad9e1d17d3a06e05",
+      "files": [
+        {
+          "path": "src/shared/components/ui/sidebar.tsx",
+          "sha256": "482d770e52436f51bc9a06f402a6bdee7047d74800a94de1cdc896e0bad8a884"
+        }
+      ]
+    },
+    {
       "name": "skeleton",
       "registry_type": "registry:ui",
       "content_sha256": "73443724a9b19c97e4cdb434a97ddb8e19dc7aa0ccf57178be59074a648e0d04",
@@ -116,13 +160,35 @@
       ]
     },
     {
+      "name": "spinner",
+      "registry_type": "registry:ui",
+      "content_sha256": "e17f8fcf10482a2f8f0e79082adee7726a73f37911dcc2ec8d4f40a677c68d88",
+      "files": [
+        {
+          "path": "src/shared/components/ui/spinner.tsx",
+          "sha256": "ebb4913b31c6f4d625b5ab6fe142b0c1e46be241887ca82f329c02b9579f2a2b"
+        }
+      ]
+    },
+    {
       "name": "tooltip",
       "registry_type": "registry:ui",
       "content_sha256": "ba19a7b848ad6613cb52cc64590320568ec9f86d58bb1e65a771b59203059672",
       "files": [
         {
           "path": "src/shared/components/ui/tooltip.tsx",
-          "sha256": "091258cee2d09ae1d79114400bdba696b1bb76365c2855f7a2a4060ff2de22c0"
+          "sha256": "6f040551b3f62d2113af37f9320ba4f90ed4d6f25a58e6688590fde1f4ece999"
+        }
+      ]
+    },
+    {
+      "name": "use-mobile",
+      "registry_type": "registry:hook",
+      "content_sha256": "04c839c82c63e825d82ff49efb454dc8acb5ea0e934efd13d562f2f2350bac97",
+      "files": [
+        {
+          "path": "src/shared/hooks/use-mobile.ts",
+          "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b"
         }
       ]
     }

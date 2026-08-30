@@ -7,6 +7,10 @@ export default tseslint.config(
   {
     // src/api/generated/** is orval output: correctness is enforced by the
     // locked generator version and the regeneration zero-diff gate, not lint.
+    // src/shared/components/ui/** and src/shared/hooks/** are registry
+    // output written by the locked shadcn flow; their content is pinned by
+    // registry-inventory.json (entry + landed file hashes), so lint rules
+    // for hand-written code do not apply to them either.
     ignores: [
       "dist",
       "coverage",
@@ -14,6 +18,8 @@ export default tseslint.config(
       "test-results",
       "node_modules",
       "src/api/generated/**",
+      "src/shared/components/ui/**",
+      "src/shared/hooks/**",
       "public/mockServiceWorker.js",
     ],
   },

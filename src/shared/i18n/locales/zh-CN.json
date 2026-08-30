@@ -1,11 +1,53 @@
 {
   "app": {
-    "name": "Yearning",
-    "skeleton": "React 工程骨架（FE-F1）：路由、查询、i18n、错误边界与生成 Client 已就绪；App Shell 将在 FE-F2 实现"
+    "name": "Yearning"
   },
   "nav": {
     "home": "首页",
-    "login": "登录"
+    "group": {
+      "workspace": "工作台",
+      "audit": "审计",
+      "query": "查询",
+      "admin": "管理",
+      "reviewEngine": "审核引擎"
+    },
+    "myOrders": "我的工单",
+    "orderSubmit": "工单提交",
+    "orderApprovals": "工单审批",
+    "auditRecords": "审计记录",
+    "query": "查询",
+    "admin": {
+      "users": "用户",
+      "datasources": "数据源",
+      "flows": "流程",
+      "permissionGroups": "权限组",
+      "announcements": "公告管理",
+      "settings": "系统设置"
+    },
+    "reviewEngine": {
+      "tools": "工具集",
+      "skills": "审核技能",
+      "knowledge": "内部经验"
+    }
+  },
+  "shell": {
+    "toggleSidebar": "折叠侧边栏",
+    "toggleTheme": "切换主题",
+    "headerNav": "全局操作",
+    "breadcrumb": "面包屑",
+    "sessionPlaceholder": "会话未接入",
+    "role": {
+      "admin": "管理员",
+      "user": "普通用户"
+    },
+    "userMenu": {
+      "open": "账户菜单",
+      "title": "账户",
+      "profile": "个人中心",
+      "logout": "退出登录",
+      "reasonProfile": "个人中心将在后续版本提供",
+      "reasonSession": "会话能力尚未接入"
+    }
   },
   "login": {
     "title": "登录 Yearning",
@@ -17,6 +59,10 @@
       "password": "请输入密码"
     }
   },
+  "workspace": {
+    "placeholderTitle": "工作台内容尚未交付",
+    "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。"
+  },
   "error": {
     "notFound": "页面不存在",
     "notFoundDesc": "请检查地址是否正确",
@@ -25,12 +71,8 @@
     "boundaryDesc": "发生了未预期的错误，请刷新页面重试。",
     "reload": "刷新页面"
   },
-  "skeleton": {
-    "apiReady": "生成 Client 就绪",
-    "apiBlocked": "接口阻断",
-    "apiError": "接口错误",
-    "apiRunning": "接口处理中",
-    "mockScenario": "Mock 场景",
-    "apiBase": "API 基址"
+  "states": {
+    "forbiddenTitle": "无权访问",
+    "forbiddenDesc": "你没有访问该页面的权限。"
   }
 }

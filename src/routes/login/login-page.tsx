@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { BrandLogo } from "@/app/shell/brand-logo";
 
 /**
  * Structural placeholder for the Local/LDAP/OIDC login screen (FE-F3 wires the
@@ -13,11 +14,11 @@ export default function LoginPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <BrandLogo />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
-          <CardDescription>{t("app.skeleton")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form

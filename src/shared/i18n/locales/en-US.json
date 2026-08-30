@@ -1,11 +1,53 @@
 {
   "app": {
-    "name": "Yearning",
-    "skeleton": "React skeleton (FE-F1): router, query, i18n, error boundary and generated client are ready; the app shell arrives in FE-F2"
+    "name": "Yearning"
   },
   "nav": {
     "home": "Home",
-    "login": "Sign in"
+    "group": {
+      "workspace": "Workspace",
+      "audit": "Audit",
+      "query": "Query",
+      "admin": "Administration",
+      "reviewEngine": "Review Engine"
+    },
+    "myOrders": "My Orders",
+    "orderSubmit": "New Order",
+    "orderApprovals": "Order Approvals",
+    "auditRecords": "Audit Records",
+    "query": "Query",
+    "admin": {
+      "users": "Users",
+      "datasources": "Data Sources",
+      "flows": "Flows",
+      "permissionGroups": "Permission Groups",
+      "announcements": "Announcements",
+      "settings": "System Settings"
+    },
+    "reviewEngine": {
+      "tools": "Tools",
+      "skills": "Skills",
+      "knowledge": "Internal Experience"
+    }
+  },
+  "shell": {
+    "toggleSidebar": "Toggle sidebar",
+    "toggleTheme": "Toggle theme",
+    "headerNav": "Global actions",
+    "breadcrumb": "Breadcrumb",
+    "sessionPlaceholder": "Session not connected",
+    "role": {
+      "admin": "Administrator",
+      "user": "User"
+    },
+    "userMenu": {
+      "open": "Account menu",
+      "title": "Account",
+      "profile": "Account center",
+      "logout": "Sign out",
+      "reasonProfile": "The account center arrives in a later release",
+      "reasonSession": "Sessions are not wired yet"
+    }
   },
   "login": {
     "title": "Sign in to Yearning",
@@ -17,6 +59,10 @@
       "password": "Enter your password"
     }
   },
+  "workspace": {
+    "placeholderTitle": "Workspace content is not delivered yet",
+    "placeholderDesc": "The home overview arrives with the Dashboard work package."
+  },
   "error": {
     "notFound": "Page not found",
     "notFoundDesc": "Check that the address is correct",
@@ -25,12 +71,8 @@
     "boundaryDesc": "An unexpected error occurred. Please reload the page.",
     "reload": "Reload"
   },
-  "skeleton": {
-    "apiReady": "Generated client ready",
-    "apiBlocked": "API blocked",
-    "apiError": "API error",
-    "apiRunning": "API running",
-    "mockScenario": "Mock scenario",
-    "apiBase": "API base"
+  "states": {
+    "forbiddenTitle": "Access denied",
+    "forbiddenDesc": "You do not have permission to view this page."
   }
 }

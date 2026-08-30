@@ -20,8 +20,10 @@ export default defineConfig({
         "src/shared/components/ui/**",
         "src/**/*.d.ts",
         "src/**/*.css",
-        // Assembly and entry layers with no decision logic; the pages and the
-        // shell are FE-F2+ deliverables and are replaced wholesale there.
+        "src/assets/**",
+        // Assembly and entry layers with no decision logic. The shell and its
+        // components are FE-F2 deliverables and carry their own unit tests;
+        // only thin entry/assembly files stay outside the 80% gate.
         // Logic-bearing modules (api, i18n, theme, providers' policy code,
         // mock scenarios) stay inside the 80% gate.
         "src/main.tsx",
