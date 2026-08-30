@@ -5,10 +5,29 @@ import { create } from "zustand";
  * (browser MSW worker), per code-generation-policy.json mock_layer. Scenarios
  * prove the generated client's full outcome surface before the real backend
  * exists: ready (err_code 0), blocked (typed business error), running
- * (long-running acceptance), error (transport failure).
+ * (long-running acceptance), error (transport failure). The review-* values
+ * select the stateful precheck fixture's run outcome for FE-F4 acceptance
+ * gates (Ready/Blocked/Partial/Provider失败 E2E).
  */
-export type MockScenario = "ready" | "blocked" | "running" | "error";
-export const MOCK_SCENARIOS: MockScenario[] = ["ready", "blocked", "running", "error"];
+export type MockScenario =
+  | "ready"
+  | "blocked"
+  | "running"
+  | "error"
+  | "review-ready"
+  | "review-blocked"
+  | "review-partial"
+  | "review-provider-failed";
+export const MOCK_SCENARIOS: MockScenario[] = [
+  "ready",
+  "blocked",
+  "running",
+  "error",
+  "review-ready",
+  "review-blocked",
+  "review-partial",
+  "review-provider-failed",
+];
 
 interface MockScenarioStore {
   scenario: MockScenario;

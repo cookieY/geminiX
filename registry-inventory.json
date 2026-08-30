@@ -61,6 +61,17 @@
       ]
     },
     {
+      "name": "dialog",
+      "registry_type": "registry:ui",
+      "content_sha256": "828ef73923c5d4b73e4549d0025efdba6c3e9d6c5918cb25acd7ea6b0e27f813",
+      "files": [
+        {
+          "path": "src/shared/components/ui/dialog.tsx",
+          "sha256": "09410130c18bd80176faf2dd35e16b1ece4c56af6730b6fb26feb3e4b0c763f2"
+        }
+      ]
+    },
+    {
       "name": "dropdown-menu",
       "registry_type": "registry:ui",
       "content_sha256": "16eb1529394c1f4794efa645d1f6c5178c1fa9b5bd9686987c9c9f92c10450d4",
@@ -101,6 +112,39 @@
         {
           "path": "src/shared/components/ui/label.tsx",
           "sha256": "b257567c7e446467c293237840a9aba61a592a43dad65e8413af24fa3734e3f1"
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "registry_type": "registry:ui",
+      "content_sha256": "a6cc3c6a245480ff80cee30ee3cbb612813eba3ab2c0cc83a15c941d438e07f8",
+      "files": [
+        {
+          "path": "src/shared/components/ui/progress.tsx",
+          "sha256": "8339b3668db0ee677bb60868e3065dad9ef900abfd055bb8a006e318dc665226"
+        }
+      ]
+    },
+    {
+      "name": "resizable",
+      "registry_type": "registry:ui",
+      "content_sha256": "632a345c9e34ccca2e6231189e6f4f3bc55358d7b8a0fb484bfa8032ab429d41",
+      "files": [
+        {
+          "path": "src/shared/components/ui/resizable.tsx",
+          "sha256": "4fdcbc3732b576736adad97b6bfa856cd74c3e75fdf824a57d9e9d1837fd1a20"
+        }
+      ]
+    },
+    {
+      "name": "select",
+      "registry_type": "registry:ui",
+      "content_sha256": "3d254e1aeec5a8a6f47a1bdff4c2a1e7a4397b09c721e9165966ab5fd1076a84",
+      "files": [
+        {
+          "path": "src/shared/components/ui/select.tsx",
+          "sha256": "ab4944a6b6caecd3c326654590123c0523b7b7b75853ed6d15a106607a734ef9"
         }
       ]
     },
@@ -167,6 +211,39 @@
         {
           "path": "src/shared/components/ui/spinner.tsx",
           "sha256": "ebb4913b31c6f4d625b5ab6fe142b0c1e46be241887ca82f329c02b9579f2a2b"
+        }
+      ]
+    },
+    {
+      "name": "table",
+      "registry_type": "registry:ui",
+      "content_sha256": "df8738848114c6ba4921be2504aa9b14ad5c197a4a4ca53f602e5d36a02bb9b2",
+      "files": [
+        {
+          "path": "src/shared/components/ui/table.tsx",
+          "sha256": "b918396f0d0dcaa3292a51f249d6b7284bcc08a68cf71f1b5f03be81eaa11246"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "registry_type": "registry:ui",
+      "content_sha256": "1b1d30bdae3fd96ff8b659f7cb7d806b948c779484f666761cae104a2afbe28f",
+      "files": [
+        {
+          "path": "src/shared/components/ui/tabs.tsx",
+          "sha256": "42a9dbc802ec25c34e898137e74c6fa2e7a20e844484b6f9e2d1eb15151b8124"
+        }
+      ]
+    },
+    {
+      "name": "textarea",
+      "registry_type": "registry:ui",
+      "content_sha256": "5f04e1a482b289fbaf70927a4045782a0a5cec3c814dcfc6f6e66e42d17fc0e5",
+      "files": [
+        {
+          "path": "src/shared/components/ui/textarea.tsx",
+          "sha256": "3de53b5592ce3f162e79a8849eba1b3381ec96ae6738c6726fa1e29729b9f523"
         }
       ]
     },

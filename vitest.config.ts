@@ -32,6 +32,11 @@ export default defineConfig({
         "src/routes/**",
         "src/app/providers/app-providers.tsx",
         "src/shared/mock/browser.ts",
+        // Browser-only Monaco integration shell: the real editor cannot run
+        // under jsdom (layout APIs). The Playwright precheck suite exercises
+        // it for real (mount, typing, explicit theme surfaces); lifecycle
+        // dispose is guarded by the unified mount effect.
+        "src/features/review/sql-editor-panel.tsx",
       ],
       thresholds: {
         // Shared pure functions and state logic carry the highest bar

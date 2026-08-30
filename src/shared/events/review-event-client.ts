@@ -46,6 +46,7 @@ export class ReviewEventClient {
   private running = false;
   private stopped = false;
   private abort: AbortController | null = null;
+  private loop: Promise<void> | null = null;
 
   /** Indirection keeps stop() observable; CFA cannot narrow through it. */
   private isStopped(): boolean {
@@ -114,29 +115,42 @@ export class ReviewEventClient {
    * id set and the per-subject sequences survive across iterations.
    */
   async run(transport: EventTransportFactory): Promise<void> {
-    if (this.running) return;
+    if (this.running) {
+      // A stop() may have been requested while the previous loop is still
+      // unwinding (page unmount → immediate remount). Await it: its finally
+      // block is guaranteed to have reset `running` when this promise
+      // resolves. A still-running live loop keeps ownership and the
+      // duplicate call is a no-op.
+      if (!this.stopped) return;
+      await (this.loop ?? Promise.resolve());
+    }
     this.running = true;
     this.stopped = false;
     this.abort = new AbortController();
-    try {
-      while (!this.isStopped()) {
-        try {
-          const stream = transport(this.resumePoint());
-          for await (const raw of stream) {
-            if (this.isStopped()) break;
-            this.ingest(raw);
+    const body = async (): Promise<void> => {
+      try {
+        while (!this.isStopped()) {
+          try {
+            const stream = transport(this.resumePoint());
+            for await (const raw of stream) {
+              if (this.isStopped()) break;
+              this.ingest(raw);
+            }
+          } catch {
+            // Transport failure: fall through and reconnect from the resume
+            // point — the delivery semantics above make this idempotent.
           }
-        } catch {
-          // Transport failure: fall through and reconnect from the resume
-          // point — the delivery semantics above make this idempotent.
+          if (this.isStopped()) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        if (this.isStopped()) break;
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      } finally {
+        this.running = false;
+        this.abort = null;
+        this.loop = null;
       }
-    } finally {
-      this.running = false;
-      this.abort = null;
-    }
+    };
+    this.loop = body();
+    await this.loop;
   }
 
   stop(): void {

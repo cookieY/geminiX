@@ -122,15 +122,6 @@ describe("authMockHandlers", () => {
     expect(cookies).toContain("Max-Age=0");
   });
 
-  it("returns empty flow pages so zero-permission users see the waiting state", async () => {
-    const response = await fetch(
-      "https://yearning.test/api/v4/users/me/flows?flow_type=change_review",
-    );
-    const body = (await response.json()) as { data: { items: unknown[]; page: { has_more: boolean } } };
-    expect(body.data.items).toEqual([]);
-    expect(body.data.page.has_more).toBe(false);
-  });
-
   it("authenticates the LDAP endpoint with the same cookie semantics", async () => {
     const response = await post("https://yearning.test/api/v4/auth/ldap/login", {
       username: "henry",

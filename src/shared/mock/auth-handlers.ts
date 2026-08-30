@@ -175,13 +175,9 @@ export function authMockHandlers(): HttpHandler[] {
       return userEnvelope(behavior === "admin");
     }),
 
-    // The zero-permission contract: the mock session owns no flow grants, so
-    // both flow-type queries come back as empty cursor pages. Awaiting admin
-    // configuration is the honest home state for such users (auth PRD §11).
-    http.get("*/users/me/flows", () =>
-      HttpResponse.json(
-        successEnvelope({ items: [], page: { next_cursor: null, has_more: false } }),
-      ),
-    ),
+    // NOTE: GET /users/me/flows is owned by the stateful review fixture
+    // (shared/mock/review-fixture.ts), which derives the zero-permission
+    // empty page from the auth behavior so FE-F3's waiting state and FE-F4's
+    // granted workspace share one source of truth.
   ];
 }

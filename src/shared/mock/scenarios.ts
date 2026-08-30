@@ -11,6 +11,7 @@ import type { SetupWorker } from "msw/browser";
 import type { SetupServer } from "msw/node";
 import { type MockScenario } from "@/shared/mock/scenario-store";
 import { authMockHandlers } from "@/shared/mock/auth-handlers";
+import { reviewFixtureHandlers } from "@/shared/mock/review-fixture";
 
 /**
  * Scenario switching layered on top of the orval-generated base handlers
@@ -76,13 +77,18 @@ export function scenarioHandlers(scenario: MockScenario) {
             ),
         ),
       ];
+    default:
+      // review-* scenarios: no dashboard override — the stateful review
+      // fixture reads its behavior from the scenario store directly.
+      return [];
   }
 }
 
 /** Base set: every generated handler factory registered so far, plus the
- * hand-written authentication handlers that simulate the cookie session. */
+ * hand-written authentication handlers that simulate the cookie session and
+ * the stateful change-draft/review fixture backing the FE-F4 workspace. */
 export function baseHandlers() {
-  return [...getDashboardMock(), ...authMockHandlers()];
+  return [...getDashboardMock(), ...authMockHandlers(), ...reviewFixtureHandlers()];
 }
 
 /** Vitest: apply a scenario as an override on the shared node server. */

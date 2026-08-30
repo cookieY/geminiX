@@ -108,6 +108,220 @@
     "VALIDATION_FAILED": "输入内容未通过校验，请检查后重试。",
     "INVALID_CREDENTIALS": "用户名或密码不正确。",
     "ADMIN_PASSWORD_LOCKED": "超级管理员已锁定。",
-    "RESOURCE_NOT_FOUND": "请求的对象不存在。"
+    "RESOURCE_NOT_FOUND": "请求的对象不存在。",
+    "VERSION_CONFLICT": "资源版本已变化，请刷新后重试。",
+    "CONCURRENT_MODIFICATION": "资源正在被其他人修改，请刷新后重试。",
+    "RESOURCE_ALREADY_EXISTS": "同名资源已存在。",
+    "RESOURCE_REFERENCED": "资源仍被引用，无法删除。",
+    "IDEMPOTENCY_KEY_REUSED": "请求正在处理中，请勿重复提交。",
+    "IDEMPOTENCY_IN_PROGRESS": "相同请求仍在处理中，请稍候。",
+    "CURSOR_EXPIRED": "分页游标已过期，请重新加载。",
+    "INVALID_STATE_TRANSITION": "当前状态不允许该操作。",
+    "PRECONDITION_REQUIRED": "缺少必要的前置条件。",
+    "SYSTEM_CAPACITY_EXHAUSTED": "系统容量已满，请稍后重试。",
+    "REVIEW_OUTDATED": "预审结果已失效，请重新运行预审。",
+    "SQL_BATCH_TOO_LARGE": "SQL批量超出上限，请拆分后重试。",
+    "SQL_PARSE_FAILED": "SQL解析失败，请检查语句语法。",
+    "SQL_FINGERPRINT_FAILED": "SQL指纹处理失败，请稍后重试。",
+    "SQL_ANONYMIZATION_FAILED": "敏感信息脱敏失败，预审已阻止。",
+    "TOO_MANY_FINGERPRINTS": "唯一指纹数量过多，请拆分工单。",
+    "REVIEW_COVERAGE_INCOMPLETE": "审核覆盖率不足，结果不完整。",
+    "REVIEW_BLOCKED_BY_RISK": "存在高风险发现，提交被阻止。",
+    "REVIEW_SCHEMA_INVALID": "预审输出校验失败，请重试。",
+    "AI_DAILY_BUDGET_EXHAUSTED": "当日AI预算已耗尽，请明日重试或联系管理员。",
+    "AI_PROVIDER_FAILED": "AI服务暂不可用，请稍后重试。",
+    "REVIEW_TOOL_FAILED": "审核工具执行失败，预审未完成。",
+    "SUBMISSION_GATE_FAILED": "提交流程未通过审核门禁。",
+    "FLOW_GRANT_REVOKED": "流程授权已撤销，请联系管理员。",
+    "QUERY_TIMEOUT": "查询超时，请收窄条件或稍后重试。",
+    "ADMIN_IMMUTABLE": "内置管理员信息不可修改。",
+    "USER_HAS_ACTIVE_ORDERS": "该用户存在未终结工单，禁止删除。",
+    "USER_REFERENCED_BY_TEMPLATE": "该用户仍被流程模板引用。",
+    "FLOW_REFERENCED": "流程仍被引用，仅允许停用。",
+    "DATASOURCE_REFERENCED": "数据源仍被引用，仅允许设为不可用。",
+    "FLOW_ACTOR_NODE_EMPTY": "流程节点审核人为空，无法启用。",
+    "NOT_FROZEN_ACTOR": "当前用户不是该节点冻结的审核人或执行人。",
+    "APPROVAL_ALREADY_DECIDED": "该审批节点已作出决定。",
+    "EXECUTION_ALREADY_STARTED": "执行已开始，无法重复执行。",
+    "EXECUTION_RETRY_FORBIDDEN": "该结果状态不允许重试。",
+    "EXECUTION_RESULT_UNKNOWN": "执行结果未知，需人工核验后才能继续。",
+    "EXECUTION_PREFLIGHT_FAILED": "执行前校验未通过。",
+    "SCHEDULE_OUT_OF_RANGE": "延迟执行时间超出允许范围（5分钟至30天）。",
+    "OUTSIDE_EXECUTION_WINDOW": "当前不在允许的执行窗口内。",
+    "MISSED_SCHEDULE": "已错过计划执行时间，不会自动补执行。",
+    "DATASOURCE_UNAVAILABLE": "目标数据源不可用，操作被挂起。",
+    "GH_OST_UNSUPPORTED": "当前环境不支持OSC（gh-ost）执行。",
+    "MANUAL_VERIFICATION_EVIDENCE_REQUIRED": "人工确认成功必须附核验证据。",
+    "QUERY_GRANT_REQUIRED": "需要查询访问资格，请先申请。",
+    "QUERY_DATASOURCE_NOT_GRANTED": "未获准访问该数据源。",
+    "QUERY_EXPORT_NOT_GRANTED": "未获准导出该数据源数据。",
+    "QUERY_GRANT_REVOKED": "查询访问资格已被撤销。",
+    "QUERY_GRANT_EXPIRED": "查询访问资格已到期。",
+    "QUERY_SESSION_CLOSED": "查询会话已关闭，请重新进入。",
+    "QUERY_ONLY_SINGLE_SELECT": "仅允许执行单条SELECT语句。",
+    "QUERY_TIMEOUT_OUT_OF_RANGE": "查询超时设置超出允许范围（30-300秒）。",
+    "QUERY_CURSOR_INVALID": "结果游标无效或已过期，请重新取数。",
+    "MIGRATION_ACTIVE_WORK_EXISTS": "存在未完成的迁移工作，无法执行新操作。",
+    "MIGRATION_DRY_RUN_REQUIRED": "必须先完成Dry Run对账。",
+    "MIGRATION_MAPPING_UNCONFIRMED": "存在未确认的映射候选。",
+    "MIGRATION_SOURCE_UNSUPPORTED": "不支持该旧系统数据源。",
+    "MIGRATION_INVARIANT_FAILED": "迁移校验未通过，已停止执行。",
+    "AUTH_PROVIDER_DISABLED": "登录方式未启用，请使用可用方式登录。",
+    "LDAP_SERVER_ERROR": "LDAP服务暂时不可用，请稍后重试。",
+    "OIDC_STATE_INVALID": "登录状态已失效，请重新发起登录。",
+    "ADMIN_USER_PROTECTED": "内置管理员受保护，无法执行该操作。",
+    "USER_NOT_IN_SCOPE": "目标用户不在你的可见范围内。",
+    "AUDIT_QUERY_TOO_BROAD": "审计查询范围过大，请收窄条件。",
+    "DATASOURCE_UNREACHABLE": "数据源不可达，请检查连接。",
+    "DATASOURCE_AUTH_FAILED": "数据源认证失败，请检查凭据。",
+    "DATASOURCE_ENGINE_UNSUPPORTED": "不支持该数据库引擎或版本。",
+    "DATASOURCE_CAPABILITY_MISSING": "该数据源不具备所需能力。",
+    "QUERY_RESULT_TOO_LARGE": "结果集过大，请分页或收窄条件。",
+    "QUERY_LIMIT_REACHED": "查询次数已达上限，请稍后重试。",
+    "EXPORT_CANCELLED": "导出已取消。",
+    "EXPORT_FAILED": "导出失败，请重试。",
+    "NOTIFICATION_CHANNEL_FAILED": "通知渠道发送失败，请检查配置。",
+    "TEMPLATE_RENDER_FAILED": "通知模板渲染失败。",
+    "SYSTEM_MAINTENANCE": "系统维护中，请稍后重试。",
+    "MIGRATION_MODE_ACTIVE": "迁移模式生效中，仅允许迁移操作。"
+  },
+  "common": {
+    "cancel": "取消"
+  },
+  "precheck": {
+    "new": {
+      "title": "工单提交",
+      "description": "选择你有权使用的审核流程并创建草稿；阶段数据源、审核人和执行人由流程模板冻结。",
+      "empty": "当前账号没有被授权的审核流程，请联系管理员。",
+      "flowCardDescription": "审核流程：阶段链路已由模板冻结",
+      "useFlow": "创建草稿",
+      "dialog": {
+        "title": "创建审核草稿",
+        "description": "流程“{{flow}}”的阶段数据源、审核人和执行人已冻结，只读展示。",
+        "titleLabel": "标题",
+        "descriptionLabel": "说明",
+        "confirm": "创建并进入草稿"
+      }
+    },
+    "workspace": {
+      "title": "预审工作台",
+      "flowCard": "流程与阶段路径",
+      "flowFrozen": "流程信息来自授权模板，提交前不可在此修改。",
+      "sqlCard": "SQL 编辑",
+      "unsaved": "未保存",
+      "loadSql": "载入SQL（记录解密审计）",
+      "saveSql": "保存SQL",
+      "runReview": "运行AI预审"
+    },
+    "stagePath": {
+      "stage": "阶段 {{position}}",
+      "unavailable": "暂无流程信息"
+    },
+    "review": {
+      "title": "审核进度",
+      "description": "进度与结论来自服务端预审运行。",
+      "statements": "语句数 {{count}}",
+      "fingerprints": "指纹组 {{count}}",
+      "stage": "阶段",
+      "state": "状态",
+      "findings": "风险发现",
+      "evidence": "审核证据",
+      "noRun": "尚未运行预审。点击“运行AI预审”开始。",
+      "timeout": "预审超过预期时间仍未完成，可稍后刷新查看；持续卡滞请联系管理员。"
+    },
+    "phase": {
+      "idle": "未预审",
+      "queued": "排队中",
+      "running": "预审中",
+      "ready": "审核结果完整",
+      "blocked": "已阻断",
+      "partial": "部分完成",
+      "failed": "预审失败",
+      "outdated": "结果已失效"
+    },
+    "stage": {
+      "pending": "等待",
+      "running": "进行中",
+      "passed": "通过",
+      "blocked": "已阻断",
+      "partial": "部分完成",
+      "failed": "失败"
+    },
+    "severity": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "critical": "严重"
+    },
+    "findings": {
+      "title": "风险发现",
+      "filter": "筛选严重级别",
+      "filterAll": "全部级别",
+      "empty": "当前级别没有风险发现。",
+      "suggestion": "修改建议",
+      "locate": "在SQL中定位"
+    },
+    "evidence": {
+      "open": "查看审核证据",
+      "title": "审核证据",
+      "description": "规范化事实默认展示；原始数据需显式解密并受审计。",
+      "empty": "该风险发现暂无关联证据。",
+      "fact": {
+        "known": "已核实",
+        "unknown": "未核实",
+        "unavailable": "不可用",
+        "stale": "已过期"
+      },
+      "retention": "原始数据保留期还剩约 {{days}} 天，到期后仅保留规范化证据。",
+      "reveal": "解密查看原始数据",
+      "copy": "复制（记录审计）"
+    },
+    "gate": {
+      "high_severity_finding": "存在高危风险发现，禁止提交",
+      "critical_severity_finding": "存在严重风险发现，禁止提交",
+      "stage_review_failed": "存在预审失败的阶段",
+      "stage_review_incomplete": "存在未完成的审核阶段",
+      "stage_review_blocked": "存在被阻断的审核阶段",
+      "stage_review_missing": "缺少审核阶段信息",
+      "unknown": "存在未说明的阻断项"
+    },
+    "blocked": {
+      "flowUpdated": "流程模板已更新：请重新加载模板并重新运行全部阶段预审。",
+      "submitted": "草稿已提交为工单。",
+      "unsaved": "存在未保存的SQL修改，请先保存SQL。",
+      "gate": "提交流程被审核门禁阻断",
+      "outdated": "预审结果基于旧版本草稿，请重新运行预审。"
+    },
+    "submit": {
+      "ready": "审核结果完整，可以提交审批。",
+      "action": "提交审批",
+      "successTitle": "已提交",
+      "successDescription": "工单 {{number}} 已创建，审核结果已冻结为提交快照。"
+    },
+    "flowUpdated": {
+      "title": "流程模板已更新",
+      "description": "当前预审结果基于旧模板，请重新运行全部阶段预审后再提交。",
+      "banner": "流程模板已更新，本次预审结果已失效。"
+    },
+    "failure": {
+      "provider_unavailable": "AI服务暂不可用，预审已失败，可稍后重试。",
+      "budget_exhausted": "当日AI预算已耗尽，预审未完成，请明日重试或联系管理员。",
+      "timed_out": "预审超时。",
+      "generic": "预审失败。"
+    },
+    "tabs": {
+      "overview": "预审概览",
+      "findings": "风险发现"
+    },
+    "category": {
+      "correctness": "正确性",
+      "performance": "性能",
+      "availability": "可用性",
+      "security": "安全",
+      "governance": "治理",
+      "compatibility": "兼容性",
+      "operability": "可运维性",
+      "other": "审核发现"
+    }
   }
 }

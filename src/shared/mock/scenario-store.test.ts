@@ -31,7 +31,19 @@ describe("mock scenario store", () => {
     expect(seen).toEqual(["event"]);
   });
 
-  it("declares exactly the four contracted scenarios", () => {
-    expect(MOCK_SCENARIOS).toEqual(["ready", "blocked", "running", "error"]);
+  it("declares exactly the contracted scenario set", () => {
+    // Four FE-F1 demo scenarios for the generated client outcome surface,
+    // plus the FE-F4 review lifecycle outcomes (Ready/Blocked/Partial/
+    // Provider失败 acceptance gates) served by the stateful fixture.
+    expect(MOCK_SCENARIOS).toEqual([
+      "ready",
+      "blocked",
+      "running",
+      "error",
+      "review-ready",
+      "review-blocked",
+      "review-partial",
+      "review-provider-failed",
+    ]);
   });
 });

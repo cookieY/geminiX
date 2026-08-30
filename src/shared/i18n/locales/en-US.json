@@ -108,6 +108,220 @@
     "VALIDATION_FAILED": "The input failed validation. Please review and try again.",
     "INVALID_CREDENTIALS": "Incorrect username or password.",
     "ADMIN_PASSWORD_LOCKED": "The built-in administrator is locked.",
-    "RESOURCE_NOT_FOUND": "The requested resource does not exist."
+    "RESOURCE_NOT_FOUND": "The requested resource does not exist.",
+    "VERSION_CONFLICT": "The resource version changed. Refresh and retry.",
+    "CONCURRENT_MODIFICATION": "Someone else modified this resource. Refresh and retry.",
+    "RESOURCE_ALREADY_EXISTS": "A resource with the same identity already exists.",
+    "RESOURCE_REFERENCED": "The resource is still referenced and cannot be deleted.",
+    "IDEMPOTENCY_KEY_REUSED": "This request was already processed. Do not resubmit.",
+    "IDEMPOTENCY_IN_PROGRESS": "An identical request is still in progress.",
+    "CURSOR_EXPIRED": "The pagination cursor expired. Reload the list.",
+    "INVALID_STATE_TRANSITION": "The current state does not allow this action.",
+    "PRECONDITION_REQUIRED": "A required precondition is missing.",
+    "SYSTEM_CAPACITY_EXHAUSTED": "System capacity is exhausted. Try again later.",
+    "REVIEW_OUTDATED": "The review is outdated. Run the precheck again.",
+    "SQL_BATCH_TOO_LARGE": "The SQL batch exceeds the limit. Split it and retry.",
+    "SQL_PARSE_FAILED": "The SQL could not be parsed. Check the statement syntax.",
+    "SQL_FINGERPRINT_FAILED": "SQL fingerprinting failed. Try again later.",
+    "SQL_ANONYMIZATION_FAILED": "Anonymization failed; the precheck is blocked.",
+    "TOO_MANY_FINGERPRINTS": "Too many unique fingerprints. Split the work order.",
+    "REVIEW_COVERAGE_INCOMPLETE": "Review coverage is incomplete.",
+    "REVIEW_BLOCKED_BY_RISK": "High-risk findings block submission.",
+    "REVIEW_SCHEMA_INVALID": "The review output failed validation. Retry.",
+    "AI_DAILY_BUDGET_EXHAUSTED": "The daily AI budget is exhausted. Retry tomorrow or contact an administrator.",
+    "AI_PROVIDER_FAILED": "The AI service is unavailable. Try again later.",
+    "REVIEW_TOOL_FAILED": "A review tool failed; the precheck is incomplete.",
+    "SUBMISSION_GATE_FAILED": "Submission failed the review gate.",
+    "FLOW_GRANT_REVOKED": "The flow grant was revoked. Contact an administrator.",
+    "QUERY_TIMEOUT": "The query timed out. Narrow the criteria or retry later.",
+    "ADMIN_IMMUTABLE": "The built-in admin record is immutable.",
+    "USER_HAS_ACTIVE_ORDERS": "The user has open work orders and cannot be deleted.",
+    "USER_REFERENCED_BY_TEMPLATE": "The user is still referenced by flow templates.",
+    "FLOW_REFERENCED": "The flow is referenced; only disabling is allowed.",
+    "DATASOURCE_REFERENCED": "The datasource is referenced; only marking it unavailable is allowed.",
+    "FLOW_ACTOR_NODE_EMPTY": "A flow node has no reviewers and cannot be enabled.",
+    "NOT_FROZEN_ACTOR": "The current user is not a frozen actor of this node.",
+    "APPROVAL_ALREADY_DECIDED": "This approval node was already decided.",
+    "EXECUTION_ALREADY_STARTED": "Execution already started; it cannot be started again.",
+    "EXECUTION_RETRY_FORBIDDEN": "This result state does not allow a retry.",
+    "EXECUTION_RESULT_UNKNOWN": "The execution result is unknown; manual verification is required.",
+    "EXECUTION_PREFLIGHT_FAILED": "The execution preflight failed.",
+    "SCHEDULE_OUT_OF_RANGE": "The scheduled time is out of range (5 minutes to 30 days).",
+    "OUTSIDE_EXECUTION_WINDOW": "The current time is outside the allowed execution window.",
+    "MISSED_SCHEDULE": "The scheduled time was missed; it will not auto-run.",
+    "DATASOURCE_UNAVAILABLE": "The target datasource is unavailable; the action is suspended.",
+    "GH_OST_UNSUPPORTED": "OSC (gh-ost) execution is unsupported in this environment.",
+    "MANUAL_VERIFICATION_EVIDENCE_REQUIRED": "Manual success confirmation requires verification evidence.",
+    "QUERY_GRANT_REQUIRED": "A query grant is required. Apply for access first.",
+    "QUERY_DATASOURCE_NOT_GRANTED": "This datasource is not granted to you.",
+    "QUERY_EXPORT_NOT_GRANTED": "Export is not granted for this datasource.",
+    "QUERY_GRANT_REVOKED": "The query grant was revoked.",
+    "QUERY_GRANT_EXPIRED": "The query grant has expired.",
+    "QUERY_SESSION_CLOSED": "The query session is closed. Re-enter the workspace.",
+    "QUERY_ONLY_SINGLE_SELECT": "Only a single SELECT statement is allowed.",
+    "QUERY_TIMEOUT_OUT_OF_RANGE": "The query timeout is out of range (30-300 seconds).",
+    "QUERY_CURSOR_INVALID": "The result cursor is invalid or expired. Refetch.",
+    "MIGRATION_ACTIVE_WORK_EXISTS": "Unfinished migration work exists; new actions are blocked.",
+    "MIGRATION_DRY_RUN_REQUIRED": "A dry-run reconciliation is required first.",
+    "MIGRATION_MAPPING_UNCONFIRMED": "There are unconfirmed mapping candidates.",
+    "MIGRATION_SOURCE_UNSUPPORTED": "This legacy source is unsupported.",
+    "MIGRATION_INVARIANT_FAILED": "A migration invariant failed; execution stopped.",
+    "AUTH_PROVIDER_DISABLED": "This sign-in method is disabled. Use an available method.",
+    "LDAP_SERVER_ERROR": "The LDAP service is unavailable. Try again later.",
+    "OIDC_STATE_INVALID": "The sign-in state expired. Start again.",
+    "ADMIN_USER_PROTECTED": "The built-in admin is protected; the action is not allowed.",
+    "USER_NOT_IN_SCOPE": "The target user is outside your visible scope.",
+    "AUDIT_QUERY_TOO_BROAD": "The audit query is too broad. Narrow the criteria.",
+    "DATASOURCE_UNREACHABLE": "The datasource is unreachable. Check the connection.",
+    "DATASOURCE_AUTH_FAILED": "Datasource authentication failed. Check the credentials.",
+    "DATASOURCE_ENGINE_UNSUPPORTED": "This database engine or version is not supported.",
+    "DATASOURCE_CAPABILITY_MISSING": "The datasource lacks the required capability.",
+    "QUERY_RESULT_TOO_LARGE": "The result set is too large. Page or narrow the query.",
+    "QUERY_LIMIT_REACHED": "The query limit is reached. Try again later.",
+    "EXPORT_CANCELLED": "The export was cancelled.",
+    "EXPORT_FAILED": "The export failed. Retry.",
+    "NOTIFICATION_CHANNEL_FAILED": "The notification channel failed. Check the configuration.",
+    "TEMPLATE_RENDER_FAILED": "The notification template failed to render.",
+    "SYSTEM_MAINTENANCE": "The system is under maintenance. Try again later.",
+    "MIGRATION_MODE_ACTIVE": "Migration mode is active; only migration actions are allowed."
+  },
+  "common": {
+    "cancel": "Cancel"
+  },
+  "precheck": {
+    "new": {
+      "title": "Submit Change",
+      "description": "Pick a review flow your permission groups grant and create a draft; stage datasources, reviewers and executors are frozen by the flow template.",
+      "empty": "No review flow is granted to your account yet. Please contact an administrator.",
+      "flowCardDescription": "Review flow: the stage chain is frozen by the template",
+      "useFlow": "Create draft",
+      "dialog": {
+        "title": "Create review draft",
+        "description": "Stage datasources, reviewers and executors of flow “{{flow}}” are frozen and read-only.",
+        "titleLabel": "Title",
+        "descriptionLabel": "Description",
+        "confirm": "Create and open draft"
+      }
+    },
+    "workspace": {
+      "title": "Precheck Workspace",
+      "flowCard": "Flow and stage path",
+      "flowFrozen": "Flow information comes from the granted template and cannot be changed here before submission.",
+      "sqlCard": "SQL editor",
+      "unsaved": "unsaved",
+      "loadSql": "Load SQL (audited decrypt)",
+      "saveSql": "Save SQL",
+      "runReview": "Run AI precheck"
+    },
+    "stagePath": {
+      "stage": "Stage {{position}}",
+      "unavailable": "Flow information is unavailable"
+    },
+    "review": {
+      "title": "Review progress",
+      "description": "Progress and conclusions come from the server-side review run.",
+      "statements": "Statements: {{count}}",
+      "fingerprints": "Fingerprint groups: {{count}}",
+      "stage": "Stage",
+      "state": "State",
+      "findings": "Findings",
+      "evidence": "Evidence",
+      "noRun": "No precheck yet. Click “Run AI precheck” to start.",
+      "timeout": "The precheck has not finished within the expected window. Refresh later; contact an administrator if it stays stuck."
+    },
+    "phase": {
+      "idle": "Not reviewed",
+      "queued": "Queued",
+      "running": "Reviewing",
+      "ready": "Review complete",
+      "blocked": "Blocked",
+      "partial": "Partial",
+      "failed": "Review failed",
+      "outdated": "Result outdated"
+    },
+    "stage": {
+      "pending": "Pending",
+      "running": "Running",
+      "passed": "Passed",
+      "blocked": "Blocked",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "findings": {
+      "title": "Findings",
+      "filter": "Filter severity",
+      "filterAll": "All severities",
+      "empty": "No findings at this severity.",
+      "suggestion": "Suggestion",
+      "locate": "Locate in SQL"
+    },
+    "evidence": {
+      "open": "View evidence",
+      "title": "Review evidence",
+      "description": "Normalized facts always show; raw data needs an explicit audited decrypt.",
+      "empty": "No evidence is linked to this finding.",
+      "fact": {
+        "known": "Verified",
+        "unknown": "Unverified",
+        "unavailable": "Unavailable",
+        "stale": "Stale"
+      },
+      "retention": "Raw payload retention: about {{days}} days left. Only normalized evidence remains afterwards.",
+      "reveal": "Decrypt raw payload",
+      "copy": "Copy (audited)"
+    },
+    "gate": {
+      "high_severity_finding": "A high severity finding forbids submission",
+      "critical_severity_finding": "A critical severity finding forbids submission",
+      "stage_review_failed": "A stage failed its review",
+      "stage_review_incomplete": "A stage review is incomplete",
+      "stage_review_blocked": "A stage review is blocked",
+      "stage_review_missing": "Stage review information is missing",
+      "unknown": "An unspecified blocker is present"
+    },
+    "blocked": {
+      "flowUpdated": "The flow template changed: reload the template and re-run every stage precheck.",
+      "submitted": "The draft has been submitted as a work order.",
+      "unsaved": "There are unsaved SQL changes. Save the SQL first.",
+      "gate": "Submission is blocked by the review gate",
+      "outdated": "The review was frozen on an older draft revision. Run the precheck again."
+    },
+    "submit": {
+      "ready": "Review is complete and submission is unlocked.",
+      "action": "Submit for approval",
+      "successTitle": "Submitted",
+      "successDescription": "Work order {{number}} has been created; the review result is frozen as the submission snapshot."
+    },
+    "flowUpdated": {
+      "title": "Flow template updated",
+      "description": "The current review ran on the old template. Re-run every stage precheck before submitting.",
+      "banner": "The flow template changed; this review result is void."
+    },
+    "failure": {
+      "provider_unavailable": "The AI service is unavailable. The review failed; retry later.",
+      "budget_exhausted": "The daily AI budget is exhausted. The review is incomplete; retry tomorrow or contact an administrator.",
+      "timed_out": "The review timed out.",
+      "generic": "The review failed."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "findings": "Findings"
+    },
+    "category": {
+      "correctness": "Correctness",
+      "performance": "Performance",
+      "availability": "Availability",
+      "security": "Security",
+      "governance": "Governance",
+      "compatibility": "Compatibility",
+      "operability": "Operability",
+      "other": "Finding"
+    }
   }
 }

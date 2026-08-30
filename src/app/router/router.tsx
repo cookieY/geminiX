@@ -14,6 +14,8 @@ import { Loadable } from "@/app/router/loadable";
 const LoginPage = lazy(() => import("@/routes/login/login-page"));
 const WorkspacePage = lazy(() => import("@/routes/workspace/workspace-page"));
 const AdminUsersPage = lazy(() => import("@/routes/admin/admin-users-page"));
+const ChangesNewPage = lazy(() => import("@/routes/changes/changes-new-page"));
+const DraftWorkspacePage = lazy(() => import("@/routes/changes/draft-workspace-page"));
 const NotFoundPage = lazy(() => import("@/routes/not-found"));
 const ForbiddenPage = lazy(() => import("@/routes/forbidden"));
 
@@ -36,6 +38,14 @@ export const appRouter = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/workspace" replace /> },
       { path: "workspace", element: Loadable(WorkspacePage) },
+      {
+        path: "changes/new",
+        element: Loadable(ChangesNewPage),
+      },
+      {
+        path: "changes/drafts/:draftId",
+        element: Loadable(DraftWorkspacePage),
+      },
       {
         // Admin surfaces exist only behind the server-declared
         // `can_access_admin` capability (GET /users/me) — the guard is a

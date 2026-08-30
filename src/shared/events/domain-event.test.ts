@@ -125,3 +125,47 @@ describe("reviewEventDataSchema", () => {
     expect(reviewEventDataSchema.safeParse(event.data).success).toBe(false);
   });
 });
+
+describe("parseDomainEvent negative branches", () => {
+  it("rejects a structurally valid envelope with an unknown event type", () => {
+    const raw = {
+      specversion: "1.0",
+      id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+      type: "io.yearning.v4.unknown.thing",
+      source: "yearning://control-plane",
+      subject: "review-runs/4f6f1a2b-0000-4000-8000-00000000aa01",
+      time: "2026-08-30T10:00:00Z",
+      sequence: 1,
+      data: {},
+    };
+    expect(parseDomainEvent(raw)).toBeNull();
+  });
+
+  it("rejects a wrong source even with a known type", () => {
+    const raw = {
+      specversion: "1.0",
+      id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+      type: "io.yearning.v4.flow.updated",
+      source: "yearning://elsewhere",
+      subject: "flows/4f6f1a2b-0000-4000-8000-000000000001",
+      time: "2026-08-30T10:00:00Z",
+      sequence: 1,
+      data: { resource_id: "4f6f1a2b-0000-4000-8000-000000000001", action: "updated", aggregate_version: 2 },
+    };
+    expect(parseDomainEvent(raw)).toBeNull();
+  });
+
+  it("rejects a resource_changed event whose action is outside the enum", () => {
+    const raw = {
+      specversion: "1.0",
+      id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+      type: "io.yearning.v4.flow.updated",
+      source: "yearning://control-plane",
+      subject: "flows/4f6f1a2b-0000-4000-8000-000000000001",
+      time: "2026-08-30T10:00:00Z",
+      sequence: 1,
+      data: { resource_id: "4f6f1a2b-0000-4000-8000-000000000001", action: "mutated", aggregate_version: 2 },
+    };
+    expect(parseDomainEvent(raw)).toBeNull();
+  });
+});
