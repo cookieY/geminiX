@@ -421,6 +421,17 @@
         "state": "State",
         "stage": "Current stage",
         "submittedAt": "Submitted"
+      },
+      "filter": {
+        "searchPlaceholder": "Search order no. / title",
+        "state": "Filter by state",
+        "allStates": "All states",
+        "datasource": "Filter by datasource",
+        "allDatasources": "All datasources",
+        "from": "Submitted from",
+        "to": "Submitted to",
+        "reset": "Clear filters",
+        "emptyFiltered": "No orders match the current filters."
       }
     },
     "detail": {

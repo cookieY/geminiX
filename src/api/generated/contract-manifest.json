@@ -3,7 +3,7 @@
   "sources": {
     "openapi": {
       "path": "api/openapi/yearning-v4.yaml",
-      "sha256": "495ee9e965aab76e718a72bb92b427936aab046395601c8826f11d040dd2eb2c"
+      "sha256": "c8cacf2cb5937d2a364a3f247e6bfc6387ee290be838990d039e50d46d406291"
     },
     "error_codes": {
       "path": "api/contracts/error-codes.json",
@@ -29,15 +29,15 @@
   "outputs": {
     "typescript_client": {
       "path": "src/api/generated/client",
-      "sha256": "f71a1f08696001b04698d7becc9507999dd3f38da65691e30904d04058f9b330"
+      "sha256": "acb6cb4123e8214b3633eef3625878de618552869b6504d49ea302c7586ce6d9"
     },
     "zod_runtime_schemas": {
       "path": "src/api/generated/zod",
-      "sha256": "e1ab01ff5a6115293725380e79bd95759a54ab58e56618c174bf0a5bd9d09545"
+      "sha256": "a83366d5dda1359429ac4207e179bfe7b02bfb5df4c90b8b7b64b2e42d875abd"
     },
     "tanstack_query_hooks": {
       "path": "src/api/generated/hooks",
-      "sha256": "d39afdde8f25329bcfb9ceaa8ccb9d2f6fd56c76f9a7371c9c2ea7d4b95882c5"
+      "sha256": "c256f85726283632cd00cad240eb10a4bffd7109e0bf70ec38f3c009262b82ee"
     },
     "msw_mock_handlers": {
       "path": "src/api/generated/mocks",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-08-30T13:48:12.277Z"
+  "generated_at": "2026-08-30T16:27:04.905Z"
 }

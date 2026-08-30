@@ -1081,15 +1081,44 @@ export function reviewFixtureHandlers(): HttpHandler[] {
 
     // ---- Change orders (FE-F6): personal order list, detail, timeline,
     // withdrawal and voidance. The list endpoint exposes exactly the OpenAPI
-    // contract (limit/after cursor page) — no search or filter parameters
-    // exist in the API, so the UI offers none.
+    // contract — cursor paging plus the RCP-20260831-ORDER-LIST-FILTER
+    // params (state/q/datasource/submitted_from/submitted_to). Filters only
+    // narrow the submitter-scoped result.
     http.get("*/change-orders", ({ request }) => {
       const url = new URL(request.url);
       const limit = Number(url.searchParams.get("limit") ?? "50");
       const after = url.searchParams.get("after");
+      const state = url.searchParams.get("state");
+      const q = url.searchParams.get("q");
+      const datasource = url.searchParams.get("datasource");
+      const submittedFrom = url.searchParams.get("submitted_from");
+      const submittedTo = url.searchParams.get("submitted_to");
       seedPartialExecutionOrder();
       const orders = [...world.orders.values()]
         .filter((order) => order.submitter_user_id === FIXTURE_OWNER_ID)
+        .filter((order) => state === null || order.state === state)
+        .filter((order) => {
+          if (q === null || q === "") return true;
+          const needle = q.toLowerCase();
+          return (
+            order.display_number.toLowerCase().includes(needle) ||
+            order.title.toLowerCase().includes(needle)
+          );
+        })
+        .filter((order) =>
+          datasource === null ||
+          datasource === "" ||
+          order.stages.some((stage) => stage.datasource_name === datasource),
+        )
+        .filter((order) => {
+          if (submittedFrom !== null && submittedFrom !== "") {
+            if (order.submitted_at < `${submittedFrom}T00:00:00Z`) return false;
+          }
+          if (submittedTo !== null && submittedTo !== "") {
+            if (order.submitted_at > `${submittedTo}T23:59:59Z`) return false;
+          }
+          return true;
+        })
         .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))
         .map(orderPublic);
       return HttpResponse.json(successEnvelope(pageOf(orders, limit, after)));

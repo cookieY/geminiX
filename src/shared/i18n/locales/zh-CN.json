@@ -421,6 +421,17 @@
         "state": "状态",
         "stage": "当前阶段",
         "submittedAt": "提交时间"
+      },
+      "filter": {
+        "searchPlaceholder": "搜索工单号 / 标题",
+        "state": "按状态筛选",
+        "allStates": "全部状态",
+        "datasource": "按数据源筛选",
+        "allDatasources": "全部数据源",
+        "from": "提交起始日期",
+        "to": "提交截止日期",
+        "reset": "清除筛选",
+        "emptyFiltered": "没有符合筛选条件的工单，请调整筛选。"
       }
     },
     "detail": {

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChangeDraft,
   ChangeOrder,
+  ChangeOrderState,
   ChangeOrderTimelineEntry,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
@@ -25,24 +26,55 @@ import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-eve
  * merging).
  */
 
-export function useMyChangeOrders(enabled: boolean) {
+/** Server-side list filters (RCP-20260831-ORDER-LIST-FILTER contract
+ * surface). All filters narrow the submitter-scoped result on the server —
+ * the UI never filters client-side, which would fight cursor paging and the
+ * event-driven re-read semantics. */
+export interface OrderListFilters {
+  state?: ChangeOrderState;
+  q?: string;
+  datasource?: string;
+  submitted_from?: string;
+  submitted_to?: string;
+}
+
+const EMPTY_FILTERS: OrderListFilters = {};
+
+function activeFilters(filters: OrderListFilters): OrderListFilters {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== ""),
+  );
+}
+
+export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = EMPTY_FILTERS) {
   const queryClient = useQueryClient();
+  const effective = activeFilters(filters);
   const query = useQuery({
-    queryKey: ["change-orders", "mine"],
+    // The filter object joins the key so every filter change is a fresh
+    // server read, never a stale-cache hit. keepPreviousData holds the last
+    // rows (and keeps this hook's consumers mounted) while a first-time
+    // filter combination is in flight.
+    queryKey: ["change-orders", "mine", effective],
     queryFn: async () => {
-      const page = (await listChangeOrders({ limit: 50 })) as unknown as {
+      const page = (await listChangeOrders({
+        limit: 50,
+        ...effective,
+      })) as unknown as {
         items: ChangeOrder[];
       };
       return page.items;
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 
   // The event client routes by exact aggregate subject, so the list page
-  // subscribes to the subjects it has actually loaded; a subscription set
-  // per render would churn, hence the stable identity key. New orders arrive
-  // through normal query invalidation on navigation — the submission flow
-  // lands on the detail page and back-navigation remounts this query.
+  // subscribes to the subjects it has actually loaded. keepPreviousData holds
+  // the previous read through a filter transition, so the subscription set
+  // never drops while a new filter key loads — ingest() cannot advance past
+  // undelivered events in that window. New orders arrive through normal
+  // invalidation on navigation — the submission flow lands on the detail
+  // page and back-navigation remounts this query.
   const orders = query.data;
   const subscriptionKey =
     orders === undefined ? "" : orders.map((order) => `${order.id}:${String(order.version)}`).join("|");
@@ -60,6 +92,24 @@ export function useMyChangeOrders(enabled: boolean) {
   }, [subscriptionKey, orders, queryClient]);
 
   return query;
+}
+
+/**
+ * Datasource options for the filter select, taken from one unfiltered read
+ * of the submitter's orders — filter interactions must not shrink the
+ * option set.
+ */
+export function useOrderDatasourceOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: ["change-orders", "mine", "datasource-options"],
+    queryFn: async () => {
+      const page = (await listChangeOrders({ limit: 200 })) as unknown as {
+        items: ChangeOrder[];
+      };
+      return [...new Set(page.items.flatMap((order) => order.stages.map((stage) => stage.datasource_name)))];
+    },
+    enabled,
+  });
 }
 
 export function useChangeOrder(orderId: string) {

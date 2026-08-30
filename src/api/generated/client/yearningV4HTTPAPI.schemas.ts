@@ -3586,6 +3586,30 @@ export type ListChangeOrdersParams = {
  */
 limit?: LimitParameter;
 after?: AfterParameter;
+/**
+ * Exact-match filter on the aggregate order state.
+ */
+state?: ChangeOrderState;
+/**
+ * Case-insensitive keyword matched against display_number or title (Work ID and title search). Filters narrow the session-scoped result; they never widen authorization.
+ * @minLength 1
+ * @maxLength 128
+ */
+q?: string;
+/**
+ * Exact match against any stage datasource_name of the order.
+ * @minLength 1
+ * @maxLength 128
+ */
+datasource?: string;
+/**
+ * Inclusive lower bound on submitted_at (UTC calendar day start).
+ */
+submitted_from?: string;
+/**
+ * Inclusive upper bound on submitted_at (UTC calendar day end).
+ */
+submitted_to?: string;
 };
 
 export type ListChangeOrders200 = {

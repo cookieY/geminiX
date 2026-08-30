@@ -5570,11 +5570,20 @@ export const ListReviewRunFindingsResponse = zod.union([zod.object({
 export const listChangeOrdersQueryLimitDefault = 50;
 export const listChangeOrdersQueryLimitMax = 200;
 
+export const listChangeOrdersQueryQMax = 128;
+
+export const listChangeOrdersQueryDatasourceMax = 128;
+
 
 
 export const ListChangeOrdersQueryParams = zod.object({
   "limit": zod.int().min(1).max(listChangeOrdersQueryLimitMax).default(listChangeOrdersQueryLimitDefault),
-  "after": zod.string().optional()
+  "after": zod.string().optional(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']).optional().describe('Exact-match filter on the aggregate order state.'),
+  "q": zod.string().min(1).max(listChangeOrdersQueryQMax).optional().describe('Case-insensitive keyword matched against display_number or title (Work ID and title search). Filters narrow the session-scoped result; they never widen authorization.'),
+  "datasource": zod.string().min(1).max(listChangeOrdersQueryDatasourceMax).optional().describe('Exact match against any stage datasource_name of the order.'),
+  "submitted_from": zod.iso.date().optional().describe('Inclusive lower bound on submitted_at (UTC calendar day start).'),
+  "submitted_to": zod.iso.date().optional().describe('Inclusive upper bound on submitted_at (UTC calendar day end).')
 })
 
 export const listChangeOrdersResponseOneDataTwoItemsItemDisplayNumberRegExp = new RegExp('^YR-[0-9]{8}-[0-9]{6}$');

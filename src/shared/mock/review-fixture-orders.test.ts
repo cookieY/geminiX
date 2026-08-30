@@ -220,3 +220,112 @@ describe("change-order fixture contract", () => {
     expect(secondPage.page.has_more).toBe(false);
   });
 });
+
+describe("change-order list filters (RCP-20260831-ORDER-LIST-FILTER)", () => {
+  function seedFilterSet(): void {
+    seedFixtureOrder(
+      seedOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000fa01",
+        display_number: "YR-20260830-000101",
+        title: "存量订单表订正",
+        state: "running",
+        submitted_at: "2026-08-28T09:30:00Z",
+        stages: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000fb01",
+            position: 1,
+            datasource_name: "staging-mysql",
+            state: "succeeded",
+            approval_steps: [],
+            execution_actors: [],
+          },
+        ],
+      }),
+    );
+    seedFixtureOrder(
+      seedOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000fa02",
+        display_number: "YR-20260830-000102",
+        title: "索引重建",
+        state: "withdrawn",
+        submitted_at: "2026-08-30T18:00:00Z",
+      }),
+    );
+  }
+
+  async function listWith(query: string): Promise<Array<Record<string, unknown>>> {
+    const result = await jsonRequest(`/change-orders?${query}`);
+    expect(result.body.err_code).toBe(0);
+    return result.body.data.items as Array<Record<string, unknown>>;
+  }
+
+  it("filters by exact aggregate state", async () => {
+    seedFilterSet();
+    const running = await listWith("state=running");
+    expect(running).toHaveLength(1);
+    expect(running[0]?.display_number).toBe("YR-20260830-000101");
+  });
+
+  it("matches the keyword case-insensitively against display_number and title", async () => {
+    seedFilterSet();
+    const byNumber = await listWith("q=000102");
+    expect(byNumber.map((order) => order.display_number)).toEqual(["YR-20260830-000102"]);
+    const byTitle = await listWith("q=" + encodeURIComponent("订正"));
+    expect(byTitle.map((order) => order.display_number)).toEqual(["YR-20260830-000101"]);
+    const byCase = await listWith("q=yr-20260830-000102");
+    expect(byCase).toHaveLength(1);
+  });
+
+  it("filters by exact stage datasource name", async () => {
+    seedFilterSet();
+    const staging = await listWith("datasource=staging-mysql");
+    expect(staging).toHaveLength(1);
+    expect(staging[0]?.display_number).toBe("YR-20260830-000101");
+    const none = await listWith("datasource=unknown-ds");
+    expect(none).toHaveLength(0);
+  });
+
+  it("applies inclusive UTC day bounds on submitted_at", async () => {
+    seedFilterSet();
+    const window = await listWith(
+      "submitted_from=2026-08-28&submitted_to=2026-08-28",
+    );
+    expect(window.map((order) => order.display_number)).toEqual(["YR-20260830-000101"]);
+    const wide = await listWith(
+      "submitted_from=2026-08-28&submitted_to=2026-08-30",
+    );
+    expect(wide).toHaveLength(2);
+    const future = await listWith("submitted_from=2026-08-31");
+    expect(future).toHaveLength(0);
+  });
+
+  it("keeps orders submitted exactly at the day-boundary instants", async () => {
+    seedFixtureOrder(
+      seedOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000fa03",
+        display_number: "YR-20260830-000103",
+        submitted_at: "2026-08-28T00:00:00Z",
+      }),
+    );
+    seedFixtureOrder(
+      seedOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000fa04",
+        display_number: "YR-20260830-000104",
+        submitted_at: "2026-08-28T23:59:59Z",
+      }),
+    );
+    const both = await listWith("submitted_from=2026-08-28&submitted_to=2026-08-28");
+    expect(both.map((order) => order.display_number).sort()).toEqual([
+      "YR-20260830-000103",
+      "YR-20260830-000104",
+    ]);
+  });
+
+  it("combines filters conjunctively", async () => {
+    seedFilterSet();
+    const combined = await listWith("state=withdrawn&q=000102&datasource=orders-mysql");
+    expect(combined).toHaveLength(1);
+    const contradictory = await listWith("state=running&q=000102");
+    expect(contradictory).toHaveLength(0);
+  });
+});

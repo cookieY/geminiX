@@ -227,4 +227,43 @@ describe("MinePage", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(screen.getAllByTestId("mine-order-row")).toHaveLength(1);
   });
+
+  it("filters server-side via the keyword and distinguishes the empty state", async () => {
+    const user = userEvent.setup();
+    seedOrder();
+    renderMine();
+    expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
+
+    // A keyword that matches nothing yields the filtered-empty copy after
+    // the debounce window; the row disappears (server-side filter).
+    await user.type(screen.getByTestId("filter-keyword"), "不存在的关键字");
+    await waitFor(() => {
+      expect(screen.getByTestId("orders-empty").textContent).toContain("没有符合筛选条件的工单");
+    }, { timeout: 3000 });
+    expect(screen.queryByTestId("mine-orders-table")).toBeNull();
+
+    // Clearing the keyword restores the row.
+    await user.clear(screen.getByTestId("filter-keyword"));
+    await waitFor(() => {
+      expect(screen.getByTestId("mine-orders-table")).toBeVisible();
+    }, { timeout: 3000 });
+  });
+
+  it("offers the reset affordance only while filters are active", async () => {
+    const user = userEvent.setup();
+    seedOrder();
+    renderMine();
+    expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
+    expect(screen.queryByTestId("filter-reset")).toBeNull();
+
+    await user.type(screen.getByTestId("filter-keyword"), "YR");
+    await waitFor(() => {
+      expect(screen.getByTestId("filter-reset")).toBeVisible();
+    }, { timeout: 3000 });
+    await user.click(screen.getByTestId("filter-reset"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("filter-reset")).toBeNull();
+    });
+    expect(screen.getByTestId("filter-keyword")).toHaveValue("");
+  });
 });

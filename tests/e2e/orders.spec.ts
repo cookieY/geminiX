@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockSession } from "./helpers/auth";
 
-// FE-F6 acceptance gates (work package FE-F6-ORDER-SUBMIT), driven by the
-// stateful order fixture over the production build with the shared MSW
-// worker:
+// FE-F6 acceptance gates (work package FE-F6-ORDER-SUBMIT, plus the
+// FE-F6-ORDER-FILTER supplement driven by RCP-20260831-ORDER-LIST-FILTER),
+// driven by the stateful order fixture over the production build with the
+// shared MSW worker:
 //   1. 未Ready正常UI不能提交 — the dock stays disabled without a passing
 //      gate, and submission only fires after the explicit confirmation;
 //   2. 后端拒绝无假成功 — a racing withdrawal keeps the dialog open with the
@@ -168,4 +169,54 @@ test("partial execution warns that applied changes cannot roll back", async ({ p
     "部分执行后撤回",
     { timeout: 8_000 },
   );
+});
+
+
+test("server-side filters narrow the personal list without losing event freshness", async ({
+  page,
+}) => {
+  test.setTimeout(30_000);
+  await createDraft(page, "筛选验收草稿");
+  await reviewToReady(page);
+  await page.getByTestId("submit-draft").click();
+  await page.getByTestId("submit-confirm-accept").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
+
+  await page.getByRole("link", { name: "我的工单" }).click();
+  await expect(page.getByTestId("mine-orders-table")).toBeVisible();
+  await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
+
+  // A keyword that matches the submitted order keeps the row.
+  await page.getByTestId("filter-keyword").fill("筛选验收");
+  await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 8_000 });
+
+  // A keyword that matches nothing flips to the filtered-empty copy.
+  await page.getByTestId("filter-keyword").fill("绝不匹配的词");
+  await expect(page.getByTestId("orders-empty")).toContainText("没有符合筛选条件的工单", {
+    timeout: 8_000,
+  });
+
+  // Back to a matching keyword, then withdraw from the API while the filter
+  // is active: the event-driven re-read keeps exactly one row and updates
+  // its badge (筛选态下事件重读不产生重复行).
+  await page.getByTestId("filter-keyword").fill("筛选验收");
+  await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 8_000 });
+  const orderId = await page.evaluate(async () => {
+    const response = await fetch("/change-orders");
+    const body = (await response.json()) as { data: { items: Array<{ id: string }> } };
+    return body.data.items[0]?.id ?? "";
+  });
+  const withdrawn = await page.evaluate(async (id) => {
+    const response = await fetch(`/change-orders/${id}/withdrawal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "If-Match": '"1"' },
+      body: JSON.stringify({ reason: "筛选态撤回" }),
+    });
+    return (await response.json()) as { err_code: number };
+  }, orderId);
+  expect(withdrawn.err_code).toBe(0);
+  await expect(page.getByTestId("mine-orders-table")).toContainText("已撤回", {
+    timeout: 8_000,
+  });
+  await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
 });
