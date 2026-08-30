@@ -1,0 +1,130 @@
+{
+  "contract_version": 1,
+  "registry_base": "https://ui.shadcn.com/r/styles",
+  "style": "base-lyra",
+  "icon_library": "lucide",
+  "note": "shadcn registry entries have no semantic version; pinning is the entry content SHA-256 recorded at introduction plus landed file hashes (yearning-ui-design-spec.md section 12).",
+  "components": [
+    {
+      "name": "alert",
+      "registry_type": "registry:ui",
+      "content_sha256": "9af5d2ebbe79ee11b32620d7dbef69b2e7003f797b53f82c97a0bc2d98cc519c",
+      "files": [
+        {
+          "path": "src/shared/components/ui/alert.tsx",
+          "sha256": "35d056f1a9256758b5b0501e18e7ef60a750d729f237f8116535a0a35134fb63"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "registry_type": "registry:ui",
+      "content_sha256": "143a4fc800dc91948674c83f76a996d9295d8fa3e4992d735d72c876459f19f0",
+      "files": [
+        {
+          "path": "src/shared/components/ui/badge.tsx",
+          "sha256": "9b391dcd69353945b48434cec3bd2b39c2566aab92e44b195085b6762e97de2f"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "registry_type": "registry:ui",
+      "content_sha256": "7a3d40318a9e4e10787797ec4e823800d0aa37f3b606fbb9525c25a853f3f774",
+      "files": [
+        {
+          "path": "src/shared/components/ui/button.tsx",
+          "sha256": "069e5cfb79f4afadc796c3f810dfba234612ff74dea7c2447f7daaf4f712cf6e"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "registry_type": "registry:ui",
+      "content_sha256": "7e55ec0351384ce9e83e7f711f804355c25f136c208186414e01b43cdd4878f6",
+      "files": [
+        {
+          "path": "src/shared/components/ui/card.tsx",
+          "sha256": "4fbe9f3dfc09e49130e06236d675b227d0b80f71b35d3b7d196a2cf6170d6569"
+        }
+      ]
+    },
+    {
+      "name": "dropdown-menu",
+      "registry_type": "registry:ui",
+      "content_sha256": "16eb1529394c1f4794efa645d1f6c5178c1fa9b5bd9686987c9c9f92c10450d4",
+      "files": [
+        {
+          "path": "src/shared/components/ui/dropdown-menu.tsx",
+          "sha256": "a7e25f5f9144004ce4dc7cf6819199973755a926420cb05c39cc3c116561803b"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "registry_type": "registry:ui",
+      "content_sha256": "c2520a1249136ee2403437a1b88a867c25cf745256f12b9bdf67b435ef754860",
+      "files": [
+        {
+          "path": "src/shared/components/ui/input.tsx",
+          "sha256": "93053140154ed313eff927eec5dbab753329b009c920f5436458ae3d594d3b19"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "registry_type": "registry:ui",
+      "content_sha256": "7c11a4a38909991b8606c2cc3734e38041a3596c4fa4b2adf2f7e99b1d1c1a6a",
+      "files": [
+        {
+          "path": "src/shared/components/ui/label.tsx",
+          "sha256": "b257567c7e446467c293237840a9aba61a592a43dad65e8413af24fa3734e3f1"
+        }
+      ]
+    },
+    {
+      "name": "separator",
+      "registry_type": "registry:ui",
+      "content_sha256": "c936ceab4430978cb16829ac1d2db9a1a24e0f974e908d46ff7ddd4e829bbea8",
+      "files": [
+        {
+          "path": "src/shared/components/ui/separator.tsx",
+          "sha256": "70a34696b8be2178a4be5e4d268d5c8da02cfa5b1cf92efe5ac608edb430a28b"
+        }
+      ]
+    },
+    {
+      "name": "skeleton",
+      "registry_type": "registry:ui",
+      "content_sha256": "73443724a9b19c97e4cdb434a97ddb8e19dc7aa0ccf57178be59074a648e0d04",
+      "files": [
+        {
+          "path": "src/shared/components/ui/skeleton.tsx",
+          "sha256": "62781f8988d884ef5d7b6b82fb1cedda7ecf551ae1ff58eb8ff5f83f87fb61ca"
+        }
+      ]
+    },
+    {
+      "name": "sonner",
+      "registry_type": "registry:ui",
+      "content_sha256": "f63b90236022c3b086b429c138a6c4325426b6da9c7fe0b24deb5c973e6e3806",
+      "files": [
+        {
+          "path": "src/shared/components/ui/sonner.tsx",
+          "sha256": "789ed2097b7017c8e2855fff81902ae4bccd889dada394831b2f2312e5ed7866"
+        }
+      ]
+    },
+    {
+      "name": "tooltip",
+      "registry_type": "registry:ui",
+      "content_sha256": "ba19a7b848ad6613cb52cc64590320568ec9f86d58bb1e65a771b59203059672",
+      "files": [
+        {
+          "path": "src/shared/components/ui/tooltip.tsx",
+          "sha256": "091258cee2d09ae1d79114400bdba696b1bb76365c2855f7a2a4060ff2de22c0"
+        }
+      ]
+    }
+  ]
+}

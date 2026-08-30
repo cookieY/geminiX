@@ -1,0 +1,37 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  MOCK_SCENARIOS,
+  readStoredScenario,
+  useMockScenario,
+} from "@/shared/mock/scenario-store";
+
+describe("mock scenario store", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useMockScenario.setState({ scenario: "ready" });
+  });
+
+  it("falls back to ready when nothing or an invalid value is stored", () => {
+    expect(readStoredScenario()).toBe("ready");
+    localStorage.setItem("yearning-mock-scenario", "chaos");
+    expect(readStoredScenario()).toBe("ready");
+  });
+
+  it("reads back a stored valid scenario", () => {
+    localStorage.setItem("yearning-mock-scenario", "blocked");
+    expect(readStoredScenario()).toBe("blocked");
+  });
+
+  it("setScenario persists the choice, updates state and notifies workers", () => {
+    const seen: string[] = [];
+    window.addEventListener("yearning:mock-scenario", () => seen.push("event"));
+    useMockScenario.getState().setScenario("error");
+    expect(useMockScenario.getState().scenario).toBe("error");
+    expect(localStorage.getItem("yearning-mock-scenario")).toBe("error");
+    expect(seen).toEqual(["event"]);
+  });
+
+  it("declares exactly the four contracted scenarios", () => {
+    expect(MOCK_SCENARIOS).toEqual(["ready", "blocked", "running", "error"]);
+  });
+});

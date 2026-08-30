@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Generated contract outputs are committed; orval temp files are not
+*.tsbuildinfo

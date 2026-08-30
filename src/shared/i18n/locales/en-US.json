@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "Yearning",
+    "skeleton": "React skeleton (FE-F1): router, query, i18n, error boundary and generated client are ready; the app shell arrives in FE-F2"
+  },
+  "nav": {
+    "home": "Home",
+    "login": "Sign in"
+  },
+  "login": {
+    "title": "Sign in to Yearning",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "placeholder": {
+      "username": "Enter your username",
+      "password": "Enter your password"
+    }
+  },
+  "error": {
+    "notFound": "Page not found",
+    "notFoundDesc": "Check that the address is correct",
+    "backHome": "Back to home",
+    "boundaryTitle": "Something went wrong",
+    "boundaryDesc": "An unexpected error occurred. Please reload the page.",
+    "reload": "Reload"
+  },
+  "skeleton": {
+    "apiReady": "Generated client ready",
+    "apiBlocked": "API blocked",
+    "apiError": "API error",
+    "apiRunning": "API running",
+    "mockScenario": "Mock scenario",
+    "apiBase": "API base"
+  }
+}

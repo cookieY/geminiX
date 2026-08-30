@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "Yearning",
+    "skeleton": "React 工程骨架（FE-F1）：路由、查询、i18n、错误边界与生成 Client 已就绪；App Shell 将在 FE-F2 实现"
+  },
+  "nav": {
+    "home": "首页",
+    "login": "登录"
+  },
+  "login": {
+    "title": "登录 Yearning",
+    "username": "用户名",
+    "password": "密码",
+    "submit": "登录",
+    "placeholder": {
+      "username": "请输入用户名",
+      "password": "请输入密码"
+    }
+  },
+  "error": {
+    "notFound": "页面不存在",
+    "notFoundDesc": "请检查地址是否正确",
+    "backHome": "返回首页",
+    "boundaryTitle": "页面出现异常",
+    "boundaryDesc": "发生了未预期的错误，请刷新页面重试。",
+    "reload": "刷新页面"
+  },
+  "skeleton": {
+    "apiReady": "生成 Client 就绪",
+    "apiBlocked": "接口阻断",
+    "apiError": "接口错误",
+    "apiRunning": "接口处理中",
+    "mockScenario": "Mock 场景",
+    "apiBase": "API 基址"
+  }
+}

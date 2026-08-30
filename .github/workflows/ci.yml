@@ -1,0 +1,107 @@
+name: frontend-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  signature:
+    name: Verify commit signature
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Verify the branch commit against the approved signing key
+        run: |
+          git config gpg.format ssh
+          git config gpg.ssh.allowedSignersFile .github/allowed_signers
+          # pull_request checkouts are unsigned GitHub merge commits; verify
+          # the actual PR head commit instead.
+          git verify-commit "${{ github.event.pull_request.head.sha || 'HEAD' }}"
+
+  quality:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .github/node.version
+          cache: pnpm
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests with coverage
+        run: pnpm test:coverage
+      - name: Registry inventory check (network required; separate from the offline build proof)
+        run: node scripts/generate-registry-inventory.mjs --check
+
+  build-offline:
+    name: Offline build proof
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .github/node.version
+          cache: pnpm
+      - name: Install (frozen lockfile, network available only for the registry)
+        run: pnpm install --frozen-lockfile
+      - name: Build with all egress blackholed
+        env:
+          HTTP_PROXY: http://127.0.0.1:1
+          HTTPS_PROXY: http://127.0.0.1:1
+          ALL_PROXY: http://127.0.0.1:1
+          NO_PROXY: ""
+          NODE_USE_ENV_PROXY: "1"
+        run: |
+          pnpm build
+          echo "build completed with Node proxy enforcement pointed at a blackhole plus the local-resource assertion below"
+      - name: Assert the built document references only local resources
+        run: |
+          # Library error strings legitimately mention doc sites; the gate is
+          # about loaded resources, not string literals.
+          external=$(grep -oE '(src|href)="https?://[^"]*"' dist/index.html || true)
+          if [ -n "$external" ]; then
+            echo "external resource reference in dist/index.html: $external"; exit 1
+          fi
+          echo "dist/index.html references only same-origin bundle assets"
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .github/node.version
+          cache: pnpm
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run e2e
+        run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

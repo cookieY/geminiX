@@ -30,6 +30,8 @@ UI基线前置：开始任何前端UI实现前，必须读取`../docs/frontend/y
 - 前端源码和测试先在本仓库提交，再由YearningX更新Gitlink并绑定两个仓库Commit证据。
 - 未经用户明确授权不得commit或push；不得把未运行测试报告为通过。
 
+工具链命令（在本仓库内执行；生成命令需要父仓库的共享契约，见README"常用命令"）：`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:coverage`、`pnpm build`、`pnpm test:e2e`、`pnpm api:generate`、`pnpm api:breaking`。生成目录`src/api/generated/`禁止手改；shadcn组件为源码拥有，改动后运行`node scripts/generate-registry-inventory.mjs`刷新`registry-inventory.json`（CI以`--check`核对）。
+
 标准操作序列：进入本仓库先查`git status`；处于detached HEAD时核对`git rev-parse main`等于YearningX Gitlink指向后`git checkout main`，禁止在detached HEAD上提交。新环境首次使用前必须配置本地`user.signingkey`（YearningX批准公钥串）与`gpg.ssh.allowedSignersFile`（指向YearningX的`api/development/allowed_signers`）——全局`.gitconfig`中的signingkey不是批准公钥。提交后以`git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=<allowed_signers> verify-commit`输出`Good signature`为准；`%G?`对SSH签名不可靠。推送main后回YearningX更新Gitlink并附本仓库CI证据完成YearningX侧提交。
 
 完成报告必须包含Requirement、用户可见结果、修改文件、测试与覆盖率、视觉和无障碍证据、未执行测试、风险和Frontend Commit。

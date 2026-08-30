@@ -6,7 +6,25 @@ YearningX Frontend 是 Yearning v4 的全新 Web 前端，面向数据库变更�
 
 ## 当前状态
 
-项目处于工程基线阶段，应用脚手架将在 Frontend Work Package `FE-F1-SCAFFOLD` 中正式建立。当前仓库尚未提供可运行的安装、开发、测试或构建命令；在 `package.json` 和锁文件提交前，不应假设包管理器或命令名称。
+`FE-F1-SCAFFOLD` 已建立 React 工程骨架：React 19 + TypeScript（严格模式）+ Vite + Tailwind CSS v4 + shadcn/ui（base-lyra 预设、Base UI 原语）+ TanStack Query + i18n + Error Boundary。OpenAPI 生成 Client 由 orval 产出（`pnpm api:generate`：TypeScript Client、Zod 运行时 Schema、TanStack Query Hooks、MSW 基础 handlers、三份契约投影与 `src/api/generated/contract-manifest.json` 哈希绑定）。测试为 Vitest（共享 MSW handlers）+ Playwright；CI 覆盖 lint、typecheck、单测、离线构建证明、提交签名验证与 e2e。
+
+## 常用命令
+
+前端是 YearningX 的 Submodule，生成命令需要在 YearningX 工作区内运行（生成输入 `../api/openapi/yearning-v4.yaml` 等共享契约来自父仓库）：
+
+```bash
+pnpm install --frozen-lockfile   # 安装（Lockfile 固定）
+pnpm dev                         # 本地开发
+pnpm build                       # 类型检查 + 生产构建
+pnpm lint / typecheck / test     # 质量门禁
+pnpm test:coverage               # 覆盖率（80% 门槛，生成目录除外）
+pnpm test:e2e                    # Playwright
+pnpm api:generate                # orval 生成 + 契约投影 + contract-manifest.json
+pnpm api:breaking                # OpenAPI Breaking Change 检测（merge-base 基线）
+node scripts/generate-registry-inventory.mjs --check  # 组件来源清单核对
+```
+
+生成目录 `src/api/generated/` 禁止手改；重新生成必须零 Diff（`code-generation-policy.json`）。组件来源与引入时 Registry 条目内容 SHA-256 记录在 `registry-inventory.json`。
 
 ## 已确定的技术方向
 

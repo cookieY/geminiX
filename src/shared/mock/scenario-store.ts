@@ -1,0 +1,32 @@
+import { create } from "zustand";
+
+/**
+ * Mock scenario switch shared by vitest (node MSW server) and Playwright
+ * (browser MSW worker), per code-generation-policy.json mock_layer. Scenarios
+ * prove the generated client's full outcome surface before the real backend
+ * exists: ready (err_code 0), blocked (typed business error), running
+ * (long-running acceptance), error (transport failure).
+ */
+export type MockScenario = "ready" | "blocked" | "running" | "error";
+export const MOCK_SCENARIOS: MockScenario[] = ["ready", "blocked", "running", "error"];
+
+interface MockScenarioStore {
+  scenario: MockScenario;
+  setScenario: (scenario: MockScenario) => void;
+}
+
+const STORAGE_KEY = "yearning-mock-scenario";
+
+export function readStoredScenario(): MockScenario {
+  const value = localStorage.getItem(STORAGE_KEY);
+  return MOCK_SCENARIOS.includes(value as MockScenario) ? (value as MockScenario) : "ready";
+}
+
+export const useMockScenario = create<MockScenarioStore>((set) => ({
+  scenario: "ready",
+  setScenario: (scenario) => {
+    localStorage.setItem(STORAGE_KEY, scenario);
+    set({ scenario });
+    window.dispatchEvent(new CustomEvent("yearning:mock-scenario"));
+  },
+}));
