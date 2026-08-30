@@ -148,3 +148,8 @@ test-results/
 
 # Generated contract outputs are committed; orval temp files are not
 *.tsbuildinfo
+
+# Dependency lockfile is a committed machine gate (code-generation-policy.json
+# generator_lockfile); the user-level global gitignore excludes *.yaml.
+pnpm-lock.yaml
+!pnpm-lock.yaml
