@@ -2,6 +2,12 @@ import { HttpResponse, delay, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import { digestSqlText, type SqlDigest } from "@/features/review/bulk-import/sql-digest";
+import {
+  BULK_MODE_MIN_STATEMENTS,
+  FINGERPRINT_MAX_STATEMENT_BYTES,
+  FINGERPRINT_MAX_UNIQUE,
+} from "@/features/review/bulk-constants";
 
 /**
  * Stateful change-draft/review fixture backing FE-F4 mock development and
@@ -75,6 +81,8 @@ interface FixtureRun {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  /** Fixture-internal local digest backing bulk runs; never serialized. */
+  digest?: SqlDigest;
 }
 
 interface FixtureFinding {
@@ -369,8 +377,72 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
     evidence_ids: [evidenceId],
   };
 
+  /**
+   * Bulk anomaly findings (frontend PRD F5: 异常语句必须单独列出，不能被聚
+   * 合掩盖). Derived from the run's local digest for bulk drafts only: each
+   * anomalous shape group (no-WHERE DML, oversized statement) becomes a high
+   * finding bound to a deterministic fingerprint group id and referencing
+   * the statement ordinal so the workspace can jump to it.
+   */
+  const bulkAnomalyFindings = (): FixtureFinding[] => {
+    const digest = run.digest;
+    if (digest === undefined || digest.statementCount < BULK_MODE_MIN_STATEMENTS) return [];
+    const groups = digest.groups.filter((group) => group.anomalyCount > 0).slice(0, 5);
+    return groups.map((group, offset) => {
+      const sample = digest.statements.find(
+        (statement) => statement.group === group.ordinal && statement.anomaly,
+      );
+      const oversized = sample?.oversized ?? false;
+      const sampleIndex = String(sample?.index ?? group.firstIndex);
+      // OpenAPI types ReviewFinding.id/fingerprint_group_id as UUID — keep
+      // fixture identifiers inside the 8-4-4-4-12 hex shape.
+      const groupId = `${run.id.slice(0, 8)}-a000-4000-8000-${String(group.ordinal).padStart(12, "0")}`;
+      const findingUuid = `${run.id.slice(0, 8)}-b000-4000-8000-${String(offset).padStart(12, "0")}`;
+      return {
+        id: findingUuid,
+        stage_position: 1,
+        fingerprint_group_id: groupId,
+        category: oversized ? "operability" : "correctness",
+        severity: "high",
+        title: oversized ? "单条语句超过尺寸上限" : "无 WHERE 条件的批量 DML",
+        message: oversized
+          ? `语句 \`#${sampleIndex}\` 超过单语句 ${String(FINGERPRINT_MAX_STATEMENT_BYTES)} 字节上限，无法安全指纹化。`
+          : `指纹组 #${String(group.ordinal + 1)}（${String(group.count)} 条）缺少 WHERE 条件，将影响全表；定位语句 \`#${sampleIndex}\`。`,
+        suggestion: oversized
+          ? "拆分该语句或压缩单条尺寸后重新导入。"
+          : "补充明确的 WHERE 条件并分批执行。",
+        model_confidence: null,
+        evidence_ids: [],
+      };
+    });
+  };
+
+  // Contract fail-closed (sql-fingerprint.json max_unique_fingerprints): a
+  // draft above the unique-fingerprint ceiling cannot be fingerprinted into
+  // a reviewable set — the run fails with fingerprint_failed instead of
+  // reporting a clamped group count.
+  const fingerprintOverflow = (run.digest?.groupCount ?? 0) > FINGERPRINT_MAX_UNIQUE;
+
   switch (behavior) {
     case "ready": {
+      const anomalies = bulkAnomalyFindings();
+      if (fingerprintOverflow) {
+        run.state = "failed";
+        run.gate = { passed: false, reason_codes: ["stage_review_failed"] };
+        run.failure_code = "fingerprint_failed";
+        run.finished_at = now();
+        setStage("failed", "none", false, []);
+        break;
+      }
+      if (anomalies.length > 0) {
+        // A high-severity anomaly blocks the gate — the aggregate-ready bulk
+        // draft must not hide it (acceptance gate 单条异常不被聚合隐藏).
+        run.state = "blocked";
+        run.gate = { passed: false, reason_codes: ["high_severity_finding"] };
+        run.finished_at = now();
+        setStage("blocked", "high", false, [...anomalies, mediumFinding]);
+        break;
+      }
       run.state = "ready";
       run.gate = { passed: true, reason_codes: [] };
       run.finished_at = now();
@@ -381,7 +453,7 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
       run.state = "blocked";
       run.gate = { passed: false, reason_codes: ["stage_review_blocked", "critical_severity_finding"] };
       run.finished_at = now();
-      setStage("blocked", "critical", false, [highFinding, criticalFinding]);
+      setStage("blocked", "critical", false, [...bulkAnomalyFindings(), highFinding, criticalFinding]);
       break;
     }
     case "partial": {
@@ -389,7 +461,7 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
       run.gate = { passed: false, reason_codes: ["stage_review_incomplete"] };
       run.failure_code = "budget_exhausted";
       run.finished_at = now();
-      setStage("partial", "medium", false, [mediumFinding]);
+      setStage("partial", "medium", false, [...bulkAnomalyFindings(), mediumFinding]);
       break;
     }
     case "provider_failed": {
@@ -593,7 +665,9 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       draft.sql = body.sql;
       draft.has_sql = body.sql.trim().length > 0;
       draft.sql_size_bytes = new TextEncoder().encode(body.sql).length;
-      draft.statement_count = body.sql.split(";").filter((part) => part.trim().length > 0).length;
+      // Quote-aware statement count via the shared local digest scanner —
+      // semicolons inside strings/quoted identifiers/comments do not split.
+      draft.statement_count = digestSqlText(body.sql).statementCount;
       draft.revision += 1;
       draft.version += 1;
       draft.updated_at = now();
@@ -685,6 +759,12 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         started_at: null,
         finished_at: null,
       };
+      // Bulk runs group the draft through the same local digest scanner the
+      // UI uses for navigation; the authoritative fingerprinting still
+      // happens server-side, the fixture only mirrors its observable counts.
+      run.digest = digestSqlText(draft.sql ?? "");
+      run.statement_count = run.digest.statementCount;
+      run.fingerprint_group_count = Math.min(run.digest.groupCount, FINGERPRINT_MAX_UNIQUE);
       world.runs.set(run.id, run);
       draft.review_run_id = run.id;
       draft.state = "reviewing";

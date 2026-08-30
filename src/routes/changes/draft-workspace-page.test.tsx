@@ -264,4 +264,61 @@ describe("DraftWorkspacePage", () => {
     renderWorkspace("unknown-draft");
     expect(await screen.findByRole("alert")).toBeVisible();
   });
+
+  it("renders a bulk draft in the virtualized browser, never in the editor", async () => {
+    // 2000 similar statements + one no-WHERE anomaly: the fixture digests the
+    // bulk draft into two shape groups and the anomaly blocks the gate.
+    const create = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "批量预检草稿" }),
+      })
+    ).json()) as { data: { id: string } };
+    const draftId = create.data.id;
+    const parts: string[] = [];
+    for (let i = 1; i <= 2000; i += 1) {
+      parts.push(
+        `UPDATE orders SET status = 'processed', updated_at = '2026-08-25' WHERE id = ${String(i)};\n`,
+      );
+    }
+    // Deterministic single anomaly at ordinal 432.
+    parts[431] = "UPDATE orders SET status = 'processed';\n";
+    await fetch(`/change-drafts/${draftId}/sql`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql: parts.join("") }),
+    });
+    await fetch(`/change-drafts/${draftId}/review-runs`, { method: "POST" });
+    await waitFor(async () => {
+      const response = (await (
+        await fetch(`/change-drafts/${draftId}`)
+      ).json()) as { data: FixtureDraft };
+      if (response.data.state !== "blocked") throw new Error("run not finished yet");
+    }, { timeout: 4000 });
+
+    renderWorkspace(draftId);
+    // Bulk mode loads SQL only on explicit reveal (memory discipline) — the
+    // browser appears after the local digest is derived from the plaintext.
+    expect(await screen.findByTestId("bulk-digest-pending")).toBeVisible();
+    expect(screen.queryByTestId("sql-editor")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("reveal-sql"));
+    expect(await screen.findByTestId("bulk-browser")).toBeVisible();
+    // Capacity summary reflects the server-run counts.
+    await waitFor(() => {
+      expect(screen.getByTestId("capacity-statements").textContent).toBe("2000");
+      expect(screen.getByTestId("capacity-groups").textContent).toContain("2");
+    });
+    // The anomalous statement is a finding on its own fingerprint group —
+    // visible outside the aggregate (单条异常不被聚合隐藏).
+    fireEvent.click(screen.getByTestId("tab-findings"));
+    const findings = await screen.findAllByTestId("finding-item");
+    const anomalyFinding = findings.find((node) =>
+      node.textContent.includes("无 WHERE 条件的批量 DML"),
+    );
+    expect(anomalyFinding).not.toBeUndefined();
+    if (anomalyFinding === undefined) throw new Error("anomaly finding missing");
+    expect(anomalyFinding.textContent).toContain("#432");
+    expect(anomalyFinding.textContent).toContain("指纹组 #2");
+  });
 });

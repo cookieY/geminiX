@@ -322,6 +322,76 @@
       "compatibility": "兼容性",
       "operability": "可运维性",
       "other": "审核发现"
+    },
+    "bulk": {
+      "import": {
+        "action": "导入SQL文件",
+        "title": "导入大批量SQL",
+        "description": "增量读取本地SQL文件并生成语句摘要；上传前进行32 MiB文件与512 KiB单语句预校验，服务端结果仍为最终判定。",
+        "pickHint": "选择 .sql 或 .txt 文件，或粘贴内容到编辑器",
+        "browse": "选择文件",
+        "limitsHint": "上限：文件 32 MiB · 单语句 512 KiB · 语句数 100,000",
+        "reading": "正在读取并分析 {{name}}… {{percent}}%",
+        "cancel": "取消读取",
+        "cancelledTitle": "已取消导入",
+        "cancelledDescription": "读取已中止，草稿内容未改变。",
+        "errorTitle": "读取失败",
+        "pickAgain": "重新选择",
+        "sizeLabel": "文件大小",
+        "statementsLabel": "语句数",
+        "groupsLabel": "本地形状分组",
+        "tablesLabel": "目标表",
+        "coverageLabel": "分句覆盖率",
+        "anomaliesLabel": "异常语句",
+        "truncatedTitle": "最后一条语句未以分号结束",
+        "truncatedDescription": "文件可能被截断；服务端可能按解析失败处理。",
+        "okTitle": "预校验通过",
+        "okDescription": "确认后将以单次请求上传该SQL内容。",
+        "confirm": "上传并保存",
+        "uploading": "上传中…",
+        "block": {
+          "fileTooLarge": {
+            "title": "文件超过 32 MiB 上限",
+            "description": "实际 {{actual}} 字节，上限 {{limit}} 字节。请拆分后分批导入。"
+          },
+          "statementTooLarge": {
+            "title": "存在超过 512 KiB 的单条语句",
+            "description": "共 {{count}} 条超限（如语句 #{{samples}}），最长 {{actual}} 字节，上限 {{limit}} 字节。请拆分该语句。"
+          },
+          "tooManyStatements": {
+            "title": "语句数超过 100,000 上限",
+            "description": "实际 {{actual}} 条，上限 {{limit}} 条。请按表或语句区间拆分为多个草稿。"
+          }
+        }
+      },
+      "browser": {
+        "groupsTab": "形状分组（{{count}}）",
+        "statementsTab": "语句（{{count}}）",
+        "jumpAnomaly": "定位异常语句（{{count}}）",
+        "report": "下载批次报告",
+        "filteredGroup": "已按形状分组 #{{ordinal}} 过滤，共 {{count}} 条语句",
+        "groupCount": "{{count}} 条",
+        "groupRange": "语句 #{{first}} – #{{last}}",
+        "anomalyBadge": "异常 {{count}}",
+        "anomalyBadgeShort": "异常",
+        "emptyTitle": "没有可浏览的语句",
+        "emptyDescription": "导入SQL文件或加载SQL内容后，这里将以虚拟化列表展示形状分组与语句。",
+        "localNote": "分组为浏览器端形状摘要，仅用于导航；权威指纹分组以服务端审核结果为准。",
+        "revealFirst": "草稿包含SQL但尚未加载：点击“加载SQL”后生成浏览摘要。",
+        "digesting": "正在生成本地语句摘要…"
+      },
+      "capacity": {
+        "size": "文件大小",
+        "statements": "语句数",
+        "groups": "唯一指纹",
+        "tables": "目标表",
+        "coverage": "分句覆盖率",
+        "localEstimate": "（浏览器端预估）",
+        "warningTitle": "复杂度预警：唯一指纹 {{count}} 已超过 {{limit}}",
+        "warningDescription": "高指纹数量意味着模型需要审核更多代表样本，预审耗时与Token消耗将显著上升。",
+        "splitTitle": "建议拆分：唯一指纹 {{count}} 超过 {{limit}} 上限",
+        "splitDescription": "请按表、Schema或语句区间将SQL拆分为多个草稿，使每个草稿的唯一指纹不超过 {{warning}}，否则预审将无法完成。"
+      }
     }
   }
 }

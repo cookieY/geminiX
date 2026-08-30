@@ -322,6 +322,76 @@
       "compatibility": "Compatibility",
       "operability": "Operability",
       "other": "Finding"
+    },
+    "bulk": {
+      "import": {
+        "action": "Import SQL file",
+        "title": "Import bulk SQL",
+        "description": "Reads a local SQL file incrementally and builds a statement digest; the 32 MiB file and 512 KiB per-statement limits are pre-checked locally — the server result remains the final judgement.",
+        "pickHint": "Pick a .sql or .txt file, or paste content into the editor",
+        "browse": "Choose file",
+        "limitsHint": "Limits: file 32 MiB · statement 512 KiB · 100,000 statements",
+        "reading": "Reading and analysing {{name}}… {{percent}}%",
+        "cancel": "Cancel reading",
+        "cancelledTitle": "Import cancelled",
+        "cancelledDescription": "Reading was aborted; the draft content is unchanged.",
+        "errorTitle": "Reading failed",
+        "pickAgain": "Pick again",
+        "sizeLabel": "File size",
+        "statementsLabel": "Statements",
+        "groupsLabel": "Local shape groups",
+        "tablesLabel": "Target tables",
+        "coverageLabel": "Split coverage",
+        "anomaliesLabel": "Anomalous statements",
+        "truncatedTitle": "Last statement has no terminator",
+        "truncatedDescription": "The file may be truncated; the server may treat this as a parse failure.",
+        "okTitle": "Pre-validation passed",
+        "okDescription": "On confirm the SQL content is uploaded in a single request.",
+        "confirm": "Upload and save",
+        "uploading": "Uploading…",
+        "block": {
+          "fileTooLarge": {
+            "title": "File exceeds the 32 MiB limit",
+            "description": "Actual {{actual}} bytes, limit {{limit}} bytes. Split the file and import in batches."
+          },
+          "statementTooLarge": {
+            "title": "Statements above the 512 KiB limit found",
+            "description": "{{count}} oversized statements (e.g. statement #{{samples}}), largest {{actual}} bytes, limit {{limit}} bytes. Split the statement."
+          },
+          "tooManyStatements": {
+            "title": "More than 100,000 statements",
+            "description": "Actual {{actual}} statements, limit {{limit}}. Split by table or statement range into multiple drafts."
+          }
+        }
+      },
+      "browser": {
+        "groupsTab": "Shape groups ({{count}})",
+        "statementsTab": "Statements ({{count}})",
+        "jumpAnomaly": "Locate anomalies ({{count}})",
+        "report": "Download batch report",
+        "filteredGroup": "Filtered by shape group #{{ordinal}}, {{count}} statements",
+        "groupCount": "{{count}} stmts",
+        "groupRange": "statements #{{first}} – #{{last}}",
+        "anomalyBadge": "{{count}} anomalies",
+        "anomalyBadgeShort": "anomaly",
+        "emptyTitle": "Nothing to browse",
+        "emptyDescription": "Import a SQL file or load the SQL content to browse shape groups and statements in a virtualized list.",
+        "localNote": "Grouping is a browser-side shape digest for navigation only; the authoritative fingerprint grouping comes from the server review.",
+        "revealFirst": "The draft has SQL that is not loaded yet: use “Load SQL” to build the browsing digest.",
+        "digesting": "Building the local statement digest…"
+      },
+      "capacity": {
+        "size": "File size",
+        "statements": "Statements",
+        "groups": "Unique fingerprints",
+        "tables": "Target tables",
+        "coverage": "Split coverage",
+        "localEstimate": "(browser-side estimate)",
+        "warningTitle": "Complexity warning: {{count}} unique fingerprints exceed {{limit}}",
+        "warningDescription": "A high fingerprint count means the model must review more representative samples — expect longer precheck duration and higher token usage.",
+        "splitTitle": "Split recommended: {{count}} unique fingerprints exceed the {{limit}} limit",
+        "splitDescription": "Split the SQL by table, schema or statement range so each draft stays within {{warning}} unique fingerprints, otherwise the review cannot complete."
+      }
     }
   }
 }

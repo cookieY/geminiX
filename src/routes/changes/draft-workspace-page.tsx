@@ -14,6 +14,17 @@ import {
 } from "@/api/generated/client/change-drafts/change-drafts";
 import { useDraftEditorStore, selectDirty } from "@/features/review/draft-editor-store";
 import { isTerminalPhase, presentPhase, type RunPhase } from "@/features/review/run-state";
+import { CapacityBanner } from "@/features/review/bulk-browser/capacity-banner";
+import { StatementBrowser } from "@/features/review/bulk-browser/statement-browser";
+import { ImportDialog } from "@/features/review/bulk-import/import-dialog";
+import {
+  digestSqlText,
+  type SqlDigest,
+} from "@/features/review/bulk-import/sql-digest";
+import {
+  BULK_MODE_MIN_BYTES,
+  BULK_MODE_MIN_STATEMENTS,
+} from "@/features/review/bulk-constants";
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
 import { FindingList } from "@/features/review/finding-list";
 import { ReviewStatusCard } from "@/features/review/review-status-card";
@@ -39,7 +50,7 @@ import {
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { CircleAlert, FileCode2, Play, Save } from "lucide-react";
+import { CircleAlert, FileCode2, FileUp, Play, Save } from "lucide-react";
 
 /**
  * AI Precheck Workspace (route /changes/drafts/:id; frontend PRD F4,
@@ -81,6 +92,9 @@ export default function DraftWorkspacePage() {
 
   const [loadValue, setLoadValue] = useState<{ text: string; nonce: number } | null>(null);
   const [locate, setLocate] = useState<{ target: string; nonce: number } | null>(null);
+  const [bulkLocate, setBulkLocate] = useState<{ ordinal: number; nonce: number } | null>(null);
+  const [importedDigest, setImportedDigest] = useState<SqlDigest | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [evidenceFinding, setEvidenceFinding] = useState<ReviewFinding | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [submittedOrder, setSubmittedOrder] = useState<string | null>(null);
@@ -106,6 +120,39 @@ export default function DraftWorkspacePage() {
     void startReviewEvents();
     return () => { stopReviewEvents(); };
   }, []);
+
+  // Bulk mode (frontend PRD F5): drafts beyond one max-statement size or a
+  // thousand statements never mount the Monaco editor — the virtualized
+  // browser takes over so the full SQL is never rendered. Local evidence
+  // (the in-memory imported text) joins the server counts so the very first
+  // render after an import-confirm is already bulk — mounting Monaco with a
+  // multi-megabyte model while the draft query catches up would be exactly
+  // the full-text rendering the gate forbids.
+  const isBulk =
+    (draft?.sql_size_bytes ?? 0) > BULK_MODE_MIN_BYTES ||
+    (draft?.statement_count ?? 0) > BULK_MODE_MIN_STATEMENTS ||
+    store.sql.length > BULK_MODE_MIN_BYTES;
+  const bulkDigest = isBulk && store.sql !== "" ? importedDigest : null;
+
+  // The digest is derived from the in-memory SQL; after a reload it is
+  // recomputed once the user reveals the SQL (memory-only plaintext). An
+  // import that already digested its text adopts that digest instead of
+  // re-scanning megabytes on the main thread.
+  const digestSourceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isBulk || store.sql === "" || digestSourceRef.current === store.sql) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        digestSourceRef.current = store.sql;
+        setImportedDigest(digestSqlText(store.sql));
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isBulk, store.sql]);
 
   const { run, phase } = useReviewRun(draft);
   const findingsQuery = useReviewFindings(
@@ -163,6 +210,18 @@ export default function DraftWorkspacePage() {
     },
     onError: (error) => { showActionError(error, "replaceDraftSql"); },
   });
+
+  // Bulk import confirm: the dialog hands over its single SQL copy; the page
+  // uploads it immediately (server is the final judge) and adopts the digest
+  // the import already computed.
+  const handleImportConfirm = useCallback((text: string, digest: SqlDigest) => {
+    setImportOpen(false);
+    setImportedDigest(digest);
+    digestSourceRef.current = text;
+    setBulkLocate(null);
+    store.setSql(text);
+    saveMutation.mutate(text);
+  }, [store, saveMutation]);
 
   const revealMutation = useMutation({
     mutationFn: () => revealDraftSql(draftId as string, { purpose: "draft-edit" }),
@@ -300,7 +359,10 @@ export default function DraftWorkspacePage() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[320px] flex-1 flex-col">
+            {/* Bulk mode needs a definite card height: with the auto-height
+             * card the virtualized list would grow with its content and the
+             * virtualizer would treat every row as visible. */}
+            <Card className={isBulk ? "flex h-[70vh] flex-col" : "flex min-h-[320px] flex-1 flex-col"}>
               <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <FileCode2 className="size-4" aria-hidden />
@@ -312,6 +374,15 @@ export default function DraftWorkspacePage() {
                   )}
                 </CardTitle>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setImportOpen(true); }}
+                    data-testid="open-bulk-import"
+                  >
+                    <FileUp className="size-3.5" aria-hidden />
+                    {t("precheck.bulk.import.action")}
+                  </Button>
                   {draft.has_sql && store.savedSql === null && (
                     <Button
                       variant="outline"
@@ -351,20 +422,47 @@ export default function DraftWorkspacePage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-2">
+              <CardContent className="flex min-h-0 flex-1 flex-col gap-2">
                 {actionError !== null && (
                   <p role="alert" className="text-destructive text-sm">
                     {actionError}
                   </p>
                 )}
-                <SqlEditorPanel
-                  value={store.sql}
-                  onChange={(sql) => { store.setSql(sql); }}
-                  readOnly={store.serverState === "submitted"}
-                  loadValue={loadValue}
-                  onLocate={locate}
-                  data-testid="sql-editor"
-                />
+                {isBulk ? (
+                  <>
+                    <CapacityBanner
+                      digest={bulkDigest}
+                      serverStatementCount={run?.statement_count ?? null}
+                      serverGroupCount={run?.fingerprint_group_count ?? null}
+                    />
+                    {bulkDigest === null ? (
+                      <div
+                        className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-6 text-sm"
+                        data-testid="bulk-digest-pending"
+                      >
+                        {store.sql === ""
+                          ? t("precheck.bulk.browser.revealFirst")
+                          : t("precheck.bulk.browser.digesting")}
+                      </div>
+                    ) : (
+                      <StatementBrowser
+                        sql={store.sql}
+                        digest={bulkDigest}
+                        serverGroupCount={run?.fingerprint_group_count ?? null}
+                        locate={bulkLocate}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <SqlEditorPanel
+                    value={store.sql}
+                    onChange={(sql) => { store.setSql(sql); }}
+                    readOnly={store.serverState === "submitted"}
+                    loadValue={loadValue}
+                    onLocate={locate}
+                    data-testid="sql-editor"
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -387,13 +485,34 @@ export default function DraftWorkspacePage() {
                   isTerminalPhase(phasePresented)
                     ? (finding) => {
                         const target = /`([^`]+)`/.exec(finding.message)?.[1];
-                        if (target !== undefined && store.sql.includes(target)) {
+                        if (target === undefined) return;
+                        if (isBulk) {
+                          // Bulk findings reference the statement ordinal
+                          // (`#N`) and locate jumps the virtualized browser.
+                          const ordinal = /#(\d+)/.exec(target);
+                          if (
+                            ordinal !== null &&
+                            Number(ordinal[1]) <= (bulkDigest?.statementCount ?? 0)
+                          ) {
+                            setBulkLocate({ ordinal: Number(ordinal[1]), nonce: Date.now() });
+                          }
+                          return;
+                        }
+                        if (store.sql.includes(target)) {
                           setLocate({ target, nonce: Date.now() });
                         }
                       }
                     : undefined
                 }
-                locateInEditor={(snippet) => store.sql.includes(snippet)}
+                locateInEditor={(snippet) => {
+                  if (isBulk) {
+                    const ordinal = /#(\d+)/.exec(snippet);
+                    return (
+                      ordinal !== null && Number(ordinal[1]) <= (bulkDigest?.statementCount ?? 0)
+                    );
+                  }
+                  return store.sql.includes(snippet);
+                }}
               />
             </TabsContent>
           </Tabs>
@@ -409,6 +528,13 @@ export default function DraftWorkspacePage() {
         reviewCurrent={run === null || run.draft_revision === draft.revision}
         submitting={submitMutation.isPending}
         onSubmit={() => { submitMutation.mutate(); }}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onConfirm={handleImportConfirm}
+        uploading={saveMutation.isPending}
       />
 
       <EvidenceSheet
