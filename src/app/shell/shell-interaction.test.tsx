@@ -1,10 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "@/shared/i18n";
 import { SidebarProvider } from "@/shared/components/ui/sidebar";
 import { ThemeProvider } from "@/app/providers/theme-provider";
+import { SessionProvider } from "@/features/auth/session-provider";
 import { AppHeader } from "./app-header";
 import { ThemeToggle } from "./theme-toggle";
 import { BrandLogo } from "./brand-logo";
@@ -12,11 +14,18 @@ import { UserMenu } from "./user-menu";
 import type { SessionUser } from "@/shared/session/session";
 
 function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
     <MemoryRouter initialEntries={["/workspace"]}>
-      <ThemeProvider>
-        <SidebarProvider>{ui}</SidebarProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <SessionProvider>
+          <ThemeProvider>
+            <SidebarProvider>{ui}</SidebarProvider>
+          </ThemeProvider>
+        </SessionProvider>
+      </QueryClientProvider>
     </MemoryRouter>,
   );
 }
@@ -94,7 +103,7 @@ describe("BrandLogo", () => {
 
 describe("UserMenu role badge", () => {
   it("shows the administrator badge for an admin session", async () => {
-    const admin: SessionUser = { displayNameKey: "shell.sessionPlaceholder", role: "admin" };
+    const admin: SessionUser = { displayName: "henry", canAccessAdmin: true };
     renderWithProviders(<UserMenu user={admin} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "账户菜单" }));

@@ -12,7 +12,8 @@ import {
   SidebarMenuButton,
 } from "@/shared/components/ui/sidebar";
 import { filterNavGroups, NAV_GROUPS, type NavGroup } from "./nav-model";
-import { PLACEHOLDER_SESSION_USER } from "@/shared/session/session";
+import { sessionRoleFromCurrentUser } from "@/shared/session/session";
+import { useSession } from "@/features/auth/session-provider";
 import { BrandLogo } from "./brand-logo";
 
 function SidebarGroupSection({ group }: { group: NavGroup }) {
@@ -50,7 +51,8 @@ function SidebarGroupSection({ group }: { group: NavGroup }) {
  * has no chat shell.
  */
 export function YearningSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const groups = filterNavGroups(NAV_GROUPS, PLACEHOLDER_SESSION_USER.role);
+  const { user } = useSession();
+  const groups = filterNavGroups(NAV_GROUPS, sessionRoleFromCurrentUser(user));
   return (
     <Sidebar
       variant="inset"

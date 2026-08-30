@@ -46,33 +46,68 @@
       "profile": "个人中心",
       "logout": "退出登录",
       "reasonProfile": "个人中心将在后续版本提供",
-      "reasonSession": "会话能力尚未接入"
+      "reasonSession": "当前没有可用会话",
+      "footerNote": "会话由服务端 Cookie 管理，退出后立即失效。"
     }
   },
   "login": {
     "title": "登录 Yearning",
+    "description": "使用你的 Yearning 账号登录",
+    "methodGroup": "登录方式",
+    "modeLocal": "本地账号",
+    "modeLdap": "LDAP",
+    "loadingProviders": "正在获取登录方式",
+    "oidcButton": "使用 {{label}} 登录",
     "username": "用户名",
     "password": "密码",
     "submit": "登录",
+    "adminLocked": {
+      "title": "超级管理员已锁定",
+      "prompt": "请在服务器执行以下命令重置密码："
+    },
     "placeholder": {
       "username": "请输入用户名",
       "password": "请输入密码"
-    }
+    },
+    "noMethods": "登录方式不可用"
   },
   "workspace": {
     "placeholderTitle": "工作台内容尚未交付",
     "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。"
   },
-  "error": {
+  "states": {
+    "loading": "加载中",
+    "errorTitle": "请求失败",
+    "forbiddenTitle": "无权访问",
+    "forbiddenDesc": "你没有访问该页面的权限。",
+    "waitingForAdminTitle": "等待管理员配置权限",
+    "waitingForAdminDesc": "你的账号已激活，但还没有任何流程权限。请联系管理员将你加入权限组。",
+    "notDeliveredTitle": "页面尚未交付",
+    "notDeliveredDesc": "该管理页面将在后续工作包中提供。"
+  },
+  "errors": {
     "notFound": "页面不存在",
     "notFoundDesc": "请检查地址是否正确",
     "backHome": "返回首页",
     "boundaryTitle": "页面出现异常",
     "boundaryDesc": "发生了未预期的错误，请刷新页面重试。",
-    "reload": "刷新页面"
-  },
-  "states": {
-    "forbiddenTitle": "无权访问",
-    "forbiddenDesc": "你没有访问该页面的权限。"
+    "reload": "刷新页面",
+    "requestId": "请求标识",
+    "retry": "重试",
+    "generic": {
+      "business": "操作未能完成，请稍后重试。",
+      "safe": "请求未能完成。该结果超出接口声明的错误范围，为保护数据仅显示通用提示。"
+    },
+    "transport": {
+      "network": "网络连接失败，请检查网络后重试。",
+      "unauthenticated": "登录状态已失效，请重新登录。",
+      "forbidden": "你没有执行该操作的权限。",
+      "rateLimited": "请求过于频繁，请稍后重试。",
+      "server": "服务暂时不可用，请稍后重试。"
+    },
+    "VALIDATION_FAILED": "输入内容未通过校验，请检查后重试。",
+    "INVALID_CREDENTIALS": "用户名或密码不正确。",
+    "ADMIN_PASSWORD_LOCKED": "超级管理员已锁定。",
+    "RESOURCE_NOT_FOUND": "请求的对象不存在。"
   }
 }

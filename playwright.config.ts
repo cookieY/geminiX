@@ -14,7 +14,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm build && pnpm preview --port 4173 --strictPort",
+    // The e2e suite is mock-driven (code-generation-policy.json mock_layer):
+    // the build inlines VITE_ENABLE_MOCK=true so the shared MSW worker backs
+    // the session, flows and dashboard endpoints exactly as in vitest. Release
+    // builds keep the flag off — mock code is a dynamic import and never part
+    // of the default bundle.
+    command: "VITE_ENABLE_MOCK=true pnpm build && pnpm preview --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

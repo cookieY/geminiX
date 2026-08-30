@@ -10,6 +10,7 @@ import type { BusinessErrorCode } from "@/api/generated/client/yearningV4HTTPAPI
 import type { SetupWorker } from "msw/browser";
 import type { SetupServer } from "msw/node";
 import { type MockScenario } from "@/shared/mock/scenario-store";
+import { authMockHandlers } from "@/shared/mock/auth-handlers";
 
 /**
  * Scenario switching layered on top of the orval-generated base handlers
@@ -78,9 +79,10 @@ export function scenarioHandlers(scenario: MockScenario) {
   }
 }
 
-/** Base set: every generated handler factory registered so far. */
+/** Base set: every generated handler factory registered so far, plus the
+ * hand-written authentication handlers that simulate the cookie session. */
 export function baseHandlers() {
-  return [...getDashboardMock()];
+  return [...getDashboardMock(), ...authMockHandlers()];
 }
 
 /** Vitest: apply a scenario as an override on the shared node server. */

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { mockSession } from "./helpers/auth";
 
 // Basic accessibility gate (FE-F2 acceptance: 基础可访问性通过): the shell and
 // login pages must be free of critical and serious violations in both
@@ -19,6 +20,7 @@ for (const scenario of scenarios) {
       `window.localStorage.setItem('yearning-locale', '${scenario.locale}');` +
         `window.localStorage.setItem('vite-ui-theme', '${scenario.theme}');`,
     );
+    await mockSession(page, "admin");
     await page.goto("/workspace");
     await page.evaluate(() => document.fonts.ready);
     const results = await new AxeBuilder({ page })

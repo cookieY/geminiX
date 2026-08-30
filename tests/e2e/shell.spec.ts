@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { mockSession } from "./helpers/auth";
 
-// FE-F2 shell e2e: the logged-in shell (sidebar, header, footer) renders with
-// Yearning content over the production build. Mock-driven scenario flows
-// remain covered by vitest against the shared MSW handlers.
+// FE-F2/F3 shell e2e: the logged-in shell (sidebar, header, footer) renders
+// with Yearning content over the production build with the shared MSW worker.
+// Sessions are real cookie sessions produced by the mock auth handlers.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("yearning-locale", "zh-CN");
   });
+  await mockSession(page, "admin");
   await page.goto("/workspace");
   await page.evaluate(() => document.fonts.ready);
 });
@@ -16,13 +18,31 @@ test("the shell renders navigation groups, header actions and the workspace plac
 }) => {
   await expect(page.getByText("工作台", { exact: true })).toBeVisible();
   await expect(page.getByText("审计", { exact: true })).toBeVisible();
-  await expect(page.getByText("审核引擎")).toHaveCount(0);
+  await expect(page.getByText("审核引擎")).toBeVisible();
   await expect(page.getByText("工作台内容尚未交付")).toBeVisible();
 });
 
-test("admin navigation is hidden for the placeholder user session", async ({ page }) => {
+test("admin navigation follows the server capability", async ({ page }) => {
+  // Admin session (can_access_admin=true from /users/me): admin groups show.
+  await expect(page.getByRole("link", { name: "用户" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "数据源" })).toBeVisible();
+
+  // Zero-permission session: the same UI hides them — presentation only.
+  await page.context().clearCookies();
+  await mockSession(page, "default");
+  await page.goto("/workspace");
+  await expect(page.getByText("等待管理员配置权限")).toBeVisible();
   await expect(page.getByRole("link", { name: "用户" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "数据源" })).toHaveCount(0);
+});
+
+test("the admin capability guard blocks /admin/users for zero-permission users", async ({
+  page,
+}) => {
+  await page.context().clearCookies();
+  await mockSession(page, "default");
+  await page.goto("/admin/users");
+  await expect(page.getByText("无权访问")).toBeVisible();
 });
 
 test("the global footer shows the exact license line and stays below the content", async ({

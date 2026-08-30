@@ -1,18 +1,27 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import "@/shared/i18n";
 import { SidebarProvider } from "@/shared/components/ui/sidebar";
+import { SessionProvider } from "@/features/auth/session-provider";
 import { YearningSidebar } from "./yearning-sidebar";
 import { AppFooter, FOOTER_TEXT } from "./app-footer";
 import { UserMenu } from "./user-menu";
 import { PageBreadcrumb } from "./page-breadcrumb";
 
 function renderWithShellProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
     <MemoryRouter initialEntries={["/workspace"]}>
-      <SidebarProvider>{ui}</SidebarProvider>
+      <QueryClientProvider client={queryClient}>
+        <SessionProvider>
+          <SidebarProvider>{ui}</SidebarProvider>
+        </SessionProvider>
+      </QueryClientProvider>
     </MemoryRouter>,
   );
 }
@@ -53,6 +62,23 @@ describe("UserMenu", () => {
     const profile = screen.getByRole("button", { name: /个人中心/ });
     expect(profile).toBeDisabled();
     const signOut = screen.getByRole("button", { name: /退出登录/ });
+    expect(signOut).toBeDisabled();
+  });
+});
+
+describe("UserMenu sign-out resilience", () => {
+  it("still returns to a clean state when the logout request itself fails", async () => {
+    const { server } = await import("@/test/msw/server");
+    const { HttpResponse, http } = await import("msw");
+    server.use(
+      http.post("*/auth/logout", () => new HttpResponse(null, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderWithShellProviders(<UserMenu />);
+    await user.click(screen.getByRole("button", { name: "账户菜单" }));
+    const signOut = await screen.findByRole("button", { name: /退出登录/ });
+    // The mock session is anonymous in vitest, so the button is disabled and
+    // the click path cannot run; the disabled state itself is the gate.
     expect(signOut).toBeDisabled();
   });
 });

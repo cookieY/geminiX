@@ -6,9 +6,9 @@ export default function NotFoundPage() {
   const { t } = useTranslation();
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-2xl font-semibold">{t("error.notFound")}</h1>
-      <p className="text-sm text-muted-foreground">{t("error.notFoundDesc")}</p>
-      <Button render={<Link to="/" />}>{t("error.backHome")}</Button>
+      <h1 className="text-2xl font-semibold">{t("errors.notFound")}</h1>
+      <p className="text-sm text-muted-foreground">{t("errors.notFoundDesc")}</p>
+      <Button render={<Link to="/" />}>{t("errors.backHome")}</Button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import {
   Sheet,
   SheetContent,
@@ -13,18 +14,40 @@ import { Separator } from "@/shared/components/ui/separator";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { UserRound, LogOut } from "lucide-react";
-import { PLACEHOLDER_SESSION_USER, type SessionUser } from "@/shared/session/session";
+import { sessionRole, toSessionUser, type SessionUser } from "@/shared/session/session";
+import { useSession } from "@/features/auth/session-provider";
 
 /**
  * Header user menu, following the frozen template's profile-sheet structure
- * (identity block, menu list, footer) with Yearning content. FE-F2 has no
- * real session, so every action renders disabled with its reason visible —
- * a disabled control must explain itself (spec §11) and the real identity,
- * profile and sign-out flows are FE-F3 scope.
+ * (identity block, menu list, footer) with Yearning content. The identity and
+ * the badge come from the real server session (GET /users/me). Sign-out is a
+ * real POST /auth/logout — the HttpOnly session cookie is revoked server-side
+ * and the session cache is dropped before navigating to /login. The profile
+ * action stays disabled until the profile page is delivered (FE-F10); a
+ * disabled control keeps its reason visible (spec §11).
  */
-export function UserMenu({ user = PLACEHOLDER_SESSION_USER }: { user?: SessionUser }) {
+export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   const { t } = useTranslation();
-  const displayName = t(user.displayNameKey);
+  const navigate = useNavigate();
+  const session = useSession();
+  const user =
+    userOverride ??
+    (session.user === null ? null : toSessionUser(session.user));
+  const displayName = user === null ? t("shell.sessionPlaceholder") : user.displayName;
+  const roleKey =
+    user !== null && sessionRole(user) === "admin"
+      ? "shell.role.admin"
+      : "shell.role.user";
+
+  const handleLogout = async () => {
+    try {
+      await session.logout();
+    } catch {
+      // onSettled already parked the session at anonymous; still leave.
+    }
+    void navigate("/login", { replace: true });
+  };
+
   return (
     <Sheet>
       <SheetTrigger
@@ -47,7 +70,7 @@ export function UserMenu({ user = PLACEHOLDER_SESSION_USER }: { user?: SessionUs
           <div className="text-center">
             <p className="text-lg font-semibold">{displayName}</p>
             <Badge variant="secondary" className="mt-1">
-              {t(user.role === "admin" ? "shell.role.admin" : "shell.role.user")}
+              {t(roleKey)}
             </Badge>
           </div>
         </div>
@@ -67,12 +90,15 @@ export function UserMenu({ user = PLACEHOLDER_SESSION_USER }: { user?: SessionUs
             <li>
               <Button
                 variant="ghost"
-                disabled
-                className="w-full justify-start gap-3 px-3 text-muted-foreground"
+                className="w-full justify-start gap-3 px-3"
+                onClick={() => void handleLogout()}
+                disabled={session.status !== "authenticated"}
               >
                 <LogOut className="size-4" />
                 <span>{t("shell.userMenu.logout")}</span>
-                <span className="sr-only">{t("shell.userMenu.reasonSession")}</span>
+                {session.status !== "authenticated" && (
+                  <span className="sr-only">{t("shell.userMenu.reasonSession")}</span>
+                )}
               </Button>
             </li>
           </ul>
@@ -80,7 +106,7 @@ export function UserMenu({ user = PLACEHOLDER_SESSION_USER }: { user?: SessionUs
         <SheetFooter>
           <Separator />
           <p className="text-center text-xs text-muted-foreground">
-            {t("shell.userMenu.reasonSession")}
+            {t("shell.userMenu.footerNote")}
           </p>
         </SheetFooter>
       </SheetContent>

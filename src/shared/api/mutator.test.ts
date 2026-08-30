@@ -183,3 +183,65 @@ describe("customInstance branch coverage", () => {
     expect((error as TransportError).problem.title).toBe("malformed_envelope");
   });
 });
+
+describe("customInstance CSRF double-submit (ADR-0004)", () => {
+  afterEach(() => {
+    document.cookie = "yearning_csrf=; Path=/; Max-Age=0";
+  });
+
+  it("echoes the yearning_csrf cookie as X-CSRF-Token on mutating methods", async () => {
+    document.cookie = "yearning_csrf=test-csrf-token; Path=/";
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ err_code: SUCCESS_ERR_CODE, message: "ok", data: null, request_id: UUID }),
+    );
+    await customInstance("/x", { method: "POST", body: "{}" });
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    const headers = new Headers(init.headers);
+    expect(headers.get("X-CSRF-Token")).toBe("test-csrf-token");
+  });
+
+  it("falls back to the raw cookie value when it holds a malformed percent-sequence", async () => {
+    document.cookie = "yearning_csrf=%zz-broken; Path=/";
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ err_code: SUCCESS_ERR_CODE, message: "ok", data: null, request_id: UUID }),
+    );
+    await customInstance("/x", { method: "POST", body: "{}" });
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    const headers = new Headers(init.headers);
+    expect(headers.get("X-CSRF-Token")).toBe("%zz-broken");
+  });
+
+  it("never attaches the CSRF header to safe methods", async () => {
+    document.cookie = "yearning_csrf=test-csrf-token; Path=/";
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ err_code: SUCCESS_ERR_CODE, message: "ok", data: null, request_id: UUID }),
+    );
+    await customInstance("/x", { method: "GET" });
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    const headers = new Headers(init.headers);
+    expect(headers.get("X-CSRF-Token")).toBeNull();
+  });
+});
+
+describe("customInstance session-expiry announcement", () => {
+  it("fires the session-expired event when any request meets a 401 problem", async () => {
+    const listener = vi.fn();
+    window.addEventListener("yearning:session-expired", listener);
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "about:blank",
+          title: "session_expired",
+          status: 401,
+          detail: "expired",
+          request_id: UUID,
+        },
+        401,
+        "application/problem+json",
+      ),
+    );
+    await customInstance("/x", { method: "GET" }).catch(() => undefined);
+    expect(listener).toHaveBeenCalledTimes(1);
+    window.removeEventListener("yearning:session-expired", listener);
+  });
+});

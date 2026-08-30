@@ -30,9 +30,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div role="alert" className="flex min-h-screen items-center justify-center p-6">
           <div className="max-w-md text-center">
-            <h1 className="text-lg font-semibold">{i18next.t("error.boundaryTitle")}</h1>
+            <h1 className="text-lg font-semibold">{i18next.t("errors.boundaryTitle")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {i18next.t("error.boundaryDesc")}
+              {i18next.t("errors.boundaryDesc")}
             </p>
             <button
               type="button"
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 window.location.reload();
               }}
             >
-              {i18next.t("error.reload")}
+              {i18next.t("errors.reload")}
             </button>
           </div>
         </div>

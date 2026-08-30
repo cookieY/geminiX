@@ -66,6 +66,45 @@ export class BusinessError extends Error {
 
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
+/**
+ * Session cookies are issued by the backend as `yearning_session` (HttpOnly)
+ * plus a JS-readable `yearning_csrf` double-submit cookie (ADR-0004). Mutating
+ * requests must echo the CSRF value in the X-CSRF-Token header; the token
+ * never enters URLs or web storage (acceptance gate).
+ */
+const CSRF_COOKIE_NAME = "yearning_csrf";
+const CSRF_HEADER_NAME = "X-CSRF-Token";
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+export function readCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${CSRF_COOKIE_NAME}=`;
+  for (const entry of document.cookie.split(";")) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith(prefix)) {
+      const raw = trimmed.slice(prefix.length);
+      try {
+        return decodeURIComponent(raw);
+      } catch {
+        // A malformed percent-sequence must not break every mutating request.
+        return raw;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Fired when the server answers 401 on a request. The session layer owns the
+ * reaction (cache reset, redirect); the mutator only reports the fact once.
+ */
+export const SESSION_EXPIRED_EVENT = "yearning:session-expired";
+
+function announceSessionExpired(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+}
+
 function buildUrl(url: string): string {
   // orval emits root-absolute paths; a deployment behind a path-prefixed
   // reverse proxy sets VITE_API_BASE_URL to that full prefix.
@@ -74,10 +113,21 @@ function buildUrl(url: string): string {
 }
 
 export const customInstance = async <T>(url: string, options?: RequestInit): Promise<T> => {
+  const headers = new Headers(options?.headers);
+  const method = (options?.method ?? "GET").toUpperCase();
+  if (MUTATING_METHODS.has(method)) {
+    const csrfToken = readCsrfToken();
+    if (csrfToken !== null && !headers.has(CSRF_HEADER_NAME)) {
+      headers.set(CSRF_HEADER_NAME, csrfToken);
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(buildUrl(url), {
       ...options,
+      method,
+      headers,
       credentials: "same-origin",
     });
   } catch (cause) {
@@ -91,6 +141,11 @@ export const customInstance = async <T>(url: string, options?: RequestInit): Pro
   if (!response.ok) {
     // Transport and security failures stay on the Problem Details path.
     const problem = (await response.json().catch(() => null)) as ProblemDetails | null;
+    if (response.status === 401) {
+      // Session expiry is a global fact, not a per-page error: every consumer
+      // must see the anonymous state, so announce it before throwing.
+      announceSessionExpired();
+    }
     throw new TransportError(
       problem && typeof problem.title === "string" && typeof problem.status === "number"
         ? problem

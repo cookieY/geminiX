@@ -23,7 +23,7 @@ export default function ForbiddenPage() {
           <EmptyTitle>{t("states.forbiddenTitle")}</EmptyTitle>
           <EmptyDescription>{t("states.forbiddenDesc")}</EmptyDescription>
         </EmptyHeader>
-        <Button render={<Link to="/workspace" />}>{t("error.backHome")}</Button>
+        <Button render={<Link to="/workspace" />}>{t("errors.backHome")}</Button>
       </Empty>
     </div>
   );

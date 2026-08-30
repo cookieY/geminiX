@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { mockSession } from "./helpers/auth";
 
 // FE-F2 screenshot baseline (yearning-ui-design-spec.md §13): the real React
 // shell captured at 1440px, 1280px, 1024px and narrow width, in zh-CN and
@@ -32,6 +33,7 @@ for (const viewport of VIEWPORTS) {
     for (const theme of THEMES) {
       test(`shell baseline ${viewport.name} ${locale} ${theme}`, async ({ page }) => {
         await prepare(page, locale, theme);
+        await mockSession(page, "admin");
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto("/workspace");
         await page.evaluate(() => document.fonts.ready);

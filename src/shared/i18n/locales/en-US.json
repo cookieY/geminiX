@@ -46,33 +46,68 @@
       "profile": "Account center",
       "logout": "Sign out",
       "reasonProfile": "The account center arrives in a later release",
-      "reasonSession": "Sessions are not wired yet"
+      "reasonSession": "No active session",
+      "footerNote": "Sessions are managed by a server-side cookie and end immediately on sign-out."
     }
   },
   "login": {
     "title": "Sign in to Yearning",
+    "description": "Sign in with your Yearning account",
+    "methodGroup": "Sign-in method",
+    "modeLocal": "Local account",
+    "modeLdap": "LDAP",
+    "loadingProviders": "Loading available sign-in methods",
+    "oidcButton": "Continue with {{label}}",
     "username": "Username",
     "password": "Password",
     "submit": "Sign in",
+    "adminLocked": {
+      "title": "The built-in administrator is locked",
+      "prompt": "Run the following command on the server to reset the password:"
+    },
     "placeholder": {
       "username": "Enter your username",
       "password": "Enter your password"
-    }
+    },
+    "noMethods": "No sign-in method is available"
   },
   "workspace": {
     "placeholderTitle": "Workspace content is not delivered yet",
     "placeholderDesc": "The home overview arrives with the Dashboard work package."
   },
-  "error": {
+  "states": {
+    "loading": "Loading",
+    "errorTitle": "Request failed",
+    "forbiddenTitle": "Access denied",
+    "forbiddenDesc": "You do not have permission to view this page.",
+    "waitingForAdminTitle": "Waiting for administrator configuration",
+    "waitingForAdminDesc": "Your account is active but has no workflow permissions yet. Ask an administrator to add you to a permission group.",
+    "notDeliveredTitle": "Page not delivered yet",
+    "notDeliveredDesc": "This administration page arrives in a later work package."
+  },
+  "errors": {
     "notFound": "Page not found",
     "notFoundDesc": "Check that the address is correct",
     "backHome": "Back to home",
     "boundaryTitle": "Something went wrong",
     "boundaryDesc": "An unexpected error occurred. Please reload the page.",
-    "reload": "Reload"
-  },
-  "states": {
-    "forbiddenTitle": "Access denied",
-    "forbiddenDesc": "You do not have permission to view this page."
+    "reload": "Reload",
+    "requestId": "Request ID",
+    "retry": "Retry",
+    "generic": {
+      "business": "The operation could not be completed. Please try again later.",
+      "safe": "The request could not be completed. The result was outside the operation's declared error set, so only a generic notice is shown."
+    },
+    "transport": {
+      "network": "Network connection failed. Check your connection and try again.",
+      "unauthenticated": "Your session has expired. Please sign in again.",
+      "forbidden": "You do not have permission to perform this action.",
+      "rateLimited": "Too many requests. Please try again later.",
+      "server": "The service is temporarily unavailable. Please try again later."
+    },
+    "VALIDATION_FAILED": "The input failed validation. Please review and try again.",
+    "INVALID_CREDENTIALS": "Incorrect username or password.",
+    "ADMIN_PASSWORD_LOCKED": "The built-in administrator is locked.",
+    "RESOURCE_NOT_FOUND": "The requested resource does not exist."
   }
 }
