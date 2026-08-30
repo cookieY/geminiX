@@ -108,11 +108,19 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   expect(body ?? "").not.toMatch(/思维链|思考过程|chain of thought|reasoning_content/i);
 });
 
-test("Ready draft submits and shows the frozen work order", async ({ page }) => {
+test("Ready draft submits through the confirmation and lands on the order detail", async ({
+  page,
+}) => {
   await runReviewThroughUi(page);
+  // F6: the dock click opens the explicit confirmation; the submission only
+  // fires on accept and lands on the immutable order detail.
   await page.getByTestId("submit-draft").click();
-  await expect(page.getByTestId("submit-success")).toBeVisible();
-  await expect(page.getByTestId("submit-success").textContent()).resolves.toContain("YR-");
+  await expect(page.getByTestId("submit-confirm-dialog")).toBeVisible();
+  await expect(page.getByTestId("submit-confirm-gate")).toContainText("全部阶段审核通过");
+  await page.getByTestId("submit-confirm-accept").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId("order-detail-page")).toContainText("YR-");
+  await expect(page.getByTestId("order-timeline")).toBeVisible();
 });
 
 test("Blocked outcome lists gate blockers and keeps submit disabled", async ({ page }) => {

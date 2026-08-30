@@ -186,7 +186,9 @@
     "MIGRATION_MODE_ACTIVE": "迁移模式生效中，仅允许迁移操作。"
   },
   "common": {
-    "cancel": "取消"
+    "cancel": "取消",
+    "yes": "是",
+    "no": "否"
   },
   "precheck": {
     "new": {
@@ -296,7 +298,13 @@
       "ready": "审核结果完整，可以提交审批。",
       "action": "提交审批",
       "successTitle": "已提交",
-      "successDescription": "工单 {{number}} 已创建，审核结果已冻结为提交快照。"
+      "successDescription": "工单 {{number}} 已创建，审核结果已冻结为提交快照。",
+      "confirmTitle": "确认提交审批",
+      "confirmDescription": "提交将冻结流程、阶段、审核快照与 SQL Revision；之后不能再修改本草稿。",
+      "confirmGate": "提交门禁",
+      "confirmGatePassed": "全部阶段审核通过，后端将在事务中做最终校验。",
+      "confirmGateFailed": "门禁未通过，提交会被后端拒绝。",
+      "confirmAction": "确认提交"
     },
     "flowUpdated": {
       "title": "流程模板已更新",
@@ -392,6 +400,88 @@
         "splitTitle": "建议拆分：唯一指纹 {{count}} 超过 {{limit}} 上限",
         "splitDescription": "请按表、Schema或语句区间将SQL拆分为多个草稿，使每个草稿的唯一指纹不超过 {{warning}}，否则预审将无法完成。"
       }
+    }
+  },
+  "orders": {
+    "list": {
+      "title": "我的工单",
+      "description": "草稿与已提交的变更工单分离展示；查询工单由查询域统一提供。",
+      "auditTab": "审核工单",
+      "queryTab": "查询工单",
+      "queryTabPending": "查询工单视图由查询域工作包（F10）交付。",
+      "draftsCard": "草稿",
+      "draftsEmpty": "还没有草稿。从「工单提交」选择流程开始。",
+      "ordersCard": "已提交工单",
+      "ordersEmpty": "还没有已提交的工单。",
+      "stagePosition": "阶段 {{position}}",
+      "open": "查看",
+      "column": {
+        "number": "工单号",
+        "title": "标题",
+        "state": "状态",
+        "stage": "当前阶段",
+        "submittedAt": "提交时间"
+      }
+    },
+    "detail": {
+      "title": "工单详情",
+      "stages": "数据源阶段",
+      "stageApprovers": "{{count}} 个审核步骤",
+      "stageExecutors": "{{count}} 名候选执行人",
+      "facts": "冻结快照",
+      "submittedAt": "提交时间",
+      "terminalAt": "终态时间",
+      "sqlHash": "SQL Hash",
+      "snapshotHash": "审核快照 Hash",
+      "manuallyVerified": "人工核验",
+      "frozenNote": "提交后 Revision、流程与审核快照不可修改；SQL 原文按权限显式查看并审计。",
+      "timeline": "时间线",
+      "timelineEmpty": "暂无事件。",
+      "timelineStage": "阶段 {{position}}",
+      "withdraw": "撤回",
+      "void": "作废",
+      "withdrawTitle": "撤回工单",
+      "withdrawDescription": "当前阶段尚未开始执行，撤回后工单终止为「已撤回」；冻结人员与既有记录保留。",
+      "withdrawPartialDescription": "已有阶段开始执行或结果未知，撤回将记录为「部分执行后撤回」。",
+      "voidTitle": "作废工单",
+      "voidDescription": "作废终止全部尚未执行的步骤；已完成的审批与执行记录保留，不会回滚。",
+      "partialWarningTitle": "已有变更不可自动回滚",
+      "partialWarningDescription": "本工单已有前置阶段执行成功或结果未知。撤回后状态为「部分执行后撤回」，已发生的数据库变更不会自动回滚，需要人工评估善后。",
+      "reasonLabel": "原因（必填，记录进审计）"
+    },
+    "state": {
+      "submitted": "已提交",
+      "stage_approval_active": "阶段审批中",
+      "stage_execution_pending": "等待执行",
+      "scheduled": "已排期",
+      "running": "执行中",
+      "completed": "已完成",
+      "rejected": "已拒绝",
+      "withdrawn": "已撤回",
+      "withdrawn_after_partial_execution": "部分执行后撤回",
+      "voided": "已作废",
+      "failed": "执行失败",
+      "partial_failed": "部分失败",
+      "cancelled": "已取消",
+      "partial_cancelled": "部分取消",
+      "result_unknown": "结果未知",
+      "blocked_datasource_unavailable": "数据源不可用",
+      "missed_schedule": "错过排期",
+      "invalid": "已失效"
+    },
+    "stageState": {
+      "pending": "等待",
+      "approval_active": "审批中",
+      "execution_pending": "等待执行",
+      "scheduled": "已排期",
+      "running": "执行中",
+      "succeeded": "执行成功",
+      "failed": "执行失败",
+      "partial_failed": "部分失败",
+      "cancelled": "已取消",
+      "partial_cancelled": "部分取消",
+      "result_unknown": "结果未知",
+      "skipped": "已跳过"
     }
   }
 }

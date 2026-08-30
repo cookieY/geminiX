@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
@@ -50,6 +50,14 @@ import {
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { CircleAlert, FileCode2, FileUp, Play, Save } from "lucide-react";
 
 /**
@@ -81,6 +89,7 @@ function liveIfMatch(): Record<string, string> {
 export default function DraftWorkspacePage() {
   const { t } = useTranslation();
   const { draftId } = useParams<{ draftId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const draftQuery = useChangeDraft(draftId ?? "");
   const flowsQuery = useCurrentUserChangeFlows();
@@ -97,7 +106,7 @@ export default function DraftWorkspacePage() {
   const [importOpen, setImportOpen] = useState(false);
   const [evidenceFinding, setEvidenceFinding] = useState<ReviewFinding | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [submittedOrder, setSubmittedOrder] = useState<string | null>(null);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [timedOutState, setTimedOutState] = useState<{ phase: RunPhase; timedOut: boolean }>({
     phase: "idle",
     timedOut: false,
@@ -264,13 +273,20 @@ export default function DraftWorkspacePage() {
         },
       }),
     onSuccess: (order) => {
-      const created = order as unknown as { display_number: string };
-      setSubmittedOrder(created.display_number);
+      const created = order as unknown as { id: string; display_number: string };
       store.markServerState("submitted");
       setActionError(null);
-      void invalidateAll();
+      setConfirmSubmit(false);
+      // F6 flow: submission lands on the immutable order detail (the order
+      // id is returned by the submission response itself).
+      void navigate(`/changes/orders/${created.id}`);
     },
-    onError: (error) => { showActionError(error, "submitChangeDraft"); },
+    onError: (error) => {
+      // Rejection keeps the dialog open with the backend's answer — the UI
+      // never flips to a success state on its own (验收门禁: 后端拒绝无假成
+      // 功); the user can cancel or retry from the same context.
+      showActionError(error, "submitChangeDraft");
+    },
   });
 
   const handleRunReview = useCallback(() => {
@@ -312,16 +328,6 @@ export default function DraftWorkspacePage() {
   return (
     <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
       <PageBreadcrumb title={draft.title ?? t("precheck.workspace.title")} />
-      {submittedOrder !== null && (
-        <Card data-testid="submit-success">
-          <CardHeader>
-            <CardTitle className="text-base">{t("precheck.submit.successTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <p>{t("precheck.submit.successDescription", { number: submittedOrder })}</p>
-          </CardContent>
-        </Card>
-      )}
       {timedOutState.timedOut && (phasePresented === "queued" || phasePresented === "running") && (
         <div
           role="alert"
@@ -527,8 +533,55 @@ export default function DraftWorkspacePage() {
         flowUpdated={flowUpdated}
         reviewCurrent={run === null || run.draft_revision === draft.revision}
         submitting={submitMutation.isPending}
-        onSubmit={() => { submitMutation.mutate(); }}
+        onSubmit={() => { setConfirmSubmit(true); }}
       />
+
+      {/* Submit confirmation (F6 deliverable 提交确认与Gate原因): the dock
+       * mirrors the gate, the dialog restates what submission freezes and
+       * what the backend would still reject — the mutation only fires after
+       * the explicit confirm. */}
+      <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
+        <DialogContent data-testid="submit-confirm-dialog">
+          <DialogHeader>
+            <DialogTitle>{t("precheck.submit.confirmTitle")}</DialogTitle>
+            <DialogDescription>{t("precheck.submit.confirmDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">{t("precheck.workspace.flowCard")}</p>
+              <p className="mt-1">{flow?.name ?? draft.flow_id}</p>
+              <div className="mt-1">
+                <StagePath flow={flow} />
+              </div>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">{t("precheck.submit.confirmGate")}</p>
+              <p className="mt-1" data-testid="submit-confirm-gate">
+                {run?.gate.passed
+                  ? t("precheck.submit.confirmGatePassed")
+                  : t("precheck.submit.confirmGateFailed")}
+              </p>
+            </div>
+            {actionError !== null && (
+              <p role="alert" className="text-destructive text-sm" data-testid="submit-confirm-error">
+                {actionError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setConfirmSubmit(false); }} data-testid="submit-confirm-cancel">
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={() => { submitMutation.mutate(); }}
+              disabled={submitMutation.isPending}
+              data-testid="submit-confirm-accept"
+            >
+              {t("precheck.submit.confirmAction")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImportDialog
         open={importOpen}

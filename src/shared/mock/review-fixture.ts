@@ -3,6 +3,7 @@ import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 import { digestSqlText, type SqlDigest } from "@/features/review/bulk-import/sql-digest";
+import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import {
   BULK_MODE_MIN_STATEMENTS,
   FINGERPRINT_MAX_STATEMENT_BYTES,
@@ -138,6 +139,81 @@ interface FixtureTask {
   updated_at: string;
 }
 
+interface FixtureTimelineEntry {
+  id: string;
+  event_type: string;
+  occurred_at: string;
+  actor_kind: "user" | "system" | "worker";
+  actor_user_id: string | null;
+  actor_display_name: string | null;
+  summary: string;
+  stage_position: number | null;
+  state: string | null;
+}
+
+export interface FixtureOrder {
+  id: string;
+  display_number: string;
+  submitter_user_id: string;
+  title: string;
+  state:
+    | "submitted"
+    | "stage_approval_active"
+    | "stage_execution_pending"
+    | "scheduled"
+    | "running"
+    | "completed"
+    | "rejected"
+    | "withdrawn"
+    | "withdrawn_after_partial_execution"
+    | "voided"
+    | "failed"
+    | "partial_failed"
+    | "cancelled"
+    | "partial_cancelled"
+    | "result_unknown"
+    | "blocked_datasource_unavailable"
+    | "missed_schedule"
+    | "invalid";
+  current_stage_position: number | null;
+  stages: Array<{
+    id: string;
+    position: number;
+    datasource_name: string;
+    state:
+      | "pending"
+      | "approval_active"
+      | "execution_pending"
+      | "scheduled"
+      | "running"
+      | "succeeded"
+      | "failed"
+      | "partial_failed"
+      | "cancelled"
+      | "partial_cancelled"
+      | "result_unknown"
+      | "skipped";
+    approval_steps: Array<{ position: number; actors: Array<{ user_id: string }>; state: string }>;
+    execution_actors: Array<{
+      id: string;
+      username: string;
+      display_name: string;
+      email: string | null;
+      is_builtin_admin: boolean;
+      version: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+  }>;
+  has_sql: true;
+  sql_hash: string;
+  snapshot_hash: string;
+  manually_verified: boolean;
+  version: number;
+  submitted_at: string;
+  terminal_at: string | null;
+}
+
 interface FixtureEvent {
   subject: string;
   sequence: number;
@@ -150,6 +226,9 @@ interface FixtureWorld {
   tasks: Map<string, FixtureTask>;
   findings: Map<string, FixtureFinding[]>;
   evidence: Map<string, FixtureEvidence>;
+  orders: Map<string, FixtureOrder>;
+  orderTimeline: Map<string, FixtureTimelineEntry[]>;
+  orderSequence: number;
   outbox: FixtureEvent[];
   sequences: Map<string, number>;
   flowVersion: number;
@@ -162,6 +241,9 @@ const world: FixtureWorld = {
   tasks: new Map(),
   findings: new Map(),
   evidence: new Map(),
+  orders: new Map(),
+  orderTimeline: new Map(),
+  orderSequence: 0,
   outbox: [],
   sequences: new Map(),
   flowVersion: 1,
@@ -186,10 +268,27 @@ export function resetReviewFixture(): void {
   world.tasks.clear();
   world.findings.clear();
   world.evidence.clear();
+  world.orders.clear();
+  world.orderTimeline.clear();
+  world.orderSequence = 0;
   world.outbox.length = 0;
   world.sequences.clear();
   world.flowVersion = 1;
   world.flowUpdated = false;
+}
+
+/** Test seam: seeds a persisted order with an explicit aggregate state so
+ * order-page tests can stage states the happy path cannot reach (running,
+ * result_unknown) without a real execution engine behind the mock. */
+export function seedFixtureOrder(order: FixtureOrder): void {
+  world.orders.set(order.id, order);
+  world.orderSequence = Math.max(world.orderSequence, orderNumberSuffix(order.display_number));
+  world.orderTimeline.set(order.id, []);
+}
+
+function orderNumberSuffix(displayNumber: string): number {
+  const suffix = displayNumber.split("-").at(-1) ?? "0";
+  return Number(suffix);
 }
 
 function successEnvelope(data: DefaultBodyType) {
@@ -207,11 +306,20 @@ function businessError(errCode: number, message: string) {
 }
 
 function pageOf<T>(items: T[], limit: number | null, after: string | null) {
-  const start = after === null ? 0 : items.findIndex((item) => (item as { id: string }).id === after) + 1;
-  const window = Number.isNaN(start) ? [] : items.slice(start < 0 ? 0 : start);
+  // A cursor that no longer resolves (expired/deleted boundary) yields an
+  // empty page — silently re-serving the first page would mask duplicate
+  // rows behind a stale cursor.
+  const start =
+    after === null
+      ? 0
+      : (() => {
+          const index = items.findIndex((item) => (item as { id: string }).id === after);
+          return index === -1 ? items.length : index + 1;
+        })();
+  const window = items.slice(start);
   const slice = limit === null ? window : window.slice(0, limit);
   const last = slice.at(-1) as { id: string } | undefined;
-  const hasMore = limit === null ? false : (start < 0 ? 0 : start) + slice.length < items.length;
+  const hasMore = start + slice.length < items.length;
   return {
     items: slice,
     page: { next_cursor: hasMore && last ? last.id : null, has_more: hasMore },
@@ -289,6 +397,119 @@ function runPublic(run: FixtureRun) {
     started_at: run.started_at,
     finished_at: run.finished_at,
   };
+}
+
+/**
+ * Schema-conformant User for OrderStage.execution_actors ($ref User in the
+ * OpenAPI). FlowStageWrite uses ActorRef ({user_id}) — that shape stays on
+ * the flows endpoint; only the order stage surface needs full users.
+ */
+function fixtureUser(userId: string) {
+  const now = "2026-08-01T00:00:00Z";
+  return {
+    id: userId,
+    username: "henry",
+    display_name: "henry",
+    email: null,
+    is_builtin_admin: true,
+    version: 1,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+function orderPublic(order: FixtureOrder) {
+  return {
+    id: order.id,
+    display_number: order.display_number,
+    submitter_user_id: order.submitter_user_id,
+    title: order.title,
+    state: order.state,
+    current_stage_position: order.current_stage_position,
+    stages: order.stages,
+    has_sql: order.has_sql,
+    sql_hash: order.sql_hash,
+    snapshot_hash: order.snapshot_hash,
+    manually_verified: order.manually_verified,
+    version: order.version,
+    submitted_at: order.submitted_at,
+    terminal_at: order.terminal_at,
+  };
+}
+
+/** Appends a timeline entry for an order lifecycle fact; the timeline is the
+ * audit projection of the same facts the outbox publishes as events. */
+function recordOrderEvent(
+  order: FixtureOrder,
+  eventType: string,
+  actorKind: "user" | "system" | "worker",
+  actorUserId: string | null,
+  summary: string,
+  stagePosition: number | null,
+  state: string | null,
+): void {
+  const entries = world.orderTimeline.get(order.id) ?? [];
+  entries.push({
+    id: uuid(),
+    event_type: eventType,
+    occurred_at: now(),
+    actor_kind: actorKind,
+    actor_user_id: actorUserId,
+    actor_display_name: actorUserId === null ? null : "henry",
+    summary,
+    stage_position: stagePosition,
+    state,
+  });
+  world.orderTimeline.set(order.id, entries);
+}
+
+/**
+ * Scenario "order-partial-execution" (FE-F6 acceptance gate 部分执行后撤回明
+ * 确提示不可回滚): seeds one running order — a state the happy mock path
+ * cannot reach without a real execution engine — so the E2E can drive the
+ * withdraw_after_partial_fact transition end to end.
+ */
+function seedPartialExecutionOrder(): void {
+  if (readStoredScenario() !== "order-partial-execution" || world.orders.size > 0) return;
+  const submittedAt = now();
+  const order: FixtureOrder = {
+    id: "7e6f1a2b-0000-4000-8000-00000000f601",
+    display_number: "YR-20260829-000042",
+    submitter_user_id: FIXTURE_OWNER_ID,
+    title: "跨阶段存量数据订正（场景）",
+    state: "running",
+    current_stage_position: 2,
+    stages: [
+      {
+        id: "7e6f1a2b-0000-4000-8000-00000000f611",
+        position: 1,
+        datasource_name: "staging-mysql",
+        state: "succeeded",
+        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "approved" }],
+        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+      },
+      {
+        id: "7e6f1a2b-0000-4000-8000-00000000f612",
+        position: 2,
+        datasource_name: "prod-mysql",
+        state: "running",
+        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "approved" }],
+        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+      },
+    ],
+    has_sql: true,
+    sql_hash: "hash-seed-42",
+    snapshot_hash: "snap-seed-42",
+    manually_verified: false,
+    version: 3,
+    submitted_at: submittedAt,
+    terminal_at: null,
+  };
+  world.orders.set(order.id, order);
+  world.orderSequence = Math.max(world.orderSequence, 42);
+  recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结（阶段 1）", 1, "submitted");
+  recordOrderEvent(order, "stage.execution_succeeded", "worker", null, "阶段 1（staging-mysql）执行成功", 1, "succeeded");
+  recordOrderEvent(order, "stage.execution_started", "worker", null, "阶段 2（prod-mysql）开始执行", 2, "running");
 }
 
 /** Terminal run shape per requested behavior — the deterministic fixture
@@ -802,9 +1023,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       draft.state = "submitted";
       draft.version += 1;
       draft.updated_at = now();
-      const order = {
+      const submittedAt = now();
+      world.orderSequence += 1;
+      const order: FixtureOrder = {
         id: uuid(),
-        display_number: "YR-20260830-000001",
+        display_number: `YR-20260830-${String(world.orderSequence).padStart(6, "0")}`,
         submitter_user_id: draft.owner_user_id,
         title: draft.title,
         state: "submitted",
@@ -814,9 +1037,9 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             id: uuid(),
             position: 1,
             datasource_name: "orders-mysql",
-            state: "pending",
+            state: "approval_active",
             approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "pending" }],
-            execution_actors: [{ user_id: FIXTURE_OWNER_ID }],
+            execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
           },
         ],
         has_sql: true,
@@ -824,9 +1047,23 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         snapshot_hash: `snap-${run.id.slice(0, 8)}`,
         manually_verified: false,
         version: 1,
-        submitted_at: now(),
+        submitted_at: submittedAt,
         terminal_at: null,
       };
+      world.orders.set(order.id, order);
+      recordOrderEvent(order, "change_order.submitted", "user", draft.owner_user_id, `工单 ${order.display_number} 提交，审核快照已冻结（阶段 1）`, 1, "submitted");
+      emit(
+        `change-orders/${order.id}`,
+        "io.yearning.v4.change_order.submitted",
+        {
+          aggregate_id: order.id,
+          display_number: order.display_number,
+          draft_id: draft.id,
+          flow_id: draft.flow_id,
+          aggregate_version: order.version,
+        },
+        { kind: "user", user_id: draft.owner_user_id },
+      );
       emit(
         `change-drafts/${draft.id}`,
         "io.yearning.v4.change_draft.state_changed",
@@ -839,7 +1076,147 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         },
         { kind: "user", user_id: draft.owner_user_id },
       );
-      return HttpResponse.json(successEnvelope(order));
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // ---- Change orders (FE-F6): personal order list, detail, timeline,
+    // withdrawal and voidance. The list endpoint exposes exactly the OpenAPI
+    // contract (limit/after cursor page) — no search or filter parameters
+    // exist in the API, so the UI offers none.
+    http.get("*/change-orders", ({ request }) => {
+      const url = new URL(request.url);
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const after = url.searchParams.get("after");
+      seedPartialExecutionOrder();
+      const orders = [...world.orders.values()]
+        .filter((order) => order.submitter_user_id === FIXTURE_OWNER_ID)
+        .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))
+        .map(orderPublic);
+      return HttpResponse.json(successEnvelope(pageOf(orders, limit, after)));
+    }),
+
+    http.get("*/change-orders/:orderId", ({ params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // Withdrawal follows the change_order state machine: running or
+    // result_unknown orders become withdrawn_after_partial_execution — prior
+    // stage effects remain and nothing rolls back (W007); every other
+    // withdrawable state becomes withdrawn. Illegal states answer 1010.
+    http.post("*/change-orders/:orderId/withdrawal", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      const outcome = withdrawOutcome(order.state);
+      if (outcome === null) {
+        return businessError(1010, `withdraw is not legal from state ${order.state}`);
+      }
+      const body = (await request.json()) as { reason: string };
+      if (body.reason.trim() === "") return businessError(1001, "reason is required");
+      const from = order.state;
+      order.state = outcome;
+      order.terminal_at = now();
+      order.version += 1;
+      const summary =
+        outcome === "withdrawn_after_partial_execution"
+          ? `提交人撤回工单（阶段 ${String(order.current_stage_position ?? 1)} 已有执行事实，变更不会自动回滚）`
+          : "提交人撤回工单";
+      recordOrderEvent(order, "change_order.withdrawn", "user", order.submitter_user_id, summary, order.current_stage_position, order.state);
+      emit(
+        `change-orders/${order.id}`,
+        "io.yearning.v4.change_order.state_changed",
+        {
+          aggregate_id: order.id,
+          from,
+          to: order.state,
+          reason_code: "submitter_withdrawn",
+          aggregate_version: order.version,
+        },
+        { kind: "user", user_id: order.submitter_user_id },
+      );
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // Voidance is the only path once frozen actors are missing or the result
+    // is unknown; executed facts are retained (PRD §5: 作废不改变已完成的审
+    // 批和执行记录).
+    http.post("*/change-orders/:orderId/voidance", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      if (!canVoid(order.state)) {
+        return businessError(1010, `void is not legal from state ${order.state}`);
+      }
+      const body = (await request.json()) as { reason: string };
+      if (body.reason.trim() === "") return businessError(1001, "reason is required");
+      const from = order.state;
+      order.state = "voided";
+      order.terminal_at = now();
+      order.version += 1;
+      recordOrderEvent(order, "change_order.voided", "user", order.submitter_user_id, "提交人作废工单；已完成记录保留", order.current_stage_position, order.state);
+      emit(
+        `change-orders/${order.id}`,
+        "io.yearning.v4.change_order.state_changed",
+        {
+          aggregate_id: order.id,
+          from,
+          to: order.state,
+          reason_code: "submitter_voided",
+          aggregate_version: order.version,
+        },
+        { kind: "user", user_id: order.submitter_user_id },
+      );
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // Timeline is the audit projection of the order: newest first, cursor
+    // paged like every list endpoint.
+    http.get("*/change-orders/:orderId/timeline", ({ params, request }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const url = new URL(request.url);
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const after = url.searchParams.get("after");
+      const entries = [...(world.orderTimeline.get(order.id) ?? [])].reverse();
+      return HttpResponse.json(successEnvelope(pageOf(entries, limit, after)));
+    }),
+
+    // 复制为新草稿 (work-order PRD §5): terminal orders restart as a fresh
+    // draft on a current flow — SQL reference, title and flow only; review,
+    // approvals, execution facts and the frozen instance are never copied.
+    http.post("*/change-orders/:orderId/draft-copies", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const body = (await request.json()) as { target_flow_id: string; title: string; description?: string };
+      if (body.target_flow_id !== FIXTURE_FLOW_ID) {
+        return businessError(2014, "flow not granted to the current user");
+      }
+      if (body.title.trim() === "") return businessError(1001, "title is required");
+      const draft: FixtureDraft = {
+        id: uuid(),
+        owner_user_id: FIXTURE_OWNER_ID,
+        flow_id: body.target_flow_id,
+        title: body.title,
+        description: body.description ?? null,
+        revision: 1,
+        state: "draft",
+        has_sql: false,
+        sql: null,
+        sql_size_bytes: null,
+        statement_count: null,
+        review_run_id: null,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.drafts.set(draft.id, draft);
+      return HttpResponse.json(successEnvelope(draftPublic(draft)));
     }),
 
     http.get("*/review-runs/:runId", ({ params }) => {

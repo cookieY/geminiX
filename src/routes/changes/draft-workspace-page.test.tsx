@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "@/features/auth/session-provider";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpResponse, http } from "msw";
@@ -7,10 +8,12 @@ import { server } from "@/test/msw/server";
 import "@/shared/i18n";
 import {
   FIXTURE_FLOW_ID,
+  FIXTURE_OWNER_ID,
   resetReviewFixture,
 } from "@/shared/mock/review-fixture";
 import { getReviewEventClient } from "@/shared/events/review-event-client";
 import DraftWorkspacePage from "./draft-workspace-page";
+import OrderDetailPage from "./order-detail-page";
 
 /**
  * Workspace behavior gates (work package FE-F4-PRECHECK):
@@ -100,11 +103,14 @@ function renderWorkspace(draftId: string) {
   });
   const utils = render(
     <QueryClientProvider client={queryClient}>
+      <SessionProvider>
       <MemoryRouter initialEntries={[`/changes/drafts/${draftId}`]}>
         <Routes>
           <Route path="/changes/drafts/:draftId" element={<DraftWorkspacePage />} />
+          <Route path="/changes/orders/:orderId" element={<OrderDetailPage />} />
         </Routes>
       </MemoryRouter>
+    </SessionProvider>
     </QueryClientProvider>,
   );
   return { ...utils, queryClient };
@@ -124,7 +130,35 @@ async function refetchRunQuery(
 beforeEach(() => {
   server.resetHandlers();
   resetReviewFixture();
+  grantSession();
 });
+
+
+/** The order pages gate lifecycle buttons on the session identity; plant an
+ * authenticated /users/me whose id matches the fixture submitter (guards
+ * test precedent). */
+function grantSession(): void {
+  server.use(
+    http.get("*/users/me", () =>
+      HttpResponse.json({
+        err_code: 0,
+        message: "ok",
+        data: {
+          id: FIXTURE_OWNER_ID,
+          username: "henry",
+          display_name: "henry",
+          email: null,
+          is_builtin_admin: true,
+          version: 1,
+          created_at: "2026-08-28T08:00:00Z",
+          updated_at: "2026-08-28T08:00:00Z",
+          can_access_admin: true,
+        },
+        request_id: FIXTURE_OWNER_ID,
+      }),
+    ),
+  );
+}
 
 describe("DraftWorkspacePage", () => {
   it("mounts, loads draft state and never auto-creates a review run", async () => {
@@ -320,5 +354,59 @@ describe("DraftWorkspacePage", () => {
     if (anomalyFinding === undefined) throw new Error("anomaly finding missing");
     expect(anomalyFinding.textContent).toContain("#432");
     expect(anomalyFinding.textContent).toContain("指纹组 #2");
+  });
+
+  it("requires the explicit submit confirmation and lands on the order detail (F6)", async () => {
+    const draft = await createReadyDraft();
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    expect(screen.getByTestId("submit-draft")).toBeEnabled();
+
+    // The dock click only opens the confirmation; no submission fires yet.
+    fireEvent.click(screen.getByTestId("submit-draft"));
+    expect(await screen.findByTestId("submit-confirm-dialog")).toBeVisible();
+    expect(screen.getByTestId("submit-confirm-gate").textContent).toContain("全部阶段审核通过");
+
+    // Confirming submits and navigates to the immutable order detail.
+    fireEvent.click(screen.getByTestId("submit-confirm-accept"));
+    await waitFor(() => {
+      expect(screen.getByTestId("order-detail-page")).toBeVisible();
+    });
+    const order = (await (
+      await fetch("/change-orders")
+    ).json()) as { data: { items: Array<{ display_number: string }> } };
+    expect(order.data.items).toHaveLength(1);
+    await waitFor(() => {
+      expect(screen.getByTestId("order-detail-page").textContent).toContain(
+        order.data.items[0]?.display_number ?? "",
+      );
+    });
+  });
+
+  it("keeps the confirm dialog open with the backend rejection on a failed submit (后端拒绝无假成功)", async () => {
+    const draft = await createReadyDraft();
+    // Simulate a gate change between the dock's presentation and the
+    // submission transaction: the backend answers 2013 through MSW.
+    server.use(
+      http.post("*/change-drafts/:draftId/submission", () =>
+        HttpResponse.json({
+          err_code: 2013,
+          message: "submission gate failed",
+          data: null,
+          request_id: OWNER,
+          retryable: false,
+        }),
+      ),
+    );
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    fireEvent.click(screen.getByTestId("submit-draft"));
+    expect(await screen.findByTestId("submit-confirm-dialog")).toBeVisible();
+    fireEvent.click(screen.getByTestId("submit-confirm-accept"));
+    const error = await screen.findByTestId("submit-confirm-error");
+    expect(error.textContent.length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("order-detail-page")).toBeNull();
+    // The draft stays unsubmitted — no fake success anywhere.
+    expect(screen.getByTestId("submit-confirm-dialog")).toBeVisible();
   });
 });

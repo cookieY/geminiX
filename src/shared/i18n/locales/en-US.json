@@ -186,7 +186,9 @@
     "MIGRATION_MODE_ACTIVE": "Migration mode is active; only migration actions are allowed."
   },
   "common": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No"
   },
   "precheck": {
     "new": {
@@ -296,7 +298,13 @@
       "ready": "Review is complete and submission is unlocked.",
       "action": "Submit for approval",
       "successTitle": "Submitted",
-      "successDescription": "Work order {{number}} has been created; the review result is frozen as the submission snapshot."
+      "successDescription": "Work order {{number}} has been created; the review result is frozen as the submission snapshot.",
+      "confirmTitle": "Confirm submission",
+      "confirmDescription": "Submitting freezes the flow, stages, review snapshot and SQL revision; this draft can no longer be modified.",
+      "confirmGate": "Submission gate",
+      "confirmGatePassed": "All stage reviews passed; the backend still re-validates inside the transaction.",
+      "confirmGateFailed": "The gate is failing; the backend would reject this submission.",
+      "confirmAction": "Confirm submit"
     },
     "flowUpdated": {
       "title": "Flow template updated",
@@ -392,6 +400,88 @@
         "splitTitle": "Split recommended: {{count}} unique fingerprints exceed the {{limit}} limit",
         "splitDescription": "Split the SQL by table, schema or statement range so each draft stays within {{warning}} unique fingerprints, otherwise the review cannot complete."
       }
+    }
+  },
+  "orders": {
+    "list": {
+      "title": "My Orders",
+      "description": "Drafts and submitted change orders are listed separately; query orders come with the query domain.",
+      "auditTab": "Change orders",
+      "queryTab": "Query orders",
+      "queryTabPending": "The unified query-order view is delivered by the query-domain package (F10).",
+      "draftsCard": "Drafts",
+      "draftsEmpty": "No drafts yet. Pick a flow from \"Submit order\" to start.",
+      "ordersCard": "Submitted orders",
+      "ordersEmpty": "No submitted orders yet.",
+      "stagePosition": "Stage {{position}}",
+      "open": "Open",
+      "column": {
+        "number": "Order no.",
+        "title": "Title",
+        "state": "State",
+        "stage": "Current stage",
+        "submittedAt": "Submitted"
+      }
+    },
+    "detail": {
+      "title": "Order detail",
+      "stages": "Datasource stages",
+      "stageApprovers": "{{count}} approval steps",
+      "stageExecutors": "{{count}} candidate executors",
+      "facts": "Frozen snapshot",
+      "submittedAt": "Submitted at",
+      "terminalAt": "Terminal at",
+      "sqlHash": "SQL hash",
+      "snapshotHash": "Review snapshot hash",
+      "manuallyVerified": "Manually verified",
+      "frozenNote": "Revision, flow and review snapshot are immutable after submission; SQL plaintext requires an explicit audited reveal.",
+      "timeline": "Timeline",
+      "timelineEmpty": "No events yet.",
+      "timelineStage": "Stage {{position}}",
+      "withdraw": "Withdraw",
+      "void": "Void",
+      "withdrawTitle": "Withdraw order",
+      "withdrawDescription": "The current stage has not started executing; the order terminates as \"Withdrawn\". Frozen actors and existing records are kept.",
+      "withdrawPartialDescription": "A stage already started executing or the result is unknown; the withdrawal is recorded as \"Withdrawn after partial execution\".",
+      "voidTitle": "Void order",
+      "voidDescription": "Voiding terminates every step that has not executed; completed approvals and executions are retained and never rolled back.",
+      "partialWarningTitle": "Applied changes cannot roll back automatically",
+      "partialWarningDescription": "A prior stage executed successfully or its result is unknown. After withdrawal the state becomes \"Withdrawn after partial execution\"; applied database changes stay and need manual remediation.",
+      "reasonLabel": "Reason (required, written to audit)"
+    },
+    "state": {
+      "submitted": "Submitted",
+      "stage_approval_active": "Stage approval active",
+      "stage_execution_pending": "Waiting for executor",
+      "scheduled": "Scheduled",
+      "running": "Running",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "withdrawn_after_partial_execution": "Withdrawn after partial execution",
+      "voided": "Voided",
+      "failed": "Failed",
+      "partial_failed": "Partially failed",
+      "cancelled": "Cancelled",
+      "partial_cancelled": "Partially cancelled",
+      "result_unknown": "Result unknown",
+      "blocked_datasource_unavailable": "Datasource unavailable",
+      "missed_schedule": "Missed schedule",
+      "invalid": "Invalid"
+    },
+    "stageState": {
+      "pending": "Pending",
+      "approval_active": "Approval active",
+      "execution_pending": "Waiting for executor",
+      "scheduled": "Scheduled",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "partial_failed": "Partially failed",
+      "cancelled": "Cancelled",
+      "partial_cancelled": "Partially cancelled",
+      "result_unknown": "Result unknown",
+      "skipped": "Skipped"
     }
   }
 }

@@ -78,7 +78,9 @@ test("the theme toggle switches the document class", async ({ page }) => {
 });
 
 test("unbuilt navigation targets land on the not-found page", async ({ page }) => {
-  await page.getByRole("link", { name: "我的工单" }).click();
+  // /changes/mine (我的工单) is built since FE-F6; 工单审批 (/approvals/changes)
+  // stays unbuilt until the approval workspace package.
+  await page.getByRole("link", { name: "工单审批" }).click();
   await expect(page.getByText(/页面不存在|Page not found/)).toBeVisible();
 });
 

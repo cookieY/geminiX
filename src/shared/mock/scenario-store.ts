@@ -17,7 +17,8 @@ export type MockScenario =
   | "review-ready"
   | "review-blocked"
   | "review-partial"
-  | "review-provider-failed";
+  | "review-provider-failed"
+  | "order-partial-execution";
 export const MOCK_SCENARIOS: MockScenario[] = [
   "ready",
   "blocked",
@@ -27,6 +28,7 @@ export const MOCK_SCENARIOS: MockScenario[] = [
   "review-blocked",
   "review-partial",
   "review-provider-failed",
+  "order-partial-execution",
 ];
 
 interface MockScenarioStore {
