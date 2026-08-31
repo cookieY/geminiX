@@ -1,8 +1,11 @@
 import {
+  BookOpen,
   Database,
   FilePlus2,
   FileStack,
   House,
+  KeyRound,
+  Layers,
   Megaphone,
   Puzzle,
   ScrollText,
@@ -13,7 +16,6 @@ import {
   Users,
   Workflow,
   Wrench,
-  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,6 +85,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { labelKey: "nav.reviewEngine.tools", to: "/admin/review-engine/tools", icon: Wrench, visibility: "admin" },
       { labelKey: "nav.reviewEngine.skills", to: "/admin/review-engine/skills", icon: Puzzle, visibility: "admin" },
       { labelKey: "nav.reviewEngine.knowledge", to: "/admin/review-engine/knowledge", icon: BookOpen, visibility: "admin" },
+      { labelKey: "nav.reviewEngine.providers", to: "/admin/review-engine/providers", icon: KeyRound, visibility: "admin" },
+      { labelKey: "nav.reviewEngine.ruleSets", to: "/admin/rule-sets", icon: Layers, visibility: "admin" },
     ],
   },
 ];

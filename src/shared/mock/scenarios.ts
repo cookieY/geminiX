@@ -12,6 +12,7 @@ import type { SetupServer } from "msw/node";
 import { type MockScenario } from "@/shared/mock/scenario-store";
 import { authMockHandlers } from "@/shared/mock/auth-handlers";
 import { reviewFixtureHandlers } from "@/shared/mock/review-fixture";
+import { adminFixtureHandlers } from "@/shared/mock/admin-fixture";
 
 /**
  * Scenario switching layered on top of the orval-generated base handlers
@@ -85,10 +86,16 @@ export function scenarioHandlers(scenario: MockScenario) {
 }
 
 /** Base set: every generated handler factory registered so far, plus the
- * hand-written authentication handlers that simulate the cookie session and
- * the stateful change-draft/review fixture backing the FE-F4 workspace. */
+ * hand-written authentication handlers that simulate the cookie session, the
+ * stateful change-draft/review fixture backing the FE-F4 workspace, and the
+ * stateful admin fixture backing the FE-F9 review-admin management pages. */
 export function baseHandlers() {
-  return [...getDashboardMock(), ...authMockHandlers(), ...reviewFixtureHandlers()];
+  return [
+    ...getDashboardMock(),
+    ...authMockHandlers(),
+    ...reviewFixtureHandlers(),
+    ...adminFixtureHandlers(),
+  ];
 }
 
 /** Vitest: apply a scenario as an override on the shared node server. */

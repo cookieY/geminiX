@@ -2,6 +2,7 @@ import { HttpResponse, delay, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import { adminFixtureTask } from "@/shared/mock/admin-fixture";
 import { digestSqlText, type SqlDigest } from "@/features/review/bulk-import/sql-digest";
 import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import {
@@ -2477,8 +2478,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
 
     http.get("*/tasks/:taskId", ({ params }) => {
       const task = world.tasks.get(String(params.taskId));
-      if (task === undefined) return businessError(1002, "task not found");
-      return HttpResponse.json(successEnvelope({ ...task }));
+      if (task !== undefined) return HttpResponse.json(successEnvelope({ ...task }));
+      // Admin-domain tasks (datasource/provider connection tests, FE-F9)
+      // live in the admin fixture world; this shared read route consults
+      // both registries before answering 1002.
+      const adminTask = adminFixtureTask(String(params.taskId));
+      if (adminTask !== null) return HttpResponse.json(successEnvelope({ ...adminTask }));
+      return businessError(1002, "task not found");
     }),
   ];
 }
