@@ -390,10 +390,8 @@ function emit(
 
 /** Optimistic concurrency: the client must echo the revision it knows via
  * If-Match ("N"). The code a mismatch answers is decided per operation's
- * error profile, not here: draft_update declares both codes and answers
- * 1003, draft_submit is C1004-only and answers 1004, and the draft_review
- * run-creation path (profile declares neither code) is tracked separately
- * for an RCP ruling. */
+ * error profile, not here: draft_update and draft_review declare both codes
+ * and answer 1003, draft_submit is C1004-only and answers 1004. */
 function revisionConflict(request: Request, draft: FixtureDraft): boolean {
   const ifMatch = request.headers.get("If-Match");
   if (ifMatch === null) return false;

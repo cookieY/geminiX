@@ -391,7 +391,9 @@ export const OPERATION_ERROR_PROFILES: {
       2011,
       2012,
       1007,
-      1008
+      1008,
+      1003,
+      1004
     ],
     "operations": [
       "runDraftReview"

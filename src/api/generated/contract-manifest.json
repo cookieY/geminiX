@@ -11,7 +11,7 @@
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "192ae61b5eec7d09bef36501c760d2775e37252322b05b36ffa673cd8909d2b0"
+      "sha256": "fc65249ff1ddd57313e06111fccc8438737563667f9e4fe9da599d1210a7be6c"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
@@ -49,7 +49,7 @@
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "ec6e07f58be7333318c1938455b930ccb5dbea3c143069cf6ef8fc23027c1c9d"
+      "sha256": "5831087a1fdba23beaddd649e619095536f4047ec056394f6f240787949c8815"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-08-30T16:27:04.905Z"
+  "generated_at": "2026-08-31T03:58:02.383Z"
 }
