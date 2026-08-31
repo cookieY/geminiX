@@ -389,8 +389,11 @@ function emit(
 }
 
 /** Optimistic concurrency: the client must echo the revision it knows via
- * If-Match ("N"). A mismatch answers 1003 VERSION_CONFLICT on the business
- * path (draft_update/draft_review/draft_submit profiles). */
+ * If-Match ("N"). The code a mismatch answers is decided per operation's
+ * error profile, not here: draft_update declares both codes and answers
+ * 1003, draft_submit is C1004-only and answers 1004, and the draft_review
+ * run-creation path (profile declares neither code) is tracked separately
+ * for an RCP ruling. */
 function revisionConflict(request: Request, draft: FixtureDraft): boolean {
   const ifMatch = request.headers.get("If-Match");
   if (ifMatch === null) return false;
@@ -1070,8 +1073,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.post("*/change-drafts/:draftId/submission", ({ request, params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");
+      // draft_submit profile is C1004-only (no VERSION_CONFLICT): the stale
+      // If-Match surfaces as concurrent modification, mirroring the backend
+      // profile alignment (governance commit, FE-F7 escalation follow-up).
       if (revisionConflict(request, draft)) {
-        return businessError(1003, "draft revision changed elsewhere");
+        return businessError(1004, "draft revision changed elsewhere");
       }
       const run = draft.review_run_id === null ? undefined : world.runs.get(draft.review_run_id);
       if (draft.state !== "ready" || run === undefined || run.state !== "ready" || !run.gate.passed) {

@@ -186,7 +186,10 @@ describe("review fixture draft and run lifecycle", () => {
       `https://yearning.test/change-drafts/${draft.id}/submission`,
       { method: "POST", headers: stale },
     );
-    expect(((await submit.json()) as { err_code: number }).err_code).toBe(1003);
+    // draft_submit profile is C1004-only: the stale If-Match answers
+    // CONCURRENT_MODIFICATION, not 1003 (SQL PUT above keeps 1003 —
+    // draft_update declares both codes).
+    expect(((await submit.json()) as { err_code: number }).err_code).toBe(1004);
   });
 
   it("rejects a review run started from a ready draft (run_review illegal from ready)", async () => {
