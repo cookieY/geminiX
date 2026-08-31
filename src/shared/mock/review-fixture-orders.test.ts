@@ -59,7 +59,15 @@ function seedOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
         position: 1,
         datasource_name: "orders-mysql",
         state: "approval_active",
-        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "pending" }],
+        approval_steps: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000ab21",
+            position: 1,
+            state: "pending",
+            decided_at: null,
+            actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+          },
+        ],
         execution_actors: [
           {
             id: FIXTURE_OWNER_ID,
@@ -81,6 +89,8 @@ function seedOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
     version: 1,
     submitted_at: "2026-08-30T10:00:00Z",
     terminal_at: null,
+    review_run_id: null,
+    sql_text: "SELECT 1;",
   };
   return { ...order, ...overrides };
 }
@@ -327,5 +337,242 @@ describe("change-order list filters (RCP-20260831-ORDER-LIST-FILTER)", () => {
     expect(combined).toHaveLength(1);
     const contradictory = await listWith("state=running&q=000102");
     expect(contradictory).toHaveLength(0);
+  });
+});
+
+describe("approval decision fixture contract (FE-F7)", () => {
+  function decisionOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
+    const base = seedOrder({ id: "8a6f1a2b-0000-4000-8000-00000000de01", state: "stage_approval_active" });
+    // The seeded step is pending; a decisionable order has the active step
+    // of its active stage ready for the frozen reviewer.
+    const baseStage = base.stages[0];
+    if (baseStage !== undefined) {
+      baseStage.approval_steps = [
+        {
+          id: "8a6f1a2b-0000-4000-8000-00000000de20",
+          position: 1,
+          state: "active",
+          decided_at: null,
+          actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+        },
+      ];
+    }
+    return { ...base, ...overrides };
+  }
+
+  function decide(body: Record<string, unknown>, headers: Record<string, string> = { "If-Match": '"1"' }) {
+    return jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/approval-decisions",
+      post(body, headers),
+    );
+  }
+
+  it("rejects immediately rejecting the whole order: remaining steps skipped, stage cancelled", async () => {
+    seedFixtureOrder(
+      decisionOrder({
+        stages: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000de11",
+            position: 1,
+            datasource_name: "orders-mysql",
+            state: "approval_active",
+            approval_steps: [
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de21",
+                position: 1,
+                state: "active",
+                decided_at: null,
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de22",
+                position: 2,
+                state: "pending",
+                decided_at: null,
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
+      }),
+    );
+    const result = await decide({ decision: "reject", comment: "语句风险不可接受" });
+    expect(result.body.err_code).toBe(0);
+    expect(result.body.data.state).toBe("rejected");
+    expect(result.body.data.terminal_at).not.toBeNull();
+    const stages = result.body.data.stages as Array<{
+      state: string;
+      approval_steps: Array<{ state: string; decided_at: string | null }>;
+    }>;
+    expect(stages[0]?.state).toBe("cancelled");
+    expect(stages[0]?.approval_steps.map((step) => step.state)).toEqual(["rejected", "skipped"]);
+
+    const timeline = await jsonRequest("/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/timeline");
+    const entries = timeline.body.data.items as Array<Record<string, unknown>>;
+    expect(entries.some((entry) => entry.event_type === "change_order.approval_decided")).toBe(true);
+    expect(entries.some((entry) => entry.event_type === "change_order.rejected")).toBe(true);
+  });
+
+  it("a non-final approve activates the next step and keeps the order in approval", async () => {
+    seedFixtureOrder(
+      decisionOrder({
+        version: 4,
+        stages: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000de12",
+            position: 1,
+            datasource_name: "orders-mysql",
+            state: "approval_active",
+            approval_steps: [
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de23",
+                position: 1,
+                state: "active",
+                decided_at: null,
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de24",
+                position: 2,
+                state: "pending",
+                decided_at: null,
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
+      }),
+    );
+    const result = await decide({ decision: "approve", comment: "" }, { "If-Match": '"4"' });
+    expect(result.body.err_code).toBe(0);
+    expect(result.body.data.state).toBe("stage_approval_active");
+    expect(result.body.data.version).toBe(5);
+    const stages = result.body.data.stages as Array<{
+      approval_steps: Array<{ state: string }>;
+    }>;
+    expect(stages[0]?.approval_steps.map((step) => step.state)).toEqual(["approved", "active"]);
+  });
+
+  it("the final approve leaves the order at stage_execution_pending, never executing", async () => {
+    seedFixtureOrder(decisionOrder());
+    const result = await decide({ decision: "approve", comment: "同意" });
+    expect(result.body.err_code).toBe(0);
+    expect(result.body.data.state).toBe("stage_execution_pending");
+    const stages = result.body.data.stages as Array<{ state: string }>;
+    expect(stages[0]?.state).toBe("execution_pending");
+  });
+
+  it("maps the order_decision profile errors: 1004 stale If-Match, 1010 outside approval, 3001 non-frozen actor, 3002 already decided", async () => {
+    seedFixtureOrder(decisionOrder({ version: 2 }));
+    const stale = await decide({ decision: "approve" }, { "If-Match": '"1"' });
+    expect(stale.body.err_code).toBe(1004);
+
+    seedFixtureOrder(decisionOrder({ id: "8a6f1a2b-0000-4000-8000-00000000de02", state: "completed" }));
+    const illegal = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de02/approval-decisions",
+      post({ decision: "approve" }, { "If-Match": '"1"' }),
+    );
+    expect(illegal.body.err_code).toBe(1010);
+
+    seedFixtureOrder(
+      decisionOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000de03",
+        stages: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000de13",
+            position: 1,
+            datasource_name: "orders-mysql",
+            state: "approval_active",
+            approval_steps: [
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de25",
+                position: 1,
+                state: "active",
+                decided_at: null,
+                actors: [{ id: "00000000-0000-4000-8000-000000009999", username: "other", display_name: "Other" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
+      }),
+    );
+    const notActor = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de03/approval-decisions",
+      post({ decision: "approve" }, { "If-Match": '"1"' }),
+    );
+    expect(notActor.body.err_code).toBe(3001);
+
+    // 3002: a step that is still active but already carries a decision
+    // (the racing state the single-effective-decision constraint guards —
+    // the winner committed, the loser's view still shows the step active).
+    seedFixtureOrder(
+      decisionOrder({
+        id: "8a6f1a2b-0000-4000-8000-00000000de05",
+        stages: [
+          {
+            id: "8a6f1a2b-0000-4000-8000-00000000de15",
+            position: 1,
+            datasource_name: "orders-mysql",
+            state: "approval_active",
+            approval_steps: [
+              {
+                id: "8a6f1a2b-0000-4000-8000-00000000de27",
+                position: 1,
+                state: "active",
+                decided_at: "2026-08-30T12:00:00Z",
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
+      }),
+    );
+    const decided = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de05/approval-decisions",
+      post({ decision: "approve" }, { "If-Match": '"1"' }),
+    );
+    expect(decided.body.err_code).toBe(3002);
+  });
+
+  it("appends comments and reads them newest first", async () => {
+    seedFixtureOrder(decisionOrder());
+    const created = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/comments",
+      post({ content: "请补充回滚说明" }),
+    );
+    expect(created.body.err_code).toBe(0);
+    const comment = created.body.data;
+    expect(comment.author_display_name).toBe("henry");
+    expect(comment.content).toBe("请补充回滚说明");
+
+    const listed = await jsonRequest("/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/comments");
+    const items = listed.body.data.items as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(1);
+    expect(items[0]?.content).toBe("请补充回滚说明");
+
+    // Backend comments.go semantics: only the empty string (or >4096 runes)
+    // is invalid; whitespace-only content is accepted.
+    const empty = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/comments",
+      post({ content: "" }),
+    );
+    expect(empty.body.err_code).toBe(1001);
+
+    const whitespace = await jsonRequest(
+      "/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/comments",
+      post({ content: "   " }),
+    );
+    expect(whitespace.body.err_code).toBe(0);
+  });
+
+  it("serves the frozen submission findings as a pure read", async () => {
+    seedFixtureOrder(decisionOrder({ review_run_id: "8a6f1a2b-0000-4000-8000-00000000ru01" }));
+    const listed = await jsonRequest("/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/review-findings");
+    expect(listed.body.err_code).toBe(0);
+    expect(listed.body.data.items).toEqual([]);
   });
 });

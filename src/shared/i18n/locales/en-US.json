@@ -437,7 +437,6 @@
     "detail": {
       "title": "Order detail",
       "stages": "Datasource stages",
-      "stageApprovers": "{{count}} approval steps",
       "stageExecutors": "{{count}} candidate executors",
       "facts": "Frozen snapshot",
       "submittedAt": "Submitted at",
@@ -458,7 +457,17 @@
       "voidDescription": "Voiding terminates every step that has not executed; completed approvals and executions are retained and never rolled back.",
       "partialWarningTitle": "Applied changes cannot roll back automatically",
       "partialWarningDescription": "A prior stage executed successfully or its result is unknown. After withdrawal the state becomes \"Withdrawn after partial execution\"; applied database changes stay and need manual remediation.",
-      "reasonLabel": "Reason (required, written to audit)"
+      "reasonLabel": "Reason (required, written to audit)",
+      "invalidTitle": "Order invalidated",
+      "invalidDescription": "Frozen reviewers were removed; this order can no longer be approved. Only the submitter may void it.",
+      "frozenReview": "Frozen review results",
+      "frozenReviewNote": "The findings below come from the review snapshot frozen at submission; the approval stage never re-runs the AI review.",
+      "comments": "Comments",
+      "commentPlaceholder": "Add a comment…",
+      "commentSubmit": "Send",
+      "commentsEmpty": "No comments yet",
+      "stepTitle": "Step {position}",
+      "stepDecidedAt": "decided {time}"
     },
     "state": {
       "submitted": "Submitted",
@@ -493,6 +502,53 @@
       "partial_cancelled": "Partially cancelled",
       "result_unknown": "Result unknown",
       "skipped": "Skipped"
+    },
+    "sql": {
+      "title": "Frozen SQL revision",
+      "reveal": "Reveal SQL plaintext",
+      "revealNote": "Plaintext requires an explicit reveal, is watermarked with the viewer identity and stays valid for 5 minutes; every reveal and copy is audited.",
+      "copy": "Copy",
+      "close": "Hide",
+      "validUntil": "Valid until {time}"
+    }
+  },
+  "approvals": {
+    "title": "Approval Workspace",
+    "queue": {
+      "title": "Awaiting my decision",
+      "empty": "No orders awaiting your decision",
+      "column": {
+        "number": "Order No.",
+        "title": "Title",
+        "datasource": "Datasource",
+        "pendingStep": "Pending step",
+        "submittedAt": "Submitted"
+      },
+      "pendingStep": "Stage {stage} · Step {step} · {reviewers} reviewers",
+      "open": "Open",
+      "frozenNote": "Approvals reuse the review snapshot frozen at submission; neither this page nor any approval action re-runs the AI review."
+    },
+    "decision": {
+      "cardTitle": "Approval decision",
+      "pendingStep": "Awaiting your decision: stage {stage} ({datasource}) · step {step}",
+      "frozenReviewNote": "Judge against the frozen review snapshot from submission and the SQL shown on this page.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve this step?",
+      "rejectTitle": "Reject this step?",
+      "approveDescription": "Approval advances the flow stage by stage; after the final step the order enters execution-pending and is executed separately by the frozen executor — never automatically.",
+      "rejectDescription": "A rejection by any reviewer immediately rejects the whole order; all remaining steps are voided. This cannot be undone.",
+      "commentLabel": "Comment (optional, written to the approval timeline)",
+      "conflictTitle": "Decision not applied",
+      "conflictHint": "The page was refreshed to the latest state; please check it and retry."
+    },
+    "stepState": {
+      "pending": "Pending",
+      "active": "In review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "skipped": "Voided",
+      "invalid": "Invalid"
     }
   }
 }

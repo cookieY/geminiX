@@ -4,6 +4,11 @@ import { useTranslation } from "react-i18next";
 import type { ChangeOrderTimelineEntry } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { OrderStateBadge, StageStateBadge } from "@/features/orders/order-state-badge";
 import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
+import { stageApprovalSteps } from "@/features/orders/approval-steps";
+import { ApprovalDecisionCard, ApprovalStepStateBadge } from "@/features/orders/approval-decision-card";
+import { FrozenReviewCard } from "@/features/orders/frozen-review-card";
+import { OrderCommentsCard } from "@/features/orders/order-comments-card";
+import { OrderSqlCard } from "@/features/orders/order-sql-card";
 import {
   useChangeOrder,
   useChangeOrderTimeline,
@@ -38,6 +43,12 @@ import { Ban, CircleAlert, FileCode2, History, ShieldCheck, Undo2, User, Wrench 
  * the partial-execution consequence before confirming (W007 — 部分执行后撤
  * 回明确提示不可回滚), and a backend rejection re-renders inside the dialog
  * as an error — never as a success state (gate: 后端拒绝无假成功).
+ *
+ * FE-F7 approval workspace: the same surface serves the frozen reviewer —
+ * an approval decision card renders only for the active step's frozen
+ * actors, the frozen submission review and comments are readable for every
+ * related user, and an invalid notice explains the W008 actor-deletion
+ * state. Opening or operating this page never creates a Review Run (R003).
  */
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -135,9 +146,9 @@ export default function OrderDetailPage() {
   // buttons (the backend keeps the authoritative 403).
   const isSubmitter = session.user?.id === order?.submitter_user_id;
 
-  // The shared event feed keeps state-driven surfaces live (withdrawals from
-  // another tab, stage progress); the client's resume point survives across
-  // pages exactly as in the draft workspace.
+  // The shared event feed keeps state-driven surfaces live (withdrawals and
+  // peer decisions from another tab, stage progress); the client's resume
+  // point survives across pages exactly as in the draft workspace.
   useEffect(() => {
     void startReviewEvents();
     return () => { stopReviewEvents(); };
@@ -234,6 +245,17 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      {order.state === "invalid" && (
+        <Alert data-testid="invalid-order-alert">
+          <CircleAlert className="size-4" aria-hidden />
+          <AlertTitle>{t("orders.detail.invalidTitle")}</AlertTitle>
+          <AlertDescription>{t("orders.detail.invalidDescription")}</AlertDescription>
+        </Alert>
+      )}
+
+      <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
+      <OrderSqlCard orderId={order.id} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card data-testid="order-stages">
           <CardHeader className="pb-3">
@@ -243,21 +265,43 @@ export default function OrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {order.stages.map((stage) => (
-              <div key={stage.id} className="rounded-md border p-3" data-testid={`order-stage-${String(stage.position)}`}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-sm font-medium">
-                    <Badge variant="outline">{t("precheck.stagePath.stage", { position: stage.position })}</Badge>
-                    <span className="font-mono text-xs">{stage.datasource_name}</span>
+            {order.stages.map((stage) => {
+              const steps = stageApprovalSteps(stage);
+              return (
+                <div key={stage.id} className="rounded-md border p-3" data-testid={`order-stage-${String(stage.position)}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <Badge variant="outline">{t("precheck.stagePath.stage", { position: stage.position })}</Badge>
+                      <span className="font-mono text-xs">{stage.datasource_name}</span>
+                    </p>
+                    <StageStateBadge state={stage.state} />
+                  </div>
+                  {steps.length > 0 && (
+                    <ol className="mt-2 flex flex-col gap-2" data-testid={`stage-steps-${String(stage.position)}`}>
+                      {steps.map((step) => (
+                        <li key={step.id} className="flex flex-wrap items-center gap-2 text-xs" data-testid={`stage-step-${String(step.position)}`}>
+                          <ApprovalStepStateBadge state={step.state} />
+                          <span className="text-muted-foreground">
+                            {t("orders.detail.stepTitle", { position: step.position })}
+                          </span>
+                          <span>
+                            {step.actors.map((actor) => actor.displayName).join("、")}
+                          </span>
+                          {step.decidedAt !== null && (
+                            <span className="text-muted-foreground">
+                              {t("orders.detail.stepDecidedAt", { time: formatTimestamp(step.decidedAt) })}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    {t("orders.detail.stageExecutors", { count: stage.execution_actors.length })}
                   </p>
-                  <StageStateBadge state={stage.state} />
                 </div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  {t("orders.detail.stageApprovers", { count: stage.approval_steps.length })} ·{" "}
-                  {t("orders.detail.stageExecutors", { count: stage.execution_actors.length })}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 
@@ -291,6 +335,8 @@ export default function OrderDetailPage() {
         </Card>
       </div>
 
+      <FrozenReviewCard orderId={order.id} />
+      <OrderCommentsCard orderId={order.id} />
       <TimelineCard orderId={order.id} />
 
       <Dialog open={dialog !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>

@@ -1,4 +1,9 @@
-import type { ChangeOrderState, StageState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import type {
+  ChangeOrder,
+  ChangeOrderState,
+  StageState,
+} from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import { stageApprovalSteps } from "@/features/orders/approval-steps";
 
 /**
  * Order state semantics mirrored from api/contracts/state-machines.json
@@ -117,3 +122,58 @@ export function stageStateTone(state: StageState): OrderStateTone {
 /** Timeline actor icon semantics: system/worker events are machine facts,
  * user events carry the acting user. */
 export type TimelineActorKind = "user" | "system" | "worker";
+
+/** Identity of the approval step currently awaiting a decision, when the
+ * given user is one of its frozen reviewers (W003 同级任一审批). Derived
+ * presentation only — the backend re-checks frozen-actor membership on the
+ * decision command (order_decision profile 3001/3002). */
+export interface ActiveApprovalStep {
+  stageId: string;
+  stagePosition: number;
+  datasourceName: string;
+  stepId: string;
+  stepPosition: number;
+  actorCount: number;
+}
+
+export function activeApprovalStepFor(
+  order: ChangeOrder,
+  userId: string | undefined,
+): ActiveApprovalStep | null {
+  if (userId === undefined) return null;
+  if (order.state !== "stage_approval_active") return null;
+  for (const stage of order.stages) {
+    if (stage.state !== "approval_active") continue;
+    for (const step of stageApprovalSteps(stage)) {
+      if (step.state !== "active") continue;
+      if (step.actors.some((actor) => actor.id === userId)) {
+        return {
+          stageId: stage.id,
+          stagePosition: stage.position,
+          datasourceName: stage.datasource_name,
+          stepId: step.id,
+          stepPosition: step.position,
+          actorCount: step.actors.length,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/** Badge tone per approval-step state (order_approval_steps vocabulary,
+ * including the W008 invalid state when frozen actors were removed). */
+export function approvalStepTone(state: string): OrderStateTone {
+  switch (state) {
+    case "approved":
+      return "success";
+    case "rejected":
+      return "destructive";
+    case "invalid":
+      return "warning";
+    case "active":
+      return "info";
+    default:
+      return "neutral";
+  }
+}

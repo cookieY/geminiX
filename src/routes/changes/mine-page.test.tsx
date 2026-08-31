@@ -43,6 +43,8 @@ function seedOrder(overrides: Record<string, unknown> = {}): void {
     version: 1,
     submitted_at: "2026-08-30T10:00:00Z",
     terminal_at: null,
+    review_run_id: null,
+    sql_text: "SELECT 1;",
     ...overrides,
   });
 }

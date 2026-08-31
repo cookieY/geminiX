@@ -151,6 +151,21 @@ interface FixtureTimelineEntry {
   state: string | null;
 }
 
+/** StepState from the frozen order_approval_steps vocabulary
+ * (changeorder domain: pending/active/approved/rejected/skipped/invalid). */
+export type FixtureStepState = "pending" | "active" | "approved" | "rejected" | "skipped" | "invalid";
+
+/** Mirrors the backend StepView JSON the OpenAPI leaves as a free object
+ * (changeorder application/read.go): frozen actor snapshots with display
+ * names, per-step decision state and decided_at. */
+export interface FixtureApprovalStep {
+  id: string;
+  position: number;
+  state: FixtureStepState;
+  decided_at: string | null;
+  actors: Array<{ id: string; username: string; display_name: string }>;
+}
+
 export interface FixtureOrder {
   id: string;
   display_number: string;
@@ -193,7 +208,7 @@ export interface FixtureOrder {
       | "partial_cancelled"
       | "result_unknown"
       | "skipped";
-    approval_steps: Array<{ position: number; actors: Array<{ user_id: string }>; state: string }>;
+    approval_steps: FixtureApprovalStep[];
     execution_actors: Array<{
       id: string;
       username: string;
@@ -212,6 +227,22 @@ export interface FixtureOrder {
   version: number;
   submitted_at: string;
   terminal_at: string | null;
+  /** Fixture-internal link to the frozen submission review run; never
+   * serialized (feeds the order-side frozen findings endpoint). */
+  review_run_id: string | null;
+  /** Fixture-internal plaintext for the sql-reveals handler (mirrors the
+   * backend order_sql_payloads envelope); never serialized — the public
+   * surface carries sql_hash only. */
+  sql_text: string;
+}
+
+interface FixtureComment {
+  id: string;
+  order_id: string;
+  author_user_id: string;
+  author_display_name: string;
+  content: string;
+  occurred_at: string;
 }
 
 interface FixtureEvent {
@@ -228,6 +259,7 @@ interface FixtureWorld {
   evidence: Map<string, FixtureEvidence>;
   orders: Map<string, FixtureOrder>;
   orderTimeline: Map<string, FixtureTimelineEntry[]>;
+  orderComments: Map<string, FixtureComment[]>;
   orderSequence: number;
   outbox: FixtureEvent[];
   sequences: Map<string, number>;
@@ -243,6 +275,7 @@ const world: FixtureWorld = {
   evidence: new Map(),
   orders: new Map(),
   orderTimeline: new Map(),
+  orderComments: new Map(),
   orderSequence: 0,
   outbox: [],
   sequences: new Map(),
@@ -270,6 +303,7 @@ export function resetReviewFixture(): void {
   world.evidence.clear();
   world.orders.clear();
   world.orderTimeline.clear();
+  world.orderComments.clear();
   world.orderSequence = 0;
   world.outbox.length = 0;
   world.sequences.clear();
@@ -284,6 +318,7 @@ export function seedFixtureOrder(order: FixtureOrder): void {
   world.orders.set(order.id, order);
   world.orderSequence = Math.max(world.orderSequence, orderNumberSuffix(order.display_number));
   world.orderTimeline.set(order.id, []);
+  world.orderComments.set(order.id, []);
 }
 
 function orderNumberSuffix(displayNumber: string): number {
@@ -418,6 +453,13 @@ function fixtureUser(userId: string) {
   };
 }
 
+/** Frozen approval-step actor snapshot (backend ActorView: id/username/
+ * display_name) — the order surface freezes display names, unlike the flow
+ * stage ActorRef ({user_id}) wire shape. */
+function fixtureActor(userId: string) {
+  return { id: userId, username: "henry", display_name: "henry" };
+}
+
 function orderPublic(order: FixtureOrder) {
   return {
     id: order.id,
@@ -485,7 +527,15 @@ function seedPartialExecutionOrder(): void {
         position: 1,
         datasource_name: "staging-mysql",
         state: "succeeded",
-        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "approved" }],
+        approval_steps: [
+          {
+            id: "7e6f1a2b-0000-4000-8000-00000000f621",
+            position: 1,
+            state: "approved",
+            decided_at: submittedAt,
+            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+          },
+        ],
         execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
       },
       {
@@ -493,7 +543,15 @@ function seedPartialExecutionOrder(): void {
         position: 2,
         datasource_name: "prod-mysql",
         state: "running",
-        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "approved" }],
+        approval_steps: [
+          {
+            id: "7e6f1a2b-0000-4000-8000-00000000f622",
+            position: 1,
+            state: "approved",
+            decided_at: submittedAt,
+            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+          },
+        ],
         execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
       },
     ],
@@ -504,6 +562,8 @@ function seedPartialExecutionOrder(): void {
     version: 3,
     submitted_at: submittedAt,
     terminal_at: null,
+    review_run_id: null,
+    sql_text: "UPDATE prod_orders SET status = 1 WHERE created_at < '2026-01-01';",
   };
   world.orders.set(order.id, order);
   world.orderSequence = Math.max(world.orderSequence, 42);
@@ -1025,12 +1085,16 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       draft.updated_at = now();
       const submittedAt = now();
       world.orderSequence += 1;
+      // Submission freezes the order directly in stage_approval_active with
+      // the first stage's first step active (backend submit.go: state
+      // stage_approval, stage 1 activated, step 1 active) — the approval
+      // queue therefore fills the moment an order is submitted.
       const order: FixtureOrder = {
         id: uuid(),
         display_number: `YR-20260830-${String(world.orderSequence).padStart(6, "0")}`,
         submitter_user_id: draft.owner_user_id,
         title: draft.title,
-        state: "submitted",
+        state: "stage_approval_active",
         current_stage_position: 1,
         stages: [
           {
@@ -1038,7 +1102,15 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             position: 1,
             datasource_name: "orders-mysql",
             state: "approval_active",
-            approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "pending" }],
+            approval_steps: [
+              {
+                id: uuid(),
+                position: 1,
+                state: "active",
+                decided_at: null,
+                actors: [fixtureActor(FIXTURE_OWNER_ID)],
+              },
+            ],
             execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
           },
         ],
@@ -1049,8 +1121,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         version: 1,
         submitted_at: submittedAt,
         terminal_at: null,
+        review_run_id: run.id,
+        sql_text: draft.sql ?? "",
       };
       world.orders.set(order.id, order);
+      world.orderComments.set(order.id, []);
       recordOrderEvent(order, "change_order.submitted", "user", draft.owner_user_id, `工单 ${order.display_number} 提交，审核快照已冻结（阶段 1）`, 1, "submitted");
       emit(
         `change-orders/${order.id}`,
@@ -1082,8 +1157,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     // ---- Change orders (FE-F6): personal order list, detail, timeline,
     // withdrawal and voidance. The list endpoint exposes exactly the OpenAPI
     // contract — cursor paging plus the RCP-20260831-ORDER-LIST-FILTER
-    // params (state/q/datasource/submitted_from/submitted_to). Filters only
-    // narrow the submitter-scoped result.
+    // params (state/q/datasource/submitted_from/submitted_to). FE-F7 widens
+    // the scoping from submitter-only to the backend's relation filter
+    // (submitter / frozen approval actor / frozen execution actor) so the
+    // approval queue can consume the same relation-scoped read; filters only
+    // narrow that result.
     http.get("*/change-orders", ({ request }) => {
       const url = new URL(request.url);
       const limit = Number(url.searchParams.get("limit") ?? "50");
@@ -1094,8 +1172,15 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const submittedFrom = url.searchParams.get("submitted_from");
       const submittedTo = url.searchParams.get("submitted_to");
       seedPartialExecutionOrder();
+      const relatedTo = (order: FixtureOrder): boolean =>
+        order.submitter_user_id === FIXTURE_OWNER_ID ||
+        order.stages.some(
+          (stage) =>
+            stage.approval_steps.some((step) => step.actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) ||
+            stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID),
+        );
       const orders = [...world.orders.values()]
-        .filter((order) => order.submitter_user_id === FIXTURE_OWNER_ID)
+        .filter(relatedTo)
         .filter((order) => state === null || order.state === state)
         .filter((order) => {
           if (q === null || q === "") return true;
@@ -1246,6 +1331,225 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       };
       world.drafts.set(draft.id, draft);
       return HttpResponse.json(successEnvelope(draftPublic(draft)));
+    }),
+
+    // ---- Approval decisions (FE-F7). Mirrors the backend decide command
+    // (changeorder application/decide.go): same-level any-one reviewer wins
+    // (W003), a non-final approve activates the next step and only bumps the
+    // version, the final approve leaves the order at stage_execution_pending
+    // — execution is a separate executor action, never automatic — and any
+    // rejection immediately rejects the whole order (remaining steps
+    // skipped, active stage cancelled). Error codes follow the
+    // order_decision profile: 1004 for a lost If-Match race, 1010 outside
+    // stage_approval_active, 3001 for a non-frozen actor, 3002 when the step
+    // was already decided.
+    http.post("*/change-orders/:orderId/approval-decisions", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      const body = (await request.json()) as { decision: string; comment?: string };
+      if (body.decision !== "approve" && body.decision !== "reject") {
+        return businessError(1001, "decision must be approve or reject");
+      }
+      if (order.state !== "stage_approval_active") {
+        return businessError(1010, `decision is not legal from state ${order.state}`);
+      }
+      const stage = order.stages.find((candidate) => candidate.state === "approval_active");
+      const step = stage?.approval_steps.find((candidate) => candidate.state === "active");
+      if (stage === undefined || step === undefined) {
+        return businessError(1010, "no active approval step");
+      }
+      if (!step.actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+        return businessError(3001, "current user is not a frozen reviewer of this step");
+      }
+      if (step.decided_at !== null) {
+        return businessError(3002, "approval step already decided");
+      }
+      // Fail-closed precondition (backend checks inside the serializable tx
+      // before any effect): a non-final approve needs the next pending step.
+      const maxPosition = Math.max(...stage.approval_steps.map((candidate) => candidate.position));
+      const isNonFinalApprove = body.decision === "approve" && step.position < maxPosition;
+      const hasNextPending =
+        !isNonFinalApprove ||
+        stage.approval_steps.some(
+          (candidate) => candidate.position === step.position + 1 && candidate.state === "pending",
+        );
+      if (!hasNextPending) {
+        return businessError(1004, "approval step chain broken");
+      }
+      const decidedAt = now();
+      step.decided_at = decidedAt;
+      step.state = body.decision === "approve" ? "approved" : "rejected";
+      order.version += 1;
+      const from = order.state;
+      const decisionSummary = `审批人 henry ${body.decision === "approve" ? "通过" : "拒绝"}阶段 ${String(stage.position)} 审批步 ${String(step.position)}${
+        body.comment ? `：${body.comment}` : ""
+      }`;
+      const decidedEmit = (): void => {
+        recordOrderEvent(order, "change_order.approval_decided", "user", FIXTURE_OWNER_ID, decisionSummary, stage.position, null);
+        emit(
+          `change-orders/${order.id}`,
+          "io.yearning.v4.change_order.approval_decided",
+          {
+            aggregate_id: order.id,
+            stage_id: stage.id,
+            step_id: step.id,
+            reviewer_user_id: FIXTURE_OWNER_ID,
+            decision: body.decision,
+            aggregate_version: order.version,
+          },
+          { kind: "user", user_id: FIXTURE_OWNER_ID },
+        );
+      };
+      if (body.decision === "approve") {
+        if (isNonFinalApprove) {
+          // Non-final approve: the order stays in stage_approval_active and
+          // only the version records the decision.
+          const next = stage.approval_steps.find(
+            (candidate) => candidate.position === step.position + 1 && candidate.state === "pending",
+          );
+          if (next === undefined) return businessError(1004, "approval step chain broken");
+          next.state = "active";
+          decidedEmit();
+          recordOrderEvent(order, "change_order.approval_step_activated", "system", null, `阶段 ${String(stage.position)} 审批步 ${String(next.position)} 开始审批`, stage.position, null);
+        } else {
+          // Final approve: stage execution_pending + order
+          // stage_execution_pending — execution stays a separate executor
+          // action, never automatic. Backend emits the state change before
+          // the decision event here.
+          stage.state = "execution_pending";
+          order.state = "stage_execution_pending";
+          recordOrderEvent(order, "change_order.stage_ready_for_execution", "system", null, `阶段 ${String(stage.position)} 终步通过，工单等待执行（执行需冻结执行人另点执行）`, stage.position, order.state);
+          emit(
+            `change-orders/${order.id}`,
+            "io.yearning.v4.change_order.state_changed",
+            {
+              aggregate_id: order.id,
+              from,
+              to: order.state,
+              reason_code: "final_step_approved",
+              aggregate_version: order.version,
+            },
+            { kind: "system" },
+          );
+          decidedEmit();
+        }
+      } else {
+        for (const candidate of stage.approval_steps) {
+          if (candidate.state === "pending" || candidate.state === "active") {
+            candidate.state = "skipped";
+            candidate.decided_at = decidedAt;
+          }
+        }
+        stage.state = "cancelled";
+        order.state = "rejected";
+        order.terminal_at = decidedAt;
+        decidedEmit();
+        recordOrderEvent(order, "change_order.rejected", "user", FIXTURE_OWNER_ID, "审批拒绝：任一拒绝立即拒绝整单", stage.position, order.state);
+        emit(
+          `change-orders/${order.id}`,
+          "io.yearning.v4.change_order.state_changed",
+          {
+            aggregate_id: order.id,
+            from,
+            to: order.state,
+            reason_code: "approval_rejected",
+            aggregate_version: order.version,
+          },
+          { kind: "user", user_id: FIXTURE_OWNER_ID },
+        );
+      }
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // ---- Order comments (FE-F7): append-only writes and a newest-first
+    // cursor read over the same relation scope, mirroring the backend
+    // comments application (S004 permanent retention).
+    http.get("*/change-orders/:orderId/comments", ({ params, request }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const url = new URL(request.url);
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const after = url.searchParams.get("after");
+      const entries = [...(world.orderComments.get(order.id) ?? [])].reverse();
+      return HttpResponse.json(successEnvelope(pageOf(entries, limit, after)));
+    }),
+
+    http.post("*/change-orders/:orderId/comments", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      // Mirror comments.go exactly: only the empty string (or >4096 runes)
+      // is invalid — whitespace-only content is accepted, the UI's
+      // trim-based submit gating is presentation-layer strictness.
+      const body = (await request.json()) as { content: string };
+      if (body.content === "" || body.content.length > 4096) {
+        return businessError(1001, "content must be 1..4096 characters");
+      }
+      const comment: FixtureComment = {
+        id: uuid(),
+        order_id: order.id,
+        author_user_id: FIXTURE_OWNER_ID,
+        author_display_name: "henry",
+        content: body.content,
+        occurred_at: now(),
+      };
+      const entries = world.orderComments.get(order.id) ?? [];
+      entries.push(comment);
+      world.orderComments.set(order.id, entries);
+      return HttpResponse.json(successEnvelope(comment));
+    }),
+
+    // ---- Frozen submission findings (R003 reuse): reads the stage review
+    // snapshots frozen at submission. This is a pure read — no Review Run is
+    // ever created on the approval path (acceptance gate).
+    http.get("*/change-orders/:orderId/review-findings", ({ params, request }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const url = new URL(request.url);
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const after = url.searchParams.get("after");
+      const findings =
+        order.review_run_id === null ? [] : (world.findings.get(order.review_run_id) ?? []);
+      return HttpResponse.json(successEnvelope(pageOf(findings, limit, after)));
+    }),
+
+    // ---- SQL plaintext reveal (FE-F7): the reviewer must see what they are
+    // deciding on. Mirrors the backend RevealOrderSQL — relation-scoped,
+    // audited per reveal, watermarked with viewer + server time, 5-minute
+    // validity; plaintext leaves only through this handler's response and
+    // copy events never carry SQL content.
+    http.post("*/change-orders/:orderId/sql-reveals", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const body = (await request.json()) as { purpose?: string };
+      const purpose = typeof body.purpose === "string" ? body.purpose : "";
+      if (purpose === "" || purpose.length > 256) {
+        return businessError(1001, "purpose is required (1..256)");
+      }
+      const revealId = uuid();
+      return HttpResponse.json(
+        successEnvelope({
+          reveal_id: revealId,
+          sql: order.sql_text,
+          watermark: `Yearning SQL Viewer: henry @ ${now()}`,
+          valid_until: new Date(Date.now() + 5 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        }),
+      );
+    }),
+
+    // Copy audit: records the action against its source reveal; SQL content
+    // is never part of the request or stored.
+    http.post("*/change-orders/:orderId/sql-copy-events", async ({ request, params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      const body = (await request.json()) as { source_reveal_id?: string };
+      if (body.source_reveal_id === undefined || body.source_reveal_id === "") {
+        return businessError(1001, "source_reveal_id is required");
+      }
+      // OpenAPI declares data: null for the copy-audit success envelope.
+      return HttpResponse.json(successEnvelope(null));
     }),
 
     http.get("*/review-runs/:runId", ({ params }) => {

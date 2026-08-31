@@ -17,6 +17,7 @@ import {
   withdrawChangeOrder,
 } from "@/api/generated/client/change-orders/change-orders";
 import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-event-client";
+import { useSession } from "@/features/auth/session-provider";
 
 /**
  * Server-state hooks for the personal order pages (frontend PRD F6). Events
@@ -48,23 +49,32 @@ function activeFilters(filters: OrderListFilters): OrderListFilters {
 
 export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = EMPTY_FILTERS) {
   const queryClient = useQueryClient();
+  const session = useSession();
+  const me = session.user?.id;
   const effective = activeFilters(filters);
   const query = useQuery({
     // The filter object joins the key so every filter change is a fresh
     // server read, never a stale-cache hit. keepPreviousData holds the last
     // rows (and keeps this hook's consumers mounted) while a first-time
-    // filter combination is in flight.
-    queryKey: ["change-orders", "mine", effective],
+    // filter combination is in flight. The user id joins the key so the
+    // submitter filter below never runs against a half-initialized session.
+    queryKey: ["change-orders", "mine", me, effective],
     queryFn: async () => {
+      // The list endpoint is relation-scoped (submitter / frozen approval
+      // actor / frozen execution actor — backend relationFilterSQL, consumed
+      // by the approval queue on the same read). The 我的工单 tab is
+      // submitter-scoped per UI-spec §5.2: a presentation filter on this
+      // shared read, never an authorization boundary.
       const page = (await listChangeOrders({
         limit: 50,
         ...effective,
       })) as unknown as {
         items: ChangeOrder[];
       };
-      return page.items;
+      if (me === undefined) return [];
+      return page.items.filter((order) => order.submitter_user_id === me);
     },
-    enabled,
+    enabled: enabled && me !== undefined,
     placeholderData: keepPreviousData,
   });
 
@@ -100,15 +110,24 @@ export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = 
  * option set.
  */
 export function useOrderDatasourceOptions(enabled: boolean) {
+  const session = useSession();
+  const me = session.user?.id;
   return useQuery({
-    queryKey: ["change-orders", "mine", "datasource-options"],
+    queryKey: ["change-orders", "mine", "datasource-options", me],
     queryFn: async () => {
       const page = (await listChangeOrders({ limit: 200 })) as unknown as {
         items: ChangeOrder[];
       };
-      return [...new Set(page.items.flatMap((order) => order.stages.map((stage) => stage.datasource_name)))];
+      if (me === undefined) return [];
+      return [
+        ...new Set(
+          page.items
+            .filter((order) => order.submitter_user_id === me)
+            .flatMap((order) => order.stages.map((stage) => stage.datasource_name)),
+        ),
+      ];
     },
-    enabled,
+    enabled: enabled && me !== undefined,
   });
 }
 

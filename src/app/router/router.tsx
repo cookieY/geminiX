@@ -18,6 +18,7 @@ const ChangesNewPage = lazy(() => import("@/routes/changes/changes-new-page"));
 const DraftWorkspacePage = lazy(() => import("@/routes/changes/draft-workspace-page"));
 const MinePage = lazy(() => import("@/routes/changes/mine-page"));
 const OrderDetailPage = lazy(() => import("@/routes/changes/order-detail-page"));
+const ApprovalQueuePage = lazy(() => import("@/routes/approvals/approval-queue-page"));
 const NotFoundPage = lazy(() => import("@/routes/not-found"));
 const ForbiddenPage = lazy(() => import("@/routes/forbidden"));
 
@@ -55,6 +56,10 @@ export const appRouter = createBrowserRouter([
       {
         path: "changes/orders/:orderId",
         element: Loadable(OrderDetailPage),
+      },
+      {
+        path: "approvals/changes",
+        element: Loadable(ApprovalQueuePage),
       },
       {
         // Admin surfaces exist only behind the server-declared

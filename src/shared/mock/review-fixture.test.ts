@@ -158,7 +158,10 @@ describe("review fixture draft and run lifecycle", () => {
       data: { display_number: string; state: string; snapshot_hash: string } | null;
     };
     expect(body.data?.display_number).toMatch(/^YR-/);
-    expect(body.data?.state).toBe("submitted");
+    // Submission freezes the order directly in stage_approval_active with
+    // the first approval step active (backend submit.go semantics) — the
+    // approval queue fills the moment an order is submitted (FE-F7).
+    expect(body.data?.state).toBe("stage_approval_active");
     expect(body.data?.snapshot_hash).not.toBe("");
   });
 

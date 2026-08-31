@@ -42,7 +42,15 @@ function seedOrder(overrides: Record<string, unknown> = {}): string {
         position: 1,
         datasource_name: "orders-mysql",
         state: "approval_active",
-        approval_steps: [{ position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }], state: "pending" }],
+        approval_steps: [
+          {
+            id: "9c6f1a2b-0000-4000-8000-00000000ef21",
+            position: 1,
+            state: "pending",
+            decided_at: null,
+            actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+          },
+        ],
         execution_actors: [
           {
             id: FIXTURE_OWNER_ID,
@@ -64,6 +72,8 @@ function seedOrder(overrides: Record<string, unknown> = {}): string {
     version: 1,
     submitted_at: "2026-08-30T10:00:00Z",
     terminal_at: null,
+    review_run_id: null,
+    sql_text: "SELECT 1;",
     ...overrides,
   });
   return id;

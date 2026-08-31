@@ -437,7 +437,6 @@
     "detail": {
       "title": "工单详情",
       "stages": "数据源阶段",
-      "stageApprovers": "{{count}} 个审核步骤",
       "stageExecutors": "{{count}} 名候选执行人",
       "facts": "冻结快照",
       "submittedAt": "提交时间",
@@ -458,7 +457,17 @@
       "voidDescription": "作废终止全部尚未执行的步骤；已完成的审批与执行记录保留，不会回滚。",
       "partialWarningTitle": "已有变更不可自动回滚",
       "partialWarningDescription": "本工单已有前置阶段执行成功或结果未知。撤回后状态为「部分执行后撤回」，已发生的数据库变更不会自动回滚，需要人工评估善后。",
-      "reasonLabel": "原因（必填，记录进审计）"
+      "reasonLabel": "原因（必填，记录进审计）",
+      "invalidTitle": "工单已失效",
+      "invalidDescription": "冻结审核人已被移除，该工单不再可审批；仅提交人可作废此工单。",
+      "frozenReview": "冻结审核结果",
+      "frozenReviewNote": "以下发现来自提交时冻结的审核快照；审批阶段不会重新运行AI审核。",
+      "comments": "评论",
+      "commentPlaceholder": "添加评论…",
+      "commentSubmit": "发送",
+      "commentsEmpty": "暂无评论",
+      "stepTitle": "步骤 {position}",
+      "stepDecidedAt": "决定于 {time}"
     },
     "state": {
       "submitted": "已提交",
@@ -493,6 +502,53 @@
       "partial_cancelled": "部分取消",
       "result_unknown": "结果未知",
       "skipped": "已跳过"
+    },
+    "sql": {
+      "title": "SQL原文（冻结Revision）",
+      "reveal": "查看SQL明文",
+      "revealNote": "明文经显式Reveal获取，带查看者水印，5分钟内有效；每次查看与复制均写审计。",
+      "copy": "复制",
+      "close": "收起",
+      "validUntil": "有效期至 {time}"
+    }
+  },
+  "approvals": {
+    "title": "审批Workspace",
+    "queue": {
+      "title": "待我审批",
+      "empty": "暂无待审批的工单",
+      "column": {
+        "number": "工单号",
+        "title": "标题",
+        "datasource": "数据源",
+        "pendingStep": "待审步",
+        "submittedAt": "提交时间"
+      },
+      "pendingStep": "阶段 {stage} · 步骤 {step} · {reviewers} 人",
+      "open": "打开详情",
+      "frozenNote": "审批复用提交时冻结的审核结果；本页与审批操作都不会重新运行AI审核。"
+    },
+    "decision": {
+      "cardTitle": "审批决策",
+      "pendingStep": "当前待审：阶段 {stage}（{datasource}）· 步骤 {step}",
+      "frozenReviewNote": "请基于提交时冻结的审核结果与本页展示的SQL进行判断。",
+      "approve": "通过",
+      "reject": "拒绝",
+      "approveTitle": "通过该审批步？",
+      "rejectTitle": "拒绝该审批步？",
+      "approveDescription": "通过后流程按阶段顺序推进；末步通过后工单进入待执行状态，由冻结执行人另行执行，不会自动执行。",
+      "rejectDescription": "任一审批人拒绝都会立即拒绝整单，剩余审批步全部作废，且不可撤销。",
+      "commentLabel": "审批意见（可选，将写入审批时间线）",
+      "conflictTitle": "决定未生效",
+      "conflictHint": "页面已刷新为最新状态，请确认当前状态后再试。"
+    },
+    "stepState": {
+      "pending": "待轮到",
+      "active": "审批中",
+      "approved": "已通过",
+      "rejected": "已拒绝",
+      "skipped": "已作废",
+      "invalid": "已失效"
     }
   }
 }
