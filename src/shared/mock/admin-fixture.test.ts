@@ -10,6 +10,7 @@ import {
   ADMIN_FIXTURE_RULE_SET_ID,
   ADMIN_FIXTURE_TOOL_DRAFT_ID,
   ADMIN_FIXTURE_TOOL_ENABLED_ID,
+  ADMIN_FIXTURE_TOOL_BUILTIN_ID,
   adminFixtureInternals,
   resetAdminFixture,
 } from "./admin-fixture";
@@ -154,8 +155,11 @@ describe("admin datasources", () => {
     ["no password without reuse", datasourceWrite({
       credentials: [{ purpose: "review", username: "ro" }],
     })],
-    ["self-reuse", datasourceWrite({
+    ["keep mode carrying a username on create (no stored row)", datasourceWrite({
       credentials: [{ purpose: "review", username: "ro", reuse_credential_purpose: "review" }],
+    })],
+    ["password and reuse supplied together", datasourceWrite({
+      credentials: [{ purpose: "review", username: "ro", password: { value: "pw" }, reuse_credential_purpose: "query" }],
     })],
     ["duplicate name", datasourceWrite({ name: "prod-order-mysql" })],
   ])("rejects creation: %s", async (_label, payload) => {
@@ -439,8 +443,10 @@ describe("admin prompt tools (skills)", () => {
     setAuth("admin");
     const { body } = await jsonRequest("/admin/prompt-tools");
     const items = (body.data as unknown as { items: Array<Record<string, unknown>> }).items;
-    expect(items).toHaveLength(2);
+    // two user-defined rows + the seeded built-in package
+    expect(items).toHaveLength(3);
     expect(items.every((item) => typeof item.config_hash === "string")).toBe(true);
+    expect(items.filter((item) => item.is_builtin === true)).toHaveLength(1);
   });
 
   it("gates enabling behind the eval check", async () => {
@@ -1116,5 +1122,207 @@ describe("admin fixture malformed payloads", () => {
       definition: { knowledge_text: "t", finding_template: {}, severity_whitelist: ["low"], version: 1 },
     }));
     expect(badScope.body.err_code).toBe(1001);
+  });
+});
+
+// ---- B13 alignment mirror: three-mode credentials, TLS block, builtin guards
+
+const PEM_CA = "-----BEGIN CERTIFICATE-----\nfixture-ca\n-----END CERTIFICATE-----\n";
+const PEM_CERT = "-----BEGIN CERTIFICATE-----\nfixture-cert\n-----END CERTIFICATE-----\n";
+const PEM_KEY = "-----BEGIN PRIVATE KEY-----\nfixture-key\n-----END PRIVATE KEY-----\n";
+
+describe("admin B13 credential three-mode mirror", () => {
+  it("keep copies the stored full credential verbatim (username included)", async () => {
+    setAuth("admin");
+    const { body } = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`,
+      request("PUT", datasourceWrite({
+        name: "prod-order-mysql",
+        credentials: [
+          { purpose: "review", reuse_credential_purpose: "review" },
+          { purpose: "query", reuse_credential_purpose: "query" },
+        ],
+      }), ifMatch(3)),
+    );
+    expect(body.err_code).toBe(0);
+    const internals = adminFixtureInternals();
+    expect(internals.datasourceCredentials(ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, "review")).toEqual({
+      username: "review_ro",
+      password: "revpw-1",
+    });
+    expect(internals.datasourceCredentials(ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, "query")).toEqual({
+      username: "query_ro",
+      password: "qrypw-1",
+    });
+    expect((body.data).credential_status).toEqual({ review: true, query: true, execution: false });
+  });
+
+  it("rejects keep on a purpose without a stored credential", async () => {
+    setAuth("admin");
+    const { body } = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_PG_ID}`,
+      request("PUT", datasourceWrite({
+        name: "analytics-pg",
+        engine: "postgresql",
+        compatibility_mode: "postgresql",
+        credentials: [{ purpose: "execution", reuse_credential_purpose: "execution" }],
+      }), ifMatch(1)),
+    );
+    expect(body.err_code).toBe(1001);
+  });
+
+  it("rejects keep carrying a username on replace (username must be absent)", async () => {
+    setAuth("admin");
+    const { body } = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`,
+      request("PUT", datasourceWrite({
+        name: "prod-order-mysql",
+        credentials: [{ purpose: "review", username: "intruder", reuse_credential_purpose: "review" }],
+      }), ifMatch(3)),
+    );
+    expect(body.err_code).toBe(1001);
+  });
+
+  it("accepts an absent (empty-string) username in keep mode, mirroring the backend decode", async () => {
+    setAuth("admin");
+    const { body } = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`,
+      request("PUT", datasourceWrite({
+        name: "prod-order-mysql",
+        credentials: [{ purpose: "review", username: "", reuse_credential_purpose: "review" }],
+      }), ifMatch(3)),
+    );
+    expect(body.err_code).toBe(0);
+    expect(adminFixtureInternals().datasourceCredentials(ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, "review")).toEqual({
+      username: "review_ro",
+      password: "revpw-1",
+    });
+  });
+});
+
+describe("admin B13 tls material mirror", () => {
+  function pgWrite(tls: unknown): Record<string, unknown> {
+    return datasourceWrite({
+      name: "analytics-pg",
+      engine: "postgresql",
+      compatibility_mode: "postgresql",
+      credentials: [{ purpose: "review", reuse_credential_purpose: "review" }],
+      tls,
+    });
+  }
+
+  it("writes material, exposes only tls_verified, and removes on null", async () => {
+    setAuth("admin");
+    const written = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_PG_ID}`,
+      request("PUT", pgWrite({
+        ca_pem: { value: PEM_CA },
+        client_cert_pem: { value: PEM_CERT },
+        client_key_pem: { value: PEM_KEY },
+      }), ifMatch(1)),
+    );
+    expect(written.body.err_code).toBe(0);
+    expect((written.body.data).tls_verified).toBe(true);
+    // The read face carries the material nowhere — not even partially.
+    expect(JSON.stringify(written.body)).not.toContain("fixture-ca");
+    expect(JSON.stringify(written.body)).not.toContain("fixture-key");
+    expect("tls" in written.body.data).toBe(false);
+    // Full-replacement removal: explicit null restores plaintext.
+    const removed = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_PG_ID}`,
+      request("PUT", pgWrite(null), ifMatch(2)),
+    );
+    expect(removed.body.err_code).toBe(0);
+    expect((removed.body.data).tls_verified).toBe(false);
+  });
+
+  it.each([
+    ["all-null fields", { ca_pem: null, client_cert_pem: null, client_key_pem: null }],
+    ["cert without key", { client_cert_pem: { value: PEM_CERT } }],
+    ["key without cert", { client_key_pem: { value: PEM_KEY } }],
+    ["non-PEM garbage", { ca_pem: { value: "not pem at all" } }],
+    ["certificate block in the key field", { client_key_pem: { value: PEM_CERT } }],
+  ])("rejects a tls block: %s", async (_label, tls) => {
+    setAuth("admin");
+    const { body } = await jsonRequest(
+      `/admin/datasources/${ADMIN_FIXTURE_DATASOURCE_PG_ID}`,
+      request("PUT", pgWrite(tls), ifMatch(1)),
+    );
+    expect(body.err_code).toBe(1001);
+  });
+});
+
+describe("admin B13 builtin skill guards", () => {
+  it("toggles the state but refuses definition, parameter-key and delete mutations", async () => {
+    setAuth("admin");
+    const before = await jsonRequest(`/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    expect((before.body.data).is_builtin).toBe(true);
+    const definition = (before.body.data).definition as Record<string, unknown>;
+    const parameters = (before.body.data).parameters as Record<string, unknown>;
+
+    const toggled = await jsonRequest(
+      `/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`,
+      request("PUT", {
+        name: "builtin-lexical-guards",
+        state: "disabled",
+        engine: "all",
+        parameters,
+        definition,
+      }, ifMatch(1)),
+    );
+    expect(toggled.body.err_code).toBe(0);
+    expect((toggled.body.data).state).toBe("disabled");
+    expect((toggled.body.data).version).toBe(2);
+
+    const redefined = await jsonRequest(
+      `/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`,
+      request("PUT", {
+        name: "builtin-lexical-guards",
+        state: "disabled",
+        engine: "all",
+        parameters,
+        definition: { ...definition, knowledge_text: "tampered" },
+      }, ifMatch(2)),
+    );
+    expect(redefined.body.err_code).toBe(1001);
+
+    const rekeyed = await jsonRequest(
+      `/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`,
+      request("PUT", {
+        name: "builtin-lexical-guards",
+        state: "disabled",
+        engine: "all",
+        parameters: { ...parameters, extra_limit: 5 },
+        definition,
+      }, ifMatch(2)),
+    );
+    expect(rekeyed.body.err_code).toBe(1001);
+
+    const deleted = await jsonRequest(
+      `/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`,
+      request("DELETE", undefined, ifMatch(2)),
+    );
+    expect(deleted.body.err_code).toBe(1001);
+  });
+
+  it("accepts a key-reordered builtin definition (canonical hash, not key order)", async () => {
+    setAuth("admin");
+    const before = await jsonRequest(`/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    const data = before.body.data as {
+      definition: Record<string, unknown>;
+      parameters: Record<string, unknown>;
+    };
+    const reordered = Object.fromEntries(Object.entries(data.definition).reverse());
+    const { body } = await jsonRequest(
+      `/admin/prompt-tools/${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`,
+      request("PUT", {
+        name: "builtin-lexical-guards",
+        state: "enabled",
+        engine: "all",
+        parameters: data.parameters,
+        definition: reordered,
+      }, ifMatch(1)),
+    );
+    expect(body.err_code).toBe(0);
   });
 });

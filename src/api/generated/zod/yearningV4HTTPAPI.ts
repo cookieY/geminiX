@@ -2114,6 +2114,7 @@ export const ListDatasourcesResponse = zod.union([zod.object({
   "database_name": zod.string().nullish(),
   "enabled": zod.boolean(),
   "credential_status": zod.record(zod.string(), zod.boolean()).describe('Presence only; no secret values'),
+  "tls_verified": zod.boolean().describe('True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself.'),
   "referenced_by_flow_count": zod.int().min(listDatasourcesResponseOneDataTwoItemsItemReferencedByFlowCountMin).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -2147,6 +2148,9 @@ export const createDatasourceBodyCredentialsMax = 3;
 
 
 
+
+
+
 export const CreateDatasourceBody = zod.object({
   "name": zod.string().min(1).max(createDatasourceBodyNameMax),
   "engine": zod.enum(['mysql', 'postgresql', 'tidb', 'oceanbase', 'polardb']),
@@ -2159,12 +2163,23 @@ export const CreateDatasourceBody = zod.object({
   "enabled": zod.boolean(),
   "credentials": zod.array(zod.object({
   "purpose": zod.enum(['review', 'query', 'execution']),
-  "username": zod.string().min(1),
+  "username": zod.string().min(1).optional().describe('Required for replace and reuse; must be absent for keep (the stored username is copied verbatim).'),
   "password": zod.union([zod.object({
   "value": zod.string().min(1)
 }),zod.null()]).optional(),
-  "reuse_credential_purpose": zod.union([zod.literal('review'),zod.literal('query'),zod.literal('execution'),zod.literal(null)]).nullish()
-})).min(1).max(createDatasourceBodyCredentialsMax)
+  "reuse_credential_purpose": zod.union([zod.literal('review'),zod.literal('query'),zod.literal('execution'),zod.literal(null)]).nullish().describe('Different purpose: reuse that purpose\'s stored secret with the supplied username. Equal to this row\'s purpose: keep mode (copy the stored full credential). Null when password is supplied.')
+}).describe('Explicit edit modes, exactly one per row: replace (username + password), reuse (username + reuse_credential_purpose pointing at a DIFFERENT purpose), or keep (reuse_credential_purpose equal to this row\'s purpose; copies the stored full credential including username and is only legal when an enabled credential row for that purpose already exists on the datasource, therefore unavailable on create). Supplying password and reuse_credential_purpose together is rejected. Secrets are write-only and never echoed back.')).min(1).max(createDatasourceBodyCredentialsMax),
+  "tls": zod.object({
+  "ca_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded CA certificate chain for server certificate verification.'),
+  "client_cert_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded client certificate for mutual TLS; must be supplied together with client_key_pem.'),
+  "client_key_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded client private key for mutual TLS; must be supplied together with client_cert_pem.')
+}).nullish().describe('Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
 })
 
 export const createDatasourceResponseOneDataReferencedByFlowCountMin = 0;
@@ -2186,6 +2201,7 @@ export const CreateDatasourceResponse = zod.union([zod.object({
   "database_name": zod.string().nullish(),
   "enabled": zod.boolean(),
   "credential_status": zod.record(zod.string(), zod.boolean()).describe('Presence only; no secret values'),
+  "tls_verified": zod.boolean().describe('True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself.'),
   "referenced_by_flow_count": zod.int().min(createDatasourceResponseOneDataReferencedByFlowCountMin).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -2225,6 +2241,7 @@ export const GetDatasourceResponse = zod.union([zod.object({
   "database_name": zod.string().nullish(),
   "enabled": zod.boolean(),
   "credential_status": zod.record(zod.string(), zod.boolean()).describe('Presence only; no secret values'),
+  "tls_verified": zod.boolean().describe('True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself.'),
   "referenced_by_flow_count": zod.int().min(getDatasourceResponseOneDataReferencedByFlowCountMin).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -2268,6 +2285,9 @@ export const replaceDatasourceBodyCredentialsMax = 3;
 
 
 
+
+
+
 export const ReplaceDatasourceBody = zod.object({
   "name": zod.string().min(1).max(replaceDatasourceBodyNameMax),
   "engine": zod.enum(['mysql', 'postgresql', 'tidb', 'oceanbase', 'polardb']),
@@ -2280,12 +2300,23 @@ export const ReplaceDatasourceBody = zod.object({
   "enabled": zod.boolean(),
   "credentials": zod.array(zod.object({
   "purpose": zod.enum(['review', 'query', 'execution']),
-  "username": zod.string().min(1),
+  "username": zod.string().min(1).optional().describe('Required for replace and reuse; must be absent for keep (the stored username is copied verbatim).'),
   "password": zod.union([zod.object({
   "value": zod.string().min(1)
 }),zod.null()]).optional(),
-  "reuse_credential_purpose": zod.union([zod.literal('review'),zod.literal('query'),zod.literal('execution'),zod.literal(null)]).nullish()
-})).min(1).max(replaceDatasourceBodyCredentialsMax)
+  "reuse_credential_purpose": zod.union([zod.literal('review'),zod.literal('query'),zod.literal('execution'),zod.literal(null)]).nullish().describe('Different purpose: reuse that purpose\'s stored secret with the supplied username. Equal to this row\'s purpose: keep mode (copy the stored full credential). Null when password is supplied.')
+}).describe('Explicit edit modes, exactly one per row: replace (username + password), reuse (username + reuse_credential_purpose pointing at a DIFFERENT purpose), or keep (reuse_credential_purpose equal to this row\'s purpose; copies the stored full credential including username and is only legal when an enabled credential row for that purpose already exists on the datasource, therefore unavailable on create). Supplying password and reuse_credential_purpose together is rejected. Secrets are write-only and never echoed back.')).min(1).max(replaceDatasourceBodyCredentialsMax),
+  "tls": zod.object({
+  "ca_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded CA certificate chain for server certificate verification.'),
+  "client_cert_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded client certificate for mutual TLS; must be supplied together with client_key_pem.'),
+  "client_key_pem": zod.union([zod.object({
+  "value": zod.string().min(1)
+}),zod.null()]).optional().describe('PEM-encoded client private key for mutual TLS; must be supplied together with client_cert_pem.')
+}).nullish().describe('Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
 })
 
 export const replaceDatasourceResponseOneDataReferencedByFlowCountMin = 0;
@@ -2307,6 +2338,7 @@ export const ReplaceDatasourceResponse = zod.union([zod.object({
   "database_name": zod.string().nullish(),
   "enabled": zod.boolean(),
   "credential_status": zod.record(zod.string(), zod.boolean()).describe('Presence only; no secret values'),
+  "tls_verified": zod.boolean().describe('True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself.'),
   "referenced_by_flow_count": zod.int().min(replaceDatasourceResponseOneDataReferencedByFlowCountMin).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -2912,6 +2944,7 @@ export const ListPromptToolsResponse = zod.union([zod.object({
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
+  "is_builtin": zod.boolean().describe('Built-in skills are system-owned: only the state may be toggled; the definition cannot be edited and the skill cannot be deleted (PRD 9.3.1). Read-only, emitted by the backend view.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })))
@@ -3022,6 +3055,7 @@ export const CreatePromptToolResponse = zod.union([zod.object({
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
+  "is_builtin": zod.boolean().describe('Built-in skills are system-owned: only the state may be toggled; the definition cannot be edited and the skill cannot be deleted (PRD 9.3.1). Read-only, emitted by the backend view.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })),
@@ -3091,6 +3125,7 @@ export const GetPromptToolResponse = zod.union([zod.object({
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
+  "is_builtin": zod.boolean().describe('Built-in skills are system-owned: only the state may be toggled; the definition cannot be edited and the skill cannot be deleted (PRD 9.3.1). Read-only, emitted by the backend view.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })),
@@ -3211,6 +3246,7 @@ export const ReplacePromptToolResponse = zod.union([zod.object({
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
+  "is_builtin": zod.boolean().describe('Built-in skills are system-owned: only the state may be toggled; the definition cannot be edited and the skill cannot be deleted (PRD 9.3.1). Read-only, emitted by the backend view.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })),

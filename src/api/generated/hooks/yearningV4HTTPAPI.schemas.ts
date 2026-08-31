@@ -572,6 +572,7 @@ export const CredentialWritePurpose = {
 } as const;
 
 /**
+ * Different purpose: reuse that purpose's stored secret with the supplied username. Equal to this row's purpose: keep mode (copy the stored full credential). Null when password is supplied.
  * @nullable
  */
 export type CredentialWriteReuseCredentialPurpose = typeof CredentialWriteReuseCredentialPurpose[keyof typeof CredentialWriteReuseCredentialPurpose] | null;
@@ -583,12 +584,21 @@ export const CredentialWriteReuseCredentialPurpose = {
   execution: 'execution',
 } as const;
 
+/**
+ * Explicit edit modes, exactly one per row: replace (username + password), reuse (username + reuse_credential_purpose pointing at a DIFFERENT purpose), or keep (reuse_credential_purpose equal to this row's purpose; copies the stored full credential including username and is only legal when an enabled credential row for that purpose already exists on the datasource, therefore unavailable on create). Supplying password and reuse_credential_purpose together is rejected. Secrets are write-only and never echoed back.
+ */
 export interface CredentialWrite {
   purpose: CredentialWritePurpose;
-  /** @minLength 1 */
-  username: string;
+  /**
+     * Required for replace and reuse; must be absent for keep (the stored username is copied verbatim).
+     * @minLength 1
+     */
+  username?: string;
   password?: SecretInput | null;
-  /** @nullable */
+  /**
+     * Different purpose: reuse that purpose's stored secret with the supplied username. Equal to this row's purpose: keep mode (copy the stored full credential). Null when password is supplied.
+     * @nullable
+     */
   reuse_credential_purpose?: CredentialWriteReuseCredentialPurpose;
 }
 
@@ -641,6 +651,19 @@ export const DatasourceWriteDeploymentKind = {
   cloud: 'cloud',
 } as const;
 
+/**
+ * Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.
+ * @nullable
+ */
+export type DatasourceTLSWrite = {
+  /** PEM-encoded CA certificate chain for server certificate verification. */
+  ca_pem?: SecretInput | null;
+  /** PEM-encoded client certificate for mutual TLS; must be supplied together with client_key_pem. */
+  client_cert_pem?: SecretInput | null;
+  /** PEM-encoded client private key for mutual TLS; must be supplied together with client_cert_pem. */
+  client_key_pem?: SecretInput | null;
+} | null;
+
 export interface DatasourceWrite {
   /**
      * @minLength 1
@@ -676,6 +699,7 @@ export interface DatasourceWrite {
      * @maxItems 3
      */
   credentials: CredentialWrite[];
+  tls?: DatasourceTLSWrite | null;
 }
 
 export type DatasourceEngine = typeof DatasourceEngine[keyof typeof DatasourceEngine];
@@ -723,6 +747,8 @@ export interface Datasource {
   enabled: boolean;
   /** Presence only; no secret values */
   credential_status: DatasourceCredentialStatus;
+  /** True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself. */
+  tls_verified: boolean;
   /** @minimum 0 */
   referenced_by_flow_count?: number;
   /** @minimum 1 */
@@ -904,6 +930,8 @@ export type PromptTool = PromptToolWrite & {
   config_hash: string;
   /** @minimum 1 */
   version: number;
+  /** Built-in skills are system-owned: only the state may be toggled; the definition cannot be edited and the skill cannot be deleted (PRD 9.3.1). Read-only, emitted by the backend view. */
+  is_builtin: boolean;
   created_at: Timestamp;
   updated_at: Timestamp;
 };

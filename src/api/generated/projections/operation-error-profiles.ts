@@ -124,9 +124,7 @@ export const OPERATION_ERROR_PROFILES: {
   "admin_create": {
     "err_codes": [
       1001,
-      1005,
-      1007,
-      1008
+      1005
     ],
     "operations": [
       "createUser",
@@ -147,9 +145,7 @@ export const OPERATION_ERROR_PROFILES: {
       1002,
       1003,
       1004,
-      1005,
-      1007,
-      1008
+      1005
     ],
     "operations": [
       "updateUser",
@@ -169,9 +165,7 @@ export const OPERATION_ERROR_PROFILES: {
       1001,
       1002,
       1006,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "deleteIdentityProvider",
@@ -190,9 +184,7 @@ export const OPERATION_ERROR_PROFILES: {
       1103,
       1104,
       1105,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "deleteUser"
@@ -205,9 +197,7 @@ export const OPERATION_ERROR_PROFILES: {
       1003,
       1004,
       1108,
-      1107,
-      1007,
-      1008
+      1107
     ],
     "operations": [
       "createFlow",
@@ -219,9 +209,7 @@ export const OPERATION_ERROR_PROFILES: {
       1001,
       1002,
       1106,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "deleteFlow"
@@ -232,9 +220,7 @@ export const OPERATION_ERROR_PROFILES: {
       1001,
       1002,
       1107,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "deleteDatasource"
@@ -244,9 +230,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1001,
       1002,
-      1012,
-      1007,
-      1008
+      1012
     ],
     "operations": [
       "testIdentityProviderConnection",
@@ -262,9 +246,7 @@ export const OPERATION_ERROR_PROFILES: {
       1002,
       1003,
       1004,
-      1011,
-      1007,
-      1008
+      1011
     ],
     "operations": [
       "replaceSettingsNamespace",
@@ -276,9 +258,7 @@ export const OPERATION_ERROR_PROFILES: {
       1001,
       1002,
       1003,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "publishAnnouncementRevision"
@@ -291,9 +271,7 @@ export const OPERATION_ERROR_PROFILES: {
       1003,
       1004,
       5003,
-      5005,
-      1007,
-      1008
+      5005
     ],
     "operations": [
       "confirmLegacyMigrationCandidate"
@@ -307,9 +285,7 @@ export const OPERATION_ERROR_PROFILES: {
       1004,
       5002,
       5003,
-      5005,
-      1007,
-      1008
+      5005
     ],
     "operations": [
       "approveLegacyMigrationRun"
@@ -320,13 +296,10 @@ export const OPERATION_ERROR_PROFILES: {
       1001,
       1002,
       2014,
-      1005,
-      1007,
-      1008
+      1005
     ],
     "operations": [
-      "createChangeDraft",
-      "copyChangeOrderToDraft"
+      "createChangeDraft"
     ]
   },
   "draft_update": {
@@ -336,9 +309,7 @@ export const OPERATION_ERROR_PROFILES: {
       1003,
       1004,
       1010,
-      2014,
-      1007,
-      1008
+      2014
     ],
     "operations": [
       "updateChangeDraft",
@@ -349,9 +320,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1002,
       1010,
-      1004,
-      1007,
-      1008
+      1004
     ],
     "operations": [
       "deleteChangeDraft"
@@ -361,9 +330,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1001,
       1002,
-      1011,
-      1007,
-      1008
+      1011
     ],
     "operations": [
       "revealDraftSql",
@@ -618,9 +585,7 @@ export const OPERATION_ERROR_PROFILES: {
       4001,
       4002,
       4004,
-      4005,
-      1007,
-      1008
+      4005
     ],
     "operations": [
       "createQuerySession"
@@ -665,9 +630,7 @@ export const OPERATION_ERROR_PROFILES: {
       4006,
       4007,
       4008,
-      4009,
-      1007,
-      1008
+      4009
     ],
     "operations": [
       "executeSelect"
@@ -695,6 +658,19 @@ export const OPERATION_ERROR_PROFILES: {
     ],
     "operations": [
       "getTask"
+    ]
+  },
+  "draft_copy": {
+    "err_codes": [
+      1001,
+      1002,
+      2014,
+      1005,
+      1007,
+      1008
+    ],
+    "operations": [
+      "copyChangeOrderToDraft"
     ]
   }
 },

@@ -131,3 +131,57 @@ test("admin routes reject a non-admin session", async ({ page }) => {
   await nonAdmin.goto("/admin/datasources");
   await expect(nonAdmin.getByText("无权访问")).toBeVisible();
 });
+
+// FE-F9-REVIEW-ADMIN-ALIGNMENT gates (B13 contract surface, production build):
+// builtin lock badge + locked definition face, the credential three-mode
+// form (keep only on configured rows), and TLS material write-only form +
+// tls_verified list states.
+
+test("builtin skill renders the lock badge and only the state stays toggleable", async ({ page }) => {
+  await page.goto("/admin/review-engine/skills");
+  const builtinRow = page.locator("tr", { hasText: "builtin-lexical-guards" });
+  await expect(builtinRow.getByTestId(/review-input-builtin-/)).toContainText("内置");
+  await expect(builtinRow.getByText(/仅状态可切换/)).toBeVisible();
+  await expect(builtinRow.getByTestId(/review-input-delete-/)).toBeDisabled();
+
+  await builtinRow.getByTestId(/review-input-edit-/).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByTestId("review-input-builtin-notice")).toBeVisible();
+  await expect(dialog.getByTestId("review-input-name")).toBeDisabled();
+  await expect(dialog.getByTestId("review-input-knowledge-text")).toBeDisabled();
+  await expect(dialog.getByTestId("review-input-state-select")).toBeEnabled();
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(dialog).toBeHidden();
+});
+
+test("credential rows edit in exactly one explicit mode; keep only on configured rows", async ({ page }) => {
+  await page.goto("/admin/datasources");
+  await expect(page.getByTestId(/ds-tls-verified-/)).toContainText("强制校验TLS");
+  await expect(page.getByTestId(/ds-tls-plaintext-/)).toContainText("明文");
+
+  const pgRow = page.locator("tr", { hasText: "analytics-pg" });
+  await pgRow.getByTestId(/ds-edit-/).click();
+  const dialog = page.getByRole("dialog");
+  // Configured rows open in keep mode — the storage-preserving no-op.
+  await expect(dialog.getByTestId("credential-keep-note-review")).toBeVisible();
+  // The write-only TLS material block is checked but never prefilled.
+  await expect(dialog.getByTestId("ds-tls-enabled")).toBeChecked();
+  await expect(dialog.getByTestId("ds-tls-ca")).toHaveValue("");
+  await expect(dialog.getByTestId("ds-tls-cert")).toHaveValue("");
+  await expect(dialog.getByTestId("ds-tls-key")).toHaveValue("");
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(dialog).toBeHidden();
+
+  // A create form offers neither keep nor reuse: nothing is stored yet.
+  await page.getByTestId("ds-create").click();
+  const createDialog = page.getByRole("dialog");
+  await createDialog.getByTestId("credential-mode-review").click();
+  // The popup portals to the document body (outside the dialog element) —
+  // wait for it at page scope; the count itself is the assertion: replace
+  // is the only offered mode on create.
+  await expect(page.getByRole("option")).toHaveCount(1);
+  const optionTexts = await page.getByRole("option").allTextContents();
+  expect(optionTexts).toEqual(["替换（新用户名＋密码）"]);
+  await createDialog.getByRole("button", { name: "取消" }).click();
+  await expect(createDialog).toBeHidden();
+});

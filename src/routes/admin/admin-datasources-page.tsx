@@ -39,6 +39,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -68,20 +69,28 @@ import {
  * Engine/兼容模式/部署类型/版本约束 and the Review/Query/Execution purpose
  * credentials; the legacy flow_id/rule_id/principal/is_query/SSL-file fields
  * are consciously gone. Secrets are write-only: the API never echoes a
- * credential, the form never prefills one, and a password is either typed
- * fresh (replace) or explicitly reused from another purpose's stored
- * credential (datasource/service.go replaceCredentials — full-set
- * replacement with cross-purpose reuse, the minimal-privilege risk of which
- * the form must warn about).
+ * credential or TLS material, the form never prefills one, and every
+ * credential row edits in exactly ONE explicit mode (B13 contract):
+ * replace (username + fresh password), reuse (username + another purpose's
+ * stored secret) or keep (only offered on a row that already has a stored
+ * credential; the payload then carries reuse_credential_purpose equal to the
+ * row's own purpose and no username at all).
  *
- * TLS material has no declared fields in the frozen OpenAPI (the
- * datasource_tls_materials table is backend-internal and only entered via
- * the legacy migration) — no TLS form is rendered and none is invented;
- * recorded in migration contract §16.
+ * TLS material is the declared DatasourceTLSWrite surface: CA / client cert
+ * / client key are write-only PEM textareas, the cert and key must be
+ * supplied together, and the block replaces fully — submitting without the
+ * block removes every stored material and returns the datasource to
+ * plaintext, so keeping verified TLS means re-entering the full material on
+ * every save. The list surfaces tls_verified (verified-vs-plaintext) and
+ * nothing about the material itself.
  */
 
 const PURPOSES = ["review", "query", "execution"] as const;
 type Purpose = (typeof PURPOSES)[number];
+
+/** The three explicit credential edit modes of the B13 contract; "keep" is
+ * only legal for a purpose that already has a stored credential. */
+type CredentialMode = "replace" | "reuse" | "keep";
 
 const ENGINE_OPTIONS = [
   { value: "mysql", modes: ["mysql"] },
@@ -93,11 +102,21 @@ const ENGINE_OPTIONS = [
 
 interface PurposeFormState {
   included: boolean;
+  mode: CredentialMode;
   username: string;
   password: string;
-  /** "typed" = supply a fresh password; otherwise copy the stored
-   * credential of the chosen purpose (backend reuse_credential_purpose). */
-  reuse: Purpose | "typed";
+  /** Source purpose for reuse mode (another purpose with a stored
+   * credential; the old row's secret is reused under the new username). */
+  reuseSource: Purpose | "";
+}
+
+interface TLSFormState {
+  /** Checked = submit a DatasourceTLSWrite block; unchecked = submit null
+   * (full-replacement semantics: removal + plaintext). */
+  enabled: boolean;
+  caPem: string;
+  clientCertPem: string;
+  clientKeyPem: string;
 }
 
 interface DatasourceFormState {
@@ -111,13 +130,14 @@ interface DatasourceFormState {
   versionConstraint: string;
   enabled: boolean;
   purposes: Record<Purpose, PurposeFormState>;
+  tls: TLSFormState;
 }
 
 function freshPurposes(): Record<Purpose, PurposeFormState> {
   return {
-    review: { included: true, username: "", password: "", reuse: "typed" },
-    query: { included: false, username: "", password: "", reuse: "typed" },
-    execution: { included: false, username: "", password: "", reuse: "typed" },
+    review: { included: true, mode: "replace", username: "", password: "", reuseSource: "" },
+    query: { included: false, mode: "replace", username: "", password: "", reuseSource: "" },
+    execution: { included: false, mode: "replace", username: "", password: "", reuseSource: "" },
   };
 }
 
@@ -133,14 +153,18 @@ function formForCreate(): DatasourceFormState {
     versionConstraint: "",
     enabled: true,
     purposes: freshPurposes(),
+    tls: { enabled: false, caPem: "", clientCertPem: "", clientKeyPem: "" },
   };
 }
 
 function formForEdit(ds: Datasource): DatasourceFormState {
   const purposes = freshPurposes();
   for (const purpose of PURPOSES) {
-    purposes[purpose].included = ds.credential_status[purpose] === true;
-    purposes[purpose].reuse = "typed";
+    const configured = ds.credential_status[purpose] === true;
+    purposes[purpose].included = configured;
+    // Configured rows default to keep — the no-op that preserves the stored
+    // credential; unconfigured rows can only replace.
+    purposes[purpose].mode = configured ? "keep" : "replace";
   }
   return {
     name: ds.name,
@@ -153,6 +177,8 @@ function formForEdit(ds: Datasource): DatasourceFormState {
     versionConstraint: "",
     enabled: ds.enabled,
     purposes,
+    // Materials never echo; the checkbox reflects the current state only.
+    tls: { enabled: ds.tls_verified, caPem: "", clientCertPem: "", clientKeyPem: "" },
   };
 }
 
@@ -164,10 +190,10 @@ function CredentialPurposeRow({
 }: {
   purpose: Purpose;
   state: PurposeFormState;
-  /** Stored credential presence on the edited row (null on create): reuse
-   * resolves OLD stored rows only, so candidates come from the view's
-   * credential_status — a purpose newly added in the same payload cannot
-   * source a stored secret. */
+  /** Stored credential presence on the edited row (null on create): keep
+   * and reuse resolve OLD stored rows only, so candidates come from the
+   * view's credential_status — a purpose newly added in the same payload
+   * cannot source a stored secret. */
   storedStatus: Record<string, boolean> | null;
   onChange: (next: PurposeFormState) => void;
 }) {
@@ -195,60 +221,209 @@ function CredentialPurposeRow({
         ) : null}
       </div>
       {state.included ? (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <Label htmlFor={`credential-username-${purpose}`}>{t("admin.datasources.username")}</Label>
-            <Input
-              id={`credential-username-${purpose}`}
-              value={state.username}
-              onChange={(event) => { onChange({ ...state, username: event.target.value }); }}
-              autoComplete="off"
-              placeholder={configured ? t("admin.datasources.usernameNotEchoed") : ""}
-              data-testid={`credential-username-${purpose}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`credential-password-${purpose}`}>{t("admin.datasources.password")}</Label>
-            <Input
-              id={`credential-password-${purpose}`}
-              type="password"
-              value={state.password}
-              onChange={(event) => { onChange({ ...state, password: event.target.value, reuse: "typed" }); }}
-              autoComplete="new-password"
-              placeholder={configured ? t("admin.datasources.passwordKeepPlaceholder") : ""}
-              data-testid={`credential-password-${purpose}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <Label>{t("admin.datasources.reuseFrom")}</Label>
+            <Label>{t("admin.datasources.credentialMode")}</Label>
             <Select
-              value={state.reuse}
+              value={state.mode}
               onValueChange={(next) => {
                 if (next === null) return;
-                // Choosing a reuse source discards the typed value (it would
-                // be ignored by the write); "typed" keeps it.
-                onChange({ ...state, reuse: next, password: next === "typed" ? state.password : "" });
+                // keep hides username/password entirely; switching away
+                // starts from empty values so no stale secret input rides
+                // along into the payload.
+                onChange({
+                  ...state,
+                  mode: next,
+                  username: next === "keep" ? "" : state.username,
+                  password: next === "replace" ? state.password : "",
+                  reuseSource: next === "reuse" ? state.reuseSource : "",
+                });
               }}
             >
-              <SelectTrigger data-testid={`credential-reuse-${purpose}`}>
+              <SelectTrigger data-testid={`credential-mode-${purpose}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="typed">{t("admin.datasources.reuseTyped")}</SelectItem>
-                {reuseSources.map((candidate) => (
-                  <SelectItem key={candidate} value={candidate}>
-                    {t("admin.datasources.reuseCopyOf", { purpose: t(`admin.datasources.purpose.${candidate}`) })}
-                  </SelectItem>
-                ))}
+                <SelectItem value="replace">{t("admin.datasources.modeReplace")}</SelectItem>
+                {reuseSources.length > 0 ? (
+                  <SelectItem value="reuse">{t("admin.datasources.modeReuse")}</SelectItem>
+                ) : null}
+                {configured ? (
+                  <SelectItem value="keep">{t("admin.datasources.modeKeep")}</SelectItem>
+                ) : null}
               </SelectContent>
             </Select>
-            {state.reuse !== "typed" ? (
-              <p className="text-xs text-[var(--risk-warning)]">
-                {t("admin.datasources.reuseRiskHint")}
+          </div>
+          {state.mode === "keep" ? (
+            <p className="text-muted-foreground text-xs" data-testid={`credential-keep-note-${purpose}`}>
+              {t("admin.datasources.keepNote")}
+            </p>
+          ) : null}
+          {state.mode !== "keep" ? (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={`credential-username-${purpose}`}>{t("admin.datasources.username")}</Label>
+                <Input
+                  id={`credential-username-${purpose}`}
+                  value={state.username}
+                  onChange={(event) => { onChange({ ...state, username: event.target.value }); }}
+                  autoComplete="off"
+                  data-testid={`credential-username-${purpose}`}
+                />
+              </div>
+              {state.mode === "replace" ? (
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor={`credential-password-${purpose}`}>{t("admin.datasources.password")}</Label>
+                  <Input
+                    id={`credential-password-${purpose}`}
+                    type="password"
+                    value={state.password}
+                    onChange={(event) => { onChange({ ...state, password: event.target.value }); }}
+                    autoComplete="new-password"
+                    data-testid={`credential-password-${purpose}`}
+                  />
+                </div>
+              ) : null}
+              {state.mode === "reuse" ? (
+                <div className="flex flex-col gap-1">
+                  <Label>{t("admin.datasources.reuseFrom")}</Label>
+                  <Select
+                    value={state.reuseSource === "" ? undefined : state.reuseSource}
+                    onValueChange={(next) => {
+                      if (next === null) return;
+                      onChange({ ...state, reuseSource: next });
+                    }}
+                  >
+                    <SelectTrigger data-testid={`credential-reuse-${purpose}`}>
+                      <SelectValue placeholder={t("admin.datasources.reusePlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reuseSources.map((candidate) => (
+                        <SelectItem key={candidate} value={candidate}>
+                          {t("admin.datasources.reuseCopyOf", { purpose: t(`admin.datasources.purpose.${candidate}`) })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {state.mode === "reuse" ? (
+            <p className="text-xs text-[var(--risk-warning)]">
+              {t("admin.datasources.reuseRiskHint")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** TLS material section (declared DatasourceTLSWrite). Write-only PEM
+ * textareas that never prefill; the client mirrors the pairing rule
+ * (cert+key together) and the backend stays authoritative on PEM shape. */
+function TLSMaterialSection({
+  state,
+  wasVerified,
+  onChange,
+}: {
+  state: TLSFormState;
+  /** tls_verified of the edited row: unchecking on a verified row is the
+   * declared removal path and must say so before the submit. */
+  wasVerified: boolean;
+  onChange: (next: TLSFormState) => void;
+}) {
+  const { t } = useTranslation();
+  const pairingBroken =
+    state.enabled && (state.clientCertPem === "") !== (state.clientKeyPem === "");
+  const noMaterial =
+    state.enabled && state.caPem === "" && state.clientCertPem === "" && state.clientKeyPem === "";
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="ds-tls-enabled"
+          checked={state.enabled}
+          onChange={(event) => { onChange({ ...state, enabled: event.target.checked }); }}
+          className="size-4"
+          data-testid="ds-tls-enabled"
+        />
+        <Label htmlFor="ds-tls-enabled" className="cursor-pointer">
+          {t("admin.datasources.tlsTitle")}
+        </Label>
+        {wasVerified ? (
+          <Badge variant="secondary">{t("admin.datasources.tlsVerifiedBadge")}</Badge>
+        ) : null}
+      </div>
+      {!state.enabled && wasVerified ? (
+        <Alert variant="destructive" data-testid="ds-tls-removal-warning">
+          <AlertTitle>{t("admin.datasources.tlsRemovalTitle")}</AlertTitle>
+          <AlertDescription>{t("admin.datasources.tlsRemovalBody")}</AlertDescription>
+        </Alert>
+      ) : null}
+      {state.enabled ? (
+        <>
+          <p className="text-muted-foreground text-xs" data-testid="ds-tls-hint">
+            {t("admin.datasources.tlsHint")}
+          </p>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ds-tls-ca">{t("admin.datasources.tlsCa")}</Label>
+              <Textarea
+                id="ds-tls-ca"
+                rows={3}
+                value={state.caPem}
+                onChange={(event) => { onChange({ ...state, caPem: event.target.value }); }}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono text-xs"
+                placeholder="-----BEGIN CERTIFICATE-----"
+                data-testid="ds-tls-ca"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ds-tls-cert">{t("admin.datasources.tlsCert")}</Label>
+              <Textarea
+                id="ds-tls-cert"
+                rows={3}
+                value={state.clientCertPem}
+                onChange={(event) => { onChange({ ...state, clientCertPem: event.target.value }); }}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono text-xs"
+                placeholder="-----BEGIN CERTIFICATE-----"
+                data-testid="ds-tls-cert"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ds-tls-key">{t("admin.datasources.tlsKey")}</Label>
+              <Textarea
+                id="ds-tls-key"
+                rows={3}
+                value={state.clientKeyPem}
+                onChange={(event) => { onChange({ ...state, clientKeyPem: event.target.value }); }}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono text-xs"
+                placeholder="-----BEGIN PRIVATE KEY-----"
+                data-testid="ds-tls-key"
+              />
+              <p className="text-muted-foreground text-xs">{t("admin.datasources.tlsPairHint")}</p>
+            </div>
+            {noMaterial ? (
+              <p className="text-xs text-destructive" data-testid="ds-tls-empty-error">
+                {t("admin.datasources.tlsEmptyError")}
+              </p>
+            ) : null}
+            {pairingBroken ? (
+              <p className="text-xs text-destructive" data-testid="ds-tls-pair-error">
+                {t("admin.datasources.tlsPairError")}
               </p>
             ) : null}
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -280,6 +455,36 @@ function DatasourceFormDialog({
   const mutation = editing === null ? createMutation : replaceMutation;
   const submitting = mutation.isPending;
 
+  // Client-side mirrors of the declared write rules: a reuse row needs its
+  // source picked, a replace row needs username+password, keep carries
+  // neither, an enabled TLS block needs material with cert/key paired, the
+  // base fields are minLength 1, and at least one purpose must stay in the
+  // full-replacement payload (minItems 1). The backend stays authoritative —
+  // these only keep obviously-invalid payloads from leaving the form.
+  const tlsPairingBroken =
+    form.tls.enabled && (form.tls.clientCertPem === "") !== (form.tls.clientKeyPem === "");
+  const tlsEmpty =
+    form.tls.enabled &&
+    form.tls.caPem === "" &&
+    form.tls.clientCertPem === "" &&
+    form.tls.clientKeyPem === "";
+  const purposeInvalid = PURPOSES.some((purpose) => {
+    const state = form.purposes[purpose];
+    if (!state.included) return false;
+    if (state.mode === "keep") return false;
+    if (state.mode === "reuse") return state.reuseSource === "" || state.username === "";
+    return state.username === "" || state.password === "";
+  });
+  // The view never echoes version_constraint, so an edit must re-type it;
+  // the port is minimum 1 / maximum 65535 (clearing it decodes to 0).
+  const port = Number(form.port);
+  const portInvalid = !Number.isInteger(port) || port < 1 || port > 65535;
+  const basicsInvalid =
+    form.name === "" || form.host === "" || form.versionConstraint === "" || portInvalid;
+  const anyPurposeIncluded = PURPOSES.some((purpose) => form.purposes[purpose].included);
+  const formValid =
+    !tlsPairingBroken && !tlsEmpty && !purposeInvalid && !basicsInvalid && anyPurposeIncluded;
+
   const submit = () => {
     setErrorKey(null);
     setErrorRequestId(null);
@@ -287,13 +492,34 @@ function DatasourceFormDialog({
     for (const purpose of PURPOSES) {
       const state = form.purposes[purpose];
       if (!state.included) continue;
+      if (state.mode === "keep") {
+        // keep: reuse_credential_purpose equal to the row's own purpose;
+        // username and password must be ABSENT from the payload.
+        credentials.push({ purpose, reuse_credential_purpose: purpose });
+        continue;
+      }
+      if (state.mode === "reuse") {
+        if (state.reuseSource === "") continue;
+        credentials.push({
+          purpose,
+          username: state.username,
+          reuse_credential_purpose: state.reuseSource,
+        });
+        continue;
+      }
       credentials.push({
         purpose,
         username: state.username,
-        password: state.reuse === "typed" ? { value: state.password } : undefined,
-        reuse_credential_purpose: state.reuse === "typed" ? undefined : state.reuse,
+        password: { value: state.password },
       });
     }
+    const tls = form.tls.enabled
+      ? {
+          ca_pem: form.tls.caPem === "" ? null : { value: form.tls.caPem },
+          client_cert_pem: form.tls.clientCertPem === "" ? null : { value: form.tls.clientCertPem },
+          client_key_pem: form.tls.clientKeyPem === "" ? null : { value: form.tls.clientKeyPem },
+        }
+      : null;
     const write: DatasourceWrite = {
       name: form.name,
       engine: form.engine as DatasourceWrite["engine"],
@@ -305,6 +531,9 @@ function DatasourceFormDialog({
       version_constraint: form.versionConstraint,
       enabled: form.enabled,
       credentials,
+      // Always explicit: null is the declared removal path, so an unchecked
+      // box can never "accidentally" keep stale material.
+      tls,
     };
     const onWriteError = (operationId: string) => (error: unknown) => {
       const display = describeError(error, operationId);
@@ -480,6 +709,11 @@ function DatasourceFormDialog({
               />
             ))}
           </div>
+          <TLSMaterialSection
+            state={form.tls}
+            wasVerified={editing !== null && editing.tls_verified}
+            onChange={(next) => { setForm({ ...form, tls: next }); }}
+          />
           {errorKey !== null ? (
             <Alert variant="destructive" data-testid="ds-form-error">
               <AlertTitle>{t(errorKey)}</AlertTitle>
@@ -488,12 +722,17 @@ function DatasourceFormDialog({
               </AlertDescription>
             </Alert>
           ) : null}
+          {!formValid ? (
+            <p className="text-muted-foreground text-xs" data-testid="ds-form-invalid-hint">
+              {t("admin.datasources.formInvalidHint")}
+            </p>
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={submitting} data-testid="ds-submit">
+          <Button onClick={submit} disabled={submitting || !formValid} data-testid="ds-submit">
             {submitting ? t("common.saving") : t("common.save")}
           </Button>
         </DialogFooter>
@@ -643,7 +882,19 @@ function DatasourceRow({
         {datasource.engine}/{datasource.compatibility_mode}
       </TableCell>
       <TableCell className="font-mono text-xs">
-        {datasource.host}:{datasource.port}
+        <div className="flex flex-col items-start gap-1">
+          <span>
+            {datasource.host}:{datasource.port}
+          </span>
+          <Badge
+            variant={datasource.tls_verified ? "secondary" : "outline"}
+            data-testid={`ds-tls-${datasource.tls_verified ? "verified" : "plaintext"}-${datasource.id}`}
+          >
+            {datasource.tls_verified
+              ? t("admin.datasources.tlsVerifiedBadge")
+              : t("admin.datasources.tlsPlaintextBadge")}
+          </Badge>
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex gap-1">

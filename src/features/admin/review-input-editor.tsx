@@ -45,15 +45,20 @@ export interface ReviewInputEditorValue {
 export function ReviewInputDefinitionEditor({
   value,
   onChange,
+  disabled = false,
 }: {
   value: ReviewInputEditorValue;
   onChange: (next: ReviewInputEditorValue) => void;
+  /** Locks every definition field — used for built-in skills whose
+   * definition face is system-owned (only the state may be toggled). */
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const { definition } = value;
   const template = definition.finding_template;
 
   const patchDefinition = (patch: Partial<ReviewInputDefinition>) => {
+    if (disabled) return;
     onChange({ ...value, definition: { ...definition, ...patch } });
   };
   const patchTemplate = (patch: Partial<ReviewInputDefinition["finding_template"]>) => {
@@ -78,6 +83,7 @@ export function ReviewInputDefinitionEditor({
           rows={4}
           value={definition.knowledge_text}
           onChange={(event) => { patchDefinition({ knowledge_text: event.target.value }); }}
+          disabled={disabled}
           data-testid="review-input-knowledge-text"
         />
         <p className="text-muted-foreground text-xs">{t("admin.reviewInput.knowledgeTextHint")}</p>
@@ -90,6 +96,7 @@ export function ReviewInputDefinitionEditor({
             value={template.finding_key ?? ""}
             onChange={(event) => { patchTemplate({ finding_key: event.target.value }); }}
             placeholder="experience.orders.fullscan"
+            disabled={disabled}
             data-testid="review-input-finding-key"
           />
         </div>
@@ -102,7 +109,7 @@ export function ReviewInputDefinitionEditor({
               patchTemplate({ category: next });
             }}
           >
-            <SelectTrigger data-testid="review-input-category">
+            <SelectTrigger data-testid="review-input-category" disabled={disabled}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -121,6 +128,7 @@ export function ReviewInputDefinitionEditor({
           id="review-input-title"
           value={template.title ?? ""}
           onChange={(event) => { patchTemplate({ title: event.target.value }); }}
+          disabled={disabled}
           data-testid="review-input-title"
         />
       </div>
@@ -131,6 +139,7 @@ export function ReviewInputDefinitionEditor({
           rows={2}
           value={template.message ?? ""}
           onChange={(event) => { patchTemplate({ message: event.target.value }); }}
+          disabled={disabled}
           data-testid="review-input-message"
         />
       </div>
@@ -141,6 +150,7 @@ export function ReviewInputDefinitionEditor({
           rows={2}
           value={template.suggestion ?? ""}
           onChange={(event) => { patchTemplate({ suggestion: event.target.value }); }}
+          disabled={disabled}
           data-testid="review-input-suggestion"
         />
       </div>
@@ -155,6 +165,7 @@ export function ReviewInputDefinitionEditor({
                 type="button"
                 aria-pressed={active}
                 onClick={() => { patchTemplate({ severity: active ? undefined : severity }); }}
+                disabled={disabled}
                 className="focus-visible:ring-ring rounded-full outline-none focus-visible:ring-2"
                 data-testid={`review-input-template-severity-${severity}`}
               >
@@ -178,6 +189,7 @@ export function ReviewInputDefinitionEditor({
                 type="button"
                 aria-pressed={active}
                 onClick={() => { toggleSeverity(severity); }}
+                disabled={disabled}
                 className="focus-visible:ring-ring rounded-full outline-none focus-visible:ring-2"
                 data-testid={`review-input-severity-${severity}`}
               >

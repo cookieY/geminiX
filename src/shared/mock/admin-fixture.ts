@@ -31,10 +31,13 @@ import type {
  * selection_priority ascending order (provider/chain.go:3); enabling a
  * review input runs the static eval gate (prompttools.go RunPromptToolEval,
  * 1001 on failure); settings impact level is "high" when a changed field's
- * impact is "high" or "immediate" (settings/service.go:110). TLS material
- * has no declared datasource fields (backend-internal only) and prompt-tool
- * views carry no builtin flag — the fixture stays inside the declared
- * schema; both boundaries are recorded in migration contract §16.
+ * impact is "high" or "immediate" (settings/service.go:110). The B13
+ * alignment surface is mirrored end to end: credentials edit in exactly one
+ * of replace/reuse/keep modes (keep copies the stored full credential and
+ * needs the row to exist), tls blocks replace fully (omitted or null
+ * removes the material, cert/key must be paired, fields must be PEM), the
+ * datasource read face exposes tls_verified, and prompt-tool views carry
+ * is_builtin with the definition frozen and delete refused for built-ins.
  */
 
 const ADMIN_REQUEST_ID = "45454545-4545-4545-8545-454545454545";
@@ -57,9 +60,60 @@ interface CredentialLike {
   reuse_credential_purpose?: string | null;
 }
 
-/** validateWrite mirror (datasource/service.go:103): field lengths/enums,
- * engine-mode matrix, 1..3 unique purposes, username required and a
- * password present unless reuse points at a DIFFERENT purpose. */
+/** validateTLS mirror (datasource/service.go validateTLS): a non-null tls
+ * block needs at least one material, client cert and key must be supplied
+ * together, and every provided field must carry complete BEGIN/END PEM
+ * blocks whose type matches the field (CERTIFICATE for ca/cert, non-
+ * CERTIFICATE for the key) — the same per-block rule the backend enforces.
+ * The fixture still does not validate base64 bodies (a marker-wrapped
+ * non-base64 body passes here while pem.Decode rejects it server-side);
+ * recorded as an accepted fixture boundary. Omitted or null tls is the
+ * declared removal path and never reaches this validator. */
+function validateTLSWrite(tls: unknown): string | null {
+  if (tls === null || tls === undefined) return null;
+  if (typeof tls !== "object" || Array.isArray(tls)) return "tls must be an object or null";
+  const block = tls as {
+    ca_pem?: { value: string } | null;
+    client_cert_pem?: { value: string } | null;
+    client_key_pem?: { value: string } | null;
+  };
+  const ca = block.ca_pem?.value ?? "";
+  const cert = block.client_cert_pem?.value ?? "";
+  const key = block.client_key_pem?.value ?? "";
+  if (ca === "" && cert === "" && key === "") return "tls block requires at least one material";
+  if ((cert === "") !== (key === "")) return "client certificate and key must be supplied together";
+  // Per-block type mirror (service.go validateTLS): certificate fields only
+  // accept CERTIFICATE blocks, the key field only accepts private-key blocks
+  // (anything that is not a CERTIFICATE), matching the backend's
+  // block-type check rather than a loose BEGIN marker.
+  const blockTypes = (material: string): string[] => {
+    const types: string[] = [];
+    const pattern = /-----BEGIN ([A-Z0-9 ]+)-----[\s\S]*?-----END \1-----/g;
+    for (const match of material.matchAll(pattern)) types.push(match[1] ?? "");
+    return types;
+  };
+  const materials: Array<[string, string, boolean]> = [
+    ["ca_pem", ca, true],
+    ["client_cert_pem", cert, true],
+    ["client_key_pem", key, false],
+  ];
+  for (const [name, material, wantCert] of materials) {
+    if (material === "") continue;
+    const types = blockTypes(material);
+    if (types.length === 0) return `${name} must be PEM-encoded`;
+    if (types.some((type) => (type === "CERTIFICATE") !== wantCert)) {
+      return `${name} blocks must be ${wantCert ? "CERTIFICATE" : "private-key"} PEM`;
+    }
+  }
+  return null;
+}
+
+/** validateWrite mirror (datasource/service.go validateWrite, B13
+ * three-mode contract): field lengths/enums, engine-mode matrix, 1..3
+ * unique purposes, and EXACTLY ONE edit mode per credential row — replace
+ * (username + password), reuse (username + reuse_credential_purpose of a
+ * DIFFERENT purpose) or keep (reuse_credential_purpose equal to the row's
+ * own purpose; username must be absent). */
 function validateDatasourceWrite(body: Record<string, unknown>): string | null {
   const name = typeof body.name === "string" ? body.name : "";
   const host = typeof body.host === "string" ? body.host : "";
@@ -90,22 +144,39 @@ function validateDatasourceWrite(body: Record<string, unknown>): string | null {
     }
     if (seen.has(credential.purpose)) return "credential purposes must be unique";
     seen.add(credential.purpose);
+    const hasPassword = credential.password != null && credential.password.value !== "";
+    const reuse = credential.reuse_credential_purpose;
+    if (hasPassword && reuse != null) {
+      return "password and reuse_credential_purpose are mutually exclusive";
+    }
+    if (!hasPassword && (reuse == null || reuse === "")) {
+      return "credential requires exactly one of password or reuse_credential_purpose";
+    }
+    if (!hasPassword && reuse === credential.purpose) {
+      // keep: the stored username is copied verbatim, so the payload must
+      // not carry one (the backend decodes an absent username to "" and
+      // rejects any non-empty value, service.go:183).
+      if (credential.username != null && credential.username !== "") {
+        return "username must be absent in keep mode";
+      }
+      continue;
+    }
     if (typeof credential.username !== "string" || credential.username === "") {
       return "credential username is required";
     }
-    const hasPassword = credential.password != null && credential.password.value !== "";
-    const reuse = credential.reuse_credential_purpose;
-    if (!hasPassword && (reuse == null || reuse === "" || reuse === credential.purpose)) {
-      return "credential requires a password or an explicit reuse of another purpose";
-    }
   }
+  const tlsError = validateTLSWrite("tls" in body ? body.tls : null);
+  if (tlsError !== null) return tlsError;
   return null;
 }
 
-/** replaceCredentials mirror (datasource/service.go:174): the write is a
- * FULL replacement of the enabled credential set — purposes absent from the
- * payload lose their credential; a password-less entry copies the OLD
- * stored secret of the reused purpose (never the payload's new one). */
+/** replaceCredentials mirror (datasource/service.go replaceCredentials, B13
+ * three-mode contract): the write is a FULL replacement of the enabled
+ * credential set — purposes absent from the payload lose their credential.
+ * keep (reuse == own purpose) copies the OLD stored full credential
+ * verbatim and is only legal when that row already exists; reuse (a
+ * DIFFERENT purpose) copies the OLD stored secret of that purpose under
+ * the supplied username (never a password from this payload). */
 function applyCredentialReplacement(
   oldCredentials: FixtureDatasource["credentials"],
   credentials: CredentialLike[],
@@ -118,9 +189,17 @@ function applyCredentialReplacement(
       next[purpose] = { username: credential.username ?? "", password };
       continue;
     }
-    const source = oldCredentials[(credential.reuse_credential_purpose ?? "") as (typeof PURPOSES)[number]];
+    const sourcePurpose = credential.reuse_credential_purpose as (typeof PURPOSES)[number] | undefined;
+    if (sourcePurpose == null) return "credential requires an explicit mode";
+    const source = oldCredentials[sourcePurpose];
     if (source === undefined) {
-      return "reuse credential source is not configured";
+      return sourcePurpose === purpose
+        ? "keep requires an existing credential for the purpose"
+        : "reuse credential source is not configured";
+    }
+    if (sourcePurpose === purpose) {
+      next[purpose] = { ...source };
+      continue;
     }
     next[purpose] = { username: credential.username ?? "", password: source.password };
   }
@@ -163,9 +242,15 @@ interface FixtureCredential {
   password: string;
 }
 
-interface FixtureDatasource extends Datasource {
+// Extends the view minus tls_verified: inside the world, TLS presence is
+// the tls material object alone; the view derives tls_verified from it so
+// the two can never drift apart.
+interface FixtureDatasource extends Omit<Datasource, "tls_verified"> {
   credentials: Partial<Record<(typeof PURPOSES)[number], FixtureCredential>>;
   capabilities: DatasourceCapabilities | null;
+  /** Fixture-internal TLS material; the read face only exposes tls_verified
+   * (any non-null value means verified TLS is enforced). */
+  tls: { ca: string; cert: string; key: string } | null;
 }
 
 interface FixtureProvider extends AiProvider {
@@ -187,6 +272,7 @@ interface FixtureReviewInput {
 interface FixturePromptTool extends FixtureReviewInput {
   engine: "all" | "mysql" | "postgresql";
   parameters: Record<string, number | string | boolean | string[]>;
+  is_builtin: boolean;
 }
 
 interface FixtureKnowledgeEntry extends FixtureReviewInput {
@@ -248,6 +334,7 @@ export const ADMIN_FIXTURE_PROVIDER_PRIMARY_ID = "4f6f1a2b-0000-4000-8000-000000
 export const ADMIN_FIXTURE_PROVIDER_BACKUP_ID = "4f6f1a2b-0000-4000-8000-00000000b002";
 export const ADMIN_FIXTURE_TOOL_ENABLED_ID = "4f6f1a2b-0000-4000-8000-00000000c001";
 export const ADMIN_FIXTURE_TOOL_DRAFT_ID = "4f6f1a2b-0000-4000-8000-00000000c002";
+export const ADMIN_FIXTURE_TOOL_BUILTIN_ID = "4f6f1a2b-0000-4000-8000-00000000c003";
 export const ADMIN_FIXTURE_KNOWLEDGE_GLOBAL_ID = "4f6f1a2b-0000-4000-8000-00000000d001";
 export const ADMIN_FIXTURE_KNOWLEDGE_TABLE_ID = "4f6f1a2b-0000-4000-8000-00000000d002";
 export const ADMIN_FIXTURE_KNOWLEDGE_CONVERTED_ID = "4f6f1a2b-0000-4000-8000-00000000d003";
@@ -373,6 +460,7 @@ export function seedAdminFixture(): void {
       query: { username: "query_ro", password: "qrypw-1" },
       execution: { username: "exec_rw", password: "execpw-1" },
     },
+    tls: null,
     capabilities: {
       datasource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID,
       detected_version: "8.0.36",
@@ -399,6 +487,13 @@ export function seedAdminFixture(): void {
     credentials: {
       review: { username: "review_ro", password: "revpw-2" },
       query: { username: "query_ro", password: "qrypw-2" },
+    },
+    // Seeded with a full CA + client pair so the list renders both TLS
+    // states (mysql plaintext, postgresql verified) without any write.
+    tls: {
+      ca: "-----BEGIN CERTIFICATE-----\nMIIB-fixture-ca\n-----END CERTIFICATE-----\n",
+      cert: "-----BEGIN CERTIFICATE-----\nMIIB-fixture-client-cert\n-----END CERTIFICATE-----\n",
+      key: "-----BEGIN PRIVATE KEY-----\nMIIB-fixture-client-key\n-----END PRIVATE KEY-----\n",
     },
     capabilities: null,
   });
@@ -479,6 +574,7 @@ export function seedAdminFixture(): void {
     version: 2,
     created_at: ts,
     updated_at: ts,
+    is_builtin: false,
   });
   world.promptTools.set(ADMIN_FIXTURE_TOOL_DRAFT_ID, {
     id: ADMIN_FIXTURE_TOOL_DRAFT_ID,
@@ -520,6 +616,47 @@ export function seedAdminFixture(): void {
     version: 1,
     created_at: ts,
     updated_at: ts,
+    is_builtin: false,
+  });
+  // The one built-in skill package (PRD 9.3: the lexical-layer guard set).
+  // System-owned: the definition hash is frozen, parameters keep their key
+  // set and types, only the state may be toggled, and delete is refused.
+  const BUILTIN_LEXICAL_DEFINITION: ReviewInputDefinition = {
+    knowledge_text:
+      "Built-in lexical guards: unbounded DML without WHERE, TRUNCATE/DROP statements, and IN/batch/group-count/per-row size limits must be flagged deterministically.",
+    finding_template: {
+      finding_key: "builtin.lexical.guard",
+      category: "governance",
+      severity: "high",
+      title: "Lexical guard violation",
+      message: "The statement trips a built-in lexical guard.",
+      suggestion: "Bound the statement or move it into the announced flow.",
+    },
+    severity_whitelist: ["medium", "high", "critical"],
+    version: 1,
+  };
+  const BUILTIN_LEXICAL_PARAMETERS = {
+    max_in_items: 1000,
+    max_batch_rows: 10000,
+    max_statement_bytes: 65536,
+  };
+  world.promptTools.set(ADMIN_FIXTURE_TOOL_BUILTIN_ID, {
+    id: ADMIN_FIXTURE_TOOL_BUILTIN_ID,
+    name: "builtin-lexical-guards",
+    state: "enabled",
+    engine: "all",
+    parameters: BUILTIN_LEXICAL_PARAMETERS,
+    definition: BUILTIN_LEXICAL_DEFINITION,
+    config_hash: configHash(
+      "builtin-lexical-guards",
+      "all",
+      JSON.stringify(BUILTIN_LEXICAL_DEFINITION),
+      JSON.stringify(BUILTIN_LEXICAL_PARAMETERS),
+    ),
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    is_builtin: true,
   });
   world.knowledgeEntries.set(ADMIN_FIXTURE_KNOWLEDGE_GLOBAL_ID, {
     id: ADMIN_FIXTURE_KNOWLEDGE_GLOBAL_ID,
@@ -753,10 +890,13 @@ function runReviewInputEval(
 }
 
 function datasourceView(ds: FixtureDatasource): Datasource {
-  const { credentials: _credentials, capabilities: _capabilities, ...view } = ds;
+  const { credentials: _credentials, capabilities: _capabilities, tls: _tls, ...view } = ds;
   void _credentials;
   void _capabilities;
-  return { ...view };
+  void _tls;
+  // tls_verified is the only TLS fact the read face declares: material is
+  // never echoed, presence alone decides verified-vs-plaintext.
+  return { ...view, tls_verified: _tls !== null };
 }
 
 function providerView(provider: FixtureProvider): AiProvider {
@@ -767,6 +907,34 @@ function providerView(provider: FixtureProvider): AiProvider {
 
 function promptToolView(tool: FixturePromptTool): PromptTool {
   return { ...tool };
+}
+
+/** Key-order-insensitive JSON for definition comparison — the backend
+ * freezes built-ins by a canonical definition hash (prompttools.go:505),
+ * so a reordered-key payload that the backend accepts must pass here too. */
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
+}
+
+/** Extracts the stored TLS material from a DatasourceWrite body. Called
+ * only after validateDatasourceWrite accepted the tls block, so the
+ * shape/pairing/PEM guarantees hold here. */
+function tlsFromWrite(body: Record<string, unknown>): FixtureDatasource["tls"] {
+  const tls = body.tls as
+    | { ca_pem?: { value: string } | null; client_cert_pem?: { value: string } | null; client_key_pem?: { value: string } | null }
+    | null
+    | undefined;
+  if (tls == null) return null;
+  return {
+    ca: tls.ca_pem?.value ?? "",
+    cert: tls.client_cert_pem?.value ?? "",
+    key: tls.client_key_pem?.value ?? "",
+  };
 }
 
 function knowledgeEntryView(entry: FixtureKnowledgeEntry): KnowledgeEntry {
@@ -941,16 +1109,11 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (validationError !== null) return businessError(1001, validationError);
       const duplicate = [...world.datasources.values()].some((ds) => ds.name === body.name);
       if (duplicate) return businessError(1005, "datasource name already exists");
-      // Create has no stored credentials to reuse from (replaceCredentials
-      // resolves reuse against the old rows, which do not exist yet).
-      const credentials = body.credentials as CredentialLike[];
-      for (const credential of credentials) {
-        if (credential.password == null || credential.password.value === "") {
-          return businessError(1001, "credential password is required on create");
-        }
-      }
-      const applied = applyCredentialReplacement({}, credentials);
+      // Create has no stored credentials, so keep/reuse modes resolve
+      // against an empty old set and fail here with 1001 (B13 semantics).
+      const applied = applyCredentialReplacement({}, body.credentials as CredentialLike[]);
       if (typeof applied === "string") return businessError(1001, applied);
+      const tls = tlsFromWrite(body);
       const ts = now();
       const id = uuid();
       const ds: FixtureDatasource = {
@@ -969,6 +1132,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
         created_at: ts,
         updated_at: ts,
         credentials: applied,
+        tls,
         capabilities: null,
       };
       touchedCredentialPurposes(ds);
@@ -998,6 +1162,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (duplicate) return businessError(1005, "datasource name already exists");
       const applied = applyCredentialReplacement(ds.credentials, body.credentials as CredentialLike[]);
       if (typeof applied === "string") return businessError(1001, applied);
+      // Full-replacement semantics: omitted or null tls removes every
+      // stored material row (verified → plaintext), same as the backend.
+      ds.tls = tlsFromWrite(body);
       if (typeof body.name === "string" && body.name !== "") ds.name = body.name;
       ds.engine = body.engine as Datasource["engine"];
       ds.compatibility_mode = body.compatibility_mode as Datasource["compatibility_mode"];
@@ -1309,6 +1476,8 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (!["draft", "enabled", "disabled"].includes(state)) return businessError(1001, "state is invalid");
       const parameters = (body.parameters ?? {}) as Record<string, number | string | boolean | string[]>;
       const definition = body.definition as FixtureReviewInput["definition"];
+      // B8 ruling: the eval gate runs when a row is being (re-)enabled —
+      // on create that is every enabled save.
       if (state === "enabled") {
         const evaluation = runReviewInputEval(definition, parameters);
         if (!evaluation.pass) return businessError(1001, "eval gate failed");
@@ -1327,6 +1496,8 @@ export function adminFixtureHandlers(): HttpHandler[] {
         version: 1,
         created_at: ts,
         updated_at: ts,
+        // User-defined only: built-in packages are system-seeded.
+        is_builtin: false,
       };
       world.promptTools.set(tool.id, tool);
       return HttpResponse.json(successEnvelope(promptToolView(tool)));
@@ -1352,15 +1523,36 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (!["draft", "enabled", "disabled"].includes(state)) return businessError(1001, "state is invalid");
       const parameters = (body.parameters ?? tool.parameters) as Record<string, number | string | boolean | string[]>;
       const definition = body.definition as FixtureReviewInput["definition"];
-      if (state === "enabled") {
+      const engine = ((body.engine as string | undefined) ?? tool.engine) as FixturePromptTool["engine"];
+      const name = (body.name as string | undefined) ?? tool.name;
+      // B8 ruling (governance tri-split): a built-in row's definition face
+      // (name/engine/definition) is frozen — the payload must hash exactly
+      // like the stored row — and parameters may only change values, never
+      // the key set or types. State stays toggleable.
+      if (tool.is_builtin) {
+        const definitionFrozen =
+          name === tool.name &&
+          engine === tool.engine &&
+          canonicalJson(definition) === canonicalJson(tool.definition);
+        if (!definitionFrozen) return businessError(1001, "builtin skill definition is system-owned");
+        const oldKeys = Object.keys(tool.parameters);
+        const nextKeys = Object.keys(parameters);
+        const parametersFrozen =
+          nextKeys.length === oldKeys.length &&
+          oldKeys.every((key) => key in parameters && typeof parameters[key] === typeof tool.parameters[key]);
+        if (!parametersFrozen) return businessError(1001, "builtin skill parameter keys are frozen");
+      }
+      const nextHash = configHash(name, engine, JSON.stringify(definition), JSON.stringify(parameters));
+      if (state === "enabled" && (tool.state !== "enabled" || nextHash !== tool.config_hash)) {
         const evaluation = runReviewInputEval(definition, parameters);
         if (!evaluation.pass) return businessError(1001, "eval gate failed");
       }
+      tool.name = name;
       tool.state = state as FixturePromptTool["state"];
-      tool.engine = ((body.engine as string | undefined) ?? tool.engine) as FixturePromptTool["engine"];
+      tool.engine = engine;
       tool.parameters = parameters;
       tool.definition = definition;
-      tool.config_hash = configHash(tool.name, tool.engine, JSON.stringify(definition), JSON.stringify(parameters));
+      tool.config_hash = nextHash;
       tool.version += 1;
       tool.updated_at = now();
       return HttpResponse.json(successEnvelope(promptToolView(tool)));
@@ -1371,6 +1563,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const tool = world.promptTools.get(String(params.promptToolId));
       if (tool === undefined) return businessError(1002, "prompt tool not found");
       if (versionMismatch(request, tool.version)) return businessError(1004, "version mismatch");
+      if (tool.is_builtin) return businessError(1001, "builtin skill cannot be deleted");
       const referenced = [...world.ruleSets.values()].some((ruleSet) =>
         ruleSet.prompt_tool_ids.includes(tool.id),
       );

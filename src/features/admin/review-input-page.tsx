@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Puzzle, Plus, Trash2, Play } from "lucide-react";
+import { Puzzle, Plus, Trash2, Play, Lock } from "lucide-react";
 import type {
   KnowledgeEntry,
   KnowledgeEntryEvaluation,
@@ -82,13 +82,15 @@ import {
  * snapshot. Binding to flows/rule sets happens elsewhere (flow editor F10 /
  * rule-set page) — this surface renders reverse references only.
  *
- * Two honest boundaries (recorded in migration contract §16):
- * - The frozen OpenAPI declares an evaluation endpoint for knowledge
- *   entries only; the skills page therefore renders no Eval column and no
- *   eval trigger (UI-spec §5.3 expectation needs an RCP first).
- * - The PromptTool view carries no builtin flag, so builtin rows render as
- *   ordinary rows; the backend rejects definition edits and deletes (B8
- *   guards) and the surfaced error is shown as-is.
+ * B13 alignment: PromptTool views carry is_builtin — built-in rows render a
+ * lock badge, their definition face (name/engine/definition/parameter keys)
+ * is locked in the editor and only the state stays toggleable, and delete is
+ * disabled with an inline explanation (the backend refuses both). The skills
+ * Eval gate runs at save time (RCP-20260831 ruling 4): enabling a skill
+ * evaluates inline inside create/replace, a failing gate blocks the save and
+ * renders the business error in place — the page offers no separate Eval
+ * entry or result column (knowledge entries keep their declared evaluations
+ * endpoint).
  */
 
 const STATE_ORDER = ["draft", "enabled", "disabled"] as const;
@@ -255,10 +257,21 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const state = row.state;
                   const configHash = row.config_hash;
                   const entry = isSkills ? null : (row as KnowledgeEntry);
+                  const builtin = isSkills && (row as PromptTool).is_builtin;
                   return (
                     <TableRow key={id} data-testid={`review-input-row-${id}`}>
                       <TableCell className="font-medium">
-                        {name}
+                        <span className="flex items-center gap-1.5">
+                          {name}
+                          {builtin ? (
+                            <Badge variant="outline" data-testid={`review-input-builtin-${id}`}>
+                              <Lock /> {t("admin.skills.builtinBadge")}
+                            </Badge>
+                          ) : null}
+                        </span>
+                        {builtin ? (
+                          <div className="text-muted-foreground text-xs">{t("admin.skills.builtinHint")}</div>
+                        ) : null}
                         {entry !== null && entry.purpose ? (
                           <div className="text-muted-foreground text-xs">{entry.purpose}</div>
                         ) : null}
@@ -334,6 +347,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                             variant="ghost"
                             size="sm"
                             onClick={() => { setDeleting(row); }}
+                            disabled={builtin}
                             data-testid={`review-input-delete-${id}`}
                           >
                             <Trash2 /> {t("common.delete")}
@@ -429,6 +443,9 @@ function ReviewInputDialog({
 }) {
   const { t } = useTranslation();
   const isSkills = kind === "skills";
+  // Built-in skills are system-owned (B13 is_builtin): the definition face
+  // arrives locked and the submit can only carry a state change.
+  const editingBuiltin = isSkills && editing !== null && (editing as PromptTool).is_builtin;
   const createTool = useCreatePromptTool();
   const replaceTool = useReplacePromptTool();
   const createEntry = useCreateKnowledgeEntry();
@@ -518,6 +535,17 @@ function ReviewInputDialog({
           <DialogDescription>{t("admin.reviewInput.formDescription")}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
+          {editingBuiltin ? (
+            <Alert data-testid="review-input-builtin-notice">
+              <AlertTitle>{t("admin.skills.builtinDialogTitle")}</AlertTitle>
+              <AlertDescription>{t("admin.skills.builtinDialogBody")}</AlertDescription>
+            </Alert>
+          ) : null}
+          {isSkills ? (
+            <p className="text-muted-foreground text-xs" data-testid="skills-eval-gate-hint">
+              {t("admin.skills.evalGateHint")}
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="flex flex-col gap-1">
               <Label htmlFor="review-input-name">{t("admin.reviewInput.name")}</Label>
@@ -525,6 +553,7 @@ function ReviewInputDialog({
                 id="review-input-name"
                 value={form.name}
                 onChange={(event) => { setForm({ ...form, name: event.target.value }); }}
+                disabled={editingBuiltin}
                 data-testid="review-input-name"
               />
             </div>
@@ -559,7 +588,7 @@ function ReviewInputDialog({
                     setForm({ ...form, engine: next });
                   }}
                 >
-                  <SelectTrigger data-testid="review-input-engine">
+                  <SelectTrigger data-testid="review-input-engine" disabled={editingBuiltin}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -650,6 +679,7 @@ function ReviewInputDialog({
           <ReviewInputDefinitionEditor
             value={form.editor}
             onChange={(next) => { setForm({ ...form, editor: next }); }}
+            disabled={editingBuiltin}
           />
           {errorKey !== null ? (
             <Alert variant="destructive" data-testid="review-input-error">

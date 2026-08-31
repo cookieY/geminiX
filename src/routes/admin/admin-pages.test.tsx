@@ -10,6 +10,7 @@ import {
   ADMIN_FIXTURE_DATASOURCE_MYSQL_ID,
   ADMIN_FIXTURE_DATASOURCE_PG_ID,
   ADMIN_FIXTURE_PROVIDER_PRIMARY_ID,
+  ADMIN_FIXTURE_TOOL_BUILTIN_ID,
 } from "@/shared/mock/admin-fixture";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { RequireAdminCapability } from "@/app/router/guards";
@@ -308,11 +309,12 @@ describe("review-input dialog flows", () => {
     const rows = await screen.findAllByTestId(/review-input-row-/);
     // draft tool is unreferenced → delete succeeds
     const secondRow = rows.at(1);
-    if (secondRow === undefined) throw new Error("expected two seeded skills");
+    if (secondRow === undefined) throw new Error("expected seeded skills");
     await userEvent.click(within(secondRow).getByTestId(/review-input-delete-/));
     await userEvent.click(screen.getByTestId("review-input-delete-confirm"));
     await waitFor(() => {
-      expect(screen.queryAllByTestId(/review-input-row-/)).toHaveLength(1);
+      // two rows remain: the bound enabled tool and the undeletable built-in
+      expect(screen.queryAllByTestId(/review-input-row-/)).toHaveLength(2);
     });
     // enabled tool is referenced by the seeded rule set → 1006 error
     const boundRow = (await screen.findAllByTestId(/review-input-row-/))
@@ -464,4 +466,233 @@ describe("review-input dialog coverage", () => {
     renderPage(<AdminReviewSkillsPage />);
     await screen.findByText("暂无技能包");
   });
+});
+
+// ---- FE-F9-REVIEW-ADMIN-ALIGNMENT gates -----------------------------------
+
+/** Captures the request body an MSW-overridden write actually sent. */
+function captureDatasourcePut(): { body: Record<string, unknown> | null } {
+  const captured: { body: Record<string, unknown> | null } = { body: null };
+  server.use(
+    http.put("*/admin/datasources/:datasourceId", async ({ request }) => {
+      captured.body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json({
+        err_code: 0,
+        message: "ok",
+        data: {
+          id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID,
+          name: "prod-order-mysql",
+          engine: "mysql",
+          compatibility_mode: "mysql",
+          deployment_kind: "native",
+          host: "10.0.0.11",
+          port: 3306,
+          database_name: null,
+          enabled: true,
+          credential_status: { review: true, query: true, execution: true },
+          tls_verified: false,
+          referenced_by_flow_count: 1,
+          version: 99,
+          created_at: "2026-08-31T00:00:00Z",
+          updated_at: "2026-08-31T00:00:00Z",
+        },
+        request_id: "capture",
+      });
+    }),
+  );
+  return captured;
+}
+
+describe("gate: 内置技能锁徽章与定义面锁定", () => {
+  it("renders the lock badge with a visible explanation and disables delete", async () => {
+    renderPage(<AdminReviewSkillsPage />);
+    const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    expect(within(row).getByTestId(`review-input-builtin-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`)).toHaveTextContent(
+      "内置",
+    );
+    // The row itself explains the lock — a tooltip is never the only carrier.
+    expect(within(row).getByText(/仅状态可切换/)).toBeInTheDocument();
+    expect(within(row).getByTestId(/review-input-delete-/)).toBeDisabled();
+    // Hash column stays (builtin rows are ordinary registry rows otherwise).
+    expect(within(row).getByTestId("review-input-hash")).toBeInTheDocument();
+  });
+
+  it("locks the definition face in the editor and keeps the state select active", async () => {
+    renderPage(<AdminReviewSkillsPage />);
+    const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    expect(await screen.findByTestId("review-input-builtin-notice")).toBeInTheDocument();
+    expect(screen.getByTestId("review-input-name")).toBeDisabled();
+    expect(screen.getByTestId("review-input-engine")).toBeDisabled();
+    expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
+    expect(screen.getByTestId("review-input-finding-key")).toBeDisabled();
+    expect(screen.getByTestId("review-input-title")).toBeDisabled();
+    expect(screen.getByTestId("review-input-severity-medium")).toBeDisabled();
+    expect(screen.getByTestId("review-input-state-select")).toBeEnabled();
+  });
+
+  // The state TOGGLE itself lives in admin-pages-popups.test.tsx: Base UI
+  // 1.7 select popups leak their layer stack across tests under jsdom, so
+  // every popup interaction is consolidated into one isolated file.
+});
+
+describe("gate: 凭据表单三模式（keep仅已配置行可选）", () => {
+  it("submits keep for configured rows with no username and no password in the payload", async () => {
+    const captured = captureDatasourcePut();
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    await screen.findByTestId("credential-row-review");
+    // Configured rows open in keep mode: neither input is even rendered.
+    expect(screen.queryByTestId("credential-username-review")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("credential-password-review")).not.toBeInTheDocument();
+    expect(screen.getByTestId("credential-keep-note-review")).toBeInTheDocument();
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=8.0");
+    await userEvent.click(screen.getByTestId("ds-submit"));
+    await waitFor(() => { expect(captured.body).not.toBeNull(); });
+    const credentials = captured.body?.credentials as Array<Record<string, unknown>>;
+    expect(credentials).toHaveLength(3);
+    for (const credential of credentials) {
+      expect(credential.reuse_credential_purpose).toBe(credential.purpose);
+      expect("username" in credential).toBe(false);
+      expect("password" in credential).toBe(false);
+    }
+    // Full-replacement TLS write is explicit: null, never absent.
+    expect(captured.body?.tls).toBeNull();
+  });
+
+  // Option-availability and mode-switch assertions (which need an open
+  // select popup) live in admin-pages-popups.test.tsx — see the isolation
+  // note there. Popup-free coverage below proves the payload semantics.
+  it("blocks the submit while base fields are missing or no purpose is included", async () => {
+    renderPage(<AdminDatasourcesPage />);
+    await userEvent.click(await screen.findByTestId("ds-create"));
+    await screen.findByTestId("credential-row-review");
+    // Empty name/host/version-constraint → disabled with the visible hint.
+    await userEvent.type(screen.getByTestId("ds-name"), "guard-check");
+    await userEvent.type(screen.getByTestId("ds-host"), "10.0.0.95");
+    expect(screen.getByTestId("ds-submit")).toBeDisabled();
+    expect(screen.getByTestId("ds-form-invalid-hint")).toBeInTheDocument();
+    // Editing never echoes version_constraint — the empty value keeps the
+    // submit disabled until it is re-typed.
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=8.0");
+    await userEvent.type(screen.getByTestId("credential-username-review"), "ro");
+    await userEvent.type(screen.getByTestId("credential-password-review"), "pw-guard-1");
+    expect(screen.getByTestId("ds-submit")).toBeEnabled();
+    // Unchecking the last purpose violates credentials minItems 1.
+    await userEvent.click(screen.getByTestId("credential-include-review"));
+    expect(screen.getByTestId("ds-submit")).toBeDisabled();
+    expect(screen.getByTestId("ds-form-invalid-hint")).toBeInTheDocument();
+  });
+  it("drops purposes that are unchecked from the full-replacement payload", async () => {
+    const captured = captureDatasourcePut();
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    await screen.findByTestId("credential-row-review");
+    // Unchecking execution removes it: the write is a full replacement.
+    await userEvent.click(screen.getByTestId("credential-include-execution"));
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=8.0");
+    await userEvent.click(screen.getByTestId("ds-submit"));
+    await waitFor(() => { expect(captured.body).not.toBeNull(); });
+    const credentials = captured.body?.credentials as Array<Record<string, unknown>>;
+    expect(credentials.map((credential) => credential.purpose)).toEqual(["review", "query"]);
+  });
+});
+
+describe("gate: TLS材料永不回显且tls_verified可见", () => {
+  it("shows both TLS states in the list", async () => {
+    renderPage(<AdminDatasourcesPage />);
+    expect(
+      await screen.findByTestId(`ds-tls-verified-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`),
+    ).toHaveTextContent("强制校验TLS");
+    expect(
+      screen.getByTestId(`ds-tls-plaintext-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),
+    ).toHaveTextContent("明文");
+  });
+
+  it("never prefills material on a verified row and re-submits the full block", async () => {
+    const captured = captureDatasourcePut();
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
+    expect(screen.getByTestId("ds-tls-enabled")).toBeChecked();
+    // Write-only: opening a verified row leaves every textarea empty.
+    expect(screen.getByTestId("ds-tls-ca")).toHaveValue("");
+    expect(screen.getByTestId("ds-tls-cert")).toHaveValue("");
+    expect(screen.getByTestId("ds-tls-key")).toHaveValue("");
+    await userEvent.type(screen.getByTestId("ds-tls-ca"), "-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----\n");
+    await userEvent.type(screen.getByTestId("ds-tls-cert"), "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----\n");
+    await userEvent.type(screen.getByTestId("ds-tls-key"), "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n");
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=16");
+    await userEvent.click(screen.getByTestId("ds-submit"));
+    await waitFor(() => { expect(captured.body).not.toBeNull(); });
+    expect(captured.body?.tls).toEqual({
+      ca_pem: { value: "-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----\n" },
+      client_cert_pem: { value: "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----\n" },
+      client_key_pem: { value: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n" },
+    });
+  });
+
+  it("warns before the declared removal path and submits tls null", async () => {
+    const captured = captureDatasourcePut();
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
+    await screen.findByTestId("ds-tls-enabled");
+    await userEvent.click(screen.getByTestId("ds-tls-enabled"));
+    expect(await screen.findByTestId("ds-tls-removal-warning")).toHaveTextContent("恢复明文连接");
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=16");
+    await userEvent.click(screen.getByTestId("ds-submit"));
+    await waitFor(() => { expect(captured.body).not.toBeNull(); });
+    expect(captured.body?.tls).toBeNull();
+  });
+
+  it("blocks unpaired and empty TLS blocks client-side", async () => {
+    renderPage(<AdminDatasourcesPage />);
+    await userEvent.click(await screen.findByTestId("ds-create"));
+    await userEvent.type(screen.getByTestId("ds-name"), "tls-check");
+    await userEvent.type(screen.getByTestId("ds-host"), "10.0.0.90");
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=8.0");
+    await userEvent.type(screen.getByTestId("credential-username-review"), "ro");
+    await userEvent.type(screen.getByTestId("credential-password-review"), "pw-tls-1");
+    // Enabled with no material at all.
+    await userEvent.click(screen.getByTestId("ds-tls-enabled"));
+    expect(await screen.findByTestId("ds-tls-empty-error")).toBeInTheDocument();
+    expect(screen.getByTestId("ds-submit")).toBeDisabled();
+    // Cert without key.
+    await userEvent.type(
+      screen.getByTestId("ds-tls-cert"),
+      "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----\n",
+    );
+    expect(screen.queryByTestId("ds-tls-empty-error")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("ds-tls-pair-error")).toBeInTheDocument();
+    expect(screen.getByTestId("ds-submit")).toBeDisabled();
+    // Completing the pair unlocks the submit.
+    await userEvent.type(
+      screen.getByTestId("ds-tls-key"),
+      "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+    );
+    expect(screen.queryByTestId("ds-tls-pair-error")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ds-submit")).toBeEnabled();
+  });
+});
+
+describe("gate: Eval门禁措辞与就地渲染", () => {
+  it("explains the save-time eval gate on the skills dialog", async () => {
+    renderPage(<AdminReviewSkillsPage />);
+    await userEvent.click(await screen.findByTestId("review-input-create"));
+    expect(await screen.findByTestId("skills-eval-gate-hint")).toHaveTextContent(/保存时执行Eval门禁/);
+    // No separate Eval entry exists anywhere on the skills surface; the
+    // knowledge page keeps its declared evaluations endpoint.
+    const buttons = screen.getAllByRole("button");
+    for (const button of buttons) {
+      expect(button.textContent).not.toMatch(/运行 ?Eval|执行评估/);
+    }
+    expect(screen.queryByTestId("knowledge-eval-dialog")).not.toBeInTheDocument();
+  });
+
+  // The inline failure rendering (enabled save blocked with the business
+  // error inside the dialog) is exercised in admin-pages-popups.test.tsx —
+  // it needs the state select popup.
 });
