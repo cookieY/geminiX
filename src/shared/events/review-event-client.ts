@@ -47,6 +47,10 @@ export class ReviewEventClient {
   private stopped = false;
   private abort: AbortController | null = null;
   private loop: Promise<void> | null = null;
+  /** Resolved by stop() so the run loop wakes even when the transport has no
+   * pending event — an idle async iterator otherwise delays the unwind until
+   * the next yield, deadlocking an immediate remount. */
+  private resolveStop: (() => void) | null = null;
 
   /** Indirection keeps stop() observable; CFA cannot narrow through it. */
   private isStopped(): boolean {
@@ -127,21 +131,34 @@ export class ReviewEventClient {
     this.running = true;
     this.stopped = false;
     this.abort = new AbortController();
+    // One stop signal per run(): stop() resolves it so an iteration parked on
+    // a quiet transport wakes immediately (see stop()).
+    const stopped = new Promise<void>((resolve) => {
+      this.resolveStop = resolve;
+    });
+    const asStopped = (): Promise<null> => stopped.then(() => null);
     const body = async (): Promise<void> => {
       try {
         while (!this.isStopped()) {
           try {
             const stream = transport(this.resumePoint());
-            for await (const raw of stream) {
-              if (this.isStopped()) break;
-              this.ingest(raw);
+            const iterator = stream[Symbol.asyncIterator]();
+            while (!this.isStopped()) {
+              const next = await Promise.race([iterator.next(), asStopped()]);
+              if (next === null || next.done) break;
+              this.ingest(next.value);
             }
+            // Finalize the generator so a parked transport is not leaked.
+            void iterator.return?.();
           } catch {
             // Transport failure: fall through and reconnect from the resume
             // point — the delivery semantics above make this idempotent.
           }
           if (this.isStopped()) break;
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await Promise.race([
+            new Promise((resolve) => setTimeout(resolve, 100)),
+            asStopped(),
+          ]);
         }
       } finally {
         this.running = false;
@@ -156,6 +173,9 @@ export class ReviewEventClient {
   stop(): void {
     this.stopped = true;
     this.abort?.abort();
+    // Wake an iteration parked on a quiet transport so the unwind is prompt.
+    this.resolveStop?.();
+    this.resolveStop = null;
   }
 
   private rememberId(id: string): void {

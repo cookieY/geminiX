@@ -34,8 +34,10 @@ describe("mock scenario store", () => {
   it("declares exactly the contracted scenario set", () => {
     // Four FE-F1 demo scenarios for the generated client outcome surface,
     // the FE-F4 review lifecycle outcomes (Ready/Blocked/Partial/
-    // Provider失败 acceptance gates) served by the stateful fixture, and the
-    // FE-F6 order-partial-execution scenario for the partial-withdraw gate.
+    // Provider失败 acceptance gates) served by the stateful fixture, the
+    // FE-F6 order-partial-execution scenario for the partial-withdraw gate,
+    // and the FE-F8 execution outcomes (DDL partial / unknown / gh-ost
+    // residual / preflight failure / missed schedule).
     expect(MOCK_SCENARIOS).toEqual([
       "ready",
       "blocked",
@@ -46,6 +48,11 @@ describe("mock scenario store", () => {
       "review-partial",
       "review-provider-failed",
       "order-partial-execution",
+      "execution-partial",
+      "execution-unknown",
+      "execution-ghost",
+      "execution-preflight",
+      "schedule-missed",
     ]);
   });
 });

@@ -245,6 +245,99 @@ interface FixtureComment {
   occurred_at: string;
 }
 
+/** Per-statement sanitized execution fact (OpenAPI ExecutionStatement). The
+ * ordinal-ordered rows are the only statement-level surface — there is no
+ * "statement text" field, mirroring the backend's sanitized ledger. */
+export interface FixtureStatement {
+  id: string;
+  ordinal: number;
+  statement_kind: "ddl" | "dml";
+  state: "not_started" | "sent" | "succeeded" | "failed" | "cancelled" | "unknown" | "skipped";
+  affected_row_count: number | null;
+  failure_name: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+/** Frozen per-tool OSC details (OpenAPI OscExecutionDetails); residual_state
+ * is the gh-ost cleanup surface E006 requires the UI to show. */
+export interface FixtureOscDetails {
+  tool: "gh-ost" | "pt-osc";
+  tool_version: string;
+  binary_sha256: string;
+  plan_hash: string;
+  phase:
+    | "planned"
+    | "preflight"
+    | "copying"
+    | "postponed_cutover"
+    | "cutover"
+    | "cleanup"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "result_unknown";
+  progress_basis_points: number;
+  rows_copied: number;
+  residual_state: "not_checked" | "none" | "detected" | "cleanup_required" | "cleaned";
+  last_heartbeat_at: string | null;
+}
+
+/** Mock execution attempt (OpenAPI ExecutionAttempt). `order_id`,
+ * `statements` and `outcome` are fixture-internal drivers, never serialized —
+ * statements are served only through the paginated statements endpoint. */
+export interface FixtureExecutionAttempt {
+  id: string;
+  order_id: string;
+  stage_id: string;
+  execution_kind: "ddl" | "dml" | "gh_ost";
+  state:
+    | "created"
+    | "preflight"
+    | "running"
+    | "cancelling"
+    | "succeeded"
+    | "failed"
+    | "partial_failed"
+    | "cancelled"
+    | "partial_cancelled"
+    | "result_unknown";
+  send_boundary: "not_started" | "sending" | "sent";
+  osc: FixtureOscDetails | null;
+  version: number;
+  created_at: string;
+  statements: FixtureStatement[];
+  /** Deterministic terminal shape the progression engine runs toward; the
+   * ghost attempt stays running until cancelled (residual inspection is its
+   * whole point). */
+  outcome: "succeeded" | "partial_failed" | "result_unknown" | "ghost";
+}
+
+/** Deferred-execution reservation (OpenAPI ExecutionSchedule). Cancellation
+ * has no dedicated endpoint — the submitter withdraws the order and the
+ * scheduler closes the row, so the fixture only ever creates and serves
+ * schedules. */
+export interface FixtureSchedule {
+  id: string;
+  order_id: string;
+  stage_id: string;
+  scheduled_for: string;
+  state: "scheduled" | "running" | "cancelled" | "missed" | "blocked";
+  version: number;
+}
+
+/** Manual unknown-result verification record (OpenAPI
+ * ExecutionVerificationRequest + the backend's permanent audit shape). */
+export interface FixtureVerification {
+  id: string;
+  attempt_id: string;
+  result: "confirmed_succeeded" | "confirmed_failed" | "confirmed_partial" | "still_unknown";
+  reason: string;
+  evidence: Array<{ kind: "text" | "database_fact" | "external_reference"; content: string }>;
+  verified_by_user_id: string;
+  occurred_at: string;
+}
+
 interface FixtureEvent {
   subject: string;
   sequence: number;
@@ -260,6 +353,9 @@ interface FixtureWorld {
   orders: Map<string, FixtureOrder>;
   orderTimeline: Map<string, FixtureTimelineEntry[]>;
   orderComments: Map<string, FixtureComment[]>;
+  attempts: Map<string, FixtureExecutionAttempt>;
+  schedules: Map<string, FixtureSchedule>;
+  verifications: Map<string, FixtureVerification[]>;
   orderSequence: number;
   outbox: FixtureEvent[];
   sequences: Map<string, number>;
@@ -276,6 +372,9 @@ const world: FixtureWorld = {
   orders: new Map(),
   orderTimeline: new Map(),
   orderComments: new Map(),
+  attempts: new Map(),
+  schedules: new Map(),
+  verifications: new Map(),
   orderSequence: 0,
   outbox: [],
   sequences: new Map(),
@@ -304,6 +403,9 @@ export function resetReviewFixture(): void {
   world.orders.clear();
   world.orderTimeline.clear();
   world.orderComments.clear();
+  world.attempts.clear();
+  world.schedules.clear();
+  world.verifications.clear();
   world.orderSequence = 0;
   world.outbox.length = 0;
   world.sequences.clear();
@@ -571,6 +673,376 @@ function seedPartialExecutionOrder(): void {
   recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结（阶段 1）", 1, "submitted");
   recordOrderEvent(order, "stage.execution_succeeded", "worker", null, "阶段 1（staging-mysql）执行成功", 1, "succeeded");
   recordOrderEvent(order, "stage.execution_started", "worker", null, "阶段 2（prod-mysql）开始执行", 2, "running");
+}
+
+// ---- Execution domain (FE-F8) ---------------------------------------------
+//
+// The mock mirrors the backend execution application (B10): begin is only
+// legal from stage_execution_pending for a frozen executor (W006), a prior
+// attempt that crossed the send boundary forever forbids retry (3004, E004),
+// DML failure terminates the order while DDL preserves prior successes as
+// partial_failed (E001/E002), result_unknown blocks everything until a frozen
+// executor records a manual verification (E005), and deferred schedules are
+// created by the executor and run by the scheduler — never auto-catching up
+// (E007). Attempt-level facts are reachable only through the attempt the
+// client created (creation response) — the contract has no list-attempts
+// read, and events ride the order subject like the backend's emitOrderEvent.
+
+const ATTEMPT_CREATED_TO_PREFLIGHT_MS = 300;
+const ATTEMPT_PREFLIGHT_TO_RUNNING_MS = 500;
+const ATTEMPT_RUNNING_TO_TERMINAL_MS = 900;
+const CANCEL_RESOLUTION_MS = 600;
+
+/** Deterministic attempt shape the active scenario runs toward. */
+function executionBehavior(): {
+  kind: FixtureExecutionAttempt["execution_kind"];
+  outcome: FixtureExecutionAttempt["outcome"];
+  statementCount: number;
+} {
+  switch (readStoredScenario()) {
+    case "execution-partial":
+      return { kind: "ddl", outcome: "partial_failed", statementCount: 3 };
+    case "execution-unknown":
+      return { kind: "dml", outcome: "result_unknown", statementCount: 2 };
+    case "execution-ghost":
+      return { kind: "gh_ost", outcome: "ghost", statementCount: 1 };
+    default:
+      return { kind: "dml", outcome: "succeeded", statementCount: 2 };
+  }
+}
+
+/** Terminal attempt states (backend domain.AttemptState.Terminal): a
+ * cancellation on a terminal attempt answers idempotently with the view. */
+function isAttemptTerminal(state: FixtureExecutionAttempt["state"]): boolean {
+  return (
+    state === "succeeded" ||
+    state === "failed" ||
+    state === "partial_failed" ||
+    state === "cancelled" ||
+    state === "partial_cancelled" ||
+    state === "result_unknown"
+  );
+}
+
+function attemptPublic(attempt: FixtureExecutionAttempt) {
+  return {
+    id: attempt.id,
+    stage_id: attempt.stage_id,
+    execution_kind: attempt.execution_kind,
+    state: attempt.state,
+    send_boundary: attempt.send_boundary,
+    osc: attempt.osc,
+    version: attempt.version,
+    created_at: attempt.created_at,
+  };
+}
+
+function statementPublic(statement: FixtureStatement) {
+  return {
+    id: statement.id,
+    ordinal: statement.ordinal,
+    statement_kind: statement.statement_kind,
+    state: statement.state,
+    affected_row_count: statement.affected_row_count,
+    failure_name: statement.failure_name,
+    started_at: statement.started_at,
+    finished_at: statement.finished_at,
+  };
+}
+
+function makeStatements(count: number, kind: "ddl" | "dml"): FixtureStatement[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: uuid(),
+    ordinal: index + 1,
+    statement_kind: kind,
+    state: "not_started",
+    affected_row_count: null,
+    failure_name: null,
+    started_at: null,
+    finished_at: null,
+  }));
+}
+
+/** Emits an order-subject state_changed event for execution facts (backend
+ * emitOrderEvent: the execution domain publishes on change-orders/{uuid}). */
+function emitExecutionState(
+  order: FixtureOrder,
+  from: string | null,
+  reasonCode: string,
+  stageId: string,
+  actor: { kind: "user" | "system" | "worker"; user_id?: string | null } = { kind: "worker" },
+): void {
+  emit(
+    `change-orders/${order.id}`,
+    "io.yearning.v4.execution.state_changed",
+    {
+      aggregate_id: order.id,
+      from,
+      to: order.state,
+      reason_code: reasonCode,
+      stage_id: stageId,
+      aggregate_version: order.version,
+    },
+    actor,
+  );
+}
+
+/** Applies the attempt's terminal facts to statements, stage, order and the
+ * audit timeline; every transition emits the order-subject event the UI
+ * consumes (events are notifications — the client re-reads HTTP resources). */
+function applyAttemptTerminal(order: FixtureOrder, attempt: FixtureExecutionAttempt): void {
+  const stage = order.stages.find((candidate) => candidate.id === attempt.stage_id);
+  if (stage === undefined) return;
+  const nowAt = now();
+  switch (attempt.outcome) {
+    case "succeeded": {
+      attempt.send_boundary = "sent";
+      for (const statement of attempt.statements) {
+        if (statement.state !== "sent") continue;
+        statement.state = "succeeded";
+        statement.affected_row_count = statement.ordinal === 1 ? 1 : 42;
+        statement.started_at = nowAt;
+        statement.finished_at = nowAt;
+      }
+      attempt.state = "succeeded";
+      attempt.version += 1;
+      stage.state = "succeeded";
+      order.state = "completed";
+      order.terminal_at = nowAt;
+      order.version += 1;
+      recordOrderEvent(order, "stage.execution_succeeded", "worker", null, `阶段 ${String(stage.position)}（${stage.datasource_name}）执行成功`, stage.position, "succeeded");
+      recordOrderEvent(order, "change_order.completed", "system", null, "全部阶段执行完成", stage.position, "completed");
+      emitExecutionState(order, "running", "execution_succeeded", stage.id);
+      break;
+    }
+    case "partial_failed": {
+      attempt.send_boundary = "sent";
+      for (const statement of attempt.statements) {
+        if (statement.state !== "sent") continue;
+        if (statement.ordinal === 2) {
+          statement.state = "failed";
+          statement.failure_name = "lock_wait_timeout";
+          statement.started_at = nowAt;
+          statement.finished_at = nowAt;
+        } else if (statement.ordinal < 2) {
+          statement.state = "succeeded";
+          statement.affected_row_count = 0;
+          statement.started_at = nowAt;
+          statement.finished_at = nowAt;
+        } else {
+          // Non-transactional DDL: the suffix after the first failure never
+          // ran — skipped, never rendered as executed or unknown (E002).
+          statement.state = "skipped";
+        }
+      }
+      attempt.state = "partial_failed";
+      attempt.version += 1;
+      stage.state = "partial_failed";
+      order.state = "partial_failed";
+      order.terminal_at = nowAt;
+      order.version += 1;
+      recordOrderEvent(order, "stage.execution_partial_failed", "worker", null, `阶段 ${String(stage.position)}（${stage.datasource_name}）DDL 第 2 条失败，后续语句未执行`, stage.position, "partial_failed");
+      recordOrderEvent(order, "change_order.partial_failed", "system", null, "DDL 部分成功，工单终止；原工单禁止重试", stage.position, "partial_failed");
+      emitExecutionState(order, "running", "ddl_partial_failed", stage.id);
+      break;
+    }
+    case "result_unknown": {
+      attempt.send_boundary = "sent";
+      for (const statement of attempt.statements) {
+        if (statement.state !== "sent") continue;
+        if (statement.ordinal === 1) {
+          statement.state = "succeeded";
+          statement.affected_row_count = 5;
+          statement.started_at = nowAt;
+          statement.finished_at = nowAt;
+        } else {
+          // Sent, database answer lost (network/进程中断): unknown is a
+          // distinct high-risk state, never displayed as not-executed (E005).
+          statement.state = "unknown";
+          statement.started_at = nowAt;
+        }
+      }
+      attempt.state = "result_unknown";
+      attempt.version += 1;
+      stage.state = "result_unknown";
+      order.state = "result_unknown";
+      order.version += 1;
+      recordOrderEvent(order, "stage.execution_result_unknown", "worker", null, `阶段 ${String(stage.position)}（${stage.datasource_name}）执行结果未知，等待人工核验`, stage.position, "result_unknown");
+      emitExecutionState(order, "running", "result_became_unknown", stage.id);
+      break;
+    }
+    case "ghost": {
+      // gh-ost keeps copying until someone cancels — the residual/cleanup
+      // surface only exists after a cancel (E006). Progress ticks once so
+      // the UI has deterministic numbers to show.
+      attempt.send_boundary = "sent";
+      if (attempt.osc !== null) {
+        attempt.osc.progress_basis_points = 6500;
+        attempt.osc.rows_copied = 84210;
+        attempt.osc.last_heartbeat_at = nowAt;
+      }
+      break;
+    }
+  }
+}
+
+/** Drives a created attempt through preflight → running → terminal with the
+ * same deterministic timers the review-run progression uses. */
+function advanceAttempt(order: FixtureOrder, attempt: FixtureExecutionAttempt): void {
+  setTimeout(() => {
+    attempt.state = "preflight";
+    attempt.version += 1;
+    setTimeout(() => {
+      attempt.state = "running";
+      attempt.send_boundary = "sending";
+      attempt.version += 1;
+      if (attempt.osc !== null) {
+        attempt.osc.phase = "copying";
+        attempt.osc.progress_basis_points = 2000;
+      }
+      for (const statement of attempt.statements) {
+        if (statement.state === "not_started" && attempt.outcome !== "ghost") {
+          statement.state = "sent";
+        }
+      }
+      if (attempt.outcome === "ghost") {
+        return; // runs until cancelled
+      }
+      setTimeout(() => {
+        applyAttemptTerminal(order, attempt);
+      }, ATTEMPT_RUNNING_TO_TERMINAL_MS);
+    }, ATTEMPT_PREFLIGHT_TO_RUNNING_MS);
+  }, ATTEMPT_CREATED_TO_PREFLIGHT_MS);
+}
+
+/** Resolves a cancellation: DML rolls the stage back (order cancelled); DDL
+ * preserves prior successes as partial_cancelled; gh-ost surfaces leftover
+ * resources for cleanup (E006). Mirrors backend record.go fact collection —
+ * and its silence: the routing table has no execution-cancel event, so the
+ * backend publishes no domain event (and keeps no timeline row) for a
+ * settled cancellation; clients converge through the read surface. */
+function resolveCancellation(order: FixtureOrder, attempt: FixtureExecutionAttempt): void {
+  const stage = order.stages.find((candidate) => candidate.id === attempt.stage_id);
+  if (stage === undefined) return;
+  const nowAt = now();
+  const hadSuccess = attempt.statements.some((statement) => statement.state === "succeeded");
+  for (const statement of attempt.statements) {
+    if (statement.state === "sent") {
+      statement.state = "cancelled";
+      statement.finished_at = nowAt;
+    } else if (statement.state === "not_started") {
+      statement.state = "skipped";
+    }
+  }
+  attempt.state = hadSuccess ? "partial_cancelled" : "cancelled";
+  attempt.send_boundary = "sent";
+  attempt.version += 1;
+  if (attempt.osc !== null) {
+    attempt.osc.phase = "cancelled";
+    attempt.osc.residual_state = "cleanup_required";
+    attempt.osc.last_heartbeat_at = nowAt;
+  }
+  stage.state = attempt.state;
+  order.state = attempt.state;
+  order.terminal_at = nowAt;
+  order.version += 1;
+}
+
+/**
+ * Seeds one pre-approved order per execution scenario so E2E can drive the
+ * executor surfaces without walking the approval flow (states the happy path
+ * reaches only after a full approval round). The seeded stage is
+ * execution_pending with the shared fixture user as its frozen executor —
+ * the same identity the mock session authenticates (W006).
+ */
+function seedExecutionScenarioOrder(): void {
+  const scenario = readStoredScenario();
+  if (
+    scenario !== "execution-partial" &&
+    scenario !== "execution-unknown" &&
+    scenario !== "execution-ghost" &&
+    scenario !== "execution-preflight" &&
+    scenario !== "schedule-missed"
+  ) {
+    return;
+  }
+  if (world.orders.size > 0) return;
+  const submittedAt = now();
+  const sqlByScenario: Record<string, string> = {
+    "execution-partial":
+      "ALTER TABLE orders ADD COLUMN note varchar(255); ALTER TABLE orders MODIFY COLUMN note text; CREATE INDEX idx_note ON orders (note);",
+    "execution-unknown":
+      "UPDATE orders SET status = 1 WHERE created_at < '2026-01-01'; UPDATE orders SET priority = 2 WHERE status = 1;",
+    "execution-ghost": "ALTER TABLE orders ADD COLUMN note varchar(255);",
+    "execution-preflight":
+      "UPDATE orders SET status = 1 WHERE user_id = 42; UPDATE orders SET status = 2 WHERE user_id = 43;",
+    "schedule-missed":
+      "UPDATE archive_rows SET archived = 1 WHERE created_at < '2025-06-01';",
+  };
+  const isMissed = scenario === "schedule-missed";
+  const order: FixtureOrder = {
+    id: "7e6f1a2b-0000-4000-8000-00000000f801",
+    display_number: "YR-20260830-000101",
+    submitter_user_id: FIXTURE_OWNER_ID,
+    title: "执行域场景工单",
+    // schedule-missed arrives already terminal: the scheduler missed the due
+    // claim and never catches up (E007); every other scenario waits for the
+    // executor's click.
+    state: isMissed ? "missed_schedule" : "stage_execution_pending",
+    current_stage_position: 1,
+    stages: [
+      {
+        id: "7e6f1a2b-0000-4000-8000-00000000f811",
+        position: 1,
+        datasource_name: "orders-mysql",
+        state: isMissed ? "cancelled" : "execution_pending",
+        approval_steps: [
+          {
+            id: "7e6f1a2b-0000-4000-8000-00000000f821",
+            position: 1,
+            state: "approved",
+            decided_at: submittedAt,
+            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+          },
+        ],
+        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+      },
+    ],
+    has_sql: true,
+    sql_hash: `hash-exec-${scenario}`,
+    snapshot_hash: "snap-exec-1",
+    manually_verified: false,
+    version: isMissed ? 3 : 2,
+    submitted_at: submittedAt,
+    terminal_at: isMissed ? submittedAt : null,
+    review_run_id: null,
+    sql_text: sqlByScenario[scenario] ?? "",
+  };
+  world.orders.set(order.id, order);
+  world.orderSequence = Math.max(world.orderSequence, 101);
+  world.orderTimeline.set(order.id, []);
+  world.orderComments.set(order.id, []);
+  recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结（阶段 1）", 1, "submitted");
+  recordOrderEvent(order, "change_order.stage_ready_for_execution", "system", null, "阶段 1 终步通过，工单等待执行", 1, "stage_execution_pending");
+  if (isMissed) {
+    const schedule: FixtureSchedule = {
+      id: "7e6f1a2b-0000-4000-8000-00000000f831",
+      order_id: order.id,
+      stage_id: "7e6f1a2b-0000-4000-8000-00000000f811",
+      scheduled_for: submittedAt,
+      state: "missed",
+      version: 2,
+    };
+    world.schedules.set(schedule.id, schedule);
+    recordOrderEvent(order, "schedule.missed", "system", null, "预约到点未被领取，超过宽限已错过（不自动补跑）", 1, "missed_schedule");
+  }
+}
+
+/** The live schedule row for an order, when the executor created one. */
+function liveScheduleFor(orderId: string): FixtureSchedule | undefined {
+  return [...world.schedules.values()].find(
+    (schedule) => schedule.order_id === orderId && schedule.state === "scheduled",
+  );
 }
 
 /** Terminal run shape per requested behavior — the deterministic fixture
@@ -1176,6 +1648,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const submittedFrom = url.searchParams.get("submitted_from");
       const submittedTo = url.searchParams.get("submitted_to");
       seedPartialExecutionOrder();
+      seedExecutionScenarioOrder();
       const relatedTo = (order: FixtureOrder): boolean =>
         order.submitter_user_id === FIXTURE_OWNER_ID ||
         order.stages.some(
@@ -1214,6 +1687,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     }),
 
     http.get("*/change-orders/:orderId", ({ params }) => {
+      seedExecutionScenarioOrder();
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
       return HttpResponse.json(successEnvelope(orderPublic(order)));
@@ -1556,6 +2030,371 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       return HttpResponse.json(successEnvelope(null));
     }),
 
+    // ---- Execution attempts (FE-F8). Mirrors the backend begin command
+    // (execution application/begin.go): If-Match 1004 → frozen executor 3001
+    // (W006 — admin is no exception) → sent boundary 3004 (E004: only a
+    // provably not_started stage may re-begin) → live attempt 3003 → state
+    // 1010. A preflight failure (scenario) answers 3006 and persists no
+    // attempt, so the executor may simply click again. Approval never
+    // auto-executes: the attempt exists only because the executor clicked.
+    http.post("*/change-orders/:orderId/execution-attempts", async ({ request, params }) => {
+      seedExecutionScenarioOrder();
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      // beginOnce check order: frozen executor (3001, W006 — admin is no
+      // exception) → sent boundary (3004, E004: only a provably not_started
+      // stage may re-begin) → live attempt (3003) → state (1010). The stage
+      // identity mirrors loadOrderStage: the first active stage by position,
+      // falling back to the last stage for fully terminal orders (whose
+      // facts still answer 3004 before the state check).
+      const stage =
+        order.stages.find((candidate) =>
+          ["approval_active", "execution_pending", "scheduled", "running", "result_unknown"].includes(
+            candidate.state,
+          ),
+        ) ?? order.stages.at(-1);
+      if (stage === undefined) {
+        return businessError(1010, `execution is not legal from state ${order.state}`);
+      }
+      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+        return businessError(3001, "current user is not a frozen executor of this stage");
+      }
+      const facts = [...world.attempts.values()].filter(
+        (candidate) => candidate.stage_id === stage.id,
+      );
+      if (facts.some((candidate) => candidate.send_boundary === "sent")) {
+        return businessError(3004, "a prior attempt crossed the send boundary; copy to a new draft");
+      }
+      if (facts.some((candidate) => !isAttemptTerminal(candidate.state))) {
+        return businessError(3003, "an execution attempt is already live for this stage");
+      }
+      if (order.state !== "stage_execution_pending" || stage.state !== "execution_pending") {
+        // beginOnce answers 1010 for every non-executable state; the mock has
+        // no crash-recovery reconciliation, so "running" re-begin is out of
+        // scope here (recorded in the migration contract §15).
+        return businessError(1010, `execution is not legal from state ${order.state}`);
+      }
+      const body = (await request.json().catch(() => ({}))) as {
+        osc_overrides?: Record<string, unknown>;
+      };
+      if (
+        body.osc_overrides !== undefined &&
+        (typeof body.osc_overrides !== "object" ||
+          Array.isArray(body.osc_overrides) ||
+          Object.keys(body.osc_overrides).some(
+            (key) => !["max_load", "critical_load", "chunk_size", "max_lag", "retries"].includes(key),
+          ))
+      ) {
+        // RCP-20260827: typed override keys only — unknown keys are a client
+        // contract violation (VALIDATION_FAILED), never silently dropped.
+        return businessError(1001, "osc_overrides contains unknown keys");
+      }
+      const behavior = executionBehavior();
+      if (readStoredScenario() === "execution-preflight") {
+        // Preflight runs inside the begin transaction (backend beginCore): a
+        // failure rolls everything back — no attempt row, no state change,
+        // the executor may click again (the not_started retry path).
+        return businessError(3006, "preflight failed: schema signature changed");
+      }
+      const attempt: FixtureExecutionAttempt = {
+        id: uuid(),
+        order_id: order.id,
+        stage_id: stage.id,
+        execution_kind: behavior.kind,
+        state: "created",
+        send_boundary: "not_started",
+        osc:
+          behavior.kind === "gh_ost"
+            ? {
+                tool: "gh-ost",
+                tool_version: "1.1.6",
+                binary_sha256: "a".repeat(64),
+                plan_hash: "b".repeat(64),
+                phase: "planned",
+                progress_basis_points: 0,
+                rows_copied: 0,
+                residual_state: "not_checked",
+                last_heartbeat_at: null,
+              }
+            : null,
+        version: 1,
+        created_at: now(),
+        statements: makeStatements(behavior.statementCount, behavior.kind === "dml" ? "dml" : "ddl"),
+        outcome: behavior.outcome,
+      };
+      world.attempts.set(attempt.id, attempt);
+      stage.state = "running";
+      order.state = "running";
+      order.version += 1;
+      recordOrderEvent(order, "stage.execution_started", "user", FIXTURE_OWNER_ID, `阶段 ${String(stage.position)}（${stage.datasource_name}）开始执行${behavior.kind === "gh_ost" ? "（gh-ost 在线变更）" : ""}`, stage.position, "running");
+      emitExecutionState(order, "stage_execution_pending", "execution_started", stage.id, {
+        kind: "user",
+        user_id: FIXTURE_OWNER_ID,
+      });
+      advanceAttempt(order, attempt);
+      return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
+    }),
+
+    http.get("*/execution-attempts/:attemptId", ({ params }) => {
+      const attempt = world.attempts.get(String(params.attemptId));
+      if (attempt === undefined) return businessError(1002, "attempt not found");
+      return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
+    }),
+
+    // Statement ledger: the only statement-level surface, ordinal-ordered and
+    // cursor-paged like every list endpoint.
+    http.get("*/execution-attempts/:attemptId/statements", ({ params, request }) => {
+      const attempt = world.attempts.get(String(params.attemptId));
+      if (attempt === undefined) return businessError(1002, "attempt not found");
+      const url = new URL(request.url);
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const after = url.searchParams.get("after");
+      const items = attempt.statements.map(statementPublic);
+      return HttpResponse.json(successEnvelope(pageOf(items, limit, after)));
+    }),
+
+    // Cancellation (backend cancel.go): any frozen executor of the stage may
+    // request it — not just the initiator — terminal attempts answer
+    // idempotently, and the outcome is a request, not a promise: DML rolls
+    // the stage back, DDL keeps prior successes, gh-ost surfaces residuals.
+    http.post("*/execution-attempts/:attemptId/cancellation", async ({ request, params }) => {
+      const attempt = world.attempts.get(String(params.attemptId));
+      if (attempt === undefined) return businessError(1002, "attempt not found");
+      const order = world.orders.get(attempt.order_id);
+      const stage = order?.stages.find((candidate) => candidate.id === attempt.stage_id);
+      if (order === undefined || stage === undefined) return businessError(1002, "order not found");
+      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+        return businessError(3001, "current user is not a frozen executor of this stage");
+      }
+      if (isAttemptTerminal(attempt.state)) {
+        return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
+      }
+      if (request.headers.get("If-Match") !== `"${String(attempt.version)}"`) {
+        return businessError(1004, "attempt changed elsewhere");
+      }
+      if (attempt.state === "cancelling") {
+        return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
+      }
+      if (attempt.state !== "running") {
+        return businessError(1010, `cancel is not legal from state ${attempt.state}`);
+      }
+      const body = (await request.json()) as { reason?: string };
+      if (typeof body.reason !== "string" || body.reason.trim() === "") {
+        return businessError(1001, "reason is required");
+      }
+      attempt.state = "cancelling";
+      attempt.version += 1;
+      setTimeout(() => {
+        resolveCancellation(order, attempt);
+      }, CANCEL_RESOLUTION_MS);
+      return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
+    }),
+
+    // Manual unknown-result verification (backend verify.go): shape first
+    // (3012 for missing evidence), then frozen executor (3001), then the
+    // attempt and order must both be result_unknown (1010). The first
+    // non-still_unknown verdict terminalizes the order; the attempt row stays
+    // result_unknown forever — a second verification answers 1010 on the
+    // order guard.
+    http.post("*/execution-attempts/:attemptId/verifications", async ({ request, params }) => {
+      const attempt = world.attempts.get(String(params.attemptId));
+      if (attempt === undefined) return businessError(1002, "attempt not found");
+      const order = world.orders.get(attempt.order_id);
+      const stage = order?.stages.find((candidate) => candidate.id === attempt.stage_id);
+      if (order === undefined || stage === undefined) return businessError(1002, "order not found");
+      const body = (await request.json().catch(() => null)) as {
+        result?: string;
+        reason?: string;
+        evidence?: Array<{ kind?: string; content?: string }>;
+      } | null;
+      if (body === null) return businessError(1001, "body is required");
+      if (body.result !== "confirmed_succeeded" && body.result !== "confirmed_failed" && body.result !== "confirmed_partial" && body.result !== "still_unknown") {
+        return businessError(1001, "result must be one of the four fixed verdicts");
+      }
+      if (typeof body.reason !== "string" || body.reason.length < 1 || body.reason.length > 4096) {
+        return businessError(1001, "reason must be 1..4096 characters");
+      }
+      if (!Array.isArray(body.evidence) || body.evidence.length < 1) {
+        return businessError(3012, "at least one database-side evidence item is required");
+      }
+      for (const entry of body.evidence) {
+        if (entry.kind !== "text" && entry.kind !== "database_fact" && entry.kind !== "external_reference") {
+          return businessError(1001, "evidence kind is invalid");
+        }
+        if (typeof entry.content !== "string" || entry.content.length < 1 || entry.content.length > 16384) {
+          return businessError(1001, "evidence content must be 1..16384 characters");
+        }
+      }
+      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+        return businessError(3001, "current user is not a frozen executor of this stage");
+      }
+      if (attempt.state !== "result_unknown") {
+        return businessError(1010, `verification is not legal from attempt state ${attempt.state}`);
+      }
+      if (request.headers.get("If-Match") !== `"${String(attempt.version)}"`) {
+        return businessError(1004, "attempt changed elsewhere");
+      }
+      if (order.state !== "result_unknown") {
+        return businessError(1010, `verification is not legal from order state ${order.state}`);
+      }
+      const verification: FixtureVerification = {
+        id: uuid(),
+        attempt_id: attempt.id,
+        result: body.result,
+        reason: body.reason,
+        evidence: body.evidence.map((entry) => ({
+          kind: entry.kind as "text" | "database_fact" | "external_reference",
+          content: entry.content as string,
+        })),
+        verified_by_user_id: FIXTURE_OWNER_ID,
+        occurred_at: now(),
+      };
+      const entries = world.verifications.get(attempt.id) ?? [];
+      entries.push(verification);
+      world.verifications.set(attempt.id, entries);
+      // The attempt row is untouched by verification (backend verify.go):
+      // only the order aggregate moves, and its version guards any second
+      // verification.
+      order.version += 1;
+      const from = order.state;
+      if (body.result !== "still_unknown") {
+        const toState =
+          body.result === "confirmed_succeeded"
+            ? "completed"
+            : body.result === "confirmed_failed"
+              ? "failed"
+              : "partial_failed";
+        order.state = toState;
+        order.terminal_at = verification.occurred_at;
+        order.manually_verified = body.result === "confirmed_succeeded";
+        stage.state =
+          body.result === "confirmed_succeeded"
+            ? "succeeded"
+            : body.result === "confirmed_failed"
+              ? "failed"
+              : "partial_failed";
+        recordOrderEvent(
+          order,
+          "change_order.unknown_resolved",
+          "user",
+          FIXTURE_OWNER_ID,
+          `人工核验结论 ${body.result}：工单${toState === "completed" ? "完成" : "终止"}（执行结果由人工确认）`,
+          stage.position,
+          toState,
+        );
+      } else {
+        recordOrderEvent(order, "change_order.unknown_resolved", "user", FIXTURE_OWNER_ID, "人工核验结论 still_unknown：继续阻断后续阶段", stage.position, "result_unknown");
+      }
+      emit(
+        `change-orders/${order.id}`,
+        "io.yearning.v4.execution.verification_recorded",
+        {
+          order_id: order.id,
+          attempt_id: attempt.id,
+          verified_by_user_id: FIXTURE_OWNER_ID,
+          result: body.result,
+          evidence_count: body.evidence.length,
+          aggregate_version: order.version,
+        },
+        { kind: "user", user_id: FIXTURE_OWNER_ID },
+      );
+      emit(
+        `change-orders/${order.id}`,
+        "io.yearning.v4.execution.state_changed",
+        {
+          aggregate_id: order.id,
+          from,
+          to: order.state,
+          reason_code: `unknown_resolved:${body.result}`,
+          stage_id: stage.id,
+          aggregate_version: order.version,
+        },
+        { kind: "user", user_id: FIXTURE_OWNER_ID },
+      );
+      return HttpResponse.json(successEnvelope(orderPublic(order)));
+    }),
+
+    // Deferred execution (backend schedule.go): executor-only creation from
+    // stage_execution_pending, one live schedule per stage, window ≥ now+5min
+    // and ≤ now+30 days. Due-time claiming, missed handling and datasource
+    // blocking are scheduler-side; cancellation has no endpoint — the
+    // submitter withdraws the order and the scheduler closes the row (E007).
+    http.post("*/change-orders/:orderId/execution-schedules", async ({ request, params }) => {
+      seedExecutionScenarioOrder();
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      // createScheduleOnce check order: frozen executor (3001) → state (1010,
+      // only stage_execution_pending schedules) → live attempt/sent facts and
+      // live schedule (3003) → window (3007).
+      const stage =
+        order.stages.find((candidate) =>
+          ["approval_active", "execution_pending", "scheduled", "running", "result_unknown"].includes(
+            candidate.state,
+          ),
+        ) ?? order.stages.at(-1);
+      if (stage === undefined) {
+        return businessError(1010, `scheduling is not legal from state ${order.state}`);
+      }
+      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+        return businessError(3001, "current user is not a frozen executor of this stage");
+      }
+      if (order.state !== "stage_execution_pending" || stage.state !== "execution_pending") {
+        return businessError(1010, `scheduling is not legal from state ${order.state}`);
+      }
+      const facts = [...world.attempts.values()].filter(
+        (candidate) => candidate.stage_id === stage.id,
+      );
+      if (
+        facts.some((candidate) => !isAttemptTerminal(candidate.state)) ||
+        facts.some((candidate) => candidate.send_boundary === "sent") ||
+        liveScheduleFor(order.id) !== undefined
+      ) {
+        return businessError(3003, "this stage already has a live execution instance");
+      }
+      const body = (await request.json()) as { scheduled_for?: string };
+      const scheduledFor = typeof body.scheduled_for === "string" ? body.scheduled_for : "";
+      const due = Date.parse(scheduledFor);
+      if (scheduledFor === "" || Number.isNaN(due)) {
+        return businessError(1001, "scheduled_for must be an RFC3339 timestamp");
+      }
+      const leadMs = due - Date.now();
+      if (leadMs < 5 * 60 * 1000 || leadMs > 30 * 24 * 3600 * 1000) {
+        return businessError(3007, "scheduled_for must be 5 minutes to 30 days ahead");
+      }
+      const schedule: FixtureSchedule = {
+        id: uuid(),
+        order_id: order.id,
+        stage_id: stage.id,
+        scheduled_for: new Date(due).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        state: "scheduled",
+        version: 1,
+      };
+      world.schedules.set(schedule.id, schedule);
+      const from = order.state;
+      stage.state = "scheduled";
+      order.state = "scheduled";
+      order.version += 1;
+      recordOrderEvent(order, "execution.scheduled", "user", FIXTURE_OWNER_ID, `阶段 ${String(stage.position)} 已预约 ${schedule.scheduled_for} 到点执行（到点未领取将标记错过，不自动补跑）`, stage.position, "scheduled");
+      emitExecutionState(order, from, "executor_scheduled", stage.id, {
+        kind: "user",
+        user_id: FIXTURE_OWNER_ID,
+      });
+      return HttpResponse.json(
+        successEnvelope({
+          id: schedule.id,
+          stage_id: schedule.stage_id,
+          scheduled_for: schedule.scheduled_for,
+          state: schedule.state,
+        }),
+      );
+    }),
+
     http.get("*/review-runs/:runId", ({ params }) => {
       const run = world.runs.get(String(params.runId));
       if (run === undefined) return businessError(1002, "review run not found");
@@ -1659,6 +2498,10 @@ export async function* createMockEventTransport(
   }
   let cursor = 0;
   while (cursor < Number.MAX_SAFE_INTEGER) {
+    // The world can be reset under a long-lived transport (test seams): a
+    // cursor past the fresh outbox would never yield again, so fall back to
+    // replaying from the start — the client dedups by event id.
+    if (cursor > world.outbox.length) cursor = 0;
     while (cursor < world.outbox.length) {
       const entry = world.outbox[cursor];
       if (entry === undefined) break;

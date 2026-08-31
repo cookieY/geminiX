@@ -177,3 +177,78 @@ export function approvalStepTone(state: string): OrderStateTone {
       return "neutral";
   }
 }
+
+/** The stage whose execution is currently waiting for its frozen executor
+ * (W006), when the given user is one of its frozen executors. Admin confers
+ * no execution right — the backend re-checks membership on every command
+ * (3001), the UI only mirrors the frozen snapshot. */
+export function frozenExecutorStageFor(
+  order: ChangeOrder,
+  userId: string | undefined,
+): (typeof order.stages)[number] | null {
+  if (userId === undefined) return null;
+  if (order.state !== "stage_execution_pending") return null;
+  const stage = order.stages.find((candidate) => candidate.state === "execution_pending");
+  if (stage === undefined) return null;
+  return stage.execution_actors.some((actor) => actor.id === userId) ? stage : null;
+}
+
+/** Terminal execution-attempt states (backend domain.AttemptState.Terminal) —
+ * the shared truth for "attempt is live" across the polling hooks and the
+ * workspace cards. */
+export const ATTEMPT_TERMINAL_STATES: ReadonlySet<string> = new Set([
+  "succeeded",
+  "failed",
+  "partial_failed",
+  "cancelled",
+  "partial_cancelled",
+  "result_unknown",
+]);
+
+export function isAttemptTerminalState(state: string): boolean {
+  return ATTEMPT_TERMINAL_STATES.has(state);
+}
+
+/** Badge tone per execution-attempt state (ExecutionAttempt vocabulary). */
+export function executionAttemptTone(state: string): OrderStateTone {
+  switch (state) {
+    case "succeeded":
+      return "success";
+    case "failed":
+    case "partial_failed":
+      return "destructive";
+    case "result_unknown":
+    case "cancelled":
+    case "partial_cancelled":
+      return "warning";
+    case "created":
+    case "preflight":
+    case "running":
+    case "cancelling":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+/** Badge tone per per-statement fact. `unknown` is deliberately warning-toned
+ * and never rendered like `not_started` — a sent statement whose database
+ * answer was lost is a high-risk state (E005, gate: Unknown绝不显示成未执行). */
+export function statementStateTone(state: string): OrderStateTone {
+  switch (state) {
+    case "succeeded":
+      return "success";
+    case "failed":
+      return "destructive";
+    case "unknown":
+    case "cancelled":
+      return "warning";
+    case "sent":
+      return "info";
+    case "not_started":
+    case "skipped":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}

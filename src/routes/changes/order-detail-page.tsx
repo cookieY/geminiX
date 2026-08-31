@@ -9,6 +9,7 @@ import { ApprovalDecisionCard, ApprovalStepStateBadge } from "@/features/orders/
 import { FrozenReviewCard } from "@/features/orders/frozen-review-card";
 import { OrderCommentsCard } from "@/features/orders/order-comments-card";
 import { OrderSqlCard } from "@/features/orders/order-sql-card";
+import { ExecutionWorkspaceCard } from "@/features/orders/execution-card";
 import {
   useChangeOrder,
   useChangeOrderTimeline,
@@ -157,6 +158,10 @@ export default function OrderDetailPage() {
   const [dialog, setDialog] = useState<"withdraw" | "void" | null>(null);
   const [reason, setReason] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
+  // The execution attempt this session knows about. The contract has no
+  // list-attempts read — the id enters through the creation response and is
+  // page-local state (FE-F8; events on the order subject keep it fresh).
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   const withdrawMutation = useWithdrawOrder(order);
   const voidMutation = useVoidOrder(order);
@@ -255,6 +260,12 @@ export default function OrderDetailPage() {
 
       <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
       <OrderSqlCard orderId={order.id} />
+      <ExecutionWorkspaceCard
+        order={order}
+        attemptId={attemptId}
+        onAttemptCreated={setAttemptId}
+        onRecover={() => void orderQuery.refetch()}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card data-testid="order-stages">
