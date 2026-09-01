@@ -36,8 +36,8 @@ describe("mock scenario store", () => {
     // the FE-F4 review lifecycle outcomes (Ready/Blocked/Partial/
     // Provider失败 acceptance gates) served by the stateful fixture, the
     // FE-F6 order-partial-execution scenario for the partial-withdraw gate,
-    // and the FE-F8 execution outcomes (DDL partial / unknown / gh-ost
-    // residual / preflight failure / missed schedule).
+    // the FE-F8 execution outcomes (DDL partial / unknown / gh-ost residual /
+    // preflight failure / missed schedule) and the FE-F10 query worlds.
     expect(MOCK_SCENARIOS).toEqual([
       "ready",
       "blocked",
@@ -53,6 +53,13 @@ describe("mock scenario store", () => {
       "execution-ghost",
       "execution-preflight",
       "schedule-missed",
+      // FE-F10 query-domain worlds (entry branches, session, revocation,
+      // approval queue).
+      "query-flow",
+      "query-flow-direct",
+      "query-session",
+      "query-revoked",
+      "query-approval",
     ]);
   });
 });

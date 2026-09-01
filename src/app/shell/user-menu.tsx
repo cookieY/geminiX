@@ -22,9 +22,9 @@ import { useSession } from "@/features/auth/session-provider";
  * (identity block, menu list, footer) with Yearning content. The identity and
  * the badge come from the real server session (GET /users/me). Sign-out is a
  * real POST /auth/logout — the HttpOnly session cookie is revoked server-side
- * and the session cache is dropped before navigating to /login. The profile
- * action stays disabled until the profile page is delivered (FE-F10); a
- * disabled control keeps its reason visible (spec §11).
+ * and the session cache is dropped before navigating to /login. The
+ * profile action navigates to the settings-style profile page (FE-F10,
+ * UI spec §5.1: avatar entry, never a sidebar item).
  */
 export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   const { t } = useTranslation();
@@ -79,12 +79,13 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
             <li>
               <Button
                 variant="ghost"
-                disabled
-                className="w-full justify-start gap-3 px-3 text-muted-foreground"
+                className="w-full justify-start gap-3 px-3"
+                onClick={() => void navigate("/profile")}
+                disabled={session.status !== "authenticated"}
+                data-testid="user-menu-profile"
               >
                 <UserRound className="size-4" />
                 <span>{t("shell.userMenu.profile")}</span>
-                <span className="sr-only">{t("shell.userMenu.reasonProfile")}</span>
               </Button>
             </li>
             <li>

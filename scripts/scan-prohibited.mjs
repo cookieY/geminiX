@@ -60,8 +60,22 @@ for (const file of walk(join(frontendRoot, "src"))) {
   }
 }
 
+// 4. No AutoTask and no legacy datasource-permission transfer fields
+// (migration contract §8; FE-F10 gate "旧核心页面无未处置项"). The scan is
+// scoped to the legacy field names themselves — `flow_id` remains legal in
+// v4 payloads (drafts, query sessions); only the removed datasource-level
+// bindings use the *_source field names, so those are what we pin here.
+const legacyPattern = /autotask|AutoTask|ddl_source|dml_source|query_source/;
+for (const file of walk(join(frontendRoot, "src"))) {
+  if (!/\.(ts|tsx)$/.test(file)) continue;
+  const content = readFileSync(file, "utf8");
+  if (legacyPattern.test(content)) {
+    problems.push(`legacy autotask/datasource-transfer reference in ${relative(frontendRoot, file)}`);
+  }
+}
+
 if (problems.length > 0) {
   for (const problem of problems) process.stderr.write(`prohibited scan: ${problem}\n`);
   process.exit(1);
 }
-console.log("prohibited scan ok: no template/registry/MCP refs in product code, no antd, no chat shell");
+console.log("prohibited scan ok: no template/registry/MCP refs in product code, no antd, no chat shell, no autotask/legacy datasource transfers");

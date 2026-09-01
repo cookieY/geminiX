@@ -119,14 +119,15 @@ describe("MinePage", () => {
     expect(screen.getByTestId("tab-audit-orders")).toBeVisible();
   });
 
-  it("shows the reserved query tab as disabled with its pending note", async () => {
+  it("renders the unified query-orders tab with its empty state", async () => {
     const user = userEvent.setup();
     renderMine();
-    // The query tab is reserved by the double-tab IA; its unified view is
-    // delivered with the query domain, so activating it shows the pending
-    // note instead of a silently missing tab.
+    // FE-F10 replaces the placeholder with the unified query view (UI spec
+    // §5.2): no server query objects exist for the default session, so the
+    // honest empty state renders.
     await user.click(await screen.findByTestId("tab-query-orders"));
-    expect(await screen.findByText("查询工单视图由查询域工作包（F10）交付。")).toBeVisible();
+    expect(await screen.findByTestId("orders-query-empty")).toBeVisible();
+    expect(screen.getByTestId("orders-query-empty")).toHaveTextContent("暂无查询工单记录。");
   });
 
   it("navigates a row click to the order detail route", async () => {

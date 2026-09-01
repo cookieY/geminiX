@@ -3,7 +3,14 @@ import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 import type {
   AiProvider,
+  AuditEvent,
+  AnnouncementRevision,
   Datasource,
+  IdentityProvider,
+  LegacyMigrationRun,
+  NotificationChannel,
+  NotificationDelivery,
+  PermissionGroup,
   ReviewInputDefinition,
   DatasourceCapabilities,
   KnowledgeEntry,
@@ -14,6 +21,7 @@ import type {
   SettingsRevision,
   SettingsValue,
   Task,
+  User,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 
 /**
@@ -297,12 +305,26 @@ interface FixtureRuleSet {
   updated_at: string;
 }
 
+interface FixtureFlowStage {
+  position: number;
+  datasource_id: string;
+  schema_mappings: { logical_schema: string; physical_schema: string }[];
+  approval_steps: { position: number; actors: { user_id: string }[] }[];
+  execution_actors: { user_id: string }[];
+}
+
 interface FixtureFlow {
   id: string;
   name: string;
   flow_type: "change_review" | "query_access";
   enabled: boolean;
   rule_set_id: string | null;
+  stages: FixtureFlowStage[] | null;
+  approval_steps: { position: number; actors: { user_id: string }[] }[] | null;
+  query_capabilities: { datasource_id: string; can_query: true; can_export: boolean }[] | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface FixtureNamespace {
@@ -314,7 +336,7 @@ interface FixtureNamespace {
 
 interface FixtureAdminTask {
   id: string;
-  kind: "admin_connection_test" | "ai_provider_connection_test";
+  kind: "admin_connection_test" | "ai_provider_connection_test" | "identity_provider_connection_test";
   state: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   progress: { completed: number; total: number; unit: string };
   result_ref: string | null;
@@ -379,6 +401,21 @@ const world = {
   tasks: new Map<string, FixtureAdminTask>(),
   /** Single-use impact tokens: key → proposed settings hash. */
   impactTokens: new Map<string, string>(),
+  users: new Map<string, FixtureUser>(),
+  groups: new Map<string, FixturePermissionGroup>(),
+  maskingRules: new Map<string, string[]>(),
+  announcementRevisions: new Map<string, FixtureAnnouncementRevision>(),
+  announcementPublication: {
+    revision_id: null as string | null,
+    version: 1,
+    published_by: null as string | null,
+    published_at: null as string | null,
+  },
+  auditEvents: [] as FixtureAuditEvent[],
+  identityProviders: new Map<string, FixtureIdentityProvider>(),
+  notificationChannels: new Map<string, FixtureNotificationChannel>(),
+  notificationDeliveries: [] as FixtureNotificationDelivery[],
+  migrationRun: null as FixtureMigrationRun | null,
 };
 
 export function resetAdminFixture(): void {
@@ -392,6 +429,16 @@ export function resetAdminFixture(): void {
   world.revisions.clear();
   world.tasks.clear();
   world.impactTokens.clear();
+  world.users.clear();
+  world.groups.clear();
+  world.maskingRules.clear();
+  world.announcementRevisions.clear();
+  world.announcementPublication = { revision_id: null, version: 1, published_by: null, published_at: null };
+  world.auditEvents = [];
+  world.identityProviders.clear();
+  world.notificationChannels.clear();
+  world.notificationDeliveries = [];
+  world.migrationRun = null;
   seedAdminFixture();
 }
 
@@ -744,7 +791,1290 @@ export function seedAdminFixture(): void {
     flow_type: "change_review",
     enabled: true,
     rule_set_id: ADMIN_FIXTURE_RULE_SET_ID,
+    stages: [
+      {
+        position: 1,
+        datasource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID,
+        schema_mappings: [{ logical_schema: "app", physical_schema: "app" }],
+        approval_steps: [{ position: 1, actors: [{ user_id: SEED_ADMIN_ID }] }],
+        execution_actors: [{ user_id: SEED_ADMIN_ID }],
+      },
+    ],
+    approval_steps: null,
+    query_capabilities: null,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
   });
+  seedSiteFixture();
+}
+
+// ===========================================================================
+// FE-F10 site domains: users, permission groups, flows (full model + masking
+// rules), announcements, audit events, identity providers, notification
+// channels and the migration review run. Mirrors backend/internal/identity,
+// workflow and the declared OpenAPI views; admin CRUD stays behind the
+// adminGuard while /announcements/current answers any authenticated session.
+// ===========================================================================
+
+export const ADMIN_FIXTURE_USER_MEMBER_ID = "7a1a3c4d-1111-4111-8111-00000000u001";
+export const ADMIN_FIXTURE_USER_BLOCKED_ID = "7a1a3c4d-1111-4111-8111-00000000u002";
+export const ADMIN_FIXTURE_GROUP_ID = "7a1a3c4d-2222-4222-8222-00000000g001";
+export const ADMIN_FIXTURE_FLOW_QUERY_ID = "7a1a3c4d-3333-4333-8333-00000000f002";
+export const ADMIN_FIXTURE_REVISION_PUBLISHED_ID = "7a1a3c4d-4444-4444-8444-00000000r001";
+export const ADMIN_FIXTURE_LDAP_ID = "7a1a3c4d-5555-4555-8555-00000000i001";
+export const ADMIN_FIXTURE_CHANNEL_EMAIL_ID = "7a1a3c4d-6666-4666-8666-00000000n001";
+export const ADMIN_FIXTURE_MIGRATION_RUN_ID = "7a1a3c4d-7777-4777-8777-00000000m001";
+
+interface FixtureUser extends User {
+  /** Fixture-internal: deletion blockers derived from seeded relations. */
+  activeOrderCount: number;
+  templateReferenceCount: number;
+}
+
+type FixturePermissionGroup = PermissionGroup;
+
+type FixtureAnnouncementRevision = AnnouncementRevision;
+
+type FixtureAuditEvent = AuditEvent;
+
+interface FixtureIdentityProvider extends IdentityProvider {
+  /** Fixture-internal client secret; the read face exposes secret_configured. */
+  clientSecret: string | null;
+}
+
+interface FixtureNotificationChannel extends NotificationChannel {
+  /** Fixture-internal secret; the read face exposes secret_configured. */
+  secret: string | null;
+}
+
+type FixtureNotificationDelivery = NotificationDelivery;
+
+interface FixtureMigrationCandidate {
+  candidate_id: string;
+  kind: "permission_group_flow_grant" | "single_stage_flow" | "multi_stage_flow" | "rule_set";
+  source_refs: string[];
+  target_definition_hash: string;
+  risk: "no_expansion" | "possible_expansion" | "unmapped";
+  coverage_added: string[];
+  coverage_missing: string[];
+  confirmed: boolean;
+  confirmed_by: "admin" | null;
+  confirmed_at: string | null;
+}
+
+interface FixtureMigrationRun {
+  id: string;
+  state: "planned" | "dry_run_running" | "awaiting_confirmation" | "approved" | "applying" | "verifying" | "verified" | "failed";
+  manifest_hash: string | null;
+  table_results: LegacyMigrationRun["table_results"];
+  candidates: FixtureMigrationCandidate[];
+  version: number;
+  started_at: string;
+  updated_at: string;
+}
+
+function sha256Hex(input: string): string {
+  // Deterministic stand-in hash for fixture data (not a security boundary).
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < input.length; i += 1) {
+    h1 = ((h1 ^ input.charCodeAt(i)) * 16777619) >>> 0;
+    h2 = ((((h2 + input.charCodeAt(i) * 31) >>> 0) ^ (h1 << 3)) >>> 0);
+  }
+  return `${h1.toString(16).padStart(8, "0")}${h2.toString(16).padStart(8, "0")}`.repeat(4);
+}
+
+/** Markdown → sanitized HTML mirror (dashboard/announcements.go): the mock
+ * supports headings, bold, inline code and paragraphs; everything else is
+ * escaped. Script/iframe/event-attribute/style input is escaped away — the
+ * server stays the sanitizer authority. */
+function sanitizeMarkdown(source: string): string {
+  const escapeHtml = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return source
+    .split(/\n\n+/)
+    .map((block) => {
+      const lines = block.split("\n");
+      if (lines.every((line) => line.startsWith("#"))) {
+        return `<h2>${escapeHtml(lines.join(" ").replace(/^#+\s*/, ""))}</h2>`;
+      }
+      const html = escapeHtml(block)
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>");
+      return `<p>${html.replace(/\n/g, "<br />")}</p>`;
+    })
+    .join("\n");
+}
+
+function seedSiteFixture(): void {
+  const ts = now();
+  const tsLater = new Date(Date.parse(ts) + 3600 * 1000).toISOString();
+  const tsMuchLater = new Date(Date.parse(ts) + 24 * 3600 * 1000).toISOString();
+
+  world.users.set(SEED_ADMIN_ID, {
+    id: SEED_ADMIN_ID,
+    username: "admin",
+    display_name: "Administrator",
+    email: "admin@yearning.test",
+    is_builtin_admin: true,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    activeOrderCount: 0,
+    templateReferenceCount: 0,
+  });
+  world.users.set(ADMIN_FIXTURE_USER_MEMBER_ID, {
+    id: ADMIN_FIXTURE_USER_MEMBER_ID,
+    username: "dba-anne",
+    display_name: "Anne Zhou",
+    email: "anne@yearning.test",
+    is_builtin_admin: false,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    activeOrderCount: 0,
+    templateReferenceCount: 0,
+  });
+  world.users.set(ADMIN_FIXTURE_USER_BLOCKED_ID, {
+    id: ADMIN_FIXTURE_USER_BLOCKED_ID,
+    username: "busy-bob",
+    display_name: "Bob Li",
+    email: null,
+    is_builtin_admin: false,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    activeOrderCount: 2,
+    templateReferenceCount: 1,
+  });
+
+  world.groups.set(ADMIN_FIXTURE_GROUP_ID, {
+    id: ADMIN_FIXTURE_GROUP_ID,
+    name: "变更发布组",
+    enabled: true,
+    member_user_ids: [ADMIN_FIXTURE_USER_MEMBER_ID],
+    granted_flow_ids: [ADMIN_FIXTURE_FLOW_CHANGE_ID, ADMIN_FIXTURE_FLOW_QUERY_ID],
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+  });
+
+  world.flows.set(ADMIN_FIXTURE_FLOW_QUERY_ID, {
+    id: ADMIN_FIXTURE_FLOW_QUERY_ID,
+    name: "在线只读查询流程",
+    flow_type: "query_access",
+    enabled: true,
+    rule_set_id: null,
+    stages: null,
+    approval_steps: [{ position: 1, actors: [{ user_id: SEED_ADMIN_ID }] }],
+    query_capabilities: [
+      { datasource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, can_query: true, can_export: true },
+      { datasource_id: ADMIN_FIXTURE_DATASOURCE_PG_ID, can_query: true, can_export: false },
+    ],
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+  });
+  world.maskingRules.set(`${ADMIN_FIXTURE_FLOW_QUERY_ID}:${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`, [
+    "email",
+    "phone",
+  ]);
+
+  const publishedRevision: FixtureAnnouncementRevision = {
+    id: ADMIN_FIXTURE_REVISION_PUBLISHED_ID,
+    revision_number: 1,
+    title: "季度维护窗口公告",
+    sanitized_html: sanitizeMarkdown(
+      "# 季度维护窗口\n\n本季度数据库维护窗口为**每周日 02:00-06:00**，请避开该时段提交紧急变更。",
+    ),
+    content_sha256: sha256Hex("revision-1"),
+    sanitizer_policy_version: "mock-sanitizer-1",
+    created_by_username: "admin",
+    created_at: ts,
+  };
+  world.announcementRevisions.set(publishedRevision.id, publishedRevision);
+  world.announcementPublication = {
+    revision_id: publishedRevision.id,
+    version: 1,
+    published_by: "admin",
+    published_at: ts,
+  };
+
+  const auditBase = (index: number): string => new Date(Date.parse(ts) - index * 3600 * 1000).toISOString();
+  world.auditEvents = [
+    {
+      id: `ae-0001-${indexMarker()}`,
+      event_type: "auth.login",
+      actor_kind: "user",
+      actor_id: SEED_ADMIN_ID,
+      actor_username_snapshot: "admin",
+      resource_type: "auth_session",
+      resource_id: null,
+      action: "login",
+      outcome: "succeeded",
+      request_id: null,
+      metadata: { behavior: "local" },
+      occurred_at: auditBase(0),
+      expires_at: new Date(Date.parse(auditBase(0)) + 90 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: `ae-0002-${indexMarker()}`,
+      event_type: "datasource.updated",
+      actor_kind: "user",
+      actor_id: SEED_ADMIN_ID,
+      actor_username_snapshot: "admin",
+      resource_type: "datasource",
+      resource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID,
+      action: "replace",
+      outcome: "succeeded",
+      request_id: null,
+      metadata: { secret: "changed" },
+      occurred_at: auditBase(3),
+      expires_at: new Date(Date.parse(auditBase(3)) + 90 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: `ae-0003-${indexMarker()}`,
+      event_type: "order.sql_revealed",
+      actor_kind: "user",
+      actor_id: ADMIN_FIXTURE_USER_MEMBER_ID,
+      actor_username_snapshot: "dba-anne",
+      resource_type: "change_order",
+      resource_id: "co-fixture-audit",
+      action: "reveal_sql",
+      outcome: "succeeded",
+      request_id: null,
+      metadata: { sql_hash: `sha256:${sha256Hex("audit")}` },
+      occurred_at: auditBase(6),
+      expires_at: new Date(Date.parse(auditBase(6)) + 90 * 24 * 3600 * 1000).toISOString(),
+    },
+  ];
+
+  world.identityProviders.set(ADMIN_FIXTURE_LDAP_ID, {
+    id: ADMIN_FIXTURE_LDAP_ID,
+    provider_key: "ldap",
+    provider_kind: "ldap",
+    display_name: "Corporate LDAP",
+    enabled: true,
+    configuration: {
+      host: "ldap.corp.test",
+      port: 636,
+      transport: "ldaps",
+      server_name: "ldap.corp.test",
+      bind_dn: "cn=yearning,ou=services,dc=corp,dc=test",
+      base_dn: "ou=people,dc=corp,dc=test",
+      user_filter: "(&(objectClass=organizationalPerson)(uid={username}))",
+      username_attribute: "uid",
+      display_name_attribute: "cn",
+      email_attribute: "mail",
+      connect_timeout_ms: 5000,
+      bind_timeout_ms: 5000,
+      search_timeout_ms: 5000,
+    },
+    secret_configured: true,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    clientSecret: "ldapsec-1",
+  });
+
+  world.notificationChannels.set(ADMIN_FIXTURE_CHANNEL_EMAIL_ID, {
+    id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+    kind: "email",
+    name: "ops-mail",
+    enabled: true,
+    configuration: {
+      host: "smtp.corp.test",
+      port: 465,
+      tls_mode: "required",
+      username: "yearning@corp.test",
+      from_address: "yearning@corp.test",
+    },
+    secret_configured: true,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+    secret: "smtppass-1",
+  });
+  world.notificationDeliveries = [
+    {
+      id: `nd-0001-${indexMarker()}`,
+      domain_event_id: `de-0001-${indexMarker()}`,
+      notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+      recipient_user_id: SEED_ADMIN_ID,
+      state: "succeeded",
+      delivery_attempt_count: 1,
+      next_attempt_at: null,
+      last_error_code: null,
+      created_at: tsLater,
+      updated_at: tsLater,
+    },
+    {
+      id: `nd-0002-${indexMarker()}`,
+      domain_event_id: `de-0002-${indexMarker()}`,
+      notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+      recipient_user_id: ADMIN_FIXTURE_USER_MEMBER_ID,
+      state: "sending",
+      delivery_attempt_count: 3,
+      next_attempt_at: tsMuchLater,
+      last_error_code: "smtp_timeout",
+      created_at: tsLater,
+      updated_at: tsMuchLater,
+    },
+  ];
+
+  world.migrationRun = {
+    id: ADMIN_FIXTURE_MIGRATION_RUN_ID,
+    state: "awaiting_confirmation",
+    manifest_hash: `sha256:${sha256Hex("migration-manifest")}`,
+    table_results: [
+      {
+        source_table: "core_sqlorder",
+        target_tables: ["change_orders", "change_order_stages"],
+        read: 1200,
+        written: 1198,
+        excluded: 2,
+        quarantined: 0,
+        failed: 0,
+        reconciliation_passed: true,
+      },
+      {
+        source_table: "core_queryorder",
+        target_tables: ["query_access_requests"],
+        read: 340,
+        written: 340,
+        excluded: 0,
+        quarantined: 0,
+        failed: 0,
+        reconciliation_passed: true,
+      },
+      {
+        source_table: "core_workflowdetail",
+        target_tables: ["flow_stages", "flow_approval_steps"],
+        read: 88,
+        written: 86,
+        excluded: 0,
+        quarantined: 2,
+        failed: 0,
+        reconciliation_passed: false,
+      },
+    ],
+    candidates: [
+      {
+        candidate_id: `mc-0001-${indexMarker()}`,
+        kind: "permission_group_flow_grant",
+        source_refs: ["core_group.permissions → group_a"],
+        target_definition_hash: `sha256:${sha256Hex("candidate-1")}`,
+        risk: "no_expansion",
+        coverage_added: ["change_flow:生产变更默认流程", "query_flow:在线只读查询流程"],
+        coverage_missing: [],
+        confirmed: false,
+        confirmed_by: null,
+        confirmed_at: null,
+      },
+      {
+        candidate_id: `mc-0002-${indexMarker()}`,
+        kind: "multi_stage_flow",
+        source_refs: ["core_flow.tpl → multi-stage-legacy"],
+        target_definition_hash: `sha256:${sha256Hex("candidate-2")}`,
+        risk: "possible_expansion",
+        coverage_added: ["stage-1:mysql", "stage-2:pg"],
+        coverage_missing: ["stage-3:oracle（v4不支持）"],
+        confirmed: false,
+        confirmed_by: null,
+        confirmed_at: null,
+      },
+    ],
+    version: 1,
+    started_at: ts,
+    updated_at: ts,
+  };
+}
+
+function indexMarker(): string {
+  return "fx01";
+}
+
+function userView(user: FixtureUser): User {
+  const { activeOrderCount: _activeOrderCount, templateReferenceCount: _templateReferenceCount, ...view } = user;
+  return view;
+}
+
+function deletionImpactOf(user: FixtureUser) {
+  const blockers: { code: string; count: number }[] = [];
+  if (user.is_builtin_admin) blockers.push({ code: "builtin_admin_immutable", count: 1 });
+  if (user.activeOrderCount > 0) blockers.push({ code: "active_orders", count: user.activeOrderCount });
+  if (user.templateReferenceCount > 0) {
+    blockers.push({ code: "referenced_by_template", count: user.templateReferenceCount });
+  }
+  return {
+    user_id: user.id,
+    can_delete: blockers.length === 0,
+    blockers,
+    flow_actor_references: user.templateReferenceCount,
+    permission_group_memberships: [...world.groups.values()].filter((group) =>
+      group.member_user_ids.includes(user.id),
+    ).length,
+    active_query_grants: 0,
+    active_query_sessions: 0,
+    historical_snapshots_preserved: true,
+    calculated_at: now(),
+  };
+}
+
+/** FlowWrite validation mirror (workflow/service.go writeFlowGraph):
+ * change flows need ≥1 stage with 1..10 approval steps and ≥1 execution
+ * actor; query flows need ≥1 capability and 1..10 approval steps. */
+function flowWriteError(body: Record<string, unknown>): string | null {
+  const flowType = body.flow_type;
+  if (flowType !== "change_review" && flowType !== "query_access") return "flow_type invalid";
+  if (typeof body.name !== "string" || body.name.trim() === "" || body.name.length > 128) {
+    return "name required";
+  }
+  if (flowType === "change_review") {
+    const stages = body.stages;
+    if (!Array.isArray(stages) || stages.length < 1) return "stages required";
+    for (const stage of stages) {
+      const typed = stage as Record<string, unknown>;
+      const steps = typed.approval_steps;
+      if (!Array.isArray(steps) || steps.length < 1 || steps.length > 10) return "approval steps 1..10";
+      if (steps.some((step) => !Array.isArray((step as Record<string, unknown>).actors) || ((step as Record<string, unknown>).actors as unknown[]).length < 1)) {
+        return "step actors required";
+      }
+      const actors = typed.execution_actors;
+      if (!Array.isArray(actors) || actors.length < 1) return "execution actors required";
+    }
+    return null;
+  }
+  const capabilities = body.query_capabilities;
+  if (!Array.isArray(capabilities) || capabilities.length < 1) return "query capabilities required";
+  const steps = body.approval_steps;
+  if (!Array.isArray(steps) || steps.length < 1 || steps.length > 10) return "approval steps 1..10";
+  if (steps.some((step) => !Array.isArray((step as Record<string, unknown>).actors) || ((step as Record<string, unknown>).actors as unknown[]).length < 1)) {
+    return "step actors required";
+  }
+  return null;
+}
+
+function flowViewOf(flow: FixtureFlow) {
+  return {
+    id: flow.id,
+    name: flow.name,
+    flow_type: flow.flow_type,
+    enabled: flow.enabled,
+    rule_set_id: flow.rule_set_id,
+    stages: flow.stages === null ? undefined : flow.stages,
+    approval_steps: flow.approval_steps === null ? undefined : flow.approval_steps,
+    query_capabilities: flow.query_capabilities === null ? undefined : flow.query_capabilities,
+    version: flow.version,
+    created_at: flow.created_at,
+    updated_at: flow.updated_at,
+  };
+}
+
+function migrationRunView(run: FixtureMigrationRun): LegacyMigrationRun {
+  return {
+    id: run.id,
+    source_schema_version: "legacy-2026-08",
+    manifest_hash: run.manifest_hash,
+    state: run.state,
+    active_work_count: run.table_results.reduce(
+      (sum, result) => sum + (result.reconciliation_passed ? 0 : 1),
+      0,
+    ),
+    unknown_status_count: 0,
+    ambiguous_status_count: run.table_results.reduce(
+      (sum, result) => sum + result.quarantined,
+      0,
+    ),
+    table_results: run.table_results,
+    candidates: run.candidates,
+    all_candidates_confirmed: run.candidates.every((candidate) => candidate.confirmed),
+    approved_manifest_hash: run.state === "approved" ? run.manifest_hash : null,
+    approved_by: run.state === "approved" ? "admin" : null,
+    approved_at: null,
+    version: run.version,
+    started_at: run.started_at,
+    updated_at: run.updated_at,
+    finished_at: null,
+  };
+}
+
+export function siteFixtureHandlers(): HttpHandler[] {
+  const requireSession = (): HttpResponse<DefaultBodyType> | null => {
+    const hasSession = readStoredAuthBehavior() !== "expired";
+    if (!hasSession) {
+      return HttpResponse.json(
+        { type: "about:blank", title: "session_expired", status: 401, detail: "no active session", request_id: ADMIN_REQUEST_ID },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } },
+      );
+    }
+    return null;
+  };
+
+  return [
+    // ------------------------------------------------------------- users --
+    http.get("*/admin/users", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.users.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      return HttpResponse.json(
+        successEnvelope(pageOf(items.map(userView), url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.post("*/admin/users", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as {
+        username?: string;
+        display_name?: string;
+        email?: string | null;
+        password?: string;
+      } | null;
+      if (
+        body === null || typeof body.username !== "string" || body.username.trim() === "" ||
+        body.username.length > 64 || typeof body.display_name !== "string" ||
+        body.display_name.trim() === "" || body.display_name.length > 128 ||
+        typeof body.password !== "string" || body.password.length < 12 || body.password.length > 1024 ||
+        (body.email !== null && body.email !== undefined && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email))
+      ) {
+        return businessError(1001, "validation failed");
+      }
+      const requestedUsername = body.username ?? "";
+      const exists = [...world.users.values()].some(
+        (user) => user.username.toLowerCase() === requestedUsername.toLowerCase(),
+      );
+      if (exists) return businessError(1001, "username already exists");
+      const user: FixtureUser = {
+        id: uuid(),
+        username: body.username,
+        display_name: body.display_name,
+        email: body.email ?? null,
+        is_builtin_admin: false,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+        activeOrderCount: 0,
+        templateReferenceCount: 0,
+      };
+      world.users.set(user.id, user);
+      return HttpResponse.json(successEnvelope(userView(user)));
+    }),
+
+    http.get("*/admin/users/:userId/deletion-impact", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const user = world.users.get(String(params.userId));
+      if (user === undefined) return businessError(1002, "user not found");
+      return HttpResponse.json(successEnvelope(deletionImpactOf(user)));
+    }),
+
+    http.patch("*/admin/users/:userId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const user = world.users.get(String(params.userId));
+      if (user === undefined) return businessError(1002, "user not found");
+      if (versionMismatch(request, user.version)) return businessError(1004, "version mismatch");
+      const body = (await request.json().catch(() => null)) as {
+        display_name?: string;
+        email?: string | null;
+      } | null;
+      if (body === null || (body.display_name === undefined && body.email === undefined)) {
+        return businessError(1001, "nothing to update");
+      }
+      if (body.email !== null && body.email !== undefined && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) {
+        return businessError(1001, "email invalid");
+      }
+      if (body.display_name !== undefined) {
+        if (body.display_name.trim() === "" || body.display_name.length > 128) {
+          return businessError(1001, "display_name invalid");
+        }
+        user.display_name = body.display_name;
+      }
+      if (body.email !== undefined) user.email = body.email;
+      user.version += 1;
+      user.updated_at = now();
+      return HttpResponse.json(successEnvelope(userView(user)));
+    }),
+
+    http.delete("*/admin/users/:userId", ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const user = world.users.get(String(params.userId));
+      if (user === undefined) return businessError(1002, "user not found");
+      if (user.is_builtin_admin) return businessError(1103, "builtin admin immutable");
+      if (versionMismatch(request, user.version)) return businessError(1004, "version mismatch");
+      if (user.activeOrderCount > 0) return businessError(1104, "user has active orders");
+      if (user.templateReferenceCount > 0) {
+        return businessError(1105, "user referenced by template");
+      }
+      world.users.delete(user.id);
+      for (const group of world.groups.values()) {
+        group.member_user_ids = group.member_user_ids.filter((id) => id !== user.id);
+      }
+      return HttpResponse.json(successEnvelope(null));
+    }),
+
+    // -------------------------------------------------- permission groups --
+    http.get("*/admin/permission-groups", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.groups.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.post("*/admin/permission-groups", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as {
+        name?: string;
+        enabled?: boolean;
+        member_user_ids?: string[];
+        granted_flow_ids?: string[];
+      } | null;
+      if (
+        body === null || typeof body.name !== "string" || body.name.trim() === "" ||
+        body.name.length > 128 || typeof body.enabled !== "boolean" ||
+        !Array.isArray(body.member_user_ids) || !Array.isArray(body.granted_flow_ids)
+      ) {
+        return businessError(1001, "validation failed");
+      }
+      const group: FixturePermissionGroup = {
+        id: uuid(),
+        name: body.name,
+        enabled: body.enabled,
+        member_user_ids: [...new Set(body.member_user_ids)],
+        granted_flow_ids: [...new Set(body.granted_flow_ids)],
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.groups.set(group.id, group);
+      return HttpResponse.json(successEnvelope(group));
+    }),
+
+    http.get("*/admin/permission-groups/:groupId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const group = world.groups.get(String(params.groupId));
+      if (group === undefined) return businessError(1002, "group not found");
+      return HttpResponse.json(successEnvelope(group));
+    }),
+
+    http.put("*/admin/permission-groups/:groupId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const group = world.groups.get(String(params.groupId));
+      if (group === undefined) return businessError(1002, "group not found");
+      if (versionMismatch(request, group.version)) return businessError(1004, "version mismatch");
+      const body = (await request.json().catch(() => null)) as {
+        name?: string;
+        enabled?: boolean;
+        member_user_ids?: string[];
+        granted_flow_ids?: string[];
+      } | null;
+      if (
+        body === null || typeof body.name !== "string" || body.name.trim() === "" ||
+        body.name.length > 128 || typeof body.enabled !== "boolean" ||
+        !Array.isArray(body.member_user_ids) || !Array.isArray(body.granted_flow_ids)
+      ) {
+        return businessError(1001, "validation failed");
+      }
+      group.name = body.name;
+      group.enabled = body.enabled;
+      group.member_user_ids = [...new Set(body.member_user_ids)];
+      group.granted_flow_ids = [...new Set(body.granted_flow_ids)];
+      group.version += 1;
+      group.updated_at = now();
+      return HttpResponse.json(successEnvelope(group));
+    }),
+
+    http.delete("*/admin/permission-groups/:groupId", ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const group = world.groups.get(String(params.groupId));
+      if (group === undefined) return businessError(1002, "group not found");
+      if (versionMismatch(request, group.version)) return businessError(1004, "version mismatch");
+      world.groups.delete(group.id);
+      return HttpResponse.json(successEnvelope(null));
+    }),
+
+    // ------------------------------------------------------ flows (full) --
+    http.post("*/admin/flows", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null) return businessError(1001, "body required");
+      const writeError = flowWriteError(body);
+      if (writeError !== null) return businessError(1108, writeError);
+      const flowType = body.flow_type as FixtureFlow["flow_type"];
+      const flow: FixtureFlow = {
+        id: uuid(),
+        name: body.name as string,
+        flow_type: flowType,
+        enabled: body.enabled as boolean,
+        rule_set_id: body.rule_set_id === undefined ? null : (body.rule_set_id as string | null),
+        stages: flowType === "change_review" ? ((body.stages ?? null) as FixtureFlowStage[] | null) : null,
+        approval_steps: flowType === "query_access" ? ((body.approval_steps ?? null) as FixtureFlow["approval_steps"]) : null,
+        query_capabilities:
+          flowType === "query_access" ? ((body.query_capabilities as FixtureFlow["query_capabilities"]) ?? null) : null,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.flows.set(flow.id, flow);
+      return HttpResponse.json(successEnvelope(flowViewOf(flow)));
+    }),
+
+    http.get("*/admin/flows/:flowId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const flow = world.flows.get(String(params.flowId));
+      if (flow === undefined) return businessError(1002, "flow not found");
+      return HttpResponse.json(successEnvelope(flowViewOf(flow)));
+    }),
+
+    http.put("*/admin/flows/:flowId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const flow = world.flows.get(String(params.flowId));
+      if (flow === undefined) return businessError(1002, "flow not found");
+      if (versionMismatch(request, flow.version)) return businessError(1004, "version mismatch");
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null) return businessError(1001, "body required");
+      const writeError = flowWriteError(body);
+      if (writeError !== null) return businessError(1108, writeError);
+      const flowType = body.flow_type as FixtureFlow["flow_type"];
+      flow.name = body.name as string;
+      flow.enabled = body.enabled as boolean;
+      flow.rule_set_id = body.rule_set_id === undefined ? null : (body.rule_set_id as string | null);
+      flow.stages = flowType === "change_review" ? ((body.stages ?? null) as FixtureFlowStage[] | null) : null;
+      flow.approval_steps =
+        flowType === "query_access" ? ((body.approval_steps ?? null) as FixtureFlow["approval_steps"]) : null;
+      flow.query_capabilities =
+        flowType === "query_access" ? ((body.query_capabilities as FixtureFlow["query_capabilities"]) ?? null) : null;
+      flow.version += 1;
+      flow.updated_at = now();
+      return HttpResponse.json(successEnvelope(flowViewOf(flow)));
+    }),
+
+    http.delete("*/admin/flows/:flowId", ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const flow = world.flows.get(String(params.flowId));
+      if (flow === undefined) return businessError(1002, "flow not found");
+      if (versionMismatch(request, flow.version)) return businessError(1004, "version mismatch");
+      const referenced = [...world.groups.values()].some((group) =>
+        group.granted_flow_ids.includes(flow.id),
+      );
+      if (referenced) return businessError(1106, "flow referenced by permission groups");
+      world.flows.delete(flow.id);
+      return HttpResponse.json(successEnvelope(null));
+    }),
+
+    // ---------------------------------------------------- masking rules --
+    http.get("*/admin/flows/:flowId/masking-rules", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const flow = world.flows.get(String(params.flowId));
+      if (flow === undefined) return businessError(1002, "flow not found");
+      if (flow.flow_type !== "query_access") {
+        return businessError(1001, "masking rules only apply to query_access flows");
+      }
+      const items = flow.query_capabilities?.map((capability) => {
+        const vocabulary = world.maskingRules.get(`${flow.id}:${capability.datasource_id}`) ?? [];
+        return {
+          datasource_id: capability.datasource_id,
+          sensitive_columns: [...vocabulary],
+          version: 1,
+        };
+      });
+      return HttpResponse.json(successEnvelope(items ?? []));
+    }),
+
+    http.put("*/admin/flows/:flowId/datasources/:datasourceId/masking-rules", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const flow = world.flows.get(String(params.flowId));
+      if (flow === undefined) return businessError(1002, "flow not found");
+      if (flow.flow_type !== "query_access") {
+        return businessError(1001, "masking rules only apply to query_access flows");
+      }
+      const datasourceId = String(params.datasourceId);
+      const belongs = flow.query_capabilities?.some((capability) => capability.datasource_id === datasourceId);
+      if (belongs !== true) return businessError(1001, "datasource outside flow");
+      const body = (await request.json().catch(() => null)) as {
+        sensitive_columns?: string[];
+      } | null;
+      if (
+        body === null || !Array.isArray(body.sensitive_columns) ||
+        body.sensitive_columns.length > 256 ||
+        body.sensitive_columns.some(
+          (column) => typeof column !== "string" || column.length < 1 || column.length > 128,
+        )
+      ) {
+        return businessError(1001, "sensitive_columns invalid");
+      }
+      // Unicode default full case-fold + trim, deduplicated by the fold key.
+      const folded = [...new Set(body.sensitive_columns.map((column) => column.trim().toLocaleLowerCase("en-US")))];
+      world.maskingRules.set(`${flow.id}:${datasourceId}`, folded);
+      return HttpResponse.json(
+        successEnvelope({ datasource_id: datasourceId, sensitive_columns: folded, version: 1 }),
+      );
+    }),
+
+    // ---------------------------------------------------- announcements --
+    http.get("*/announcements/current", () => {
+      const guard = requireSession();
+      if (guard !== null) return guard;
+      const revisionId = world.announcementPublication.revision_id;
+      if (revisionId === null) return HttpResponse.json(successEnvelope(null));
+      const revision = world.announcementRevisions.get(revisionId);
+      if (revision === undefined) return HttpResponse.json(successEnvelope(null));
+      return HttpResponse.json(
+        successEnvelope({
+          revision,
+          published_by_username: world.announcementPublication.published_by,
+          published_at: world.announcementPublication.published_at,
+          version: world.announcementPublication.version,
+        }),
+      );
+    }),
+
+    http.get("*/admin/announcement-revisions", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.announcementRevisions.values()].sort(
+        (a, b) => b.revision_number - a.revision_number,
+      );
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.post("*/admin/announcement-revisions", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as {
+        title?: string;
+        markdown_source?: string;
+      } | null;
+      if (
+        body === null || typeof body.title !== "string" || body.title.trim() === "" ||
+        body.title.length > 200 || typeof body.markdown_source !== "string" ||
+        body.markdown_source.length < 1 || body.markdown_source.length > 20000
+      ) {
+        return businessError(1001, "validation failed");
+      }
+      const revisionNumber =
+        Math.max(0, ...[...world.announcementRevisions.values()].map((row) => row.revision_number)) + 1;
+      const revision: FixtureAnnouncementRevision = {
+        id: uuid(),
+        revision_number: revisionNumber,
+        title: body.title,
+        sanitized_html: sanitizeMarkdown(body.markdown_source),
+        content_sha256: sha256Hex(body.markdown_source),
+        sanitizer_policy_version: "mock-sanitizer-1",
+        created_by_username: "admin",
+        created_at: now(),
+      };
+      world.announcementRevisions.set(revision.id, revision);
+      return HttpResponse.json(successEnvelope(revision));
+    }),
+
+    http.put("*/admin/announcement-publication", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as {
+        announcement_revision_id?: string;
+      } | null;
+      if (body === null || typeof body.announcement_revision_id !== "string") {
+        return businessError(1001, "revision required");
+      }
+      const revision = world.announcementRevisions.get(body.announcement_revision_id);
+      if (revision === undefined) return businessError(1002, "revision not found");
+      if (versionMismatch(request, world.announcementPublication.version)) {
+        return businessError(1004, "version mismatch");
+      }
+      world.announcementPublication = {
+        revision_id: revision.id,
+        version: world.announcementPublication.version + 1,
+        published_by: "admin",
+        published_at: now(),
+      };
+      return HttpResponse.json(
+        successEnvelope({
+          revision,
+          published_by_username: "admin",
+          published_at: world.announcementPublication.published_at,
+          version: world.announcementPublication.version,
+        }),
+      );
+    }),
+
+    // ------------------------------------------------------ audit events --
+    http.get("*/admin/audit-events", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.auditEvents].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    // -------------------------------------------------- identity providers --
+    http.get("*/admin/identity-providers", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.identityProviders.values()].sort((a, b) =>
+        a.provider_key.localeCompare(b.provider_key),
+      );
+      return HttpResponse.json(
+        successEnvelope(pageOf(items.map(({ clientSecret: _clientSecret, ...view }) => view), url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.post("*/admin/identity-providers", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null || typeof body.provider_key !== "string") return businessError(1001, "provider_key required");
+      const kind = body.provider_kind;
+      if (kind !== "ldap" && kind !== "oidc") return businessError(1001, "provider_kind invalid");
+      if (kind === "ldap" && [...world.identityProviders.values()].some((p) => p.provider_kind === "ldap")) {
+        return businessError(1001, "ldap is a singleton");
+      }
+      // Create requires the per-kind secret field (client_secret for OIDC,
+      // bind_password for LDAP).
+      const secret =
+        kind === "oidc"
+          ? (body.client_secret as { value?: string } | null | undefined)
+          : (body.bind_password as { value?: string } | null | undefined);
+      // SecretInput.value has minLength 1 — an empty replacement is a
+      // contract violation, never a silent overwrite.
+      if (secret !== null && secret !== undefined && secret.value === "") {
+        return businessError(1001, "secret value must not be empty");
+      }
+      if (secret?.value === undefined) return businessError(1001, "secret required on create");
+      const provider: FixtureIdentityProvider = {
+        id: uuid(),
+        provider_key: body.provider_key,
+        provider_kind: kind,
+        display_name: body.display_name === undefined ? body.provider_key : (body.display_name as string),
+        enabled: body.enabled === undefined ? true : (body.enabled as boolean),
+        configuration: body.configuration as FixtureIdentityProvider["configuration"],
+        secret_configured: true,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+        clientSecret: secret.value,
+      };
+      world.identityProviders.set(provider.id, provider);
+      const { clientSecret: _clientSecret, ...view } = provider;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.get("*/admin/identity-providers/:providerId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const provider = world.identityProviders.get(String(params.providerId));
+      if (provider === undefined) return businessError(1002, "provider not found");
+      const { clientSecret: _clientSecret, ...view } = provider;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.put("*/admin/identity-providers/:providerId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const provider = world.identityProviders.get(String(params.providerId));
+      if (provider === undefined) return businessError(1002, "provider not found");
+      if (versionMismatch(request, provider.version)) return businessError(1004, "version mismatch");
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null) return businessError(1001, "body required");
+      // Secret field name follows the declared per-kind write schema:
+      // client_secret for OIDC, bind_password for LDAP.
+      const secret =
+        provider.provider_kind === "oidc"
+          ? (body.client_secret as { value: string | null } | null | undefined)
+          : (body.bind_password as { value: string | null } | null | undefined);
+      if (secret !== null && secret !== undefined && secret.value === "") {
+        return businessError(1001, "secret value must not be empty");
+      }
+      const clearing = secret === null || secret?.value === null;
+      if (clearing && provider.provider_kind === "oidc" && provider.enabled) {
+        return businessError(1001, "oidc secret cannot be cleared while enabled");
+      }
+      provider.display_name = body.display_name === undefined ? provider.display_name : (body.display_name as string);
+      provider.enabled = body.enabled === undefined ? provider.enabled : (body.enabled as boolean);
+      provider.configuration = (body.configuration ?? provider.configuration) as FixtureIdentityProvider["configuration"];
+      if (secret !== undefined && secret !== null) {
+        if (secret.value !== null) {
+          provider.clientSecret = secret.value;
+          provider.secret_configured = true;
+        } else {
+          provider.clientSecret = null;
+          provider.secret_configured = false;
+        }
+      }
+      provider.version += 1;
+      provider.updated_at = now();
+      const { clientSecret: _clientSecret, ...view } = provider;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.delete("*/admin/identity-providers/:providerId", ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const provider = world.identityProviders.get(String(params.providerId));
+      if (provider === undefined) return businessError(1002, "provider not found");
+      if (provider.enabled) return businessError(1001, "disable before delete");
+      if (versionMismatch(request, provider.version)) return businessError(1004, "version mismatch");
+      world.identityProviders.delete(provider.id);
+      return HttpResponse.json(successEnvelope(null));
+    }),
+
+    http.post("*/admin/identity-providers/:providerId/connection-tests", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const provider = world.identityProviders.get(String(params.providerId));
+      if (provider === undefined) return businessError(1002, "provider not found");
+      return taskResponse("identity_provider_connection_test", provider.id, () => {});
+    }),
+
+    // ------------------------------------------------ notification channels --
+    http.get("*/admin/notification-channels", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.notificationChannels.values()].sort((a, b) =>
+        a.created_at.localeCompare(b.created_at),
+      );
+      return HttpResponse.json(
+        successEnvelope(pageOf(items.map(({ secret: _secret, ...view }) => view), url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.post("*/admin/notification-channels", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null || typeof body.name !== "string" || body.name.trim() === "") {
+        return businessError(1001, "validation failed");
+      }
+      const secret = body.secret as { value?: string } | null | undefined;
+      if (secret !== null && secret !== undefined && secret.value === "") {
+        return businessError(1001, "secret value must not be empty");
+      }
+      if (secret?.value === undefined) return businessError(1001, "secret required on create");
+      const channel: FixtureNotificationChannel = {
+        id: uuid(),
+        kind: body.kind as "email" | "dingtalk",
+        name: body.name,
+        enabled: body.enabled === undefined ? true : (body.enabled as boolean),
+        configuration: body.configuration as FixtureNotificationChannel["configuration"],
+        secret_configured: true,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+        secret: secret.value,
+      };
+      world.notificationChannels.set(channel.id, channel);
+      const { secret: _secret, ...view } = channel;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.get("*/admin/notification-channels/:channelId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const channel = world.notificationChannels.get(String(params.channelId));
+      if (channel === undefined) return businessError(1002, "channel not found");
+      const { secret: _secret, ...view } = channel;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.put("*/admin/notification-channels/:channelId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const channel = world.notificationChannels.get(String(params.channelId));
+      if (channel === undefined) return businessError(1002, "channel not found");
+      if (versionMismatch(request, channel.version)) return businessError(1004, "version mismatch");
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null) return businessError(1001, "body required");
+      const secret = body.secret as { value: string | null } | null | undefined;
+      if (secret !== null && secret !== undefined && secret.value === "") {
+        return businessError(1001, "secret value must not be empty");
+      }
+      const clearing = secret === null || secret?.value === null;
+      if (clearing && channel.enabled) {
+        return businessError(1001, "clear secret requires disabled channel");
+      }
+      channel.name = body.name === undefined ? channel.name : (body.name as string);
+      channel.enabled = body.enabled === undefined ? channel.enabled : (body.enabled as boolean);
+      channel.configuration = (body.configuration ?? channel.configuration) as FixtureNotificationChannel["configuration"];
+      if (secret !== undefined && secret !== null) {
+        if (secret.value !== null) {
+          channel.secret = secret.value;
+          channel.secret_configured = true;
+        } else {
+          channel.secret = null;
+          channel.secret_configured = false;
+        }
+      }
+      channel.version += 1;
+      channel.updated_at = now();
+      const { secret: _secret, ...view } = channel;
+      return HttpResponse.json(successEnvelope(view));
+    }),
+
+    http.delete("*/admin/notification-channels/:channelId", ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const channel = world.notificationChannels.get(String(params.channelId));
+      if (channel === undefined) return businessError(1002, "channel not found");
+      if (versionMismatch(request, channel.version)) return businessError(1004, "version mismatch");
+      world.notificationChannels.delete(channel.id);
+      return HttpResponse.json(successEnvelope(null));
+    }),
+
+    http.post("*/admin/notification-channels/:channelId/test-deliveries", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const channel = world.notificationChannels.get(String(params.channelId));
+      if (channel === undefined) return businessError(1002, "channel not found");
+      const delivery: FixtureNotificationDelivery = {
+        id: uuid(),
+        domain_event_id: uuid(),
+        notification_channel_id: channel.id,
+        recipient_user_id: null,
+        state: "queued",
+        delivery_attempt_count: 0,
+        next_attempt_at: now(),
+        last_error_code: null,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.notificationDeliveries.unshift(delivery);
+      // Outbox-driven delivery (S003): succeeds asynchronously unless the
+      // channel is disabled, mirroring the retry-then-dead-letter loop.
+      setTimeout(() => {
+        delivery.delivery_attempt_count = 1;
+        if (channel.enabled) {
+          delivery.state = "succeeded";
+        } else {
+          delivery.state = "dead_letter";
+          delivery.last_error_code = "channel_disabled";
+        }
+        delivery.updated_at = now();
+      }, TASK_RUNNING_TO_DONE_MS);
+      return HttpResponse.json(successEnvelope(delivery));
+    }),
+
+    http.get("*/admin/notification-deliveries", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.notificationDeliveries].sort((a, b) =>
+        b.created_at.localeCompare(a.created_at),
+      );
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    // ------------------------------------------------------- migrations --
+    http.get("*/admin/migrations", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = world.migrationRun === null ? [] : [migrationRunView(world.migrationRun)];
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+
+    http.get("*/admin/migrations/:runId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      if (world.migrationRun === null || world.migrationRun.id !== String(params.runId)) {
+        return businessError(1002, "migration run not found");
+      }
+      return HttpResponse.json(successEnvelope(migrationRunView(world.migrationRun)));
+    }),
+
+    http.put("*/admin/migrations/:runId/candidate-mappings/:candidateId/confirmation", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const run = world.migrationRun;
+      if (run === null || run.id !== String(params.runId)) {
+        return businessError(1002, "migration run not found");
+      }
+      if (run.state !== "awaiting_confirmation") return businessError(1010, "not awaiting confirmation");
+      if (versionMismatch(request, run.version)) return businessError(1004, "version mismatch");
+      const candidate = run.candidates.find((row) => row.candidate_id === String(params.candidateId));
+      if (candidate === undefined) return businessError(1002, "candidate not found");
+      const body = (await request.json().catch(() => null)) as {
+        confirmed?: boolean;
+        target_definition_hash?: string;
+        comment?: string;
+      } | null;
+      if (
+        body === null || typeof body.confirmed !== "boolean" ||
+        body.target_definition_hash !== candidate.target_definition_hash
+      ) {
+        return businessError(1001, "confirmed and matching target_definition_hash required");
+      }
+      candidate.confirmed = body.confirmed;
+      candidate.confirmed_by = body.confirmed ? "admin" : null;
+      candidate.confirmed_at = body.confirmed ? now() : null;
+      run.version += 1;
+      run.updated_at = now();
+      return HttpResponse.json(
+        successEnvelope({
+          ...candidate,
+          comment: body.comment ?? null,
+        }),
+      );
+    }),
+
+    http.post("*/admin/migrations/:runId/approval", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const run = world.migrationRun;
+      if (run === null || run.id !== String(params.runId)) {
+        return businessError(1002, "migration run not found");
+      }
+      if (versionMismatch(request, run.version)) return businessError(1004, "version mismatch");
+      if (run.state === "planned" || run.state === "dry_run_running") {
+        return businessError(5002, "dry run required before approval");
+      }
+      if (run.state !== "awaiting_confirmation") return businessError(1010, "not awaiting confirmation");
+      const body = (await request.json().catch(() => null)) as {
+        manifest_hash?: string;
+        confirmation_phrase?: string;
+      } | null;
+      if (body?.confirmation_phrase !== `APPROVE ${run.id}`) {
+        return businessError(1001, "confirmation phrase mismatch");
+      }
+      if (run.manifest_hash === null || body.manifest_hash !== run.manifest_hash) {
+        return businessError(1001, "manifest hash mismatch");
+      }
+      if (!run.candidates.every((candidate) => candidate.confirmed)) {
+        return businessError(5003, "every candidate must be confirmed first");
+      }
+      run.state = "approved";
+      run.updated_at = now();
+      // Approval never starts Apply: only the offline migration command may.
+      return HttpResponse.json(successEnvelope(migrationRunView(run)));
+    }),
+  ];
 }
 
 function successEnvelope(data: DefaultBodyType) {
@@ -1794,7 +3124,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.flows.values()];
+      const items = [...world.flows.values()].sort((a, b) =>
+        a.created_at.localeCompare(b.created_at),
+      ).map(flowViewOf);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
   ];

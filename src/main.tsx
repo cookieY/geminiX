@@ -1,8 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider } from "react-router";
 import { AppProviders } from "@/app/providers/app-providers";
-import { appRouter } from "@/app/router/router";
+import { AppRouter } from "@/app/router/app-router";
 import "@/app/styles/global.css";
 
 async function bootstrap(): Promise<void> {
@@ -20,7 +19,7 @@ async function bootstrap(): Promise<void> {
   createRoot(rootElement).render(
     <StrictMode>
       <AppProviders>
-        <RouterProvider router={appRouter} />
+        <AppRouter />
       </AppProviders>
     </StrictMode>,
   );

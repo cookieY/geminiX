@@ -13,7 +13,18 @@ import { Loadable } from "@/app/router/loadable";
 // every page is lazy and the admin bundle must not enter the first screen.
 const LoginPage = lazy(() => import("@/routes/login/login-page"));
 const WorkspacePage = lazy(() => import("@/routes/workspace/workspace-page"));
+const ProfilePage = lazy(() => import("@/routes/profile/profile-page"));
+const AuditRecordsPage = lazy(() => import("@/routes/records/audit-records-page"));
+const QueryEntryPage = lazy(() => import("@/routes/query/query-entry-page"));
+const QueryWorkspacePage = lazy(() => import("@/routes/query/query-workspace-page"));
+const QueryAccessApprovalsPage = lazy(() => import("@/routes/approvals/query-access-page"));
 const AdminUsersPage = lazy(() => import("@/routes/admin/admin-users-page"));
+const AdminPermissionGroupsPage = lazy(() => import("@/routes/admin/admin-permission-groups-page"));
+const AdminFlowsPage = lazy(() => import("@/routes/admin/admin-flows-page"));
+const AdminAnnouncementsPage = lazy(() => import("@/routes/admin/admin-announcements-page"));
+const AdminIdentityProvidersPage = lazy(() => import("@/routes/admin/admin-identity-providers-page"));
+const AdminNotificationsPage = lazy(() => import("@/routes/admin/admin-notifications-page"));
+const AdminSettingsNamespacePage = lazy(() => import("@/routes/admin/admin-settings-page"));
 const AdminDatasourcesPage = lazy(() => import("@/routes/admin/admin-datasources-page"));
 const AdminProvidersPage = lazy(() => import("@/routes/admin/admin-providers-page"));
 const AdminAiBudgetPage = lazy(() => import("@/routes/admin/admin-ai-budget-page"));
@@ -68,6 +79,29 @@ export const appRouter = createBrowserRouter([
         element: Loadable(ApprovalQueuePage),
       },
       {
+        // Query-access eligibility approvals (legacy /server/query/list).
+        path: "approvals/query-access",
+        element: (
+          <RequireSession>{Loadable(QueryAccessApprovalsPage)}</RequireSession>
+        ),
+      },
+      {
+        path: "records",
+        element: Loadable(AuditRecordsPage),
+      },
+      {
+        path: "profile",
+        element: Loadable(ProfilePage),
+      },
+      {
+        path: "query",
+        element: Loadable(QueryEntryPage),
+      },
+      {
+        path: "query/sessions/:sessionId",
+        element: Loadable(QueryWorkspacePage),
+      },
+      {
         // Admin surfaces exist only behind the server-declared
         // `can_access_admin` capability (GET /users/me) — the guard is a
         // presentation boundary, the backend stays the authorization decision.
@@ -107,16 +141,52 @@ export const appRouter = createBrowserRouter([
         ),
       },
       {
-        // The settings family splits per namespace (migration contract §2);
-        // F9 delivers ai-budget, so the index redirects there until F10
-        // ships the remaining namespace pages.
+        // The settings family splits per namespace (migration contract §2).
         path: "admin/settings",
-        element: <Navigate to="/admin/settings/ai-budget" replace />,
+        element: <Navigate to="/admin/settings/general" replace />,
       },
       {
         path: "admin/settings/ai-budget",
         element: (
           <RequireAdminCapability>{Loadable(AdminAiBudgetPage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        path: "admin/settings/:namespace",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminSettingsNamespacePage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        path: "admin/settings/notifications",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminNotificationsPage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        path: "admin/permission-groups",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminPermissionGroupsPage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        path: "admin/flows",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminFlowsPage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        path: "admin/announcements",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminAnnouncementsPage)}</RequireAdminCapability>
+        ),
+      },
+      {
+        // Legacy LDAP/OIDC settings rebuilt as the identity provider
+        // surface (migration contract §2).
+        path: "admin/identity-providers",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminIdentityProvidersPage)}</RequireAdminCapability>
         ),
       },
     ],

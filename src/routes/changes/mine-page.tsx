@@ -15,6 +15,7 @@ import {
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { OrderStateBadge } from "@/features/orders/order-state-badge";
 import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
+import { QueryOrdersTab } from "@/routes/changes/query-orders-tab";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -394,11 +395,7 @@ export default function MinePage() {
           )}
         </TabsContent>
         <TabsContent value="query">
-          <Card>
-            <CardContent className="text-muted-foreground py-10 text-center text-sm">
-              {t("orders.list.queryTabPending")}
-            </CardContent>
-          </Card>
+          <QueryOrdersTab />
         </TabsContent>
       </Tabs>
     </div>

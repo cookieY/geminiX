@@ -23,7 +23,12 @@ export type MockScenario =
   | "execution-unknown"
   | "execution-ghost"
   | "execution-preflight"
-  | "schedule-missed";
+  | "schedule-missed"
+  | "query-flow"
+  | "query-flow-direct"
+  | "query-session"
+  | "query-revoked"
+  | "query-approval";
 export const MOCK_SCENARIOS: MockScenario[] = [
   "ready",
   "blocked",
@@ -39,6 +44,11 @@ export const MOCK_SCENARIOS: MockScenario[] = [
   "execution-ghost",
   "execution-preflight",
   "schedule-missed",
+  "query-flow",
+  "query-flow-direct",
+  "query-session",
+  "query-revoked",
+  "query-approval",
 ];
 
 interface MockScenarioStore {

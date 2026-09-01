@@ -12,7 +12,8 @@ import type { SetupServer } from "msw/node";
 import { type MockScenario } from "@/shared/mock/scenario-store";
 import { authMockHandlers } from "@/shared/mock/auth-handlers";
 import { reviewFixtureHandlers } from "@/shared/mock/review-fixture";
-import { adminFixtureHandlers } from "@/shared/mock/admin-fixture";
+import { adminFixtureHandlers, siteFixtureHandlers } from "@/shared/mock/admin-fixture";
+import { queryFixtureHandlers } from "@/shared/mock/query-fixture";
 
 /**
  * Scenario switching layered on top of the orval-generated base handlers
@@ -95,6 +96,8 @@ export function baseHandlers() {
     ...authMockHandlers(),
     ...reviewFixtureHandlers(),
     ...adminFixtureHandlers(),
+    ...queryFixtureHandlers(),
+    ...siteFixtureHandlers(),
   ];
 }
 

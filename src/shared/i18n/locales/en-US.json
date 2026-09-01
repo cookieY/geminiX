@@ -75,7 +75,9 @@
   },
   "workspace": {
     "placeholderTitle": "Workspace content is not delivered yet",
-    "placeholderDesc": "The home overview arrives with the Dashboard work package."
+    "placeholderDesc": "The home overview arrives with the Dashboard work package.",
+    "greeting": "Welcome back, {{name}}",
+    "refreshedAt": "Refreshed {{time}}"
   },
   "states": {
     "loading": "Loading",
@@ -416,7 +418,6 @@
       "description": "Drafts and submitted change orders are listed separately; query orders come with the query domain.",
       "auditTab": "Change orders",
       "queryTab": "Query orders",
-      "queryTabPending": "The unified query-order view is delivered by the query-domain package (F10).",
       "draftsCard": "Drafts",
       "draftsEmpty": "No drafts yet. Pick a flow from \"Submit order\" to start.",
       "ordersCard": "Submitted orders",
@@ -617,6 +618,33 @@
       "detected": "Detected",
       "cleanup_required": "Cleanup required",
       "cleaned": "Cleaned"
+    },
+    "query": {
+      "title": "Query orders",
+      "description": "Unified view: with query approval enabled, rows come from access requests and grants; disabled, from query session records.",
+      "empty": "No query order records.",
+      "column": {
+        "kind": "Kind",
+        "datasources": "Datasources",
+        "state": "State",
+        "createdAt": "Created at",
+        "terminal": "Terminal"
+      },
+      "kind": {
+        "request": "Access request",
+        "session": "Query session"
+      },
+      "detail": {
+        "title": "Query order detail",
+        "description": "Request reason, frozen datasource set and terminal facts.",
+        "state": "State",
+        "datasources": "Frozen datasource set",
+        "createdAt": "Created at",
+        "grantState": "Grant state",
+        "expiresAt": "Expires at",
+        "revoked": "Access has been revoked",
+        "revokedMetaPending": "Revocation operator/time are not yet declared on the read contract (RCP-pending)."
+      }
     }
   },
   "approvals": {
@@ -656,6 +684,39 @@
       "rejected": "Rejected",
       "skipped": "Voided",
       "invalid": "Invalid"
+    },
+    "queryAccess": {
+      "title": "Query access approvals",
+      "description": "Approve datasource access eligibility for query flows — never SQL (Q001).",
+      "ordersTab": "Change approvals",
+      "queryTab": "Query access",
+      "pendingCard": "Pending access requests",
+      "pendingDescription": "Only requests related to the current user through frozen reviewer snapshots are listed.",
+      "pendingEmpty": "No pending access requests.",
+      "column": {
+        "requester": "Requester",
+        "datasources": "Datasources",
+        "state": "State",
+        "submittedAt": "Submitted at",
+        "grantOwner": "Grant owner",
+        "expiresAt": "Expires at"
+      },
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve access request",
+      "approveDescription": "Final approval creates a grant covering exactly the requested datasource set.",
+      "rejectTitle": "Reject access request",
+      "rejectDescription": "Rejection is immediate; the requester must submit a new request.",
+      "comment": "Comment (optional)",
+      "decisionFailed": "Decision failed",
+      "grantsCard": "Active grants",
+      "grantsDescription": "Frozen query-flow reviewers and the builtin admin may revoke; revocation terminates the grant's sessions immediately (Q004).",
+      "grantsEmpty": "No revocable grants",
+      "grantsEmptyDescription": "Generated grants appear here for revocation.",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke access grant",
+      "revokeDescription": "A reason is required; revocation takes effect immediately, terminates every session under the grant and never grants query read authority.",
+      "revokeReason": "Reason (required)"
     }
   },
   "admin": {
@@ -910,5 +971,621 @@
       "emptyTitle": "No rule sets yet",
       "emptyDescription": "Create the first rule set to combine review skills."
     }
+  },
+  "query": {
+    "entry": {
+      "title": "Query",
+      "description": "Enter the online read-only query workspace through your granted query flows.",
+      "failed": "Failed to enter the query workspace",
+      "needsAccessTitle": "This flow requires access approval",
+      "needsAccessDescription": "Query approval is enabled for {{name}}: submit a datasource access request first; an approved grant unlocks the workspace.",
+      "emptyTitle": "No query flows available",
+      "emptyDescription": "Once an administrator grants a query flow through a permission group, the entry appears here.",
+      "grantsCard": "Active access grants",
+      "grantsDescription": "Approved access eligibility and its validity.",
+      "grantExpires": "Valid until {{time}}",
+      "enterGrant": "Enter with grant",
+      "flowsCard": "Available query flows",
+      "flowsDescription": "Granted query flows and their datasource capabilities.",
+      "datasourceCount": " datasources",
+      "exportable": "exportable",
+      "applyAccess": "Request access",
+      "enter": "Enter",
+      "enterDirect": "Enter directly",
+      "sessionsCard": "Active sessions",
+      "sessionsDescription": "Resume an unfinished query session."
+    },
+    "apply": {
+      "title": "Request datasource access: {{name}}",
+      "description": "Approval covers datasource access eligibility, never SQL. The request carries no query statement.",
+      "datasources": "Datasource scope",
+      "datasourcesHint": "Multi-select from the flow's datasources (not all selected by default); datasources outside the flow cannot be added.",
+      "until": "Valid until",
+      "reason": "Reason",
+      "failed": "Failed to submit the request",
+      "submit": "Submit request"
+    },
+    "workspace": {
+      "title": "Query workspace · {{name}}",
+      "revokedTitle": "Access has been revoked",
+      "revokedReason": "Revocation reason: {{reason}}",
+      "revokedGeneric": "The grant backing this session has been revoked.",
+      "closedTitle": "Session closed",
+      "closedDescription": "This query session was closed; re-enter from the query entry.",
+      "expiredTitle": "Access expired",
+      "expiredDescription": "The grant expired or the account was removed; request access again.",
+      "grantActive": "Grant active",
+      "grantExpires": "Valid until {{time}}",
+      "renew": "Request renewal",
+      "renewHint": "Renewal starts a fresh full approval and creates a new grant; the original stays valid until it expires.",
+      "treeTab": "Databases",
+      "historyTab": "History",
+      "treeBlocked": "The session is no longer usable; metadata browsing is blocked.",
+      "historyEmpty": "SQL executed in this session appears here (in-session memory).",
+      "schemaPlaceholder": "schema name",
+      "exit": "Exit query",
+      "revokedSeeMine": "Re-apply to continue querying; revocation records are under 我的工单 → 查询工单 (operator/time fields arrive once the read contract declares them)."
+    },
+    "tree": {
+      "searchPlaceholder": "Search tables",
+      "loadFailed": "Failed to load metadata",
+      "insertTemplate": "Insert SELECT template",
+      "masked": "masked"
+    },
+    "run": {
+      "execute": "Run",
+      "running": "Running…",
+      "needSchema": "Enter the target schema first",
+      "singleSelectHint": "Single SELECT only (server validation is authoritative)"
+    },
+    "result": {
+      "empty": "Results appear here after you run a query",
+      "tabTitle": "Result {{index}}",
+      "elapsed": "{{ms}} ms",
+      "rowsLoaded": "{{count}} rows loaded",
+      "maskedColumns": "Masked by sensitive-column policy",
+      "loadMore": "Load next page",
+      "exhausted": "All rows read"
+    },
+    "export": {
+      "button": "Export XLSX",
+      "title": "Export query results",
+      "description": "The browser reads cursor pages incrementally and builds the XLSX locally; the server persists no export files.",
+      "progress": "{{pages}} pages / {{rows}} rows read",
+      "done": "Export complete: {{rows}} rows",
+      "failedWithRange": "Export failed ({{message}}). {{rows}} rows were read; no file was produced.",
+      "cancel": "Cancel export"
+    },
+    "exit": {
+      "title": "Exit query session",
+      "description": "Exiting terminates this session and requests cancellation of running queries; re-entering resolves datasources from the current flow.",
+      "reason": "Reason",
+      "confirm": "Confirm exit"
+    },
+    "session": {
+      "state": {
+        "active": "Active",
+        "closed": "Closed",
+        "revoked": "Revoked",
+        "expired": "Expired",
+        "user_deleted": "User deleted"
+      }
+    },
+    "request": {
+      "state": {
+        "access_pending": "Pending",
+        "grant_active": "Grant active",
+        "access_rejected": "Rejected",
+        "withdrawn": "Withdrawn",
+        "invalid": "Invalid"
+      }
+    },
+    "grant": {
+      "state": {
+        "active": "Active",
+        "revoked": "Revoked",
+        "expired": "Expired",
+        "relinquished": "Relinquished"
+      }
+    },
+    "capability": {
+      "state": {
+        "datasource_unavailable": "Datasource unavailable",
+        "identity_changed": "Datasource identity changed"
+      }
+    }
+  },
+  "dashboard": {
+    "my": {
+      "drafts": "My pending drafts",
+      "submitted": "Submitted orders",
+      "pendingApproval": "Awaiting my approval",
+      "pendingExecution": "Pending execution",
+      "blockedReview": "Blocked reviews",
+      "activeGrants": "Active query grants",
+      "activeSessions": "Active query sessions"
+    },
+    "announcement": {
+      "publishedAt": "Published {{time}}"
+    },
+    "admin": {
+      "title": "Administration statistics",
+      "partial": "Some metrics are unavailable (completeness=partial)",
+      "window": "Window {{from}} ~ {{to}} ({{zone}})",
+      "operations": "Operations",
+      "reviewQuality": "Review quality",
+      "systemHealth": "System health",
+      "orderTotal": "Orders",
+      "queryTotal": "Query executions",
+      "userTotal": "Users",
+      "datasourceTotal": "Datasources",
+      "completed": "Completed",
+      "failed": "Failed",
+      "partialFailed": "Partial failed",
+      "ddlStatements": "DDL statements",
+      "ready": "Ready {{count}}",
+      "blocked": "Blocked {{count}}",
+      "partialRuns": "Partial {{count}}",
+      "failedRuns": "Failed {{count}}",
+      "fingerprintCoverage": "Fingerprint coverage {{percent}}%"
+    }
+  },
+  "records": {
+    "title": "Audit records",
+    "description": "Append-only 90-day audit events (S004); readable by the builtin admin only.",
+    "noScopeTitle": "No visible audit scope",
+    "noScopeDescription": "The audit read face is limited to the builtin admin; see 我的工单 for business records.",
+    "card": "Audit events",
+    "cardDescription": "Cursor-paged, newest first; filter parameters are not yet declared on the contract (RCP-pending).",
+    "empty": "No audit events.",
+    "column": {
+      "time": "Time",
+      "actor": "Actor",
+      "action": "Action",
+      "resource": "Resource",
+      "outcome": "Outcome"
+    },
+    "outcome": {
+      "succeeded": "Succeeded",
+      "denied": "Denied",
+      "failed": "Failed"
+    },
+    "detail": {
+      "eventType": "Event type",
+      "actor": "Actor",
+      "resource": "Resource",
+      "outcome": "Outcome",
+      "requestId": "Request ID",
+      "expiresAt": "Retained until",
+      "metadata": "Metadata"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Identity, security, appearance, notifications and display settings.",
+    "tabs": {
+      "identity": "Profile",
+      "security": "Security",
+      "appearance": "Appearance",
+      "notifications": "Notifications",
+      "display": "Display"
+    },
+    "identity": {
+      "title": "Profile",
+      "description": "Server-session identity facts (read-only).",
+      "username": "Username",
+      "displayName": "Display name",
+      "email": "Email",
+      "admin": "Account kind",
+      "builtinAdmin": "Builtin admin",
+      "regularUser": "Regular user"
+    },
+    "security": {
+      "title": "Account & security",
+      "description": "Account identity and password policy.",
+      "passwordNote": "No self-service password endpoint is declared: local passwords are managed by administrators; LDAP/OIDC accounts are managed by the identity source."
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Light/dark theme.",
+      "theme": "Theme"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Notification channels are a server-side admin surface.",
+      "readOnlyNote": "Channels are configured by administrators in system settings; no per-user options exist (read-only)."
+    },
+    "display": {
+      "title": "Display",
+      "description": "Interface language; the statistics timezone is a system-level contract with no per-user override.",
+      "locale": "Language",
+      "zhCN": "简体中文",
+      "enUS": "English (US)",
+      "timezoneNote": "Statistics follow the system timezone (general.system_timezone)."
+    }
+  },
+  "adminUsers": {
+    "title": "Users",
+    "description": "User management: create, edit and delete (full impact preview before deletion).",
+    "create": "Create user",
+    "createTitle": "Create user",
+    "createDescription": "Username, display name and initial password; no role management (P102).",
+    "card": "Users",
+    "cardDescription": "No disabled state: users have deletion only (P105).",
+    "empty": "No users.",
+    "column": {
+      "username": "Username",
+      "displayName": "Display name",
+      "email": "Email",
+      "kind": "Kind"
+    },
+    "builtinAdmin": "Builtin admin",
+    "localUser": "Local user",
+    "password": "Initial password",
+    "passwordHint": "At least 12 characters.",
+    "editTitle": "Edit user: {{name}}",
+    "editDescription": "Only display name and email are editable; username and password are not on this surface.",
+    "delete": {
+      "title": "Delete user: {{name}}",
+      "description": "The full impact is previewed first; business facts and frozen identities are preserved.",
+      "flowReferences": "Flow actor references",
+      "groupMemberships": "Permission group memberships",
+      "activeGrants": "Active query grants",
+      "activeSessions": "Active query sessions",
+      "snapshotsPreserved": "Historical snapshots and business facts are preserved (P105).",
+      "blocked": "Blockers present; deletion is refused",
+      "confirm": "Confirm delete"
+    }
+  },
+  "adminGroups": {
+    "title": "Permission groups",
+    "description": "Permission groups control which change and query flows members may enter (P101); never datasources.",
+    "create": "Create group",
+    "createTitle": "Create permission group",
+    "editTitle": "Edit permission group: {{name}}",
+    "formDescription": "Members and flow grants; no reviewer/executor authorization entries.",
+    "preview": {
+      "title": "Per-user effective permissions",
+      "description": "Pick a user to see their enabled groups and the union of granted flows.",
+      "placeholder": "Enter a user id to preview",
+      "user": "User",
+      "noGroups": "Not a member of any enabled group",
+      "noFlows": "No effective flow grants"
+    },
+    "card": "Permission groups",
+    "cardDescription": "The legacy datasource transfers (ddl/dml/query) are deleted (§3).",
+    "empty": "No permission groups.",
+    "column": {
+      "name": "Name",
+      "enabled": "Enabled",
+      "members": "Members",
+      "flows": "Granted flows"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "members": "Members",
+    "flows": "Granted flows",
+    "flowsHint": "Both change-review and query flows.",
+    "noFlows": "No flows to grant.",
+    "flowKind": {
+      "change": "Change flow",
+      "query": "Query flow"
+    },
+    "delete": {
+      "title": "Delete permission group: {{name}}",
+      "description": "Members lose this group's flow grants after deletion.",
+      "confirm": "Confirm delete"
+    },
+    "formFailed": "Save failed"
+  },
+  "adminFlows": {
+    "title": "Flows",
+    "description": "Flow management: change and query flows use separate form models.",
+    "createChange": "Create change flow",
+    "createQuery": "Create query flow",
+    "card": "Flows",
+    "cardDescription": "Template edits never affect submitted orders (§3).",
+    "empty": "No flows.",
+    "column": {
+      "name": "Name",
+      "kind": "Kind",
+      "enabled": "Enabled",
+      "structure": "Structure"
+    },
+    "kind": {
+      "change": "Change flow",
+      "query": "Query flow"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "structure": {
+      "change": "{{stages}} stages",
+      "query": "{{datasources}} datasources / {{steps}} steps"
+    },
+    "delete": {
+      "title": "Delete flow: {{name}}",
+      "description": "Flows referenced by permission groups cannot be deleted.",
+      "confirm": "Confirm delete"
+    },
+    "formDescription": "Every step actor is a concrete user.",
+    "noRetroactiveNote": "Edits never affect submitted orders: submitted orders keep their frozen flow snapshot.",
+    "ruleSet": "Rule set",
+    "noRuleSet": "Unbound",
+    "stages": "Stages",
+    "addStage": "Add stage",
+    "stageTitle": "Stage {{index}}",
+    "stageDatasource": "Target datasource",
+    "pickDatasource": "Pick a datasource",
+    "schemaMappings": "Schema mappings",
+    "schemaMappingsHint": "Logical-to-physical schema mapping; may stay empty.",
+    "logicalSchema": "Logical schema",
+    "physicalSchema": "Physical schema",
+    "addMapping": "Add mapping",
+    "approvalSteps": "Approval steps",
+    "approvalStepsHint": "1..10 steps; within a step any approve passes and any reject rejects the whole item.",
+    "addStep": "Add step",
+    "stepTitle": "Step {{index}}",
+    "executionActors": "Execution actors",
+    "actorHint": "Actors are concrete user UUIDs.",
+    "queryDatasources": "Datasources & capabilities",
+    "queryDatasourcesHint": "Grant query and export capabilities per datasource.",
+    "canExport": "Allow export",
+    "maskingRules": "Sensitive-column vocabulary",
+    "maskingRulesHint": "Literal column names per datasource (≤256 entries; case-fold normalized and deduplicated server-side).",
+    "formFailed": "Save failed",
+    "editTitle": "Edit flow: {{name}}",
+    "stageUp": "Move stage {{index}} up",
+    "stageDown": "Move stage {{index}} down",
+    "stageRemove": "Remove stage {{index}}",
+    "stepRemove": "Remove approval step {{index}}",
+    "mappingRemove": "Remove schema mapping {{index}}"
+  },
+  "adminAnnouncements": {
+    "title": "Announcements",
+    "description": "Home announcements: append-only revisions with a single publication pointer (S005).",
+    "create": "New revision",
+    "createTitle": "New announcement revision",
+    "createDescription": "Restricted Markdown input; the server produces sanitized HTML.",
+    "current": "Currently published",
+    "currentMeta": "Revision #{{revision}} · published {{at}}",
+    "revisions": "Revisions",
+    "revisionsDescription": "Revisions cannot be edited or deleted (append-only).",
+    "empty": "No announcement revisions.",
+    "column": {
+      "title": "Title",
+      "createdAt": "Created at",
+      "hash": "Content hash"
+    },
+    "markdown": "Markdown source",
+    "markdownHint": "Headings, bold and inline code are supported; scripts, iframes and event attributes are sanitized away server-side.",
+    "publish": "Publish",
+    "published": "Published",
+    "operationFailed": "Operation failed"
+  },
+  "adminIdp": {
+    "title": "Identity providers",
+    "description": "LDAP singleton and OIDC list; secrets never echo back (configured presence only).",
+    "createLdap": "Create LDAP",
+    "createOidc": "Create OIDC",
+    "ldapCard": "LDAP (singleton)",
+    "ldapDescription": "Exactly one LDAP provider; transport is ldaps/starttls only — no plaintext and no skip-verify option.",
+    "ldapEmpty": "LDAP is not configured.",
+    "oidcCard": "OIDC providers",
+    "oidcDescription": "The callback address is server-generated and not configured here.",
+    "oidcEmpty": "No OIDC providers.",
+    "column": {
+      "key": "Provider key",
+      "issuer": "Issuer",
+      "state": "State"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "secretConfigured": "Secret configured",
+    "secretMissing": "Secret missing",
+    "editTitle": "Edit: {{key}}",
+    "formDescription": "Secrets never prefill: leave empty to keep.",
+    "field": {
+      "displayName": "Display name",
+      "host": "Host",
+      "port": "Port",
+      "transport": "Transport",
+      "transportHint": "The contract allows ldaps/starttls only.",
+      "serverName": "Server name",
+      "bindDn": "Bind DN",
+      "baseDn": "Base DN",
+      "userFilter": "User filter",
+      "usernameAttribute": "Username attribute",
+      "displayNameAttribute": "Display name attribute",
+      "emailAttribute": "Email attribute",
+      "providerKey": "Provider key",
+      "issuerUrl": "Issuer URL",
+      "clientId": "Client ID",
+      "scopes": "Scopes (space separated, must include openid)",
+      "usernameClaim": "Username claim",
+      "displayNameClaim": "Display name claim",
+      "emailClaim": "Email claim",
+      "callbackNote": "The OIDC callback address is generated by the server.",
+      "enabled": "Enabled",
+      "secret": "Secret",
+      "secretCreateHint": "Required on create.",
+      "secretEditHint": "Leave empty to keep; clearing requires a disabled provider."
+    },
+    "formSecretRequired": "A secret is required on create",
+    "formFailed": "Save failed",
+    "delete": {
+      "title": "Delete provider: {{key}}",
+      "description": "Only disabled providers can be deleted."
+    },
+    "testConnection": "Test connection",
+    "testTask": "Test task: {{id}}"
+  },
+  "adminNotifications": {
+    "title": "Notifications",
+    "description": "Email and DingTalk channels; Outbox-driven with at most five retries (S003).",
+    "create": "Create channel",
+    "createTitle": "Create notification channel",
+    "editTitle": "Edit channel: {{name}}",
+    "formDescription": "Secrets never prefill.",
+    "channels": "Channels",
+    "channelsDescription": "Channel changes apply immediately; test deliveries go through the same Outbox loop.",
+    "empty": "No notification channels.",
+    "column": {
+      "kind": "Kind",
+      "name": "Name",
+      "enabled": "Enabled",
+      "secret": "Secret",
+      "state": "State",
+      "attempts": "Attempts",
+      "nextAttempt": "Next attempt",
+      "lastError": "Last error",
+      "createdAt": "Created at"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "secretConfigured": "Configured",
+    "secretMissing": "Missing",
+    "test": "Test delivery",
+    "deliveries": "Deliveries",
+    "deliveriesDescription": "Outbox state machine: queued→sending→succeeded/failed; dead-letter after at most 5 attempts.",
+    "deliveryState": {
+      "queued": "Queued",
+      "sending": "Sending",
+      "succeeded": "Delivered",
+      "failed": "Failed",
+      "dead_letter": "Dead letter"
+    },
+    "field": {
+      "host": "SMTP host",
+      "port": "SMTP port",
+      "tls": "TLS mode",
+      "username": "SMTP username",
+      "from": "From address",
+      "secret": "Secret",
+      "secretCreateHint": "Required on create.",
+      "secretEditHint": "Leave empty to keep."
+    },
+    "secretRequired": "A secret is required on create",
+    "formFailed": "Save failed",
+    "delete": {
+      "title": "Delete channel: {{name}}",
+      "description": "New events stop flowing through the channel; delivery history is preserved."
+    }
+  },
+  "adminSettings": {
+    "tab": {
+      "general": "General",
+      "query": "Query",
+      "execution": "Execution",
+      "branding": "Branding",
+      "aiBudget": "AI budget"
+    },
+    "general": {
+      "title": "General settings",
+      "description": "Registration switch, system timezone and default locale.",
+      "registration": "Open user registration",
+      "timezone": "System timezone",
+      "locale": "Default locale"
+    },
+    "query": {
+      "title": "Query settings",
+      "description": "Query approval switch, default timeout and the grant duration ceiling.",
+      "approval": "Require query approval",
+      "approvalHint": "Disabled: access resolves directly from granted flows; enabled: access requests must be approved.",
+      "timeout": "Default query timeout (ms)",
+      "timeoutHint": "1..300000; default 30000.",
+      "maxDuration": "Grant duration ceiling (minutes)",
+      "noLimitNote": "The system offers no total-row, total-byte, user-concurrency, export-row or file-size limits (Q005)."
+    },
+    "execution": {
+      "title": "Execution settings",
+      "description": "Execution window restriction and OSC policy.",
+      "restriction": "Enable execution window restriction",
+      "restrictionHint": "When enabled, executions are allowed only inside windows.",
+      "windows": "Execution windows",
+      "windowsHint": "Weekdays and local start/end times.",
+      "weekdays": "weekdays (comma separated)",
+      "addWindow": "Add window",
+      "oscTool": "OSC tool",
+      "oscHint": "none or gh-ost."
+    },
+    "branding": {
+      "title": "Branding settings",
+      "description": "Product name and login description.",
+      "productName": "Product name",
+      "loginDescription": "Login description",
+      "assetsNote": "Logo/favicon assets are managed by brand assets; only asset ids are referenced here."
+    },
+    "form": "Settings form",
+    "formDescription": "Edited per the declared schema; high-impact changes need an assessment and the single-use impact token.",
+    "assessment": {
+      "level": "Impact level: {{level}}",
+      "expiresAt": "Assessment valid until {{time}}"
+    },
+    "saved": "Saved.",
+    "saveFailed": "Save failed",
+    "assess": "Assess impact"
+  },
+  "adminMigrations": {
+    "title": "Migration review",
+    "description": "Dry-run reconciliation and candidate confirmation for the legacy migration; migration mode only.",
+    "noApplyTitle": "Approval never starts Apply",
+    "noApplyDescription": "Apply can only be executed by the offline migration command; this page has no Apply entry at all (M001).",
+    "empty": "No migration runs.",
+    "run": {
+      "title": "Migration run {{id}}",
+      "meta": "Manifest {{hash}} · active work {{active}} · unknown {{unknown}} · ambiguous {{ambiguous}}"
+    },
+    "table": {
+      "column": {
+        "source": "Source table",
+        "read": "Read",
+        "written": "Written",
+        "excluded": "Excluded",
+        "quarantined": "Quarantined",
+        "failed": "Failed",
+        "verdict": "Verdict"
+      },
+      "passed": "Reconciled",
+      "failed": "Not reconciled"
+    },
+    "candidates": {
+      "title": "Candidate mapping confirmation",
+      "description": "Every candidate must be confirmed individually before approval.",
+      "confirm": "Confirm",
+      "unconfirm": "Unconfirm",
+      "confirmedBy": "Confirmed by {{by}} at {{at}}",
+      "hash": "Target definition hash: {{hash}}",
+      "sources": "Sources"
+    },
+    "candidate": {
+      "risk": {
+        "no_expansion": "No expansion",
+        "possible_expansion": "Possible expansion",
+        "unmapped": "Unmapped"
+      }
+    },
+    "state": {
+      "planned": "Planned",
+      "dry_run_running": "Dry run running",
+      "awaiting_confirmation": "Awaiting confirmation",
+      "approved": "Approved",
+      "applying": "Applying",
+      "verifying": "Verifying",
+      "verified": "Verified",
+      "failed": "Failed"
+    },
+    "approval": {
+      "title": "Approve manifest",
+      "description": "Approves the exact manifest hash; never starts Apply.",
+      "manifestHash": "Manifest hash",
+      "phrase": "Confirmation phrase",
+      "submit": "Approve",
+      "pendingCandidates": "Unconfirmed candidates remain."
+    }
+  },
+  "migrationMode": {
+    "maintenanceTitle": "System under maintenance (migration review mode)",
+    "maintenanceDescription": "The server is running in migration review mode; normal business surfaces are unavailable.",
+    "gotoWorkbench": "Go to the migration workbench"
   }
 }

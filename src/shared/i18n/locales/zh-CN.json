@@ -75,7 +75,9 @@
   },
   "workspace": {
     "placeholderTitle": "工作台内容尚未交付",
-    "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。"
+    "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。",
+    "greeting": "{{name}}，欢迎回来",
+    "refreshedAt": "数据刷新于 {{time}}"
   },
   "states": {
     "loading": "加载中",
@@ -416,7 +418,6 @@
       "description": "草稿与已提交的变更工单分离展示；查询工单由查询域统一提供。",
       "auditTab": "审核工单",
       "queryTab": "查询工单",
-      "queryTabPending": "查询工单视图由查询域工作包（F10）交付。",
       "draftsCard": "草稿",
       "draftsEmpty": "还没有草稿。从「工单提交」选择流程开始。",
       "ordersCard": "已提交工单",
@@ -617,6 +618,33 @@
       "detected": "检测到残留",
       "cleanup_required": "需要清理",
       "cleaned": "已清理"
+    },
+    "query": {
+      "title": "查询工单",
+      "description": "统一视图：查询审核开启时行来自访问申请与授权；关闭时行来自查询会话记录。",
+      "empty": "暂无查询工单记录。",
+      "column": {
+        "kind": "类型",
+        "datasources": "数据源集合",
+        "state": "状态",
+        "createdAt": "创建时间",
+        "terminal": "终态"
+      },
+      "kind": {
+        "request": "访问申请",
+        "session": "查询会话"
+      },
+      "detail": {
+        "title": "查询工单详情",
+        "description": "申请理由、数据源冻结集合与终态信息。",
+        "state": "状态",
+        "datasources": "数据源冻结集合",
+        "createdAt": "创建时间",
+        "grantState": "授权状态",
+        "expiresAt": "有效期至",
+        "revoked": "访问资格已被撤销",
+        "revokedMetaPending": "撤销操作者与时间字段尚未在契约读面声明（RCP-pending）。"
+      }
     }
   },
   "approvals": {
@@ -656,6 +684,39 @@
       "rejected": "已拒绝",
       "skipped": "已作废",
       "invalid": "已失效"
+    },
+    "queryAccess": {
+      "title": "查询访问审批",
+      "description": "审批用户对查询流程数据源的访问资格，不审批SQL（Q001）。",
+      "ordersTab": "工单审批",
+      "queryTab": "查询访问审批",
+      "pendingCard": "待审批的访问申请",
+      "pendingDescription": "仅列出与当前会话用户存在冻结审核关系的申请。",
+      "pendingEmpty": "暂无待审批的访问申请。",
+      "column": {
+        "requester": "申请人",
+        "datasources": "数据源集合",
+        "state": "状态",
+        "submittedAt": "提交时间",
+        "grantOwner": "授权持有人",
+        "expiresAt": "有效期至"
+      },
+      "approve": "同意",
+      "reject": "驳回",
+      "approveTitle": "同意访问申请",
+      "approveDescription": "末步通过后将生成覆盖所申请数据源集合的访问授权。",
+      "rejectTitle": "驳回访问申请",
+      "rejectDescription": "驳回立即生效，申请人需重新提交申请。",
+      "comment": "审批意见（可选）",
+      "decisionFailed": "审批操作失败",
+      "grantsCard": "生效中的访问授权",
+      "grantsDescription": "冻结流程审核人与内置admin可撤销授权；撤销立即终止其全部会话（Q004）。",
+      "grantsEmpty": "暂无可撤销的授权",
+      "grantsEmptyDescription": "授权生成后会出现在这里供撤销。",
+      "revoke": "撤销授权",
+      "revokeTitle": "撤销访问授权",
+      "revokeDescription": "撤销必须填写原因，立即生效并终止该授权下全部查询会话；撤销只终止访问，不获得任何查询读权限。",
+      "revokeReason": "撤销原因（必填）"
     }
   },
   "admin": {
@@ -910,5 +971,621 @@
       "emptyTitle": "暂无规则集",
       "emptyDescription": "创建第一个规则集以组合审核技能。"
     }
+  },
+  "query": {
+    "entry": {
+      "title": "查询",
+      "description": "基于被授权的查询流程进入在线只读查询工作台。",
+      "failed": "进入查询失败",
+      "needsAccessTitle": "该流程需要访问审批",
+      "needsAccessDescription": "流程 {{name}} 开启了查询审核：请先提交数据源访问申请，审批通过后获得访问资格。",
+      "emptyTitle": "暂无可用查询流程",
+      "emptyDescription": "等待管理员通过权限组授予查询流程后，这里会出现入口。",
+      "grantsCard": "有效访问授权",
+      "grantsDescription": "审批通过的访问资格及其有效期。",
+      "grantExpires": "有效期至 {{time}}",
+      "enterGrant": "凭授权进入",
+      "flowsCard": "可用查询流程",
+      "flowsDescription": "被授权的查询流程及其数据源能力。",
+      "datasourceCount": " 个数据源",
+      "exportable": "可导出",
+      "applyAccess": "申请访问",
+      "enter": "进入查询",
+      "enterDirect": "直接进入",
+      "sessionsCard": "进行中的会话",
+      "sessionsDescription": "恢复未结束的查询会话。"
+    },
+    "apply": {
+      "title": "申请数据源访问：{{name}}",
+      "description": "审批的是数据源访问资格，不审批具体SQL。申请内容不包含查询语句。",
+      "datasources": "数据源范围",
+      "datasourcesHint": "从流程包含的数据源中多选，默认不全选；流程外数据源无法加入申请。",
+      "until": "有效期至",
+      "reason": "申请理由",
+      "failed": "提交申请失败",
+      "submit": "提交申请"
+    },
+    "workspace": {
+      "title": "查询工作台 · {{name}}",
+      "revokedTitle": "访问资格已被撤销",
+      "revokedReason": "撤销原因：{{reason}}",
+      "revokedGeneric": "本次会话的访问资格已被撤销。",
+      "closedTitle": "会话已结束",
+      "closedDescription": "本次查询会话已主动退出，可从查询入口重新进入。",
+      "expiredTitle": "访问资格已失效",
+      "expiredDescription": "授权已到期或被删除，请重新申请访问。",
+      "grantActive": "访问资格有效",
+      "grantExpires": "剩余有效期至 {{time}}",
+      "renew": "续期申请",
+      "renewHint": "续期将发起新的完整审批并生成新授权，原授权到期前保持有效。",
+      "treeTab": "数据库",
+      "historyTab": "历史",
+      "treeBlocked": "会话已不可用，元数据浏览被阻断。",
+      "historyEmpty": "本次会话内执行的SQL会出现在这里（会话内内存态）。",
+      "schemaPlaceholder": "schema 名",
+      "exit": "退出查询",
+      "revokedSeeMine": "重新申请前无法继续查询；撤销记录请在“我的工单-查询工单”查看（操作者与时间字段待契约读面声明后补充）。"
+    },
+    "tree": {
+      "searchPlaceholder": "搜索表名",
+      "loadFailed": "元数据加载失败",
+      "insertTemplate": "插入 SELECT 模板",
+      "masked": "脱敏"
+    },
+    "run": {
+      "execute": "执行查询",
+      "running": "执行中…",
+      "needSchema": "请先填写目标 schema",
+      "singleSelectHint": "仅允许单条 SELECT（服务端校验为准）"
+    },
+    "result": {
+      "empty": "执行查询后结果将在这里展示",
+      "tabTitle": "结果 {{index}}",
+      "elapsed": "耗时 {{ms}} ms",
+      "rowsLoaded": "已读取 {{count}} 行",
+      "maskedColumns": "已按敏感字段策略脱敏",
+      "loadMore": "读取下一页",
+      "exhausted": "已读取全部结果"
+    },
+    "export": {
+      "button": "导出 XLSX",
+      "title": "导出查询结果",
+      "description": "浏览器从服务端游标逐页读取并增量生成XLSX，服务端不保存任何导出文件。",
+      "progress": "已读取 {{pages}} 批 / {{rows}} 行",
+      "done": "导出完成：{{rows}} 行",
+      "failedWithRange": "导出失败（{{message}}）。已成功读取 {{rows}} 行，未生成文件。",
+      "cancel": "取消导出"
+    },
+    "exit": {
+      "title": "退出查询会话",
+      "description": "退出将终止本会话并请求取消仍在运行的查询；重新进入会按当前流程重新解析数据源。",
+      "reason": "退出原因",
+      "confirm": "确认退出"
+    },
+    "session": {
+      "state": {
+        "active": "进行中",
+        "closed": "已结束",
+        "revoked": "已撤销",
+        "expired": "已失效",
+        "user_deleted": "用户已删除"
+      }
+    },
+    "request": {
+      "state": {
+        "access_pending": "审批中",
+        "grant_active": "授权生效",
+        "access_rejected": "已驳回",
+        "withdrawn": "已撤回",
+        "invalid": "已作废"
+      }
+    },
+    "grant": {
+      "state": {
+        "active": "生效中",
+        "revoked": "已撤销",
+        "expired": "已到期",
+        "relinquished": "已放弃"
+      }
+    },
+    "capability": {
+      "state": {
+        "datasource_unavailable": "数据源不可用",
+        "identity_changed": "数据源身份已变更"
+      }
+    }
+  },
+  "dashboard": {
+    "my": {
+      "drafts": "我的待提交草稿",
+      "submitted": "我提交的工单",
+      "pendingApproval": "待我审批",
+      "pendingExecution": "待执行",
+      "blockedReview": "被阻断的预审",
+      "activeGrants": "生效中的查询授权",
+      "activeSessions": "进行中的查询会话"
+    },
+    "announcement": {
+      "publishedAt": "发布于 {{time}}"
+    },
+    "admin": {
+      "title": "管理统计",
+      "partial": "部分指标暂不可用（completeness=partial）",
+      "window": "统计窗口 {{from}} ~ {{to}}（{{zone}}）",
+      "operations": "运营总览",
+      "reviewQuality": "审核质量",
+      "systemHealth": "系统健康",
+      "orderTotal": "工单总数",
+      "queryTotal": "查询执行总数",
+      "userTotal": "用户总数",
+      "datasourceTotal": "数据源总数",
+      "completed": "已完成",
+      "failed": "失败",
+      "partialFailed": "部分失败",
+      "ddlStatements": "DDL语句数",
+      "ready": "Ready {{count}}",
+      "blocked": "Blocked {{count}}",
+      "partialRuns": "Partial {{count}}",
+      "failedRuns": "Failed {{count}}",
+      "fingerprintCoverage": "指纹覆盖率 {{percent}}%"
+    }
+  },
+  "records": {
+    "title": "审计记录",
+    "description": "只追加的90天审计事件（S004）；仅内置admin可读。",
+    "noScopeTitle": "无可见的审计范围",
+    "noScopeDescription": "审计事件读取面仅对内置admin开放；普通用户的业务记录请查看我的工单。",
+    "card": "审计事件",
+    "cardDescription": "分页倒序；筛选参数尚未在契约声明（RCP-pending）。",
+    "empty": "暂无审计事件。",
+    "column": {
+      "time": "时间",
+      "actor": "操作者",
+      "action": "动作",
+      "resource": "资源",
+      "outcome": "结果"
+    },
+    "outcome": {
+      "succeeded": "成功",
+      "denied": "拒绝",
+      "failed": "失败"
+    },
+    "detail": {
+      "eventType": "事件类型",
+      "actor": "操作者",
+      "resource": "资源",
+      "outcome": "结果",
+      "requestId": "Request ID",
+      "expiresAt": "保留至",
+      "metadata": "元数据"
+    }
+  },
+  "profile": {
+    "title": "个人中心",
+    "description": "个人资料、账号安全、外观、通知与显示设置。",
+    "tabs": {
+      "identity": "个人资料",
+      "security": "账号与安全",
+      "appearance": "外观",
+      "notifications": "通知",
+      "display": "显示"
+    },
+    "identity": {
+      "title": "个人资料",
+      "description": "来自服务端会话的身份事实（只读）。",
+      "username": "用户名",
+      "displayName": "显示名",
+      "email": "邮箱",
+      "admin": "账号类型",
+      "builtinAdmin": "内置管理员",
+      "regularUser": "普通用户"
+    },
+    "security": {
+      "title": "账号与安全",
+      "description": "账号身份与密码策略。",
+      "passwordNote": "契约未声明自助改密端点：Local账号密码由管理员管理；LDAP/OIDC账号由身份源管理。"
+    },
+    "appearance": {
+      "title": "外观",
+      "description": "明暗主题切换。",
+      "theme": "主题"
+    },
+    "notifications": {
+      "title": "通知",
+      "description": "通知渠道为服务端管理面配置。",
+      "readOnlyNote": "通知渠道由管理员在系统设置中配置；个人维度暂无可配置项（只读）。"
+    },
+    "display": {
+      "title": "显示",
+      "description": "界面语言；统计时区为系统级契约，不做个人覆盖。",
+      "locale": "界面语言",
+      "zhCN": "简体中文",
+      "enUS": "English (US)",
+      "timezoneNote": "统计时区跟随系统设置（general.system_timezone）。"
+    }
+  },
+  "adminUsers": {
+    "title": "用户",
+    "description": "用户管理页面：创建、编辑与删除（删除前展示完整影响）。",
+    "create": "创建用户",
+    "createTitle": "创建用户",
+    "createDescription": "用户名、显示名与初始密码；不提供角色管理（P102）。",
+    "card": "用户列表",
+    "cardDescription": "无停用态：用户仅有删除（P105）。",
+    "empty": "暂无用户。",
+    "column": {
+      "username": "用户名",
+      "displayName": "显示名",
+      "email": "邮箱",
+      "kind": "类型"
+    },
+    "builtinAdmin": "内置管理员",
+    "localUser": "本地用户",
+    "password": "初始密码",
+    "passwordHint": "至少12个字符。",
+    "editTitle": "编辑用户：{{name}}",
+    "editDescription": "仅可修改显示名与邮箱；用户名与密码不在编辑面。",
+    "delete": {
+      "title": "删除用户：{{name}}",
+      "description": "删除前展示完整影响；业务事实与冻结身份保留。",
+      "flowReferences": "流程Actor引用",
+      "groupMemberships": "权限组成员关系",
+      "activeGrants": "生效中的查询授权",
+      "activeSessions": "进行中的查询会话",
+      "snapshotsPreserved": "历史快照与业务事实将保留（P105）。",
+      "blocked": "存在阻断项，不能删除",
+      "confirm": "确认删除"
+    }
+  },
+  "adminGroups": {
+    "title": "权限组",
+    "description": "权限组控制成员可进入的变更与查询流程（P101），不直接授权数据源。",
+    "create": "新建权限组",
+    "createTitle": "新建权限组",
+    "editTitle": "编辑权限组：{{name}}",
+    "formDescription": "成员与流程授权；不提供审核人/执行人授权入口。",
+    "preview": {
+      "title": "逐用户有效权限预览",
+      "description": "选择用户后展示其所属权限组与有效流程授权并集。",
+      "placeholder": "输入用户ID查看有效权限",
+      "user": "用户",
+      "noGroups": "不属于任何启用的权限组",
+      "noFlows": "无有效流程授权"
+    },
+    "card": "权限组列表",
+    "cardDescription": "旧版三个数据源Transfer（ddl/dml/query）已删除（§3）。",
+    "empty": "暂无权限组。",
+    "column": {
+      "name": "名称",
+      "enabled": "启用",
+      "members": "成员",
+      "flows": "授权流程"
+    },
+    "enabled": "启用",
+    "disabled": "停用",
+    "members": "成员",
+    "flows": "授权流程",
+    "flowsHint": "同时支持审核流程与查询流程。",
+    "noFlows": "暂无流程可授权。",
+    "flowKind": {
+      "change": "审核流程",
+      "query": "查询流程"
+    },
+    "delete": {
+      "title": "删除权限组：{{name}}",
+      "description": "删除后成员失去该组的流程授权。",
+      "confirm": "确认删除"
+    },
+    "formFailed": "保存失败"
+  },
+  "adminFlows": {
+    "title": "流程",
+    "description": "流程管理页面：审核流程与查询流程使用不同表单模型。",
+    "createChange": "新建审核流程",
+    "createQuery": "新建查询流程",
+    "card": "流程列表",
+    "cardDescription": "模板修改不影响已提交工单（§3）。",
+    "empty": "暂无流程。",
+    "column": {
+      "name": "名称",
+      "kind": "类型",
+      "enabled": "启用",
+      "structure": "结构"
+    },
+    "kind": {
+      "change": "审核流程",
+      "query": "查询流程"
+    },
+    "enabled": "启用",
+    "disabled": "停用",
+    "structure": {
+      "change": "{{stages}} 个阶段",
+      "query": "{{datasources}} 数据源 / {{steps}} 审批步"
+    },
+    "delete": {
+      "title": "删除流程：{{name}}",
+      "description": "被权限组引用的流程不能删除。",
+      "confirm": "确认删除"
+    },
+    "formDescription": "每一步Actor为具体用户。",
+    "noRetroactiveNote": "修改不会影响已提交工单：已提交工单使用冻结流程快照。",
+    "ruleSet": "Rule Set",
+    "noRuleSet": "不绑定",
+    "stages": "阶段",
+    "addStage": "添加阶段",
+    "stageTitle": "阶段 {{index}}",
+    "stageDatasource": "目标数据源",
+    "pickDatasource": "选择数据源",
+    "schemaMappings": "Schema映射",
+    "schemaMappingsHint": "逻辑schema到物理schema的映射，可留空。",
+    "logicalSchema": "逻辑schema",
+    "physicalSchema": "物理schema",
+    "addMapping": "添加映射",
+    "approvalSteps": "审核步骤",
+    "approvalStepsHint": "1~10步；同一步骤内任一通过、任一拒绝整单。",
+    "addStep": "添加步骤",
+    "stepTitle": "步骤 {{index}}",
+    "executionActors": "执行人",
+    "actorHint": "Actor为具体用户UUID。",
+    "queryDatasources": "数据源与能力",
+    "queryDatasourcesHint": "为每个数据源分别授予查询与导出能力。",
+    "canExport": "允许导出",
+    "maskingRules": "敏感字段词表",
+    "maskingRulesHint": "按数据源配置纯列名（≤256项，服务端按Unicode默认case fold归一去重）。",
+    "formFailed": "保存失败",
+    "editTitle": "编辑流程：{{name}}",
+    "stageUp": "上移阶段{{index}}",
+    "stageDown": "下移阶段{{index}}",
+    "stageRemove": "删除阶段{{index}}",
+    "stepRemove": "删除审批步骤{{index}}",
+    "mappingRemove": "删除Schema映射{{index}}"
+  },
+  "adminAnnouncements": {
+    "title": "公告管理",
+    "description": "首页公告：修订只追加，单一发布指针（S005）。",
+    "create": "新建修订",
+    "createTitle": "新建公告修订",
+    "createDescription": "输入受限Markdown，服务端生成安全HTML。",
+    "current": "当前发布",
+    "currentMeta": "修订 #{{revision}} · 发布于 {{at}}",
+    "revisions": "修订历史",
+    "revisionsDescription": "修订不可编辑或删除（append-only）。",
+    "empty": "暂无公告修订。",
+    "column": {
+      "title": "标题",
+      "createdAt": "创建时间",
+      "hash": "内容Hash"
+    },
+    "markdown": "Markdown源文",
+    "markdownHint": "支持标题、加粗与行内代码；脚本、iframe与事件属性会被服务端净化。",
+    "publish": "发布",
+    "published": "当前发布",
+    "operationFailed": "操作失败"
+  },
+  "adminIdp": {
+    "title": "认证Provider",
+    "description": "LDAP单例与OIDC列表；Secret不回显（仅显示是否已配置）。",
+    "createLdap": "新建LDAP",
+    "createOidc": "新建OIDC",
+    "ldapCard": "LDAP（单例）",
+    "ldapDescription": "仅允许一个LDAP Provider；传输为ldaps/starttls，无明文与跳过校验选项。",
+    "ldapEmpty": "未配置LDAP。",
+    "oidcCard": "OIDC Provider",
+    "oidcDescription": "回调地址由服务端生成，不在本页配置。",
+    "oidcEmpty": "暂无OIDC Provider。",
+    "column": {
+      "key": "Provider Key",
+      "issuer": "Issuer",
+      "state": "状态"
+    },
+    "enabled": "启用",
+    "disabled": "停用",
+    "secretConfigured": "Secret已配置",
+    "secretMissing": "Secret未配置",
+    "editTitle": "编辑：{{key}}",
+    "formDescription": "Secret永不回填：留空保持现状。",
+    "field": {
+      "displayName": "显示名",
+      "host": "地址",
+      "port": "端口",
+      "transport": "传输",
+      "transportHint": "契约仅允许ldaps/starttls。",
+      "serverName": "Server Name",
+      "bindDn": "Bind DN",
+      "baseDn": "Base DN",
+      "userFilter": "User Filter",
+      "usernameAttribute": "Username属性",
+      "displayNameAttribute": "显示名属性",
+      "emailAttribute": "邮箱属性",
+      "providerKey": "Provider Key",
+      "issuerUrl": "Issuer URL",
+      "clientId": "Client ID",
+      "scopes": "Scopes（空格分隔，必须含openid）",
+      "usernameClaim": "Username Claim",
+      "displayNameClaim": "显示名 Claim",
+      "emailClaim": "邮箱 Claim",
+      "callbackNote": "OIDC回调地址由服务端生成。",
+      "enabled": "启用",
+      "secret": "Secret",
+      "secretCreateHint": "创建时必填。",
+      "secretEditHint": "留空保持现状；清空须先停用。"
+    },
+    "formSecretRequired": "创建时必须提供Secret",
+    "formFailed": "保存失败",
+    "delete": {
+      "title": "删除Provider：{{key}}",
+      "description": "仅停用状态可删除。"
+    },
+    "testConnection": "连接测试",
+    "testTask": "测试任务：{{id}}"
+  },
+  "adminNotifications": {
+    "title": "通知",
+    "description": "邮件与钉钉通道；Outbox驱动，最多重试5次（S003）。",
+    "create": "新建通道",
+    "createTitle": "新建通知通道",
+    "editTitle": "编辑通道：{{name}}",
+    "formDescription": "Secret永不回填。",
+    "channels": "通知通道",
+    "channelsDescription": "通道变更即时生效；测试投递走同一Outbox链路。",
+    "empty": "暂无通知通道。",
+    "column": {
+      "kind": "类型",
+      "name": "名称",
+      "enabled": "启用",
+      "secret": "Secret",
+      "state": "状态",
+      "attempts": "尝试次数",
+      "nextAttempt": "下次尝试",
+      "lastError": "最后错误",
+      "createdAt": "创建时间"
+    },
+    "enabled": "启用",
+    "disabled": "停用",
+    "secretConfigured": "已配置",
+    "secretMissing": "未配置",
+    "test": "测试投递",
+    "deliveries": "投递记录",
+    "deliveriesDescription": "Outbox状态机：queued→sending→succeeded/failed，最多5次后dead_letter。",
+    "deliveryState": {
+      "queued": "排队中",
+      "sending": "投递中",
+      "succeeded": "已投递",
+      "failed": "失败",
+      "dead_letter": "死信"
+    },
+    "field": {
+      "host": "SMTP地址",
+      "port": "SMTP端口",
+      "tls": "TLS模式",
+      "username": "发件账号",
+      "from": "发件地址",
+      "secret": "Secret",
+      "secretCreateHint": "创建时必填。",
+      "secretEditHint": "留空保持现状。"
+    },
+    "secretRequired": "创建时必须提供Secret",
+    "formFailed": "保存失败",
+    "delete": {
+      "title": "删除通道：{{name}}",
+      "description": "删除后新事件不再经该通道投递；历史投递记录保留。"
+    }
+  },
+  "adminSettings": {
+    "tab": {
+      "general": "通用",
+      "query": "查询",
+      "execution": "执行",
+      "branding": "品牌",
+      "aiBudget": "AI预算"
+    },
+    "general": {
+      "title": "通用设置",
+      "description": "注册开关、系统时区与默认语言。",
+      "registration": "开放用户注册",
+      "timezone": "系统时区",
+      "locale": "默认语言"
+    },
+    "query": {
+      "title": "查询设置",
+      "description": "查询审核开关、默认超时与授权期限上限。",
+      "approval": "开启查询审核",
+      "approvalHint": "关闭时按被授权流程直接解析数据源访问；开启时须审批访问申请。",
+      "timeout": "默认查询超时（毫秒）",
+      "timeoutHint": "1~300000；默认30000。",
+      "maxDuration": "授权期限全局上限（分钟）",
+      "noLimitNote": "系统不提供查询总行数、总字节、用户并发、导出行数或文件大小设置（Q005）。"
+    },
+    "execution": {
+      "title": "执行设置",
+      "description": "执行窗口限制与OSC策略。",
+      "restriction": "启用执行窗口限制",
+      "restrictionHint": "启用后仅在窗口内的执行被允许。",
+      "windows": "执行窗口",
+      "windowsHint": "星期、本地起止时间。",
+      "weekdays": "星期（逗号分隔）",
+      "addWindow": "添加窗口",
+      "oscTool": "OSC工具",
+      "oscHint": "none或gh-ost。"
+    },
+    "branding": {
+      "title": "品牌设置",
+      "description": "产品名与登录页描述。",
+      "productName": "产品名",
+      "loginDescription": "登录页描述",
+      "assetsNote": "Logo与Favicon资产经品牌资产管理，此处仅引用资产ID。"
+    },
+    "form": "设置表单",
+    "formDescription": "按声明Schema编辑；高影响变更需先评估并携带一次性impact token。",
+    "assessment": {
+      "level": "影响级别：{{level}}",
+      "expiresAt": "评估有效期至 {{time}}"
+    },
+    "saved": "已保存。",
+    "saveFailed": "保存失败",
+    "assess": "评估影响"
+  },
+  "adminMigrations": {
+    "title": "迁移审查",
+    "description": "旧版数据迁移的Dry Run对账与候选确认；仅迁移模式可用。",
+    "noApplyTitle": "批准不会启动Apply",
+    "noApplyDescription": "Apply只能由离线迁移命令执行；本页没有任何启动Apply的入口（M001）。",
+    "empty": "暂无迁移运行记录。",
+    "run": {
+      "title": "迁移运行 {{id}}",
+      "meta": "Manifest {{hash}} · 活动工作 {{active}} · 未知状态 {{unknown}} · 歧义 {{ambiguous}}"
+    },
+    "table": {
+      "column": {
+        "source": "源表",
+        "read": "读取",
+        "written": "写入",
+        "excluded": "排除",
+        "quarantined": "隔离",
+        "failed": "失败",
+        "verdict": "对账结论"
+      },
+      "passed": "对账通过",
+      "failed": "对账未通过"
+    },
+    "candidates": {
+      "title": "候选映射确认",
+      "description": "批准前必须逐项确认每个候选映射。",
+      "confirm": "确认",
+      "unconfirm": "取消确认",
+      "confirmedBy": "由 {{by}} 于 {{at}} 确认",
+      "hash": "目标定义Hash：{{hash}}",
+      "sources": "来源"
+    },
+    "candidate": {
+      "risk": {
+        "no_expansion": "无扩权",
+        "possible_expansion": "可能扩权",
+        "unmapped": "未映射"
+      }
+    },
+    "state": {
+      "planned": "已计划",
+      "dry_run_running": "Dry Run执行中",
+      "awaiting_confirmation": "等待确认",
+      "approved": "已批准",
+      "applying": "Apply中",
+      "verifying": "校验中",
+      "verified": "已校验",
+      "failed": "失败"
+    },
+    "approval": {
+      "title": "批准Manifest",
+      "description": "批准精确的Manifest哈希；不会启动Apply。",
+      "manifestHash": "Manifest哈希",
+      "phrase": "确认短语",
+      "submit": "批准",
+      "pendingCandidates": "存在未确认的候选映射。"
+    }
+  },
+  "migrationMode": {
+    "maintenanceTitle": "系统维护中（迁移审查模式）",
+    "maintenanceDescription": "服务器正在迁移审查模式下运行，普通业务功能不可用。",
+    "gotoWorkbench": "前往迁移审查工作台"
   }
 }

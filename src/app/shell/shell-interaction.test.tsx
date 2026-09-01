@@ -103,7 +103,7 @@ describe("BrandLogo", () => {
 
 describe("UserMenu role badge", () => {
   it("shows the administrator badge for an admin session", async () => {
-    const admin: SessionUser = { displayName: "henry", canAccessAdmin: true };
+    const admin: SessionUser = { displayName: "henry", canAccessAdmin: true, migrationReview: false };
     renderWithProviders(<UserMenu user={admin} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "账户菜单" }));

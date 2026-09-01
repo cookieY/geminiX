@@ -3,32 +3,68 @@ import {
   assessSettingsImpact,
   createAiProvider,
   createDatasource,
+  createFlow,
+  createIdentityProvider,
   createKnowledgeEntry,
+  createNotificationChannel,
+  createPermissionGroup,
   createPromptTool,
   createRuleSet,
+  createUser,
   deleteAiProvider,
   deleteDatasource,
+  deleteFlow,
+  deleteIdentityProvider,
   deleteKnowledgeEntry,
+  deleteNotificationChannel,
+  deletePermissionGroup,
   deletePromptTool,
   deleteRuleSet,
+  deleteUser,
   evaluateKnowledgeEntry,
   getDatasourceCapabilities,
   getSettingsNamespace,
+  getUserDeletionImpact,
   listAiProviders,
+  listAnnouncementRevisions,
+  listAuditEvents,
   listDatasources,
   listFlows,
+  listFlowMaskingRules,
+  listIdentityProviders,
   listKnowledgeEntries,
+  listNotificationChannels,
+  listNotificationDeliveries,
+  listPermissionGroups,
   listPromptTools,
   listRuleSets,
   listSettingsRevisions,
+  listUsers,
   replaceAiProvider,
   replaceDatasource,
+  replaceFlow,
+  replaceIdentityProvider,
   replaceKnowledgeEntry,
+  replaceNotificationChannel,
+  replacePermissionGroup,
   replacePromptTool,
   replaceRuleSet,
   replaceSettingsNamespace,
+  replaceFlowMaskingRule,
   testAiProviderConnection,
   testDatasourceConnection,
+  testIdentityProviderConnection,
+  updateUser,
+} from "@/api/generated/client/administration/administration";
+import {
+  approveLegacyMigrationRun,
+  confirmLegacyMigrationCandidate,
+  getLegacyMigrationRun,
+  listLegacyMigrationRuns,
+} from "@/api/generated/client/administration/administration";
+import {
+  createAnnouncementRevision,
+  publishAnnouncementRevision,
 } from "@/api/generated/client/administration/administration";
 import { getTask } from "@/api/generated/client/tasks/tasks";
 import { BusinessError } from "@/shared/api/mutator";
@@ -36,21 +72,44 @@ import { businessErrCodeByName } from "@/shared/api/error-display";
 import type {
   AiProvider,
   AiProviderWrite,
+  AnnouncementRevision,
+  AuditEvent,
+  ConfirmLegacyMigrationCandidateRequest,
   CreateAiProviderRequest,
+  CreateIdentityProviderRequest,
+  CreateNotificationChannelRequest,
+  NotificationChannelWrite,
+  CreateUserRequest,
   Datasource,
   DatasourceCapabilities,
   DatasourceWrite,
+  Flow,
+  FlowMaskingRule,
+  FlowMaskingRuleWrite,
+  FlowWrite,
+  IdentityProvider,
   KnowledgeEntry,
   KnowledgeEntryEvaluation,
   KnowledgeEntryWrite,
+  LegacyMigrationCandidate,
+  LegacyMigrationRun,
+  NotificationChannel,
+  NotificationDelivery,
+  PermissionGroup,
   PromptTool,
+  PermissionGroupWrite,
   PromptToolWrite,
+  PublishAnnouncementRequest,
+  ReplaceIdentityProviderRequest,
   RuleSet,
   RuleSetWrite,
   SettingsImpactAssessment,
   SettingsRevision,
   SettingsValue,
   Task,
+  UpdateUserRequest,
+  User,
+  UserDeletionImpact,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 
 /**
@@ -513,5 +572,467 @@ export function useFlowsForRuleSetImpact(enabled: boolean) {
       }>(response as unknown as { items?: Array<{ id: string; name: string; flow_type: string; enabled: boolean; rule_set_id: string | null }> });
     },
     enabled,
+  });
+}
+
+
+// ===========================================================================
+// FE-F10 site domains: users, permission groups, flows, masking rules,
+// announcements, audit events, identity providers, notification channels
+// and migration review runs. Mutations carry If-Match; the admin guard is
+// the server's can_access_admin.
+// ===========================================================================
+
+// ---- users ---------------------------------------------------------------
+
+export function useUsers(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: async () => {
+      const response = await listUsers({ limit: PAGE_LIMIT });
+      return pageItems<User>(response as unknown as { items?: User[] });
+    },
+    enabled,
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateUserRequest) => {
+      return (await createUser(body)) as unknown as User;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { userId: string; version: number; body: UpdateUserRequest }) => {
+      return (await updateUser(input.userId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as User;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { userId: string; version: number }) => {
+      await deleteUser(input.userId, { headers: ifMatch(input.version) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
+export function useDeletionImpact(userId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "users", userId, "deletion-impact"],
+    queryFn: async () => {
+      return (await getUserDeletionImpact(userId)) as unknown as UserDeletionImpact;
+    },
+    enabled: enabled && userId !== "",
+  });
+}
+
+// ---- permission groups ---------------------------------------------------
+
+export function usePermissionGroups(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "permission-groups"],
+    queryFn: async () => {
+      const response = await listPermissionGroups({ limit: PAGE_LIMIT });
+      return pageItems<PermissionGroup>(
+        response as unknown as { items?: PermissionGroup[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useCreatePermissionGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: PermissionGroupWrite) => {
+      return (await createPermissionGroup(body)) as unknown as PermissionGroup;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "permission-groups"] });
+    },
+  });
+}
+
+export function useReplacePermissionGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { groupId: string; version: number; body: PermissionGroupWrite }) => {
+      return (await replacePermissionGroup(input.groupId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as PermissionGroup;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "permission-groups"] });
+    },
+  });
+}
+
+export function useDeletePermissionGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { groupId: string; version: number }) => {
+      await deletePermissionGroup(input.groupId, { headers: ifMatch(input.version) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "permission-groups"] });
+    },
+  });
+}
+
+// ---- flows (full model + masking rules) -----------------------------------
+
+export function useFlows(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "flows"],
+    queryFn: async () => {
+      const response = await listFlows({ limit: PAGE_LIMIT });
+      return pageItems<Flow>(response as unknown as { items?: Flow[] });
+    },
+    enabled,
+  });
+}
+
+export function useCreateFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: FlowWrite) => {
+      return (await createFlow(body)) as unknown as Flow;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "flows"] });
+    },
+  });
+}
+
+export function useReplaceFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { flowId: string; version: number; body: FlowWrite }) => {
+      return (await replaceFlow(input.flowId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as Flow;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "flows"] });
+    },
+  });
+}
+
+export function useDeleteFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { flowId: string; version: number }) => {
+      await deleteFlow(input.flowId, { headers: ifMatch(input.version) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "flows"] });
+    },
+  });
+}
+
+export function useFlowMaskingRules(flowId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "flows", flowId, "masking-rules"],
+    queryFn: async () => {
+      return (await listFlowMaskingRules(flowId)) as unknown as FlowMaskingRule[];
+    },
+    enabled: enabled && flowId !== "",
+  });
+}
+
+export function useReplaceMaskingRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      flowId: string;
+      datasourceId: string;
+      body: FlowMaskingRuleWrite;
+    }) => {
+      return (await replaceFlowMaskingRule(input.flowId, input.datasourceId, input.body));
+    },
+    onSettled: (_data, error, variables) => {
+      if (error === null) {
+        void queryClient.invalidateQueries({
+          queryKey: ["admin", "flows", variables.flowId, "masking-rules"],
+        });
+      }
+    },
+  });
+}
+
+// ---- announcements ---------------------------------------------------------
+
+export function useAnnouncementRevisions(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "announcements"],
+    queryFn: async () => {
+      const response = await listAnnouncementRevisions({ limit: PAGE_LIMIT });
+      return pageItems<AnnouncementRevision>(
+        response as unknown as { items?: AnnouncementRevision[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useCreateAnnouncementRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { title: string; markdown_source: string }) => {
+      return (await createAnnouncementRevision(body)) as unknown as AnnouncementRevision;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
+    },
+  });
+}
+
+export function usePublishAnnouncement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { body: PublishAnnouncementRequest; publicationVersion: number }) => {
+      return (await publishAnnouncementRevision(input.body, {
+        headers: ifMatch(input.publicationVersion),
+      })) as unknown as AnnouncementRevision;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
+      void queryClient.invalidateQueries({ queryKey: ["announcements", "current"] });
+    },
+  });
+}
+
+// ---- audit events -----------------------------------------------------------
+
+export function useAuditEvents(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "audit-events"],
+    queryFn: async () => {
+      const response = await listAuditEvents({ limit: PAGE_LIMIT });
+      return pageItems<AuditEvent>(response as unknown as { items?: AuditEvent[] });
+    },
+    enabled,
+  });
+}
+
+// ---- identity providers ------------------------------------------------------
+
+export function useIdentityProviders(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "identity-providers"],
+    queryFn: async () => {
+      const response = await listIdentityProviders({ limit: PAGE_LIMIT });
+      return pageItems<IdentityProvider>(
+        response as unknown as { items?: IdentityProvider[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useCreateIdentityProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateIdentityProviderRequest) => {
+      return (await createIdentityProvider(body)) as unknown as IdentityProvider;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "identity-providers"] });
+    },
+  });
+}
+
+export function useReplaceIdentityProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { providerId: string; version: number; body: ReplaceIdentityProviderRequest }) => {
+      return (await replaceIdentityProvider(input.providerId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as IdentityProvider;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "identity-providers"] });
+    },
+  });
+}
+
+export function useDeleteIdentityProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { providerId: string; version: number }) => {
+      await deleteIdentityProvider(input.providerId, { headers: ifMatch(input.version) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "identity-providers"] });
+    },
+  });
+}
+
+export function useTestIdentityProviderConnection() {
+  return useMutation({
+    mutationFn: async (providerId: string) => {
+      return (await testIdentityProviderConnection(providerId)) as unknown as Task;
+    },
+  });
+}
+
+// ---- notification channels ----------------------------------------------------
+
+export function useNotificationChannels(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "notification-channels"],
+    queryFn: async () => {
+      const response = await listNotificationChannels({ limit: PAGE_LIMIT });
+      return pageItems<NotificationChannel>(
+        response as unknown as { items?: NotificationChannel[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useNotificationDeliveries(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "notification-deliveries"],
+    queryFn: async () => {
+      const response = await listNotificationDeliveries({ limit: PAGE_LIMIT });
+      return pageItems<NotificationDelivery>(
+        response as unknown as { items?: NotificationDelivery[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useCreateNotificationChannel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateNotificationChannelRequest) => {
+      return (await createNotificationChannel(body)) as unknown as NotificationChannel;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-channels"] });
+    },
+  });
+}
+
+export function useReplaceNotificationChannel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { channelId: string; version: number; body: NotificationChannelWrite }) => {
+      return (await replaceNotificationChannel(input.channelId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as NotificationChannel;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-channels"] });
+    },
+  });
+}
+
+export function useDeleteNotificationChannel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { channelId: string; version: number }) => {
+      await deleteNotificationChannel(input.channelId, { headers: ifMatch(input.version) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-channels"] });
+    },
+  });
+}
+
+export function useTestNotificationDelivery() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { channelId: string; body: unknown }) => {
+      const { createNotificationTestDelivery } = await import(
+        "@/api/generated/client/administration/administration"
+      );
+      return (await createNotificationTestDelivery(input.channelId, input.body as never)) as unknown as NotificationDelivery;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-deliveries"] });
+    },
+  });
+}
+
+// ---- migration review ----------------------------------------------------------
+
+export function useMigrationRuns(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "migrations"],
+    queryFn: async () => {
+      const response = await listLegacyMigrationRuns({ limit: PAGE_LIMIT });
+      return pageItems<LegacyMigrationRun>(
+        response as unknown as { items?: LegacyMigrationRun[] },
+      );
+    },
+    enabled,
+  });
+}
+
+export function useMigrationRun(runId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "migrations", runId],
+    queryFn: async () => {
+      return (await getLegacyMigrationRun(runId)) as unknown as LegacyMigrationRun;
+    },
+    enabled: enabled && runId !== "",
+  });
+}
+
+export function useConfirmMigrationCandidate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      runId: string;
+      candidateId: string;
+      version: number;
+      body: ConfirmLegacyMigrationCandidateRequest;
+    }) => {
+      return (await confirmLegacyMigrationCandidate(input.runId, input.candidateId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as LegacyMigrationCandidate;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "migrations"] });
+    },
+  });
+}
+
+export function useApproveMigrationRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      runId: string;
+      version: number;
+      body: { manifest_hash: string; confirmation_phrase: string };
+    }) => {
+      return (await approveLegacyMigrationRun(input.runId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as LegacyMigrationRun;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "migrations"] });
+    },
   });
 }

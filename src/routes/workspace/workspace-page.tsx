@@ -1,9 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Hourglass, LayoutDashboard } from "lucide-react";
+import { Hourglass } from "lucide-react";
 import { listCurrentUserFlows } from "@/api/generated/client/change-drafts/change-drafts";
 import { FlowType } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
+import {
+  AdminDashboardSection,
+  AnnouncementBanner,
+  MyDashboardCards,
+  useCurrentAnnouncementQuery,
+  useMyDashboardQuery,
+} from "@/routes/workspace/workspace-dashboard-sections";
 import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import {
@@ -43,6 +50,9 @@ export default function WorkspacePage() {
   const { user } = useSession();
   const reviewFlows = useCurrentUserFlows(FlowType.change_review);
   const queryFlows = useCurrentUserFlows(FlowType.query_access);
+  const isAdmin = user?.can_access_admin === true;
+  const dashboardQuery = useMyDashboardQuery(user !== null);
+  const announcementQuery = useCurrentAnnouncementQuery(user !== null);
 
   const isLoading = reviewFlows.isPending || queryFlows.isPending;
   const loadError = reviewFlows.error ?? queryFlows.error;
@@ -51,7 +61,7 @@ export default function WorkspacePage() {
   const isZeroPermission = user !== null && !user.can_access_admin && !hasFlowGrants;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5" data-testid="workspace-page">
       <PageBreadcrumb title={t("nav.home")} />
       {isLoading ? (
         <LoadingState />
@@ -75,15 +85,27 @@ export default function WorkspacePage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <Empty className="rounded-xl border">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <LayoutDashboard />
-            </EmptyMedia>
-            <EmptyTitle>{t("workspace.placeholderTitle")}</EmptyTitle>
-            <EmptyDescription>{t("workspace.placeholderDesc")}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <>
+          <header>
+            <h1 className="text-2xl font-semibold">
+              {t("workspace.greeting", { name: user?.display_name ?? user?.username ?? "" })}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {dashboardQuery.data === undefined
+                ? ""
+                : t("workspace.refreshedAt", {
+                    time: dashboardQuery.data.refreshed_at
+                      .replace("T", " ")
+                      .replace("Z", " UTC"),
+                  })}
+            </p>
+          </header>
+          {announcementQuery.data !== undefined && (
+            <AnnouncementBanner publication={announcementQuery.data} />
+          )}
+          <MyDashboardCards dashboard={dashboardQuery.data} />
+          <AdminDashboardSection enabled={isAdmin} />
+        </>
       )}
     </div>
   );

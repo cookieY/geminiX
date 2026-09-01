@@ -35,7 +35,7 @@ test("the locked admin sees the server-side reset command hint", async ({ page }
 test("logout revokes the session and returns to the login page", async ({ page }) => {
   await mockSession(page, "admin");
   await page.goto("/workspace");
-  await expect(page.getByText("工作台内容尚未交付")).toBeVisible();
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
   await page.getByRole("button", { name: "账户菜单" }).click();
   const signOut = page.getByRole("button", { name: /退出登录/ });
   await expect(signOut).toBeEnabled();
@@ -56,7 +56,7 @@ test("an expired session is redirected to the login page", async ({ page }) => {
 test("the session token stays out of URLs and web storage", async ({ page }) => {
   await mockSession(page, "admin");
   await page.goto("/workspace");
-  await expect(page.getByText("工作台内容尚未交付")).toBeVisible();
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
   const evidence = await page.evaluate(() => ({
     localStorage: JSON.stringify(window.localStorage),
     sessionStorage: JSON.stringify(window.sessionStorage),
@@ -77,7 +77,7 @@ test("the session token stays out of URLs and web storage", async ({ page }) => 
 test("mutating requests carry the CSRF double-submit header", async ({ page }) => {
   await mockSession(page, "admin");
   await page.goto("/workspace");
-  await expect(page.getByText("工作台内容尚未交付")).toBeVisible();
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
   await page.getByRole("button", { name: "账户菜单" }).click();
   const logoutRequest = page.waitForRequest((request) =>
     request.url().includes("/auth/logout"),

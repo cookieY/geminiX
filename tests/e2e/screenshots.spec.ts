@@ -23,9 +23,11 @@ async function prepare(page: Page, locale: string, theme: string) {
   await page.emulateMedia({ reducedMotion: "reduce" });
 }
 
+// FE-F10: the workspace renders the real dashboard (greeting + metric
+// cards) instead of the FE-F2 placeholder.
 const READY_TEXT: Record<(typeof LOCALES)[number], string> = {
-  "zh-CN": "工作台内容尚未交付",
-  "en-US": "Workspace content is not delivered yet",
+  "zh-CN": "欢迎回来",
+  "en-US": "Welcome back",
 };
 
 for (const viewport of VIEWPORTS) {

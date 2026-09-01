@@ -11,6 +11,14 @@ import type { CurrentUser } from "@/api/generated/client/yearningV4HTTPAPI.schem
 export interface SessionUser {
   displayName: string;
   canAccessAdmin: boolean;
+  /**
+   * Migration-mode declaration: the dedicated migration review server's
+   * GET /users/me answers with capabilities:["migration_review"] (its me
+   * view diverges from the normal CurrentUser shape — see the migration
+   * contract §17 divergence note). Detected defensively; normal-mode
+   * responses simply lack the capability.
+   */
+  migrationReview: boolean;
 }
 
 /**
@@ -22,9 +30,12 @@ export function sessionRole(user: SessionUser): SessionRole {
 }
 
 export function toSessionUser(currentUser: CurrentUser): SessionUser {
+  const capabilities = (currentUser as unknown as { capabilities?: unknown }).capabilities;
   return {
     displayName: currentUser.display_name ?? currentUser.username,
     canAccessAdmin: currentUser.can_access_admin,
+    migrationReview:
+      Array.isArray(capabilities) && capabilities.includes("migration_review"),
   };
 }
 

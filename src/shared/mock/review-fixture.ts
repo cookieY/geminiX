@@ -3,6 +3,7 @@ import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 import { adminFixtureTask } from "@/shared/mock/admin-fixture";
+import { queryFlowsCatalogPage } from "@/shared/mock/query-fixture";
 import { digestSqlText, type SqlDigest } from "@/features/review/bulk-import/sql-digest";
 import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import {
@@ -1311,9 +1312,19 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     // contract (auth PRD §11): the default session owns no flow grants, so
     // both flow-type queries come back as empty cursor pages and the user
     // sees the waiting state; an admin session carries the change flow.
+    // The query_access branch is served from the query fixture world
+    // (FE-F10): single route ownership, shared auth behavior dimension.
     http.get("*/users/me/flows", ({ request }) => {
       const flowType = new URL(request.url).searchParams.get("flow_type");
-      if (flowType !== "change_review" || readStoredAuthBehavior() !== "admin") {
+      const behavior = readStoredAuthBehavior();
+      if (flowType === "query_access") {
+        // Session presence follows the shared behavior-dimension convention
+        // (jsdom fetches carry no cookies; see admin-fixture adminGuard).
+        return HttpResponse.json(
+          successEnvelope(pageOf(queryFlowsCatalogPage(behavior !== "expired", behavior).items as unknown[], null, null)),
+        );
+      }
+      if (flowType !== "change_review" || behavior !== "admin") {
         return HttpResponse.json(successEnvelope(pageOf([], null, null)));
       }
       const flow = {

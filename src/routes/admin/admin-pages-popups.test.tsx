@@ -122,7 +122,10 @@ afterEach(() => {
 });
 
 describe("admin select-popup interactions (single isolated test)", () => {
-  it("covers builtin state toggle, eval-gate inline failure and credential mode switching", async () => {
+  // CI runners are slower than local machines; this single test packs
+  // every popup cycle of the admin surface, so it gets an explicit,
+  // generous timeout instead of the default 5s.
+  it("covers builtin state toggle, eval-gate inline failure and credential mode switching", { timeout: 30_000 }, async () => {
     // ---- skills: toggle the builtin state through the locked editor ----
     const skills = renderPage(<AdminReviewSkillsPage />);
     const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);

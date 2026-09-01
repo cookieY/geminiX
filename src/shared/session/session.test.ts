@@ -15,7 +15,7 @@ const baseUser = {
 describe("session view mapping", () => {
   it("falls back to the username when no display name exists", () => {
     const view = toSessionUser(baseUser);
-    expect(view).toEqual({ displayName: "henry", canAccessAdmin: false });
+    expect(view).toEqual({ displayName: "henry", canAccessAdmin: false, migrationReview: false });
     expect(sessionRole(view)).toBe("user");
   });
 

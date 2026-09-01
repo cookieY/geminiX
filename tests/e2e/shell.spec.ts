@@ -13,13 +13,15 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => document.fonts.ready);
 });
 
-test("the shell renders navigation groups, header actions and the workspace placeholder", async ({
+test("the shell renders navigation groups, header actions and the workspace dashboard", async ({
   page,
 }) => {
   await expect(page.getByText("工作台", { exact: true })).toBeVisible();
   await expect(page.getByText("审计", { exact: true })).toBeVisible();
   await expect(page.getByText("审核引擎")).toBeVisible();
-  await expect(page.getByText("工作台内容尚未交付")).toBeVisible();
+  // FE-F10 replaces the honest placeholder with the real dashboard cards
+  // (admin session additionally renders the administration statistics).
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
 });
 
 test("admin navigation follows the server capability", async ({ page }) => {
@@ -51,7 +53,7 @@ test("the global footer shows the exact license line and stays below the content
   const footer = page.getByText("AGPL-3.0 Licensed | Copyright © 2017-present Henry Yee");
   await expect(footer).toBeVisible();
   const footerBox = await footer.boundingBox();
-  const contentBox = await page.getByText("工作台内容尚未交付").boundingBox();
+  const contentBox = await page.getByTestId("workspace-dashboard-cards").boundingBox();
   if (!footerBox || !contentBox) {
     throw new Error("footer or workspace placeholder is not rendered");
   }
@@ -77,11 +79,14 @@ test("the theme toggle switches the document class", async ({ page }) => {
   await expect(html).toHaveClass(/dark/);
 });
 
-test("unbuilt navigation targets land on the not-found page", async ({ page }) => {
-  // /changes/mine is built since FE-F6; /approvals/changes (工单审批) is
-  // built since FE-F7. 审计记录 (/records) stays unbuilt until its package.
+test("sidebar navigation targets stay consistent with the built route tree", async ({ page }) => {
+  // FE-F10 delivers the remaining §9.2 nav targets (/records, /query and
+  // the admin entries). Every sidebar entry now resolves to a real page —
+  // unknown routes still land on the not-found page (next test).
   await page.getByRole("link", { name: "审计记录" }).click();
-  await expect(page.getByText(/页面不存在|Page not found/)).toBeVisible();
+  await expect(page.getByTestId("records-page")).toBeVisible();
+  await page.getByRole("link", { name: "查询" }).click();
+  await expect(page.getByTestId("query-entry")).toBeVisible();
 });
 
 test("unknown routes land on the not-found page", async ({ page }) => {
