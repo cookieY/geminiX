@@ -69,9 +69,15 @@ export function ResultGrid({ tab, loadingMore, onLoadMore, continuationError }: 
           </Badge>
         )}
       </div>
+      {/* Keyboard-scrollable region (WCAG 2.1.1/2.1.3, axe
+          scrollable-region-focusable): the virtualized grid is the page's
+          primary scroll surface, so it must be reachable by Tab. */}
       <div
         ref={parentRef}
-        className="min-h-0 flex-1 overflow-auto rounded-md border"
+        role="region"
+        aria-label={t("query.result.gridLabel")}
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-auto rounded-md border focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
         style={{ maxHeight: "100%" }}
       >
         <table className="w-max text-xs">

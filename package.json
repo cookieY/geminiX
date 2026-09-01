@@ -26,7 +26,9 @@
     "check:registry": "node scripts/generate-registry-inventory.mjs --check",
     "api:generate": "orval --config orval.config.ts && node scripts/generate-projections.mjs && node scripts/generate-contract-manifest.mjs",
     "api:manifest": "node scripts/generate-contract-manifest.mjs",
-    "api:breaking": "node scripts/api-breaking.mjs"
+    "api:breaking": "node scripts/api-breaking.mjs",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
+    "check:storage": "node scripts/scan-browser-storage.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

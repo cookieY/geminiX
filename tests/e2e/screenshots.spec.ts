@@ -21,6 +21,11 @@ async function prepare(page: Page, locale: string, theme: string) {
       `window.localStorage.setItem('vite-ui-theme', '${theme}');`,
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
+  // Baseline determinism (FE-F11): the mock world derives every rendered
+  // timestamp from the real clock, so an unpinned baseline churns on every
+  // regeneration. setFixedTime pins Date only — animations keep running on
+  // real timers. Must match screenshots-business.spec.ts.
+  await page.clock.setFixedTime(new Date("2026-09-01T08:00:00Z"));
 }
 
 // FE-F10: the workspace renders the real dashboard (greeting + metric

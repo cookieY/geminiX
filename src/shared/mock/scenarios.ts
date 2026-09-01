@@ -1,7 +1,6 @@
 import { HttpResponse, delay, http } from "msw";
 import { BUSINESS_ERROR_CATALOG } from "@/api/generated/projections/business-error-catalog";
 import {
-  getDashboardMock,
   getGetMyDashboardMockHandler,
   getGetMyDashboardResponseBusinessErrorResponseMock,
   getGetMyDashboardResponseMyDashboardSuccessMock,
@@ -25,6 +24,25 @@ import { queryFixtureHandlers } from "@/shared/mock/query-fixture";
  */
 export const DEMO_REQUEST_ID = "22222222-2222-4222-8222-222222222222";
 
+// Deterministic dashboard payload (FE-F11 baseline determinism): the
+// generated default handler drew every count from faker at request time,
+// which churned the committed screenshot baseline on every regeneration and
+// made visual review meaningless for the metric cards. One fixed,
+// schema-valid dataset serves every dashboard response; refreshed_at matches
+// the screenshot clock pin (tests/e2e/screenshots*.spec.ts).
+const DASHBOARD_DATA = {
+  data: {
+    draft_count: 2,
+    submitted_order_count: 3,
+    pending_approval_count: 1,
+    pending_execution_count: 1,
+    blocked_review_count: 1,
+    active_query_grant_count: 1,
+    active_query_session_count: 1,
+    refreshed_at: "2026-09-01T08:00:00Z",
+  },
+} as const;
+
 function codeByName(name: string): BusinessErrorCode {
   for (const [code, entry] of Object.entries(BUSINESS_ERROR_CATALOG.errors)) {
     if (entry.name === name) return Number(code) as BusinessErrorCode;
@@ -37,7 +55,10 @@ export function scenarioHandlers(scenario: MockScenario) {
     case "ready":
       return [
         getGetMyDashboardMockHandler(
-          getGetMyDashboardResponseMyDashboardSuccessMock({ request_id: DEMO_REQUEST_ID }),
+          getGetMyDashboardResponseMyDashboardSuccessMock({
+            request_id: DEMO_REQUEST_ID,
+            ...DASHBOARD_DATA,
+          }),
         ),
       ];
     case "blocked":
@@ -57,7 +78,10 @@ export function scenarioHandlers(scenario: MockScenario) {
       return [
         getGetMyDashboardMockHandler(async () => {
           await delay(1200);
-          return getGetMyDashboardResponseMyDashboardSuccessMock({ request_id: DEMO_REQUEST_ID });
+          return getGetMyDashboardResponseMyDashboardSuccessMock({
+            request_id: DEMO_REQUEST_ID,
+            ...DASHBOARD_DATA,
+          });
         }),
       ];
     case "error":
@@ -86,13 +110,18 @@ export function scenarioHandlers(scenario: MockScenario) {
   }
 }
 
-/** Base set: every generated handler factory registered so far, plus the
- * hand-written authentication handlers that simulate the cookie session, the
- * stateful change-draft/review fixture backing the FE-F4 workspace, and the
- * stateful admin fixture backing the FE-F9 review-admin management pages. */
+/** Base set: the deterministic dashboard handler plus the hand-written
+ * authentication handlers that simulate the cookie session, the stateful
+ * change-draft/review fixture backing the FE-F4 workspace, and the stateful
+ * admin fixture backing the FE-F9 review-admin management pages. */
 export function baseHandlers() {
   return [
-    ...getDashboardMock(),
+    getGetMyDashboardMockHandler(
+      getGetMyDashboardResponseMyDashboardSuccessMock({
+        request_id: DEMO_REQUEST_ID,
+        ...DASHBOARD_DATA,
+      }),
+    ),
     ...authMockHandlers(),
     ...reviewFixtureHandlers(),
     ...adminFixtureHandlers(),

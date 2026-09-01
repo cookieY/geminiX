@@ -758,6 +758,7 @@
       "deleteBlockedHint": "Still referenced by flows: disable instead of deleting",
       "deleteErrorHint": "Physical deletion stays blocked until references are cleared; disable the datasource instead.",
       "testConnection": "Test connection",
+      "testPurpose": "Connection test purpose",
       "testRunning": "Connection test running…",
       "testFailed": "Connection test failed; check credentials and network.",
       "capabilitiesTitle": "Capability matrix",
@@ -1043,6 +1044,7 @@
       "tabTitle": "Result {{index}}",
       "elapsed": "{{ms}} ms",
       "rowsLoaded": "{{count}} rows loaded",
+      "gridLabel": "Query result table",
       "maskedColumns": "Masked by sensitive-column policy",
       "loadMore": "Load next page",
       "exhausted": "All rows read"

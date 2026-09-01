@@ -824,7 +824,11 @@ function ConnectionTestControls({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
         <Select value={purpose} onValueChange={(next) => { if (next !== null) setPurpose(next); }}>
-          <SelectTrigger className="h-8 w-32" data-testid={`ds-test-purpose-${datasource.id}`}>
+          <SelectTrigger
+            className="h-8 w-32"
+            aria-label={t("admin.datasources.testPurpose")}
+            data-testid={`ds-test-purpose-${datasource.id}`}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

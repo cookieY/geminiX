@@ -44,6 +44,14 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests with coverage
         run: pnpm test:coverage
+      - name: Static machine gates (i18n, token contrast, raw colors, prohibited, assets, browser storage)
+        run: |
+          pnpm check:i18n
+          pnpm check:tokens
+          pnpm check:colors
+          pnpm check:prohibited
+          pnpm check:assets
+          pnpm check:storage
       - name: Registry inventory check (network required; separate from the offline build proof)
         run: node scripts/generate-registry-inventory.mjs --check
 
@@ -80,6 +88,8 @@ jobs:
             echo "external resource reference in dist/index.html: $external"; exit 1
           fi
           echo "dist/index.html references only same-origin bundle assets"
+      - name: Bundle budget gate (release transfer budget, admin/Monaco/mock isolation)
+        run: pnpm check:bundle
 
   e2e:
     name: Playwright e2e

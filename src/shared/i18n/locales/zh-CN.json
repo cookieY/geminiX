@@ -758,6 +758,7 @@
       "deleteBlockedHint": "仍被流程引用：只能禁用，不能物理删除",
       "deleteErrorHint": "引用清理完成前禁止物理删除；可将数据源设为禁用。",
       "testConnection": "测试连接",
+      "testPurpose": "连接测试用途",
       "testRunning": "连接测试进行中…",
       "testFailed": "连接测试失败，请检查凭据与网络。",
       "capabilitiesTitle": "能力矩阵",
@@ -1043,6 +1044,7 @@
       "tabTitle": "结果 {{index}}",
       "elapsed": "耗时 {{ms}} ms",
       "rowsLoaded": "已读取 {{count}} 行",
+      "gridLabel": "查询结果表格",
       "maskedColumns": "已按敏感字段策略脱敏",
       "loadMore": "读取下一页",
       "exhausted": "已读取全部结果"
