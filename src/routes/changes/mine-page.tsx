@@ -14,7 +14,6 @@ import {
 } from "@/features/orders/use-orders";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { OrderStateBadge } from "@/features/orders/order-state-badge";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { QueryOrdersTab } from "@/routes/changes/query-orders-tab";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Badge } from "@/shared/components/ui/badge";
@@ -314,7 +313,6 @@ export default function MinePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="mine-page">
-      <PageBreadcrumb title={t("nav.myOrders")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("orders.list.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("orders.list.description")}</p>

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { createChangeDraft } from "@/api/generated/client/change-drafts/change-drafts";
 import type { Flow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { StagePath } from "@/features/review/stage-path";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Button } from "@/shared/components/ui/button";
@@ -71,7 +70,6 @@ export default function ChangesNewPage() {
 
   return (
     <div className="flex flex-col gap-6" data-testid="changes-new-page">
-      <PageBreadcrumb title={t("nav.orderSubmit")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("precheck.new.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("precheck.new.description")}</p>

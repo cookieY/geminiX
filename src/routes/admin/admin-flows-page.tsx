@@ -5,7 +5,6 @@ import { ArrowDown, ArrowUp, Database, EyeOff, Plus, Trash2, Workflow } from "lu
 import type { Flow, FlowMaskingRule, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -86,7 +85,6 @@ export default function AdminFlowsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">
-      <PageBreadcrumb title={t("nav.admin.flows")} />
       <header className="flex flex-row items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("adminFlows.title")}</h1>

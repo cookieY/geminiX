@@ -14,7 +14,6 @@ import {
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -303,7 +302,6 @@ export default function AdminAiBudgetPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageBreadcrumb title={t("admin.aiBudget.title")} />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

@@ -7,7 +7,6 @@ import type { Flow, QueryAccessRequest, QueryGrant } from "@/api/generated/clien
 import { useSession } from "@/features/auth/session-provider";
 import { describeError, businessErrCodeByName } from "@/shared/api/error-display";
 import { BusinessError } from "@/shared/api/mutator";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -125,7 +124,6 @@ export default function QueryEntryPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="query-entry">
-      <PageBreadcrumb title={t("nav.query")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("query.entry.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("query.entry.description")}</p>

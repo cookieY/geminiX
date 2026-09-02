@@ -26,7 +26,6 @@ import {
 } from "@/features/admin/review-input-editor";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -191,7 +190,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
 
   return (
     <div className="flex flex-col gap-4">
-      <PageBreadcrumb title={t(isSkills ? "nav.reviewEngine.skills" : "nav.reviewEngine.knowledge")} />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>

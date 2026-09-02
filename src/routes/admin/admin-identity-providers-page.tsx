@@ -5,7 +5,6 @@ import { KeyRound, Plus } from "lucide-react";
 import type { IdentityProvider } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -157,7 +156,6 @@ export default function AdminIdentityProvidersPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-idp-page">
-      <PageBreadcrumb title={t("adminIdp.title")} />
       <header className="flex flex-row items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("adminIdp.title")}</h1>

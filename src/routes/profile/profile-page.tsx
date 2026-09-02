@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Bell, Languages, Palette, ShieldCheck, UserRound } from "lucide-react";
 import { useSession } from "@/features/auth/session-provider";
 import { setLocale as persistLocale, type Locale } from "@/shared/i18n";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
@@ -34,7 +33,6 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="profile-page">
-      <PageBreadcrumb title={t("profile.title")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("profile.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("profile.description")}</p>

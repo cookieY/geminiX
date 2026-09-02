@@ -39,7 +39,6 @@ import {
   useReviewFindings,
   useReviewRun,
 } from "@/features/review/use-draft-workspace";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Button } from "@/shared/components/ui/button";
@@ -301,7 +300,6 @@ export default function DraftWorkspacePage() {
   if (draftQuery.isPending) {
     return (
       <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
-        <PageBreadcrumb title={t("precheck.workspace.title")} />
         <LoadingState />
       </div>
     );
@@ -310,7 +308,6 @@ export default function DraftWorkspacePage() {
   if (draftQuery.isError) {
     return (
       <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
-        <PageBreadcrumb title={t("precheck.workspace.title")} />
         <ErrorState
           error={draftQuery.error}
           operationId="getChangeDraft"
@@ -327,7 +324,6 @@ export default function DraftWorkspacePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
-      <PageBreadcrumb title={draft.title ?? t("precheck.workspace.title")} />
       {timedOutState.timedOut && (phasePresented === "queued" || phasePresented === "running") && (
         <div
           role="alert"

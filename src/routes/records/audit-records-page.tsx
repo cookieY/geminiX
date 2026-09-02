@@ -4,7 +4,6 @@ import { Lock, ScrollText } from "lucide-react";
 import { listAuditEvents } from "@/api/generated/client/administration/administration";
 import type { AuditEvent } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -61,7 +60,6 @@ export default function AuditRecordsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="records-page">
-      <PageBreadcrumb title={t("nav.auditRecords")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("records.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("records.description")}</p>

@@ -36,7 +36,6 @@
     "toggleSidebar": "折叠侧边栏",
     "toggleTheme": "切换主题",
     "headerNav": "全局操作",
-    "breadcrumb": "面包屑",
     "sessionPlaceholder": "会话未接入",
     "role": {
       "admin": "管理员",

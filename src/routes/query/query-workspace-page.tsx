@@ -16,7 +16,6 @@ import {
 import type { QueryGrant, QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -271,7 +270,6 @@ export default function QueryWorkspacePage() {
   if (sessionQuery.isPending) {
     return (
       <div className="flex flex-col gap-4">
-        <PageBreadcrumb title={t("nav.query")} />
         <LoadingState />
       </div>
     );
@@ -280,7 +278,6 @@ export default function QueryWorkspacePage() {
   if (sessionQuery.error !== null) {
     return (
       <div className="flex flex-col gap-4" data-testid="query-workspace-error">
-        <PageBreadcrumb title={t("nav.query")} />
         <ErrorState
           error={sessionQuery.error}
           operationId="getQuerySession"
@@ -293,7 +290,6 @@ export default function QueryWorkspacePage() {
   if (row === null) {
     return (
       <div className="flex flex-col gap-4">
-        <PageBreadcrumb title={t("nav.query")} />
         <ErrorState error={new Error("session not found")} operationId="getQuerySession" onRetry={() => { void navigate("/query"); }} />
       </div>
     );
@@ -301,7 +297,6 @@ export default function QueryWorkspacePage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] min-h-0 flex-col gap-3" data-testid="query-workspace">
-      <PageBreadcrumb title={t("query.workspace.title", { name: capability?.datasource_name ?? "" })} />
 
       {row.state === "revoked" && (
         <Alert variant="destructive" data-testid="query-revoked-notice">

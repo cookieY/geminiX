@@ -18,7 +18,6 @@ import {
 } from "@/features/orders/use-orders";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { useSession } from "@/features/auth/session-provider";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -195,7 +194,6 @@ export default function OrderDetailPage() {
   if (orderQuery.isPending) {
     return (
       <div className="flex flex-col gap-4" data-testid="order-detail-page">
-        <PageBreadcrumb title={t("orders.detail.title")} />
         <LoadingState />
       </div>
     );
@@ -203,7 +201,6 @@ export default function OrderDetailPage() {
   if (orderQuery.isError) {
     return (
       <div className="flex flex-col gap-4" data-testid="order-detail-page">
-        <PageBreadcrumb title={t("orders.detail.title")} />
         <ErrorState
           error={orderQuery.error}
           operationId="getChangeOrder"
@@ -218,7 +215,6 @@ export default function OrderDetailPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="order-detail-page">
-      <PageBreadcrumb title={order.display_number} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-xl font-semibold">{order.display_number}</h1>

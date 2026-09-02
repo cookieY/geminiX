@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { CircleCheck, CircleDashed, DatabaseZap, ShieldAlert } from "lucide-react";
 import type { LegacyMigrationCandidate, LegacyMigrationRun } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { describeError } from "@/shared/api/error-display";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -46,7 +45,6 @@ export default function AdminMigrationsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-migrations-page">
-      <PageBreadcrumb title={t("adminMigrations.title")} />
       <header>
         <h1 className="text-2xl font-semibold">{t("adminMigrations.title")}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("adminMigrations.description")}</p>

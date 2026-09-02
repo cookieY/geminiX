@@ -9,7 +9,6 @@ import { SessionProvider } from "@/features/auth/session-provider";
 import { YearningSidebar } from "./yearning-sidebar";
 import { AppFooter, FOOTER_TEXT } from "./app-footer";
 import { UserMenu } from "./user-menu";
-import { PageBreadcrumb } from "./page-breadcrumb";
 
 function renderWithShellProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -83,11 +82,3 @@ describe("UserMenu sign-out resilience", () => {
   });
 });
 
-describe("PageBreadcrumb", () => {
-  it("renders the page title with a home link trail", () => {
-    renderWithShellProviders(<PageBreadcrumb title="首页" />);
-    expect(screen.getAllByText("首页")).toHaveLength(3); // h4 title + home link + current trail entry
-    expect(screen.getByRole("link", { name: "首页" })).toHaveAttribute("href", "/workspace");
-    expect(screen.getByLabelText("面包屑")).toBeVisible();
-  });
-});

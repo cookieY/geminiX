@@ -6,7 +6,6 @@ import { useApprovalQueue } from "@/features/orders/use-approvals";
 import { activeApprovalStepFor } from "@/features/orders/order-state";
 import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -102,7 +101,6 @@ export default function ApprovalQueuePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="approval-queue-page">
-      <PageBreadcrumb title={t("approvals.title")} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Stamp className="size-5" aria-hidden />

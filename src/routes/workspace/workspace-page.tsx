@@ -12,7 +12,6 @@ import {
   useCurrentAnnouncementQuery,
   useMyDashboardQuery,
 } from "@/routes/workspace/workspace-dashboard-sections";
-import { PageBreadcrumb } from "@/app/shell/page-breadcrumb";
 import {
   Empty,
   EmptyDescription,
@@ -79,7 +78,6 @@ export default function WorkspacePage() {
 
   return (
     <div className="flex flex-col gap-5" data-testid="workspace-page">
-      <PageBreadcrumb title={t("nav.home")} />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">
