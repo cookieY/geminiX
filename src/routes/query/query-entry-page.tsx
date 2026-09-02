@@ -13,7 +13,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
+import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
@@ -318,12 +318,11 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="query-apply-until">{t("query.apply.until")}</Label>
-            <Input
-              id="query-apply-until"
-              type="date"
+            <DatePicker
               value={until}
-              onChange={(event) => { setUntil(event.target.value); }}
-              data-testid="query-apply-until"
+              onChange={(next) => { setUntil(next); }}
+              testId="query-apply-until"
+              ariaLabel={t("query.apply.until")}
             />
           </div>
           <div className="flex flex-col gap-2">

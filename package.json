@@ -41,6 +41,7 @@
     "lucide-react": "1.37.0",
     "monaco-editor": "^0.56.0",
     "react": "19.2.8",
+    "react-day-picker": "9.11.1",
     "react-dom": "19.2.8",
     "react-i18next": "17.0.12",
     "react-resizable-panels": "^4.12.3",

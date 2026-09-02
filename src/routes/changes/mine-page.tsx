@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { DatePicker } from "@/shared/components/ui/date-picker";
 import {
   Table,
   TableBody,
@@ -250,21 +251,17 @@ function MineOrderFilters({
           ))}
         </SelectContent>
       </Select>
-      <Input
-        type="date"
+      <DatePicker
         value={filters.submittedFrom}
-        onChange={(event) => { onChange({ submittedFrom: event.target.value }); }}
+        onChange={(next) => { onChange({ submittedFrom: next }); }}
         aria-label={t("orders.list.filter.from")}
-        className="w-36"
-        data-testid="filter-submitted-from"
+        testId="filter-submitted-from"
       />
-      <Input
-        type="date"
+      <DatePicker
         value={filters.submittedTo}
-        onChange={(event) => { onChange({ submittedTo: event.target.value }); }}
+        onChange={(next) => { onChange({ submittedTo: next }); }}
         aria-label={t("orders.list.filter.to")}
-        className="w-36"
-        data-testid="filter-submitted-to"
+        testId="filter-submitted-to"
       />
       {hasActiveFilters(filters) && (
         <Button variant="ghost" size="sm" onClick={onReset} data-testid="filter-reset">
