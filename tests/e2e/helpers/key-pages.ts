@@ -37,7 +37,7 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     session: "default",
     prepare: async (page) => {
       await page.goto("/workspace");
-      await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
+      await expect(page.getByTestId("workspace-release-banner")).toBeVisible();
       await expect(page.getByTestId("workspace-announcement")).toBeVisible();
     },
   },

@@ -1,33 +1,15 @@
 import { Suspense, lazy, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  Database,
-  FileStack,
-  Hourglass,
-  Megaphone,
-  ShieldCheck,
-  Stamp,
-  Terminal,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Database, Megaphone, Terminal, TrendingUp, Users } from "lucide-react";
 import { getMyDashboard } from "@/api/generated/client/dashboard/dashboard";
-import {
-  getOperationsDashboard,
-  getReviewQualityDashboard,
-  getSystemHealthDashboard,
-} from "@/api/generated/client/administration/administration";
+import { getOperationsDashboard } from "@/api/generated/client/administration/administration";
 import type {
   AnnouncementPublication,
   MyDashboard,
   OperationsDashboard,
-  ReviewQualityDashboard,
-  SystemHealthDashboard,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
-import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Empty,
   EmptyHeader,
@@ -96,31 +78,15 @@ async function getCurrentAnnouncement() {
   return fetcher();
 }
 
-interface CountCardProps {
+interface StatCardProps {
   label: string;
   value: number | undefined;
   testId: string;
   icon: React.ReactNode;
 }
 
-function CountCard({ label, value, testId, icon }: CountCardProps) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="flex items-center gap-1.5 text-xs">
-          {icon}
-          {label}
-        </CardDescription>
-        <CardTitle className="text-2xl tabular-nums" data-testid={testId}>
-          {value === undefined ? "—" : value}
-        </CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
-
 /** Reference-image stat card: label + value left, framed icon right. */
-function OperationsStatCard({ label, value, testId, icon }: CountCardProps) {
+function OperationsStatCard({ label, value, testId, icon }: StatCardProps) {
   return (
     <Card data-testid="workspace-admin-stat-card">
       <CardContent className="flex flex-row items-start justify-between gap-3">
@@ -133,56 +99,6 @@ function OperationsStatCard({ label, value, testId, icon }: CountCardProps) {
         <div className="rounded-md border border-border p-2.5">{icon}</div>
       </CardContent>
     </Card>
-  );
-}
-
-export function MyDashboardCards({ dashboard }: { dashboard: MyDashboard | undefined }) {
-  const { t } = useTranslation();
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="workspace-dashboard-cards">
-      <CountCard
-        label={t("dashboard.my.drafts")}
-        value={dashboard?.draft_count}
-        testId="dashboard-draft-count"
-        icon={<FileStack className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.submitted")}
-        value={dashboard?.submitted_order_count}
-        testId="dashboard-submitted-count"
-        icon={<FileStack className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.pendingApproval")}
-        value={dashboard?.pending_approval_count}
-        testId="dashboard-pending-approval-count"
-        icon={<Stamp className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.pendingExecution")}
-        value={dashboard?.pending_execution_count}
-        testId="dashboard-pending-execution-count"
-        icon={<Hourglass className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.blockedReview")}
-        value={dashboard?.blocked_review_count}
-        testId="dashboard-blocked-review-count"
-        icon={<AlertTriangle className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.activeGrants")}
-        value={dashboard?.active_query_grant_count}
-        testId="dashboard-grant-count"
-        icon={<ShieldCheck className="size-3.5" />}
-      />
-      <CountCard
-        label={t("dashboard.my.activeSessions")}
-        value={dashboard?.active_query_session_count}
-        testId="dashboard-session-count"
-        icon={<Terminal className="size-3.5" />}
-      />
-    </div>
   );
 }
 
@@ -309,27 +225,13 @@ function OrderTrendCard({
 export function AdminDashboardSection({
   enabled,
   announcement,
-  children,
 }: {
   enabled: boolean;
   announcement: React.ReactNode;
-  children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const [windowDays, setWindowDays] = useState(30);
   const operations = useOperationsDashboardQuery(windowDays, enabled);
-  const quality = useQuery({
-    queryKey: ["admin", "dashboard", "review-quality"],
-    queryFn: async () => (await getReviewQualityDashboard()) as unknown as ReviewQualityDashboard,
-    enabled,
-    refetchInterval: 60_000,
-  });
-  const health = useQuery({
-    queryKey: ["admin", "dashboard", "system-health"],
-    queryFn: async () => (await getSystemHealthDashboard()) as unknown as SystemHealthDashboard,
-    enabled,
-    refetchInterval: 60_000,
-  });
 
   if (!enabled) return null;
 
@@ -364,59 +266,6 @@ export function AdminDashboardSection({
           testId="admin-datasource-total"
           icon={<Database className="size-4" />}
         />
-      </div>
-      {children}
-      <h2 className="text-base font-semibold">{t("dashboard.admin.title")}</h2>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <CountCard label={t("dashboard.admin.completed")} value={operations.data?.completed_total} testId="admin-completed-total" icon={<ShieldCheck className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.failed")} value={operations.data?.failed_total} testId="admin-failed-total" icon={<AlertTriangle className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.partialFailed")} value={operations.data?.partial_failed_total} testId="admin-partial-failed-total" icon={<AlertTriangle className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.ddlStatements")} value={operations.data?.ddl_statement_total} testId="admin-ddl-total" icon={<FileStack className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.approvalP50")} value={operations.data?.approval_duration_p50_ms} testId="admin-approval-p50" icon={<Hourglass className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.approvalP95")} value={operations.data?.approval_duration_p95_ms} testId="admin-approval-p95" icon={<Hourglass className="size-3.5" />} />
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Card data-testid="workspace-admin-quality">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs">{t("dashboard.admin.reviewQuality")}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2 text-xs">
-            {quality.data === undefined ? (
-              <span className="text-muted-foreground">{t("common.loading")}</span>
-            ) : (
-              <>
-                <Badge variant="secondary">{t("dashboard.admin.ready", { count: quality.data.ready_total })}</Badge>
-                <Badge variant="secondary">{t("dashboard.admin.blocked", { count: quality.data.blocked_total })}</Badge>
-                <Badge variant="secondary">{t("dashboard.admin.partialRuns", { count: quality.data.partial_total })}</Badge>
-                <Badge variant="secondary">{t("dashboard.admin.failedRuns", { count: quality.data.failed_total })}</Badge>
-                <Badge variant="secondary">
-                  {t("dashboard.admin.fingerprintCoverage", {
-                    percent: Math.round(quality.data.fingerprint_coverage_ratio * 100),
-                  })}
-                </Badge>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card data-testid="workspace-admin-health">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs">{t("dashboard.admin.systemHealth")}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1 text-xs">
-            {health.data === undefined ? (
-              <span className="text-muted-foreground">{t("common.loading")}</span>
-            ) : (
-              health.data.components.map((component) => (
-                <div key={component.component} className="flex items-center justify-between gap-2">
-                  <span>{component.component}</span>
-                  <Badge variant={component.status === "healthy" ? "secondary" : "destructive"}>
-                    {component.status}
-                  </Badge>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

@@ -9,7 +9,6 @@ import { ReleaseBanner, useLatestReleaseQuery } from "@/routes/workspace/workspa
 import {
   AdminDashboardSection,
   AnnouncementCard,
-  MyDashboardCards,
   useCurrentAnnouncementQuery,
   useMyDashboardQuery,
 } from "@/routes/workspace/workspace-dashboard-sections";
@@ -118,22 +117,17 @@ export default function WorkspacePage() {
           </EmptyHeader>
         </Empty>
       )}
-      {/* The admin section mounts immediately (status banner, trend chart,
-              stat cards); the announcement slot renders null until its query
-              resolves so the rest of the home never waits on it. The
-              announcement itself stays full-width for non-admin sessions. */}
+      {/* The admin section mounts immediately; the announcement slot renders
+              null until its query resolves so the rest of the home never waits
+              on it. The announcement itself stays full-width for non-admin
+              sessions. Owner ruling 2026-09-02: the home carries only the
+              reference blocks — release banner, order trend beside the
+              announcement, and the three stat cards; nothing below them. */}
       <AdminDashboardSection
         enabled={isAdmin}
         announcement={<AnnouncementCard publication={announcementQuery.data ?? null} />}
-      >
-        <MyDashboardCards dashboard={dashboardQuery.data} />
-      </AdminDashboardSection>
-      {!isAdmin && (
-        <>
-          <AnnouncementCard publication={announcementQuery.data ?? null} />
-          <MyDashboardCards dashboard={dashboardQuery.data} />
-        </>
-      )}
+      />
+      {!isAdmin && <AnnouncementCard publication={announcementQuery.data ?? null} />}
     </div>
   );
 }

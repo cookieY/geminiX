@@ -21,7 +21,7 @@ test("the shell renders navigation groups, header actions and the workspace dash
   await expect(page.getByText("审核引擎")).toBeVisible();
   // FE-F10 replaces the honest placeholder with the real dashboard cards
   // (admin session additionally renders the administration statistics).
-  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
+  await expect(page.getByTestId("workspace-page")).toBeVisible();
 });
 
 test("admin navigation follows the server capability", async ({ page }) => {
@@ -50,13 +50,13 @@ test("the admin capability guard blocks /admin/users for zero-permission users",
 test("the global footer shows the exact license line and stays below the content", async ({
   page,
 }) => {
-  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
+  await expect(page.getByTestId("workspace-page")).toBeVisible();
   // One synchronous measurement: the dashboard queries resolve continuously
   // and shift the layout, so two separate boundingBox() calls could sample
   // different layout generations and compare unrelated positions.
   const boxes = await page.evaluate(() => {
     const footer = document.querySelector("footer");
-    const cards = document.querySelector("[data-testid='workspace-dashboard-cards']");
+    const cards = document.querySelector("[data-testid='workspace-page']");
     if (!footer || !cards) return null;
     const top = (element: Element) => element.getBoundingClientRect().top + window.scrollY;
     return { footer: top(footer), cards: top(cards) };

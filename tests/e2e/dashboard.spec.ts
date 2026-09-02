@@ -71,7 +71,7 @@ test("zero-permission home never fetches the admin dashboards", async ({ page })
   });
   await mockSession(page, "default");
   await page.goto("/workspace");
-  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
+  await expect(page.getByTestId("workspace-page")).toBeVisible();
   await expect(page.getByTestId("workspace-announcement")).toBeVisible();
   // The release banner is public repository metadata — every user sees it.
   await expect(page.getByTestId("workspace-release-banner")).toBeVisible();

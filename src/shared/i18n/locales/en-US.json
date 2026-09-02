@@ -1098,46 +1098,22 @@
     }
   },
   "dashboard": {
-    "my": {
-      "drafts": "My pending drafts",
-      "submitted": "Submitted orders",
-      "pendingApproval": "Awaiting my approval",
-      "pendingExecution": "Pending execution",
-      "blockedReview": "Blocked reviews",
-      "activeGrants": "Active query grants",
-      "activeSessions": "Active query sessions"
-    },
     "announcement": {
       "publishedAt": "Published {{time}}",
       "title": "Announcements"
     },
     "admin": {
-      "title": "Administration statistics",
       "partial": "Some metrics are unavailable (completeness=partial)",
       "window": "Window {{from}} ~ {{to}} ({{zone}})",
-      "operations": "Operations",
-      "reviewQuality": "Review quality",
-      "systemHealth": "System health",
       "orderTotal": "Orders",
       "orderTrend": "Order trend",
       "windowLabel": "Statistics window",
       "windowDays": "Last {{days}} days",
       "emptyTrend": "No orders in this window yet",
       "trendAria": "Order trend line chart, {{total}} orders across the last {{days}} days",
-      "approvalP50": "Approval p50 (ms)",
-      "approvalP95": "Approval p95 (ms)",
       "queryTotal": "Queries",
       "userTotal": "Users",
-      "datasourceTotal": "Datasources",
-      "completed": "Completed",
-      "failed": "Failed",
-      "partialFailed": "Partial failed",
-      "ddlStatements": "DDL statements",
-      "ready": "Ready {{count}}",
-      "blocked": "Blocked {{count}}",
-      "partialRuns": "Partial {{count}}",
-      "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "Fingerprint coverage {{percent}}%"
+      "datasourceTotal": "Datasources"
     },
     "release": {
       "latestLabel": "Latest release",

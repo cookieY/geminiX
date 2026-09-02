@@ -19,7 +19,10 @@ import type { DailyMetricPoint } from "@/api/generated/client/yearningV4HTTPAPI.
 export default function WorkspaceOrderTrendChart({ points }: { points: DailyMetricPoint[] }) {
   const { t } = useTranslation();
   const config = {
-    value: { label: t("dashboard.admin.orderTrend"), color: "var(--chart-series-1)" },
+    // Owner ruling 2026-09-02: the trend line reads white like the reference
+    // image — --primary is the near-white foreground of the dark theme and
+    // its readable counterpart in the light theme.
+    value: { label: t("dashboard.admin.orderTrend"), color: "var(--primary)" },
   } satisfies ChartConfig;
   const total = points.reduce((sum, point) => sum + point.value, 0);
 

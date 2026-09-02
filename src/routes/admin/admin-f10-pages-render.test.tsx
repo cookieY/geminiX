@@ -160,23 +160,27 @@ describe("notification channels page", () => {
 });
 
 describe("workspace dashboard", () => {
-  it("renders metric cards and the announcement for a granted user", async () => {
+  it("renders the announcement without administration blocks for a granted user", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderPage(<WorkspacePage />);
-    expect(await screen.findByTestId("workspace-dashboard-cards")).toBeVisible();
-    expect(screen.getByTestId("dashboard-grant-count")).toBeVisible();
+    expect(await screen.findByTestId("workspace-page")).toBeVisible();
     expect(await screen.findByTestId("workspace-announcement")).toHaveTextContent("季度维护窗口公告");
     // Non-admin sessions never see the administration statistics block.
     expect(screen.queryByTestId("workspace-admin-dashboards")).not.toBeInTheDocument();
   });
 
-  it("renders the administration statistics for the admin session", async () => {
+  it("renders the trend chart and stat cards for the admin session", async () => {
     seedQueryScenario("query-flow");
     stubSession(true);
     renderPage(<WorkspacePage />);
     expect(await screen.findByTestId("workspace-admin-dashboards")).toBeVisible();
     expect(screen.getByTestId("admin-order-total")).toBeVisible();
+    expect(screen.getByTestId("admin-query-total")).toBeVisible();
+    // Owner ruling 2026-09-02: nothing renders below the stat-card row.
+    expect(screen.queryByTestId("dashboard-draft-count")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("workspace-admin-quality")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("workspace-admin-health")).not.toBeInTheDocument();
   });
 });
 

@@ -1098,46 +1098,22 @@
     }
   },
   "dashboard": {
-    "my": {
-      "drafts": "我的待提交草稿",
-      "submitted": "我提交的工单",
-      "pendingApproval": "待我审批",
-      "pendingExecution": "待执行",
-      "blockedReview": "被阻断的预审",
-      "activeGrants": "生效中的查询授权",
-      "activeSessions": "进行中的查询会话"
-    },
     "announcement": {
       "publishedAt": "发布于 {{time}}",
       "title": "公告"
     },
     "admin": {
-      "title": "管理统计",
       "partial": "部分指标暂不可用（completeness=partial）",
       "window": "统计窗口 {{from}} ~ {{to}}（{{zone}}）",
-      "operations": "运营总览",
-      "reviewQuality": "审核质量",
-      "systemHealth": "系统健康",
       "orderTotal": "工单总数",
       "orderTrend": "工单趋势",
       "windowLabel": "统计窗口",
       "windowDays": "最近{{days}}天",
       "emptyTrend": "该窗口内暂无工单",
       "trendAria": "工单趋势折线图，最近 {{days}} 天共 {{total}} 单",
-      "approvalP50": "审批耗时P50 (ms)",
-      "approvalP95": "审批耗时P95 (ms)",
       "queryTotal": "查询次数",
       "userTotal": "用户数",
-      "datasourceTotal": "数据源",
-      "completed": "已完成",
-      "failed": "失败",
-      "partialFailed": "部分失败",
-      "ddlStatements": "DDL语句数",
-      "ready": "Ready {{count}}",
-      "blocked": "Blocked {{count}}",
-      "partialRuns": "Partial {{count}}",
-      "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "指纹覆盖率 {{percent}}%"
+      "datasourceTotal": "数据源"
     },
     "release": {
       "latestLabel": "最新版本",
