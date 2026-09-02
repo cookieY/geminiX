@@ -81,7 +81,9 @@
     "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。",
     "greeting": "{{name}}，欢迎回来",
     "refreshedAt": "数据刷新于 {{time}}",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "refreshSuccess": "刷新成功",
+    "refreshFailed": "刷新失败，请稍后重试"
   },
   "states": {
     "loading": "加载中",

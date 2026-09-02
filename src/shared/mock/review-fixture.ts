@@ -677,6 +677,163 @@ function seedPartialExecutionOrder(): void {
   recordOrderEvent(order, "stage.execution_started", "worker", null, "阶段 2（prod-mysql）开始执行", 2, "running");
 }
 
+
+// ---- Order gallery (owner issue-collection #5, 2026-09-02) ----------------
+//
+// 40 demonstration orders covering every legal change_order state (2-3 per
+// state) so each state's list/detail rendering can be inspected at a glance.
+// Enabled by the "order-gallery" scenario (yearning-mock-scenario). All
+// orders belong to the fixture owner so the relation-scoped list shows them
+// for every session shape; timestamps are anchored on the screenshot clock
+// pin for byte-stable baselines.
+
+const GALLERY_STATES: Array<FixtureOrder["state"]> = [
+  "submitted",
+  "stage_approval_active",
+  "stage_execution_pending",
+  "scheduled",
+  "running",
+  "completed",
+  "rejected",
+  "withdrawn",
+  "withdrawn_after_partial_execution",
+  "voided",
+  "failed",
+  "partial_failed",
+  "cancelled",
+  "partial_cancelled",
+  "result_unknown",
+  "blocked_datasource_unavailable",
+  "missed_schedule",
+  "invalid",
+];
+
+const GALLERY_DATASOURCES = ["staging-mysql", "prod-mysql", "report-pg"];
+const GALLERY_TOTAL = 40;
+
+/** Stage/step shape implied by each order state (single-stage orders). */
+function galleryStageState(orderState: FixtureOrder["state"]): FixtureOrder["stages"][number]["state"] {
+  switch (orderState) {
+    case "submitted":
+      return "pending";
+    case "stage_approval_active":
+    case "rejected":
+      return "approval_active";
+    case "stage_execution_pending":
+      return "execution_pending";
+    case "scheduled":
+    case "missed_schedule":
+      return "scheduled";
+    case "running":
+      return "running";
+    case "completed":
+      return "succeeded";
+    case "failed":
+      return "failed";
+    case "partial_failed":
+      return "partial_failed";
+    case "cancelled":
+      return "cancelled";
+    case "partial_cancelled":
+      return "partial_cancelled";
+    case "result_unknown":
+      return "result_unknown";
+    case "withdrawn_after_partial_execution":
+      return "cancelled";
+    default:
+      return "pending";
+  }
+}
+
+function galleryStepState(orderState: FixtureOrder["state"]): FixtureStepState {
+  switch (orderState) {
+    case "submitted":
+    case "stage_approval_active":
+      return "active";
+    case "rejected":
+      return "rejected";
+    case "invalid":
+      return "invalid";
+    default:
+      return "approved";
+  }
+}
+
+function gallerySubmittedAt(index: number): string {
+  // Anchor on the screenshot clock pin; one order per day walking back.
+  return new Date(Date.parse("2026-09-01T08:00:00Z") - index * 86_400_000)
+    .toISOString()
+    .slice(0, 19)
+    .concat("Z");
+}
+
+function isTerminalOrderState(state: FixtureOrder["state"]): boolean {
+  return ![
+    "submitted",
+    "stage_approval_active",
+    "stage_execution_pending",
+    "scheduled",
+    "running",
+    "blocked_datasource_unavailable",
+  ].includes(state);
+}
+
+function seedOrderGallery(): void {
+  if (readStoredScenario() !== "order-gallery" || world.orders.size > 0) return;
+  for (let index = 0; index < GALLERY_TOTAL; index++) {
+    const state = GALLERY_STATES[index % GALLERY_STATES.length];
+    if (state === undefined) continue;
+    const round = Math.floor(index / GALLERY_STATES.length) + 1;
+    const id = `7e6f1a2b-0000-4000-8000-9000000000${String(index + 1).padStart(2, "0")}`;
+    const stageId = `${id.slice(0, -2)}s${String(round)}`;
+    const submittedAt = gallerySubmittedAt(index);
+    const terminal = isTerminalOrderState(state);
+    const stageState = galleryStageState(state);
+    const datasource = GALLERY_DATASOURCES[index % GALLERY_DATASOURCES.length] ?? "staging-mysql";
+    const order: FixtureOrder = {
+      id,
+      display_number: `YR-20260901-0${String(100 + index)}`,
+      submitter_user_id: FIXTURE_OWNER_ID,
+      title: `演示工单 · ${state} · #${String(index + 1)}`,
+      state,
+      current_stage_position: 1,
+      stages: [
+        {
+          id: stageId,
+          position: 1,
+          datasource_name: datasource,
+          state: stageState,
+          approval_steps: [
+            {
+              id: `${stageId}-a1`,
+              position: 1,
+              state: galleryStepState(state),
+              decided_at: terminal ? submittedAt : null,
+              actors: [fixtureActor(FIXTURE_OWNER_ID)],
+            },
+          ],
+          execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+        },
+      ],
+      has_sql: true,
+      sql_hash: `hash-gallery-${String(index + 1)}`,
+      snapshot_hash: `snap-gallery-${String(index + 1)}`,
+      manually_verified: false,
+      version: 2,
+      submitted_at: submittedAt,
+      terminal_at: terminal ? submittedAt : null,
+      review_run_id: null,
+      sql_text: `SELECT 1; -- gallery order #${String(index + 1)} (${state})`,
+    };
+    world.orders.set(order.id, order);
+    world.orderSequence = Math.max(world.orderSequence, 100 + index);
+    recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结（演示）", 1, "submitted");
+    if (terminal) {
+      recordOrderEvent(order, "change_order.state_changed", "system", null, `演示状态：${state}`, 2, state);
+    }
+  }
+}
+
 // ---- Execution domain (FE-F8) ---------------------------------------------
 //
 // The mock mirrors the backend execution application (B10): begin is only
@@ -1661,6 +1818,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const submittedTo = url.searchParams.get("submitted_to");
       seedPartialExecutionOrder();
       seedExecutionScenarioOrder();
+      seedOrderGallery();
       const relatedTo = (order: FixtureOrder): boolean =>
         order.submitter_user_id === FIXTURE_OWNER_ID ||
         order.stages.some(

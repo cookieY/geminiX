@@ -81,7 +81,9 @@
     "placeholderDesc": "The home overview arrives with the Dashboard work package.",
     "greeting": "Welcome back, {{name}}",
     "refreshedAt": "Refreshed {{time}}",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "refreshSuccess": "Refreshed successfully",
+    "refreshFailed": "Refresh failed, please try again"
   },
   "states": {
     "loading": "Loading",

@@ -19,6 +19,7 @@ export type MockScenario =
   | "review-partial"
   | "review-provider-failed"
   | "order-partial-execution"
+  | "order-gallery"
   | "execution-partial"
   | "execution-unknown"
   | "execution-ghost"
@@ -39,6 +40,7 @@ export const MOCK_SCENARIOS: MockScenario[] = [
   "review-partial",
   "review-provider-failed",
   "order-partial-execution",
+  "order-gallery",
   "execution-partial",
   "execution-unknown",
   "execution-ghost",

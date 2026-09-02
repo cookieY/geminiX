@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockSession } from "./helpers/auth";
 
+
 // FE-F6 acceptance gates (work package FE-F6-ORDER-SUBMIT, plus the
 // FE-F6-ORDER-FILTER supplement driven by RCP-20260831-ORDER-LIST-FILTER),
 // driven by the stateful order fixture over the production build with the
@@ -219,4 +220,20 @@ test("server-side filters narrow the personal list without losing event freshnes
     timeout: 8_000,
   });
   await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
+});
+
+test("the order gallery scenario serves 40 demo orders across every state", async ({
+  page,
+}) => {
+  // Owner issue-collection #5: 40 demonstration orders covering all 18
+  // change_order states so each state's rendering can be inspected at a
+  // glance (mock scenario order-gallery).
+  await page.addInitScript(() => {
+    window.localStorage.setItem("yearning-mock-scenario", "order-gallery");
+  });
+  await mockSession(page, "admin");
+  await page.goto("/changes/mine");
+  await expect(page.getByTestId("mine-order-row")).toHaveCount(40, { timeout: 10_000 });
+  await expect(page.getByText("演示工单 · completed").first()).toBeVisible();
+  await expect(page.getByText("演示工单 · rejected").first()).toBeVisible();
 });

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Hourglass, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { listCurrentUserFlows } from "@/api/generated/client/change-drafts/change-drafts";
 import { FlowType } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
@@ -64,11 +65,21 @@ export default function WorkspacePage() {
     announcementQuery.isFetching ||
     reviewFlows.isFetching ||
     queryFlows.isFetching;
-  const refreshAll = () => {
-    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    void queryClient.invalidateQueries({ queryKey: ["announcements"] });
-    void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
-    void queryClient.invalidateQueries({ queryKey: ["auth", "flows"] });
+  const refreshAll = async () => {
+    await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["announcements"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["github"] }),
+      queryClient.invalidateQueries({ queryKey: ["auth", "flows"] }),
+    ]);
+    // Report after the refetches settle: the query objects above are live and
+    // their error flags now reflect the refreshed outcome.
+    if (dashboardQuery.isError || announcementQuery.isError) {
+      toast.error(t("workspace.refreshFailed"));
+    } else {
+      toast.success(t("workspace.refreshSuccess"));
+    }
   };
 
   const hasFlowGrants =
@@ -100,7 +111,9 @@ export default function WorkspacePage() {
           aria-label={t("workspace.refresh")}
           data-testid="workspace-refresh"
           disabled={refreshing}
-          onClick={refreshAll}
+          onClick={() => {
+            void refreshAll();
+          }}
         >
           <RefreshCw className="size-4" />
         </Button>

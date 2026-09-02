@@ -100,7 +100,7 @@ function SparkBars({ seed, stroke }: { seed: number; stroke: string }) {
       aria-hidden
       viewBox="0 0 100 30"
       preserveAspectRatio="none"
-      className="absolute inset-y-0 right-0 h-full w-[58%]"
+      className="absolute inset-y-0 right-2 left-20 h-full w-auto"
       data-testid="stat-bars"
     >
       {values.map((value, i) => (
@@ -138,7 +138,7 @@ function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke
             {value === undefined ? "—" : formatCompactCount(value)}
           </p>
         </div>
-        <div className="relative z-10 rounded-md border border-border bg-card p-2.5">{icon}</div>
+        <div className="relative z-10 rounded-md border border-border bg-card/60 p-2.5 opacity-50">{icon}</div>
         <SparkBars seed={sparkSeed} stroke={sparkStroke} />
       </CardContent>
     </Card>

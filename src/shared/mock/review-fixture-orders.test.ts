@@ -106,6 +106,25 @@ describe("change-order fixture contract", () => {
     localStorage.removeItem("yearning-mock-scenario");
   });
 
+  it("seeds 40 gallery orders covering every state via the list endpoint", async () => {
+    localStorage.setItem("yearning-mock-scenario", "order-gallery");
+    const list = await jsonRequest("/change-orders?limit=50");
+    expect(list.body.err_code).toBe(0);
+    const items = list.body.data.items as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(40);
+    // Every legal change_order state is represented at least twice.
+    const states = new Set(items.map((item) => item.state));
+    expect(states.size).toBe(18);
+    // Deterministic ordering: newest submission first.
+    expect(items[0]?.submitted_at).toBe("2026-09-01T08:00:00Z");
+    // The contract state filter narrows the gallery.
+    const filtered = await jsonRequest("/change-orders?limit=50&state=completed");
+    const completed = filtered.body.data.items as Array<Record<string, unknown>>;
+    expect(completed.length).toBeGreaterThanOrEqual(2);
+    for (const order of completed) expect(order.state).toBe("completed");
+    localStorage.removeItem("yearning-mock-scenario");
+  });
+
   it("withdraws a submitted order to withdrawn and appends a timeline entry", async () => {
     seedFixtureOrder(seedOrder());
     const result = await jsonRequest(
