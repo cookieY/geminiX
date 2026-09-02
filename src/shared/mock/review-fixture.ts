@@ -783,7 +783,7 @@ function seedOrderGallery(): void {
   // Browser mock worlds (dev + e2e build) always carry the gallery so the
   // owner can inspect every state without any console setup. Vitest contract
   // tests pin exact list shapes and run with MODE="test" — no gallery there.
-  if (import.meta.env?.MODE === "test") return;
+  if (import.meta.env.MODE === "test") return;
   if (world.orders.has(GALLERY_FIRST_ID)) return;
   for (let index = 0; index < GALLERY_TOTAL; index++) {
     const state = GALLERY_STATES[index % GALLERY_STATES.length];

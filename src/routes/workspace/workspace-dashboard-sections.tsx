@@ -126,12 +126,14 @@ interface StatCardProps {
   sparkStroke: string;
 }
 
-/** Reference-image stat card: label + value left, decorative sparkline in
- * the middle-right beneath the text layer, framed icon right. */
+/** Reference-image stat card: label + value left, framed icon right, and the
+ * decorative bars filling the whole card height (+20% per owner ruling
+ * 2026-09-02) — the SVG sits at Card level so it covers the padding too. */
 function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke }: StatCardProps) {
   return (
-    <Card data-testid="workspace-admin-stat-card" className="relative">
-      <CardContent className="flex flex-row items-start justify-between gap-3">
+    <Card data-testid="workspace-admin-stat-card" className="relative min-h-[108px]">
+      <SparkBars seed={sparkSeed} stroke={sparkStroke} />
+      <CardContent className="relative z-10 flex h-full flex-row items-start justify-between gap-3">
         <div className="relative z-10 flex flex-col gap-1">
           <p className="text-sm font-normal">{label}</p>
           <p className="text-2xl font-semibold tabular-nums" data-testid={testId}>
@@ -139,7 +141,6 @@ function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke
           </p>
         </div>
         <div className="relative z-10 rounded-md border border-border bg-card/60 p-2.5 opacity-50">{icon}</div>
-        <SparkBars seed={sparkSeed} stroke={sparkStroke} />
       </CardContent>
     </Card>
   );
