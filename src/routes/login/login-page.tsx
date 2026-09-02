@@ -129,7 +129,7 @@ export default function LoginPage() {
         <div className="auth-glow" aria-hidden />
         <div className="auth-glow-accent" aria-hidden />
         <div className="auth-glow-veil" aria-hidden />
-        <div className="relative z-10 flex flex-col gap-6 lg:ml-[15%]">
+        <div className="relative z-10 flex flex-col gap-6 lg:ml-[20%]">
           <div className="relative z-10 flex w-fit items-center gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm">
             <span className="bg-chart-series-user size-2 rounded-full" aria-hidden />
             {t("login.brandBadge")}
