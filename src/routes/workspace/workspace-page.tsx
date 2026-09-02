@@ -7,7 +7,7 @@ import { useSession } from "@/features/auth/session-provider";
 import { Button } from "@/shared/components/ui/button";
 import {
   AdminDashboardSection,
-  AnnouncementBanner,
+  AnnouncementCard,
   MyDashboardCards,
   useCurrentAnnouncementQuery,
   useMyDashboardQuery,
@@ -117,11 +117,22 @@ export default function WorkspacePage() {
           </EmptyHeader>
         </Empty>
       )}
-      {announcementQuery.data !== undefined && (
-        <AnnouncementBanner publication={announcementQuery.data} />
+      {/* The admin section mounts immediately (status banner, trend chart,
+              stat cards); the announcement slot renders null until its query
+              resolves so the rest of the home never waits on it. The
+              announcement itself stays full-width for non-admin sessions. */}
+      <AdminDashboardSection
+        enabled={isAdmin}
+        announcement={<AnnouncementCard publication={announcementQuery.data ?? null} />}
+      >
+        <MyDashboardCards dashboard={dashboardQuery.data} />
+      </AdminDashboardSection>
+      {!isAdmin && (
+        <>
+          <AnnouncementCard publication={announcementQuery.data ?? null} />
+          <MyDashboardCards dashboard={dashboardQuery.data} />
+        </>
       )}
-      <MyDashboardCards dashboard={dashboardQuery.data} />
-      <AdminDashboardSection enabled={isAdmin} />
     </div>
   );
 }

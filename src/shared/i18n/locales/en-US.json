@@ -1109,7 +1109,8 @@
       "activeSessions": "Active query sessions"
     },
     "announcement": {
-      "publishedAt": "Published {{time}}"
+      "publishedAt": "Published {{time}}",
+      "title": "Announcements"
     },
     "admin": {
       "title": "Administration statistics",
@@ -1137,7 +1138,12 @@
       "blocked": "Blocked {{count}}",
       "partialRuns": "Partial {{count}}",
       "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "Fingerprint coverage {{percent}}%"
+      "fingerprintCoverage": "Fingerprint coverage {{percent}}%",
+      "statusTitle": "Service status",
+      "statusHealthy": "All components healthy",
+      "statusIssues": "{{issues}} components unhealthy",
+      "statusCheckedAt": "Checked at {{time}}",
+      "statusComponentsOk": "{{ok}}/{{total}} components healthy"
     }
   },
   "records": {

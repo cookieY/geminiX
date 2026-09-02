@@ -26,7 +26,7 @@ export default function WorkspaceOrderTrendChart({ points }: { points: DailyMetr
   return (
     <div
       role="img"
-      aria-label={t("dashboard.admin.trendAria", { total, count: points.length })}
+      aria-label={t("dashboard.admin.trendAria", { total, days: points.length })}
       data-testid="workspace-order-trend-chart"
     >
       <ChartContainer config={config} className="h-[240px] w-full">

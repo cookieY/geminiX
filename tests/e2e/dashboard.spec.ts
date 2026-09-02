@@ -26,6 +26,13 @@ test("admin home renders the order trend chart and the reference stat cards", as
   await expect(page.getByTestId("admin-query-total")).toHaveText("23981");
   await expect(page.getByTestId("admin-user-total")).toHaveText("12");
   await expect(page.getByTestId("admin-datasource-total")).toHaveText("5");
+  // The reference "Total Assets" slot carries the announcement; the
+  // reference "Update" slot carries the service runtime status (6/6
+  // healthy components in the deterministic fixture).
+  await expect(page.getByTestId("workspace-announcement")).toBeVisible();
+  const banner = page.getByTestId("workspace-status-banner");
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("6/6");
 });
 
 test("the window selector refetches operations with the requested window", async ({
@@ -61,6 +68,7 @@ test("zero-permission home never fetches the admin dashboards", async ({ page })
   await page.goto("/workspace");
   await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
   await expect(page.getByTestId("workspace-announcement")).toBeVisible();
+  await expect(page.getByTestId("workspace-status-banner")).toHaveCount(0);
   await expect(page.getByTestId("workspace-admin-dashboards")).toHaveCount(0);
   expect(adminCalls).toHaveLength(0);
 });

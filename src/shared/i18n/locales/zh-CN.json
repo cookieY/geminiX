@@ -1109,7 +1109,8 @@
       "activeSessions": "进行中的查询会话"
     },
     "announcement": {
-      "publishedAt": "发布于 {{time}}"
+      "publishedAt": "发布于 {{time}}",
+      "title": "公告"
     },
     "admin": {
       "title": "管理统计",
@@ -1137,7 +1138,12 @@
       "blocked": "Blocked {{count}}",
       "partialRuns": "Partial {{count}}",
       "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "指纹覆盖率 {{percent}}%"
+      "fingerprintCoverage": "指纹覆盖率 {{percent}}%",
+      "statusTitle": "服务状态",
+      "statusHealthy": "全部组件运行正常",
+      "statusIssues": "{{issues}} 项组件异常",
+      "statusCheckedAt": "检查于 {{time}}",
+      "statusComponentsOk": "{{ok}}/{{total}} 组件正常"
     }
   },
   "records": {

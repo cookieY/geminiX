@@ -6,6 +6,7 @@ import {
   Database,
   FileStack,
   Hourglass,
+  Megaphone,
   ShieldCheck,
   Stamp,
   Terminal,
@@ -46,13 +47,14 @@ const WorkspaceOrderTrendChart = lazy(() => import("./workspace-order-trend-char
 
 /**
  * Workspace dashboard sections (dashboard PRD §2/§3/§9; UI spec §5.1 首页,
- * §7.6). The admin surfaces follow the frozen reference image layout — trend
- * chart hero, then the 查询次数/用户数/数据源 stat cards, then the remaining
- * operations statistics (owner layout-alignment ruling 2026-09-02). Every
- * number comes from the declared dashboards API — no fabricated metrics,
- * trends or totals. The 60s auto-refresh default comes from the PRD; the
- * announcement renders the server-sanitized HTML (sanitizer authority stays
- * server-side, dashboard PRD §6).
+ * §7.6). The admin home follows the owner's reference mapping (ruling
+ * 2026-09-02): status banner (template "Update" slot) → order-trend hero
+ * beside the announcement card (template "Sales Overview" + "Total Assets"
+ * slots) → the three reference stat cards. Every number comes from the
+ * declared dashboards API — no fabricated metrics, trends, totals or
+ * versions (the service release version has no contract surface yet).
+ * The 60s auto-refresh default comes from the PRD; the announcement renders
+ * the server-sanitized HTML (sanitizer authority stays server-side, PRD §6).
  */
 
 export function useMyDashboardQuery(enabled: boolean) {
@@ -184,15 +186,23 @@ export function MyDashboardCards({ dashboard }: { dashboard: MyDashboard | undef
   );
 }
 
-export function AnnouncementBanner({ publication }: { publication: AnnouncementPublication | null }) {
+/** Template "Total Assets" card slot per the owner mapping — the system
+ * announcement (title, publication time, server-sanitized HTML). Static
+ * marker dot: the template's animate-ping is deliberately not copied
+ * (screenshot baselines are byte-compared). */
+export function AnnouncementCard({ publication }: { publication: AnnouncementPublication | null }) {
   const { t } = useTranslation();
   if (publication === null) return null;
   return (
-    <Card data-testid="workspace-announcement">
+    <Card data-testid="workspace-announcement" className="h-full">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Megaphone size={16} className="text-muted-foreground" />
+          {t("dashboard.announcement.title")}
+        </CardTitle>
+      </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Static marker dot — the template banner's animate-ping is
-              deliberately not copied: baselines are byte-compared. */}
           <span className="bg-chart-1 size-2 rounded-full" aria-hidden />
           <p className="text-sm font-medium">{publication.revision.title}</p>
           <span className="bg-border size-1 rounded-full" aria-hidden />
@@ -213,6 +223,49 @@ export function AnnouncementBanner({ publication }: { publication: AnnouncementP
   );
 }
 
+/** Service runtime status (template "Update" banner slot). System health is
+ * the contract surface for "服务当前运行状态"; the release version has no
+ * backend endpoint yet, so none is shown. */
+export function SystemStatusBanner({ health }: { health: SystemHealthDashboard | undefined }) {
+  const { t } = useTranslation();
+  if (health === undefined) return null;
+  const total = health.components.length;
+  const unhealthy = health.components.filter((component) => component.status !== "healthy");
+  const healthy = total - unhealthy.length;
+  const dotClass =
+    unhealthy.some((component) => component.status === "unavailable")
+      ? "bg-destructive"
+      : unhealthy.length > 0
+        ? "bg-warning"
+        : "bg-success";
+  return (
+    <Card data-testid="workspace-status-banner" className="py-3">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`size-2 rounded-full ${dotClass}`} aria-hidden />
+            <p className="text-sm font-medium">{t("dashboard.admin.statusTitle")}</p>
+            <span className="bg-border size-1 rounded-full" aria-hidden />
+            <p className="text-sm font-normal">
+              {unhealthy.length === 0
+                ? t("dashboard.admin.statusHealthy")
+                : t("dashboard.admin.statusIssues", { issues: unhealthy.length })}
+            </p>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {t("dashboard.admin.statusCheckedAt", {
+              time: health.checked_at.replace("T", " ").replace("Z", " UTC"),
+            })}
+          </p>
+        </div>
+        <Badge variant={unhealthy.length === 0 ? "secondary" : "destructive"}>
+          {t("dashboard.admin.statusComponentsOk", { ok: healthy, total })}
+        </Badge>
+      </CardContent>
+    </Card>
+  );
+}
+
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
 
 function OrderTrendCard({
@@ -227,7 +280,7 @@ function OrderTrendCard({
   const { t } = useTranslation();
   const meta = operations?.meta;
   return (
-    <Card data-testid="workspace-admin-operations">
+    <Card data-testid="workspace-admin-operations" className="h-full">
       <CardHeader className="border-b border-border">
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp size={16} className="text-muted-foreground" />
@@ -296,7 +349,15 @@ function OrderTrendCard({
   );
 }
 
-export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
+export function AdminDashboardSection({
+  enabled,
+  announcement,
+  children,
+}: {
+  enabled: boolean;
+  announcement: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   const { t } = useTranslation();
   const [windowDays, setWindowDays] = useState(30);
   const operations = useOperationsDashboardQuery(windowDays, enabled);
@@ -317,11 +378,17 @@ export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="flex flex-col gap-3" data-testid="workspace-admin-dashboards">
-      <OrderTrendCard
-        operations={operations.data}
-        windowDays={windowDays}
-        onWindowChange={setWindowDays}
-      />
+      <SystemStatusBanner health={health.data} />
+      <div className="grid gap-3 lg:grid-cols-12" data-testid="workspace-home-main-row">
+        <div className="lg:col-span-7">
+          <OrderTrendCard
+            operations={operations.data}
+            windowDays={windowDays}
+            onWindowChange={setWindowDays}
+          />
+        </div>
+        <div className="lg:col-span-5">{announcement}</div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-3" data-testid="workspace-admin-stat-cards">
         <OperationsStatCard
           label={t("dashboard.admin.queryTotal")}
@@ -342,6 +409,7 @@ export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
           icon={<Database className="size-4" />}
         />
       </div>
+      {children}
       <h2 className="text-base font-semibold">{t("dashboard.admin.title")}</h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <CountCard label={t("dashboard.admin.completed")} value={operations.data?.completed_total} testId="admin-completed-total" icon={<ShieldCheck className="size-3.5" />} />

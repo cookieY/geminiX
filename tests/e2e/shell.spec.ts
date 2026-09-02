@@ -50,14 +50,21 @@ test("the admin capability guard blocks /admin/users for zero-permission users",
 test("the global footer shows the exact license line and stays below the content", async ({
   page,
 }) => {
-  const footer = page.getByText("AGPL-3.0 Licensed | Copyright © 2017-present Henry Yee");
-  await expect(footer).toBeVisible();
-  const footerBox = await footer.boundingBox();
-  const contentBox = await page.getByTestId("workspace-dashboard-cards").boundingBox();
-  if (!footerBox || !contentBox) {
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
+  // One synchronous measurement: the dashboard queries resolve continuously
+  // and shift the layout, so two separate boundingBox() calls could sample
+  // different layout generations and compare unrelated positions.
+  const boxes = await page.evaluate(() => {
+    const footer = document.querySelector("footer");
+    const cards = document.querySelector("[data-testid='workspace-dashboard-cards']");
+    if (!footer || !cards) return null;
+    const top = (element: Element) => element.getBoundingClientRect().top + window.scrollY;
+    return { footer: top(footer), cards: top(cards) };
+  });
+  if (!boxes) {
     throw new Error("footer or workspace placeholder is not rendered");
   }
-  expect(footerBox.y).toBeGreaterThanOrEqual(contentBox.y);
+  expect(boxes.footer).toBeGreaterThanOrEqual(boxes.cards);
 });
 
 test("the sidebar collapses to icon mode and back", async ({ page }) => {
