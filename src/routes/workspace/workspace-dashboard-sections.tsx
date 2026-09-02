@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { formatCompactCount } from "@/shared/lib/format";
 
 const WorkspaceOrderTrendChart = lazy(() => import("./workspace-order-trend-chart"));
 
@@ -81,36 +82,37 @@ async function getCurrentAnnouncement() {
 /** Purely decorative sparkline for the reference stat cards (owner ruling
  * 2026-09-02): no axes or values, deterministic points so screenshot
  * baselines stay byte-stable, and layered beneath the label/value text. */
-function sparkPoints(seed: number, count = 24): string {
+function sparkValues(seed: number, count = 24): number[] {
   let state = seed;
-  const points: string[] = [];
+  const values: number[] = [];
   for (let i = 0; i < count; i++) {
     state = (state * 1103515245 + 12345) % 2147483648;
-    const x = (i / (count - 1)) * 100;
-    points.push(`${x.toFixed(1)},${(28 - (state / 2147483648) * 22).toFixed(1)}`);
+    values.push(4 + (state / 2147483648) * 24);
   }
-  return points.join(" ");
+  return values;
 }
 
-function Sparkline({ seed, stroke }: { seed: number; stroke: string }) {
-  const points = sparkPoints(seed);
+function SparkBars({ seed, stroke }: { seed: number; stroke: string }) {
+  const values = sparkValues(seed);
+  const step = 100 / values.length;
   return (
     <svg
       aria-hidden
       viewBox="0 0 100 30"
       preserveAspectRatio="none"
       className="absolute inset-y-0 right-0 h-full w-[58%]"
-      data-testid="stat-sparkline"
+      data-testid="stat-bars"
     >
-      <polyline
-        points={points}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
+      {values.map((value, i) => (
+        <rect
+          key={i}
+          x={(i * step + step * 0.22).toFixed(2)}
+          y={(30 - value).toFixed(2)}
+          width={(step * 0.56).toFixed(2)}
+          height={value.toFixed(2)}
+          fill={stroke}
+        />
+      ))}
     </svg>
   );
 }
@@ -133,11 +135,11 @@ function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke
         <div className="relative z-10 flex flex-col gap-1">
           <p className="text-sm font-normal">{label}</p>
           <p className="text-2xl font-semibold tabular-nums" data-testid={testId}>
-            {value === undefined ? "—" : value}
+            {value === undefined ? "—" : formatCompactCount(value)}
           </p>
         </div>
         <div className="relative z-10 rounded-md border border-border bg-card p-2.5">{icon}</div>
-        <Sparkline seed={sparkSeed} stroke={sparkStroke} />
+        <SparkBars seed={sparkSeed} stroke={sparkStroke} />
       </CardContent>
     </Card>
   );
@@ -207,7 +209,7 @@ function OrderTrendCard({
             <span className="text-sm font-normal">{t("dashboard.admin.orderTotal")}</span>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold tabular-nums" data-testid="admin-order-total">
-                {operations === undefined ? "—" : operations.change_order_total}
+                {operations === undefined ? "—" : formatCompactCount(operations.change_order_total)}
               </span>
               {meta !== undefined && (
                 <span className="text-muted-foreground text-xs">

@@ -23,12 +23,12 @@ test("admin home renders the order trend chart and the reference stat cards", as
   await expect(trend).toBeVisible();
   await expect(trend.locator("svg")).toBeVisible();
   await expect(page.getByTestId("admin-order-total")).toHaveText("47");
-  await expect(page.getByTestId("admin-query-total")).toHaveText("23981");
+  await expect(page.getByTestId("admin-query-total")).toHaveText("23K");
   await expect(page.getByTestId("admin-user-total")).toHaveText("12");
   await expect(page.getByTestId("admin-datasource-total")).toHaveText("5");
   // Decorative sparklines render on each reference stat card (owner ruling
   // 2026-09-02) — hidden from accessibility, layered beneath the text.
-  const sparks = page.getByTestId("workspace-admin-stat-cards").getByTestId("stat-sparkline");
+  const sparks = page.getByTestId("workspace-admin-stat-cards").getByTestId("stat-bars");
   await expect(sparks).toHaveCount(3);
   await expect(sparks.first()).toHaveAttribute("aria-hidden", "true");
   // The reference "Total Assets" slot carries the announcement; the

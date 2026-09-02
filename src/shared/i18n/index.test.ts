@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LOCALE, LOCALES, resolveLocale, setLocale, toggleLocale } from "@/shared/i18n";
+import { DEFAULT_LOCALE, LOCALES, resolveLocale, setLocale } from "@/shared/i18n";
 
 describe("locale resolution", () => {
   it("falls back to zh-CN when nothing is stored and the browser language is unmatched", () => {
@@ -25,16 +25,6 @@ describe("locale resolution", () => {
     Object.defineProperty(navigator, "language", { value: "zh-CN", configurable: true });
     expect(resolveLocale()).toBe("en-US");
     expect(document.documentElement.lang).toBe("en-US");
-  });
-
-  it("toggleLocale flips between the two locales and persists the choice", () => {
-    setLocale("zh-CN");
-    toggleLocale();
-    expect(localStorage.getItem("yearning-locale")).toBe("en-US");
-    expect(document.documentElement.lang).toBe("en-US");
-    toggleLocale();
-    expect(localStorage.getItem("yearning-locale")).toBe("zh-CN");
-    expect(document.documentElement.lang).toBe("zh-CN");
   });
 
   it("declares exactly the two first-release locales", () => {

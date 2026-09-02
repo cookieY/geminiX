@@ -85,16 +85,17 @@ test("the footer carries the sponsor and docs links as plain text", async ({ pag
   }
 });
 
-test("the language toggle flips the locale and persists the choice", async ({ page }) => {
+test("the language picker switches the locale and persists the choice", async ({ page }) => {
   // Note: this spec's beforeEach re-plants zh-CN on every navigation, so a
   // reload here would mask the persisted choice — the storage value IS the
   // persistence contract (setLocale unit tests cover the resolver).
   await page.getByTestId("locale-toggle").click();
+  await expect(page.getByTestId("locale-menu")).toBeVisible();
+  await expect(page.getByTestId("locale-option-zh-CN")).toBeVisible();
+  await expect(page.getByTestId("locale-option-en-US")).toBeVisible();
+  await page.getByTestId("locale-option-en-US").click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
   expect(await page.evaluate(() => localStorage.getItem("yearning-locale"))).toBe("en-US");
-  await page.getByTestId("locale-toggle").click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-  expect(await page.evaluate(() => localStorage.getItem("yearning-locale"))).toBe("zh-CN");
 });
 
 test("the sidebar collapses to icon mode and back", async ({ page }) => {

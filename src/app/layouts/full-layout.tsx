@@ -19,9 +19,13 @@ export function FullLayout() {
       style={{ "--sidebar-width-icon": "52px" } as React.CSSProperties}
     >
       <YearningSidebar />
-      <SidebarInset className="m-2 overflow-hidden rounded-none! outline outline-border">
+      {/* Owner ruling 2026-09-02: the nav stays put and only the body scrolls —
+          the inset is capped to the viewport and the content column scrolls
+          internally, so the sidebar and the nav can never drift out of
+          alignment. */}
+      <SidebarInset className="m-2 h-[calc(100svh-1rem)] overflow-hidden rounded-none! outline outline-border">
         <AppHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
           <div className="container mx-auto w-full">
             <div className="min-h-[calc(100vh-140px)]">
               <Outlet />

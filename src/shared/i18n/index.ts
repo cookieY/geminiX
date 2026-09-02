@@ -29,12 +29,6 @@ export function setLocale(locale: Locale): void {
   document.documentElement.lang = locale;
 }
 
-/** Flips between the two first-release locales (owner-ruled header control,
- * 2026-09-02); the storage write stays inside this allowlisted module. */
-export function toggleLocale(): void {
-  setLocale(i18next.language === "zh-CN" ? "en-US" : "zh-CN");
-}
-
 void i18next.use(initReactI18next).init({
   resources: {
     "zh-CN": { translation: zhCN },
