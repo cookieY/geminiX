@@ -22,6 +22,8 @@ import {
   useReplacePermissionGroup,
   useUsers,
 } from "@/features/admin/use-admin";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 权限组管理 (route /admin/permission-groups; migration contract §2 maps
@@ -50,16 +52,17 @@ export default function AdminPermissionGroupsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const groupsQuery = usePermissionGroups(isAdmin);
+  const pager = useCursorPage(50);
+  const groupsQuery = usePermissionGroups(isAdmin, { limit: pager.pageSize, after: pager.after });
   const usersQuery = useUsers(isAdmin);
   const flowsQuery = useFlows(isAdmin);
   const [editing, setEditing] = useState<PermissionGroup | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [previewUser, setPreviewUser] = useState<string>("");
 
-  const groups = groupsQuery.data ?? [];
-  const users = usersQuery.data ?? [];
-  const flows = flowsQuery.data ?? [];
+  const groups = groupsQuery.data?.items ?? [];
+  const users = usersQuery.data?.items ?? [];
+  const flows = flowsQuery.data?.items ?? [];
   const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
   const flowById = useMemo(() => new Map(flows.map((flow) => [flow.id, flow])), [flows]);
 
@@ -166,6 +169,7 @@ export default function AdminPermissionGroupsPage() {
                   {t("adminGroups.empty")}
                 </p>
               ) : (
+              <>
                 <Table data-testid="admin-groups-table">
                   <TableHeader>
                     <TableRow>
@@ -182,6 +186,19 @@ export default function AdminPermissionGroupsPage() {
                     ))}
                   </TableBody>
                 </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={groupsQuery.data?.page.has_more ?? false}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(groupsQuery.data?.page.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="groups"
+              />
+              </>
               )}
             </CardContent>
           </Card>

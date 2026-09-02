@@ -181,7 +181,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
   const evaluateMutation = useEvaluateKnowledgeEntry();
 
-  const rows = kind === "skills" ? (toolsQuery.data ?? []) : (entriesQuery.data ?? []);
+  const rows = kind === "skills" ? (toolsQuery.data?.items ?? []) : (entriesQuery.data?.items ?? []);
   const loading = kind === "skills" ? toolsQuery.isPending : entriesQuery.isPending;
   const errored = kind === "skills" ? toolsQuery.isError : entriesQuery.isError;
   const refetch = kind === "skills" ? toolsQuery.refetch : entriesQuery.refetch;
@@ -649,7 +649,7 @@ function ReviewInputDialog({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {(datasourcesQuery.data ?? []).map((datasource: { id: string; name: string }) => (
+                          {(datasourcesQuery.data?.items ?? []).map((datasource: { id: string; name: string }) => (
                             <SelectItem key={datasource.id} value={datasource.id}>
                               {datasource.name}
                             </SelectItem>

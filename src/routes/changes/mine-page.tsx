@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { DatePicker } from "@/shared/components/ui/date-picker";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
   TableBody,
@@ -309,7 +311,13 @@ export default function MinePage() {
   };
 
   const draftsQuery = useMyDrafts(true);
-  const ordersQuery = useMyChangeOrders(true, serverFilters);
+  const ordersPager = useCursorPage(50);
+  const ordersQuery = useMyChangeOrders(
+    true,
+    serverFilters,
+    { limit: ordersPager.pageSize, after: ordersPager.after },
+  );
+  const ordersPageMeta = ordersQuery.data?.page;
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
 
   const draftsError = draftsQuery.error ?? ordersQuery.error;
@@ -369,13 +377,14 @@ export default function MinePage() {
                     onChange={patchFilters}
                     onReset={() => { setFilters(INITIAL_FILTERS); }}
                   />
-                  {(ordersQuery.data ?? []).length === 0 ? (
+                  {(ordersQuery.data?.items ?? []).length === 0 ? (
                     <p className="text-muted-foreground py-6 text-center text-sm" data-testid="orders-empty">
                       {hasActiveFilters(filters)
                         ? t("orders.list.filter.emptyFiltered")
                         : t("orders.list.ordersEmpty")}
                     </p>
                   ) : (
+                    <>
                     <Table data-testid="mine-orders-table">
                       <TableHeader>
                         <TableRow>
@@ -388,11 +397,26 @@ export default function MinePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(ordersQuery.data ?? []).map((order) => (
+                        {(ordersQuery.data?.items ?? []).map((order) => (
                           <OrderRow key={order.id} order={order} />
                         ))}
                       </TableBody>
                     </Table>
+                    <TablePagination
+                      page={ordersPager.pageNo}
+                      hasMore={ordersPageMeta?.has_more ?? false}
+                      isFirst={ordersPager.pageNo === 1}
+                      onPrev={() => {
+                        ordersPager.goPrev();
+                      }}
+                      onNext={() => {
+                        ordersPager.pushCursor(ordersPageMeta?.next_cursor);
+                      }}
+                      pageSize={ordersPager.pageSize}
+                      onPageSizeChange={ordersPager.setPageSize}
+                      testIdPrefix="mine-orders"
+                    />
+                    </>
                   )}
                 </CardContent>
               </Card>

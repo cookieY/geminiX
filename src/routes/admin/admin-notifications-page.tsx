@@ -26,6 +26,8 @@ import {
   useReplaceNotificationChannel,
   useTestNotificationDelivery,
 } from "@/features/admin/use-admin";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 通知设置 (route /admin/settings/notifications; S003). Channels are the
@@ -70,13 +72,14 @@ export default function AdminNotificationsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const channelsQuery = useNotificationChannels(isAdmin);
+  const pager = useCursorPage(50);
+  const channelsQuery = useNotificationChannels(isAdmin, { limit: pager.pageSize, after: pager.after });
   const deliveriesQuery = useNotificationDeliveries(isAdmin);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<NotificationChannel | null>(null);
 
-  const channels = channelsQuery.data ?? [];
-  const deliveries = deliveriesQuery.data ?? [];
+  const channels = channelsQuery.data?.items ?? [];
+  const deliveries = deliveriesQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-notifications-page">
@@ -111,6 +114,7 @@ export default function AdminNotificationsPage() {
                 {t("adminNotifications.empty")}
               </p>
             ) : (
+              <>
               <Table data-testid="admin-notifications-table">
                 <TableHeader>
                   <TableRow>
@@ -127,6 +131,19 @@ export default function AdminNotificationsPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={channelsQuery.data.page.has_more}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(channelsQuery.data.page.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="notifications"
+              />
+              </>
             )}
           </CardContent>
         </Card>

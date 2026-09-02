@@ -47,7 +47,11 @@ function activeFilters(filters: OrderListFilters): OrderListFilters {
   );
 }
 
-export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = EMPTY_FILTERS) {
+export function useMyChangeOrders(
+  enabled: boolean,
+  filters: OrderListFilters = EMPTY_FILTERS,
+  paging?: { limit: number; after?: string },
+) {
   const queryClient = useQueryClient();
   const session = useSession();
   const me = session.user?.id;
@@ -58,7 +62,7 @@ export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = 
     // rows (and keeps this hook's consumers mounted) while a first-time
     // filter combination is in flight. The user id joins the key so the
     // submitter filter below never runs against a half-initialized session.
-    queryKey: ["change-orders", "mine", me, effective],
+    queryKey: ["change-orders", "mine", me, effective, paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
       // The list endpoint is relation-scoped (submitter / frozen approval
       // actor / frozen execution actor — backend relationFilterSQL, consumed
@@ -66,13 +70,18 @@ export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = 
       // submitter-scoped per UI-spec §5.2: a presentation filter on this
       // shared read, never an authorization boundary.
       const page = (await listChangeOrders({
-        limit: 50,
+        limit: paging?.limit ?? 50,
+        after: paging?.after || undefined,
         ...effective,
       })) as unknown as {
         items: ChangeOrder[];
+        page: { has_more: boolean; next_cursor: string | null };
       };
-      if (me === undefined) return [];
-      return page.items.filter((order) => order.submitter_user_id === me);
+      if (me === undefined) return { items: [], page: page.page };
+      return {
+        items: page.items.filter((order) => order.submitter_user_id === me),
+        page: page.page,
+      };
     },
     enabled: enabled && me !== undefined,
     placeholderData: keepPreviousData,
@@ -85,13 +94,14 @@ export function useMyChangeOrders(enabled: boolean, filters: OrderListFilters = 
   // undelivered events in that window. New orders arrive through normal
   // invalidation on navigation — the submission flow lands on the detail
   // page and back-navigation remounts this query.
-  const orders = query.data;
-  const subscriptionKey =
-    orders === undefined ? "" : orders.map((order) => `${order.id}:${String(order.version)}`).join("|");
+  const orders = query.data?.items ?? [];
+  const subscriptionKey = orders
+    .map((order) => `${order.id}:${String(order.version)}`)
+    .join("|");
   useEffect(() => {
     if (subscriptionKey === "") return;
     const client = getReviewEventClient();
-    const unsubscribes = (orders ?? []).map((order) =>
+    const unsubscribes = orders.map((order) =>
       client.subscribe(`change-orders/${order.id}`, () => {
         void queryClient.invalidateQueries({ queryKey: ["change-orders", "mine"] });
       }),

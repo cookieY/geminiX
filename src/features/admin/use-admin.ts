@@ -139,17 +139,16 @@ function ifMatch(version: number | undefined): Record<string, string> {
 
 // ---- datasources ---------------------------------------------------------
 
-export function useDatasources(enabled: boolean) {
+export function useDatasources(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "datasources"],
+    queryKey: ["admin", "datasources", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listDatasources({ limit: PAGE_LIMIT });
-      return pageItems<Datasource>(response as unknown as { items?: Datasource[] });
+      const response = await listDatasources({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: Datasource[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useDatasourceCapabilities(datasourceId: string, probeKey: string, enabled: boolean) {
   return useQuery({
     // The probe key (the running/finished connection-test task id) makes a
@@ -260,7 +259,6 @@ export function useAiProviders(enabled: boolean) {
     enabled,
   });
 }
-
 export function useCreateAiProvider() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -385,17 +383,16 @@ export function useReplaceSettings() {
 
 // ---- prompt tools ----------------------------------------------------------
 
-export function usePromptTools(enabled: boolean) {
+export function usePromptTools(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "prompt-tools"],
+    queryKey: ["admin", "prompt-tools", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listPromptTools({ limit: PAGE_LIMIT });
-      return pageItems<PromptTool>(response as unknown as { items?: PromptTool[] });
+      const response = await listPromptTools({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: PromptTool[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreatePromptTool() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -438,17 +435,16 @@ export function useDeletePromptTool() {
 
 // ---- knowledge entries ------------------------------------------------------
 
-export function useKnowledgeEntries(enabled: boolean) {
+export function useKnowledgeEntries(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "knowledge-entries"],
+    queryKey: ["admin", "knowledge-entries", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listKnowledgeEntries({ limit: PAGE_LIMIT });
-      return pageItems<KnowledgeEntry>(response as unknown as { items?: KnowledgeEntry[] });
+      const response = await listKnowledgeEntries({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: KnowledgeEntry[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateKnowledgeEntry() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -503,17 +499,16 @@ export function useEvaluateKnowledgeEntry() {
 
 // ---- rule sets ---------------------------------------------------------------
 
-export function useRuleSets(enabled: boolean) {
+export function useRuleSets(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "rule-sets"],
+    queryKey: ["admin", "rule-sets", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listRuleSets({ limit: PAGE_LIMIT });
-      return pageItems<RuleSet>(response as unknown as { items?: RuleSet[] });
+      const response = await listRuleSets({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: RuleSet[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateRuleSet() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -585,17 +580,16 @@ export function useFlowsForRuleSetImpact(enabled: boolean) {
 
 // ---- users ---------------------------------------------------------------
 
-export function useUsers(enabled: boolean) {
+export function useUsers(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "users"],
+    queryKey: ["admin", "users", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listUsers({ limit: PAGE_LIMIT });
-      return pageItems<User>(response as unknown as { items?: User[] });
+      const response = await listUsers({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: User[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -646,19 +640,16 @@ export function useDeletionImpact(userId: string, enabled: boolean) {
 
 // ---- permission groups ---------------------------------------------------
 
-export function usePermissionGroups(enabled: boolean) {
+export function usePermissionGroups(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "permission-groups"],
+    queryKey: ["admin", "permission-groups", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listPermissionGroups({ limit: PAGE_LIMIT });
-      return pageItems<PermissionGroup>(
-        response as unknown as { items?: PermissionGroup[] },
-      );
+      const response = await listPermissionGroups({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: PermissionGroup[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreatePermissionGroup() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -699,17 +690,16 @@ export function useDeletePermissionGroup() {
 
 // ---- flows (full model + masking rules) -----------------------------------
 
-export function useFlows(enabled: boolean) {
+export function useFlows(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "flows"],
+    queryKey: ["admin", "flows", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listFlows({ limit: PAGE_LIMIT });
-      return pageItems<Flow>(response as unknown as { items?: Flow[] });
+      const response = await listFlows({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: Flow[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateFlow() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -780,19 +770,16 @@ export function useReplaceMaskingRule() {
 
 // ---- announcements ---------------------------------------------------------
 
-export function useAnnouncementRevisions(enabled: boolean) {
+export function useAnnouncementRevisions(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "announcements"],
+    queryKey: ["admin", "announcements", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listAnnouncementRevisions({ limit: PAGE_LIMIT });
-      return pageItems<AnnouncementRevision>(
-        response as unknown as { items?: AnnouncementRevision[] },
-      );
+      const response = await listAnnouncementRevisions({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: AnnouncementRevision[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateAnnouncementRevision() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -835,19 +822,16 @@ export function useAuditEvents(enabled: boolean) {
 
 // ---- identity providers ------------------------------------------------------
 
-export function useIdentityProviders(enabled: boolean) {
+export function useIdentityProviders(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "identity-providers"],
+    queryKey: ["admin", "identity-providers", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listIdentityProviders({ limit: PAGE_LIMIT });
-      return pageItems<IdentityProvider>(
-        response as unknown as { items?: IdentityProvider[] },
-      );
+      const response = await listIdentityProviders({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: IdentityProvider[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateIdentityProvider() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -896,32 +880,26 @@ export function useTestIdentityProviderConnection() {
 
 // ---- notification channels ----------------------------------------------------
 
-export function useNotificationChannels(enabled: boolean) {
+export function useNotificationChannels(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "notification-channels"],
+    queryKey: ["admin", "notification-channels", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listNotificationChannels({ limit: PAGE_LIMIT });
-      return pageItems<NotificationChannel>(
-        response as unknown as { items?: NotificationChannel[] },
-      );
+      const response = await listNotificationChannels({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: NotificationChannel[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
-export function useNotificationDeliveries(enabled: boolean) {
+export function useNotificationDeliveries(enabled: boolean, paging?: { limit: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "notification-deliveries"],
+    queryKey: ["admin", "notification-deliveries", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listNotificationDeliveries({ limit: PAGE_LIMIT });
-      return pageItems<NotificationDelivery>(
-        response as unknown as { items?: NotificationDelivery[] },
-      );
+      const response = await listNotificationDeliveries({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      return response as unknown as { items: NotificationDelivery[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
   });
 }
-
 export function useCreateNotificationChannel() {
   const queryClient = useQueryClient();
   return useMutation({

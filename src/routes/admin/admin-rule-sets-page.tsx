@@ -48,6 +48,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/components/ui/empty";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * Rule Set 组合管理 (route /admin/rule-sets; migration contract §2 maps the
@@ -191,7 +193,7 @@ function RuleSetFormDialog({
               <LoadingState />
             ) : (
               <div className="flex flex-col gap-1.5" data-testid="rule-set-tools">
-                {(toolsQuery.data ?? []).map((tool) => {
+                {(toolsQuery.data?.items ?? []).map((tool) => {
                   const bindable = tool.state === "enabled" || tool.state === "disabled";
                   const selected = form.toolIds.includes(tool.id);
                   return (
@@ -274,7 +276,8 @@ export default function AdminRuleSetsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const query = useRuleSets(enabled);
+  const pager = useCursorPage(50);
+  const query = useRuleSets(enabled, { limit: pager.pageSize, after: pager.after });
   const flowsQuery = useFlowsForRuleSetImpact(enabled);
   const toolsQuery = usePromptTools(enabled);
   const [editing, setEditing] = useState<RuleSet | null>(null);
@@ -284,7 +287,7 @@ export default function AdminRuleSetsPage() {
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
 
   const toolName = (toolId: string) =>
-    (toolsQuery.data ?? []).find((tool) => tool.id === toolId)?.name ?? toolId;
+    (toolsQuery.data?.items ?? []).find((tool) => tool.id === toolId)?.name ?? toolId;
 
   return (
     <div className="flex flex-col gap-4">
@@ -309,7 +312,7 @@ export default function AdminRuleSetsPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listRuleSets" onRetry={() => void query.refetch()} />
-          ) : query.data.length === 0 ? (
+          ) : query.data.items.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -320,6 +323,7 @@ export default function AdminRuleSetsPage() {
               </EmptyHeader>
             </Empty>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -331,7 +335,7 @@ export default function AdminRuleSetsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {query.data.map((ruleSet) => {
+                {query.data.items.map((ruleSet: RuleSet) => {
                   const boundFlows = (flowsQuery.data ?? []).filter(
                     (flow) => flow.rule_set_id === ruleSet.id,
                   );
@@ -352,7 +356,7 @@ export default function AdminRuleSetsPage() {
                               {t("admin.ruleSets.noTools")}
                             </span>
                           ) : (
-                            ruleSet.prompt_tool_ids.map((toolId) => (
+                            ruleSet.prompt_tool_ids.map((toolId: string) => (
                               <Badge key={toolId} variant="secondary" data-testid="rule-set-tool-chip">
                                 {toolName(toolId)}
                               </Badge>
@@ -402,6 +406,19 @@ export default function AdminRuleSetsPage() {
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              page={pager.pageNo}
+              hasMore={query.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => {
+                  pager.pushCursor(query.data.page.next_cursor);
+                }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="rulesets"
+            />
+            </>
           )}
         </CardContent>
       </Card>

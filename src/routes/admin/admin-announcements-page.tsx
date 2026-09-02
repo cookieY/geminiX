@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useAnnouncementRevisions, useCreateAnnouncementRevision, usePublishAnnouncement } from "@/features/admin/use-admin";
 import { useCurrentAnnouncementQuery } from "@/routes/workspace/workspace-dashboard-sections";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 公告管理 (route /admin/announcements; UI spec §9.2 ruling keeps it
@@ -36,7 +38,8 @@ export default function AdminAnnouncementsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const revisionsQuery = useAnnouncementRevisions(isAdmin);
+  const pager = useCursorPage(50);
+  const revisionsQuery = useAnnouncementRevisions(isAdmin, { limit: pager.pageSize, after: pager.after });
   const currentQuery = useCurrentAnnouncementQuery(isAdmin);
   const createRevision = useCreateAnnouncementRevision();
   const publish = usePublishAnnouncement();
@@ -45,7 +48,8 @@ export default function AdminAnnouncementsPage() {
   const [markdown, setMarkdown] = useState("");
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const revisions = revisionsQuery.data ?? [];
+  const revisions = revisionsQuery.data?.items ?? [];
+  const revisionsPage = revisionsQuery.data?.page;
   const current = currentQuery.data ?? null;
 
   const submitCreate = async () => {
@@ -113,6 +117,7 @@ export default function AdminAnnouncementsPage() {
                 {t("adminAnnouncements.empty")}
               </p>
             ) : (
+              <>
               <Table data-testid="admin-announcements-table">
                 <TableHeader>
                   <TableRow>
@@ -165,6 +170,19 @@ export default function AdminAnnouncementsPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={revisionsPage?.has_more ?? false}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(revisionsPage?.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="announcements"
+              />
+              </>
             )}
           </CardContent>
         </Card>

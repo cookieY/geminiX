@@ -21,6 +21,8 @@ import {
   useReplaceIdentityProvider,
   useTestIdentityProviderConnection,
 } from "@/features/admin/use-admin";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 认证Provider管理 (route /admin/identity-providers; migration contract §2
@@ -146,11 +148,12 @@ export default function AdminIdentityProvidersPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const providersQuery = useIdentityProviders(isAdmin);
+  const pager = useCursorPage(50);
+  const providersQuery = useIdentityProviders(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [editing, setEditing] = useState<IdentityProvider | null>(null);
   const [createKind, setCreateKind] = useState<"ldap" | "oidc" | null>(null);
 
-  const providers = providersQuery.data ?? [];
+  const providers = providersQuery.data?.items ?? [];
   const ldap = providers.find((provider) => provider.provider_kind === "ldap") ?? null;
   const oidcProviders = providers.filter((provider) => provider.provider_kind === "oidc");
 
@@ -224,6 +227,7 @@ export default function AdminIdentityProvidersPage() {
                   {t("adminIdp.oidcEmpty")}
                 </p>
               ) : (
+                <>
                 <Table data-testid="admin-idp-oidc-table">
                   <TableHeader>
                     <TableRow>
@@ -257,6 +261,19 @@ export default function AdminIdentityProvidersPage() {
                     ))}
                   </TableBody>
                 </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={providersQuery.data.page.has_more}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(providersQuery.data.page.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="idp"
+              />
+                </>
               )}
             </CardContent>
           </Card>

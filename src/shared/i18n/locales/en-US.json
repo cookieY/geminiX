@@ -1588,5 +1588,13 @@
     "maintenanceTitle": "System under maintenance (migration review mode)",
     "maintenanceDescription": "The server is running in migration review mode; normal business surfaces are unavailable.",
     "gotoWorkbench": "Go to the migration workbench"
+  },
+  "table": {
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}",
+      "rowsPerPage": "Rows per page"
+    }
   }
 }

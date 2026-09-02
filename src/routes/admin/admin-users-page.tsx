@@ -21,6 +21,8 @@ import {
   useUpdateUser,
   useUsers,
 } from "@/features/admin/use-admin";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 用户管理 (route /admin/users; migration contract §2 maps legacy
@@ -49,11 +51,12 @@ export default function AdminUsersPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const usersQuery = useUsers(isAdmin);
+  const pager = useCursorPage(50);
+  const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  const users = usersQuery.data ?? [];
+  const users = usersQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-users-page">
@@ -85,6 +88,7 @@ export default function AdminUsersPage() {
                 {t("adminUsers.empty")}
               </p>
             ) : (
+              <>
               <Table data-testid="admin-users-table">
                 <TableHeader>
                   <TableRow>
@@ -101,6 +105,19 @@ export default function AdminUsersPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={usersQuery.data.page.has_more}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(usersQuery.data.page.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="users"
+              />
+              </>
             )}
           </CardContent>
         </Card>

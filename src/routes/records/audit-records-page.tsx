@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Lock, ScrollText } from "lucide-react";
 import { listAuditEvents } from "@/api/generated/client/administration/administration";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import type { AuditEvent } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
@@ -45,18 +47,29 @@ export default function AuditRecordsPage() {
   const isAdmin = session.user?.can_access_admin === true;
   const [detail, setDetail] = useState<AuditEvent | null>(null);
 
+  const pager = useCursorPage(50);
   const eventsQuery = useQuery({
-    queryKey: ["admin", "audit-events"],
+    queryKey: ["admin", "audit-events", pager.after, pager.pageSize],
     queryFn: async () => {
-      const response = (await listAuditEvents({ limit: 200 })) as unknown as {
+      const response = (await listAuditEvents({
+        limit: pager.pageSize,
+        after: pager.after || undefined,
+      })) as unknown as {
         items?: AuditEvent[];
-        page?: { has_more?: boolean };
+        page?: { has_more?: boolean; next_cursor?: string | null };
       };
-      return { items: response.items ?? [], hasMore: response.page?.has_more ?? false };
+      return {
+        items: response.items ?? [],
+        hasMore: response.page?.has_more ?? false,
+        nextCursor: response.page?.next_cursor ?? null,
+      };
     },
     enabled: session.status === "authenticated" && isAdmin,
     retry: false,
   });
+  const auditItems = eventsQuery.data?.items ?? [];
+  const auditNext = eventsQuery.data?.nextCursor ?? null;
+  const auditHasMore = eventsQuery.data?.hasMore ?? false;
 
   return (
     <div className="flex flex-col gap-4" data-testid="records-page">
@@ -96,12 +109,12 @@ export default function AuditRecordsPage() {
             <CardDescription>{t("records.cardDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            {eventsQuery.data.items.length === 0 && (
+            {auditItems.length === 0 && (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="records-empty">
                 {t("records.empty")}
               </p>
             )}
-            {eventsQuery.data.items.length > 0 && (
+            {auditItems.length > 0 && (
               <Table data-testid="records-table">
                 <TableHeader>
                   <TableRow>
@@ -113,7 +126,7 @@ export default function AuditRecordsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {eventsQuery.data.items.map((event) => (
+                  {auditItems.map((event) => (
                     <TableRow
                       key={event.id}
                       className="cursor-pointer"
@@ -129,7 +142,7 @@ export default function AuditRecordsPage() {
                       <TableCell className="font-mono text-xs">{event.action}</TableCell>
                       <TableCell className="font-mono text-xs">
                         {event.resource_type}
-                        {event.resource_id == null ? "" : ` · ${event.resource_id.slice(0, 8)}`}
+                        {event.resource_id == null ? "" : ` \u00b7 ${event.resource_id.slice(0, 8)}`}
                       </TableCell>
                       <TableCell>
                         <Badge variant={OUTCOME_VARIANT[event.outcome] ?? "outline"}>
@@ -140,6 +153,22 @@ export default function AuditRecordsPage() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {auditItems.length > 0 && (
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={auditHasMore}
+                isFirst={pager.pageNo === 1}
+                onPrev={() => {
+                  pager.goPrev();
+                }}
+                onNext={() => {
+                  pager.pushCursor(auditNext);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="audit"
+              />
             )}
           </CardContent>
         </Card>

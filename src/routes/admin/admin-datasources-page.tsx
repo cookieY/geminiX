@@ -61,6 +61,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/components/ui/empty";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 数据源管理（route /admin/datasources；migration contract §2 maps the
@@ -1003,7 +1005,8 @@ export default function AdminDatasourcesPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const query = useDatasources(enabled);
+  const pager = useCursorPage(50);
+  const query = useDatasources(enabled, { limit: pager.pageSize, after: pager.after });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Datasource | null>(null);
   const [deleting, setDeleting] = useState<Datasource | null>(null);
@@ -1034,7 +1037,7 @@ export default function AdminDatasourcesPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listDatasources" onRetry={() => void query.refetch()} />
-          ) : query.data.length === 0 ? (
+          ) : query.data.items.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -1045,6 +1048,7 @@ export default function AdminDatasourcesPage() {
               </EmptyHeader>
             </Empty>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1057,7 +1061,7 @@ export default function AdminDatasourcesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {query.data.map((datasource) => (
+                {query.data.items.map((datasource) => (
                   <Fragment key={datasource.id}>
                     <DatasourceRow
                       datasource={datasource}
@@ -1079,6 +1083,19 @@ export default function AdminDatasourcesPage() {
                 ))}
               </TableBody>
             </Table>
+            <TablePagination
+              page={pager.pageNo}
+              hasMore={query.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => {
+                  pager.pushCursor(query.data.page.next_cursor);
+                }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="datasources"
+            />
+            </>
           )}
         </CardContent>
       </Card>

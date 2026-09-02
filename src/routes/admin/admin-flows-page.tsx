@@ -26,6 +26,8 @@ import {
   useRuleSets,
   useUsers,
 } from "@/features/admin/use-admin";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 流程管理 (route /admin/flows; migration contract §2 maps legacy
@@ -77,11 +79,12 @@ export default function AdminFlowsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const flowsQuery = useFlows(isAdmin);
+  const pager = useCursorPage(50);
+  const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);
 
-  const flows = flowsQuery.data ?? [];
+  const flows = flowsQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">
@@ -122,6 +125,7 @@ export default function AdminFlowsPage() {
                 {t("adminFlows.empty")}
               </p>
             ) : (
+              <>
               <Table data-testid="admin-flows-table">
                 <TableHeader>
                   <TableRow>
@@ -138,6 +142,19 @@ export default function AdminFlowsPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={pager.pageNo}
+                hasMore={flowsQuery.data.page.has_more}
+                isFirst={pager.isFirst}
+                onPrev={pager.goPrev}
+                onNext={() => {
+                  pager.pushCursor(flowsQuery.data.page.next_cursor);
+                }}
+                pageSize={pager.pageSize}
+                onPageSizeChange={pager.setPageSize}
+                testIdPrefix="flows"
+              />
+              </>
             )}
           </CardContent>
         </Card>
@@ -307,9 +324,9 @@ function FlowFormDialog({
   }
   if (!open && openFor !== null) setOpenFor(null);
 
-  const datasources = datasourcesQuery.data ?? [];
-  const users = usersQuery.data ?? [];
-  const ruleSets = ruleSetsQuery.data ?? [];
+  const datasources = datasourcesQuery.data?.items ?? [];
+  const users = usersQuery.data?.items ?? [];
+  const ruleSets = ruleSetsQuery.data?.items ?? [];
 
   const valid = useMemo(() => {
     if (form.name.trim() === "") return false;
