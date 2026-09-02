@@ -9,20 +9,28 @@ import path from "node:path";
 // are development-time inputs only (code-generation-policy.json).
 
 // Home release banner (owner ruling 2026-09-02): the client fetches the
-// upstream GitHub release metadata. The endpoint is inlined at build time —
-// mock/e2e builds (VITE_ENABLE_MOCK=true) get a same-origin MSW fixture path
-// so tests never leave localhost and the banner stays byte-stable; the
-// literal lives here in build config, not in src (browser-storage gate).
+// upstream GitHub release metadata from cookieY/Yearning (real data in dev
+// and production). The e2e webServer overrides the URL to a same-origin MSW
+// fixture so tests never leave localhost and the banner stays byte-stable;
+// the literal lives here in build config, not in src (browser-storage gate).
 const releaseLatestUrl =
   process.env.VITE_RELEASE_LATEST_URL ??
-  (process.env.VITE_ENABLE_MOCK === "true"
-    ? "/mock/github-releases/latest"
-    : "https://api.github.com/repos/cookieY/Yearning/releases/latest");
+  "https://api.github.com/repos/cookieY/Yearning/releases/latest";
+
+// Owner-mandated footer links (2026-09-02). Same pattern: inlined here so
+// src stays free of absolute-URL literals.
+const footerLinks = {
+  __SPONSOR_URL__: JSON.stringify(
+    process.env.VITE_SPONSOR_URL ?? "https://next.yearning.io/zh/about/w5jt71jw/",
+  ),
+  __DOCS_URL__: JSON.stringify(process.env.VITE_DOCS_URL ?? "https://next.yearning.io/"),
+};
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
     __RELEASE_LATEST_URL__: JSON.stringify(releaseLatestUrl),
+    ...footerLinks,
   },
   resolve: {
     alias: {

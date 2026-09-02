@@ -1,4 +1,4 @@
-import { HttpResponse, delay, http } from "msw";
+import { HttpResponse, delay, http, passthrough } from "msw";
 import { BUSINESS_ERROR_CATALOG } from "@/api/generated/projections/business-error-catalog";
 import {
   getGetMyDashboardMockHandler,
@@ -238,6 +238,10 @@ export function baseHandlers() {
     ),
     ...adminDashboardHandlers(),
     http.get("*/mock/github-releases/latest", () => HttpResponse.json(RELEASE_FIXTURE)),
+    // Dev mock builds fetch the real cookieY/Yearning releases API (owner
+    // ruling: real release data outside e2e) — pass it through instead of
+    // flagging it as unhandled.
+    http.get("*/repos/cookieY/Yearning/releases/latest", () => passthrough()),
     ...authMockHandlers(),
     ...reviewFixtureHandlers(),
     ...adminFixtureHandlers(),

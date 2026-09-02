@@ -67,6 +67,36 @@ test("the global footer shows the exact license line and stays below the content
   expect(boxes.footer).toBeGreaterThanOrEqual(boxes.cards);
 });
 
+test("the footer carries the sponsor and docs links as plain text", async ({ page }) => {
+  const sponsor = page.getByRole("link", { name: "赞助" });
+  const docs = page.getByRole("link", { name: "文档" });
+  await expect(sponsor).toHaveAttribute("href", "https://next.yearning.io/zh/about/w5jt71jw/");
+  await expect(sponsor).toHaveAttribute("target", "_blank");
+  await expect(docs).toHaveAttribute("href", "https://next.yearning.io/");
+  await expect(docs).toHaveAttribute("target", "_blank");
+  // Owner ruling: the links read as plain text — no underline, and the color
+  // must not change on hover.
+  for (const link of [sponsor, docs]) {
+    await expect(link).toHaveCSS("text-decoration-line", "none");
+    const before = await link.evaluate((element) => getComputedStyle(element).color);
+    await link.hover();
+    const after = await link.evaluate((element) => getComputedStyle(element).color);
+    expect(after).toBe(before);
+  }
+});
+
+test("the language toggle flips the locale and persists the choice", async ({ page }) => {
+  // Note: this spec's beforeEach re-plants zh-CN on every navigation, so a
+  // reload here would mask the persisted choice — the storage value IS the
+  // persistence contract (setLocale unit tests cover the resolver).
+  await page.getByTestId("locale-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
+  expect(await page.evaluate(() => localStorage.getItem("yearning-locale"))).toBe("en-US");
+  await page.getByTestId("locale-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  expect(await page.evaluate(() => localStorage.getItem("yearning-locale"))).toBe("zh-CN");
+});
+
 test("the sidebar collapses to icon mode and back", async ({ page }) => {
   // data-state lives on the inner sidebar element, not the wrapper
   const sidebar = page.locator("[data-slot='sidebar']").first();

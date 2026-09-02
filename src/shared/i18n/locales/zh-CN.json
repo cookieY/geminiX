@@ -49,6 +49,11 @@
       "reasonProfile": "个人中心将在后续版本提供",
       "reasonSession": "当前没有可用会话",
       "footerNote": "会话由服务端 Cookie 管理，退出后立即失效。"
+    },
+    "toggleLocale": "切换语言",
+    "footer": {
+      "sponsor": "赞助",
+      "docs": "文档"
     }
   },
   "login": {

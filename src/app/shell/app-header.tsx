@@ -3,6 +3,7 @@ import { SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { Separator } from "@/shared/components/ui/separator";
 import { BrandLogo } from "./brand-logo";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageToggle } from "./language-toggle";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -31,6 +32,7 @@ export function AppHeader() {
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
+          <LanguageToggle />
           <UserMenu />
         </div>
       </nav>

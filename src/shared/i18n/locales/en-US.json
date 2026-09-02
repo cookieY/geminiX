@@ -49,6 +49,11 @@
       "reasonProfile": "The account center arrives in a later release",
       "reasonSession": "No active session",
       "footerNote": "Sessions are managed by a server-side cookie and end immediately on sign-out."
+    },
+    "toggleLocale": "Switch language",
+    "footer": {
+      "sponsor": "Sponsor",
+      "docs": "Docs"
     }
   },
   "login": {
