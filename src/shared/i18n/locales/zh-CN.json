@@ -75,7 +75,11 @@
       "password": "请输入密码"
     },
     "noMethods": "登录方式不可用",
-    "brandTagline": "数据库变更管理与 SQL 审核平台"
+    "brandBadge": "Yearning v4 · AI 驱动的数据库变更审核",
+    "brandTitle": "让每一条 SQL 变更\n都安全可控",
+    "brandDescription": "工单提交、AI 预审、多级审批、执行审计与查询管控——Yearning 为数据库变更提供全流程安全治理。",
+    "oidcLabel": "OIDC 登录",
+    "divider": "或使用账号登录"
   },
   "workspace": {
     "placeholderTitle": "工作台内容尚未交付",

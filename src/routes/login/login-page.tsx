@@ -124,20 +124,38 @@ export default function LoginPage() {
     // image — a brand panel with a color-shifting corner glow on the left
     // and the sign-in card on the right. Demo copy, fake logos and social
     // sign-in buttons from the reference stay out (design spec §3).
-    <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden border-r border-border lg:flex lg:flex-col lg:justify-center lg:gap-5 p-12">
+    <div className="grid min-h-svh overflow-hidden lg:grid-cols-2">
+      <div className="relative hidden lg:flex lg:flex-col lg:justify-center lg:gap-6 p-12">
         <div className="auth-glow" aria-hidden />
-        <BrandLogo className="relative z-10" />
-        <h2 className="relative z-10 mt-6 text-4xl font-semibold tracking-tight">
-          {t("app.name")}
+        <div className="auth-glow-accent" aria-hidden />
+        <div className="auth-glow-veil" aria-hidden />
+        <div className="relative z-10 flex w-fit items-center gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm">
+          <span className="bg-chart-series-user size-2 rounded-full" aria-hidden />
+          {t("login.brandBadge")}
+        </div>
+        <h2 className="relative z-10 mt-8 text-5xl leading-tight font-semibold tracking-tight whitespace-pre-line">
+          {t("login.brandTitle").split("\n")[0]}
+          {"\n"}
+          <span className="whitespace-nowrap">
+            都
+            <span className="inline-flex" aria-hidden>
+              {["安", "全", "可", "控"].map((char) => (
+                <span key={char} className="flip-slot">
+                  <span>{char}</span>
+                </span>
+              ))}
+            </span>
+            <span className="sr-only">安全可控</span>
+          </span>
         </h2>
         <p className="relative z-10 max-w-md text-lg text-muted-foreground">
-          {t("login.brandTagline")}
+          {t("login.brandDescription")}
         </p>
       </div>
       <div className="flex items-center justify-center p-6">
       <Card className="w-full max-w-sm">
-        <CardHeader>
+        <CardHeader className="items-center text-center">
+          <BrandLogo className="mx-auto mb-2" />
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
           <CardDescription>{t("login.description")}</CardDescription>
         </CardHeader>
@@ -152,28 +170,45 @@ export default function LoginPage() {
               }}
             />
           )}
-          {providers !== undefined && providers.local && providers.ldap && (
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("login.methodGroup")}>
-              <Button
-                type="button"
-                variant={mode === "local" ? "default" : "outline"}
-                aria-pressed={mode === "local"}
-                onClick={() => {
-                  switchMode("local");
-                }}
-              >
-                {t("login.modeLocal")}
-              </Button>
-              <Button
-                type="button"
-                variant={mode === "ldap" ? "default" : "outline"}
-                aria-pressed={mode === "ldap"}
-                onClick={() => {
-                  switchMode("ldap");
-                }}
-              >
-                {t("login.modeLdap")}
-              </Button>
+          {providers !== undefined && (providers.oidc.length > 0 || providers.ldap) && (
+            <div
+              className="grid gap-2 sm:grid-cols-2"
+              role="group"
+              aria-label={t("login.methodGroup")}
+            >
+              {providers.oidc
+                .filter((provider) => isSafeStartUrl(provider.start_url))
+                .map((provider) => (
+                  <Button
+                    key={provider.key}
+                    type="button"
+                    variant="outline"
+                    render={
+                      <a href={provider.start_url} className="w-full">
+                        {t("login.oidcButton", { label: provider.label })}
+                      </a>
+                    }
+                  />
+                ))}
+              {providers.ldap && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={mode === "ldap"}
+                  onClick={() => {
+                    switchMode(mode === "ldap" ? "local" : "ldap");
+                  }}
+                >
+                  {t("login.modeLdap")}
+                </Button>
+              )}
+            </div>
+          )}
+          {providers !== undefined && providers.local && providers.oidc.length > 0 && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground" role="separator">
+              <span className="bg-border h-px flex-1" aria-hidden />
+              {t("login.divider")}
+              <span className="bg-border h-px flex-1" aria-hidden />
             </div>
           )}
           {credentialFormVisible && (
@@ -229,21 +264,6 @@ export default function LoginPage() {
               </Button>
             </form>
           )}
-          {providers !== undefined &&
-            providers.oidc
-              .filter((provider) => isSafeStartUrl(provider.start_url))
-              .map((provider) => (
-                <Button
-                  key={provider.key}
-                  type="button"
-                  variant="outline"
-                  render={
-                    <a href={provider.start_url} className="w-full">
-                      {t("login.oidcButton", { label: provider.label })}
-                    </a>
-                  }
-                />
-              ))}
           {providers !== undefined && !credentialFormVisible && providers.oidc.length === 0 && (
             <p className="text-sm text-muted-foreground">{t("login.noMethods")}</p>
           )}

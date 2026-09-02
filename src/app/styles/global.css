@@ -294,37 +294,87 @@ html[data-card-shadow="false"] [data-slot="card"] {
 }
 
 /*
- * Login page color-shifting glow (owner ruling 2026-09-02): a blurred blob
- * hugging the top-left corner, drifting and hue-rotating through the palette
- * (pink/purple in light, gold/amber phases in dark). Static under
- * prefers-reduced-motion so screenshot baselines stay byte-stable.
+ * Login page color-shifting glow (owner ruling 2026-09-02): three large,
+ * heavily blurred color fields (coral / teal) that blend seamlessly across
+ * the panel top, bleed into the right column and radiate down onto the
+ * slogan. Coprime loop periods + one reversed layer make the combined drift
+ * read as random movement. Fully soft edges — every gradient fades to
+ * transparent well inside its bounds. Static under prefers-reduced-motion
+ * so screenshot baselines stay byte-stable.
  */
 @keyframes auth-glow-drift {
   0% {
-    transform: translate3d(-18%, -12%, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     filter: hue-rotate(0deg);
   }
-  33% {
-    transform: translate3d(6%, 4%, 0) scale(1.12);
-    filter: hue-rotate(120deg);
+  25% {
+    transform: translate3d(9%, 7%, 0) scale(1.14);
+    filter: hue-rotate(95deg);
   }
-  66% {
-    transform: translate3d(-6%, 10%, 0) scale(1.05);
-    filter: hue-rotate(240deg);
+  50% {
+    transform: translate3d(-7%, 12%, 0) scale(0.94);
+    filter: hue-rotate(205deg);
+  }
+  75% {
+    transform: translate3d(6%, -5%, 0) scale(1.1);
+    filter: hue-rotate(300deg);
   }
   100% {
-    transform: translate3d(-18%, -12%, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     filter: hue-rotate(360deg);
   }
 }
 
-.auth-glow {
-  @apply pointer-events-none absolute -top-40 -left-32 size-[560px] rounded-full bg-chart-series-1/40 opacity-70 blur-3xl;
-  animation: auth-glow-drift 16s ease-in-out infinite;
+.auth-glow,
+.auth-glow-accent,
+.auth-glow-veil {
+  @apply pointer-events-none absolute rounded-full blur-3xl;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .auth-glow {
-    animation: none;
+.auth-glow {
+  @apply -top-[45%] left-[-20%] h-[75%] w-[85%] opacity-75;
+  background: radial-gradient(closest-side, var(--chart-series-user), transparent 74%);
+  animation: auth-glow-drift 19s ease-in-out infinite;
+}
+
+.auth-glow-accent {
+  @apply -top-[55%] left-[28%] h-[80%] w-[80%] opacity-60;
+  background: radial-gradient(closest-side, var(--chart-2), transparent 74%);
+  animation: auth-glow-drift 26s ease-in-out infinite reverse;
+}
+
+.auth-glow-veil {
+  @apply top-[10%] left-[6%] h-[62%] w-[72%] opacity-50;
+  background: radial-gradient(closest-side, var(--chart-series-2), transparent 76%);
+  animation: auth-glow-drift 31s ease-in-out infinite;
+  animation-delay: -9s;
+}
+
+/*
+ * 日历翻页 flip panels (安全可控): each character folds around a top hinge
+ * and immediately springs back to its original state — the character never
+ * changes. Slots stagger via --flip-index. Static under reduced motion.
+ */
+@keyframes flip-page-cycle {
+  0%,
+  74% {
+    transform: rotateX(0deg);
   }
+  87% {
+    transform: rotateX(-118deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.flip-slot {
+  @apply inline-block [perspective:520px];
+}
+
+.flip-slot > span {
+  @apply inline-block;
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  animation: flip-page-cycle 5.6s ease-in-out infinite;
 }

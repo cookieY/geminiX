@@ -161,8 +161,14 @@ export function authMockHandlers(): HttpHandler[] {
       HttpResponse.json(
         successEnvelope({
           local: true,
-          ldap: false,
-          oidc: [],
+          ldap: true,
+          oidc: [
+            {
+              key: "corp-oidc",
+              label: "企业 OIDC",
+              start_url: "/mock/oidc/corp-oidc/start",
+            },
+          ],
         }),
       ),
     ),

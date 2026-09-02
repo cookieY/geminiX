@@ -55,9 +55,9 @@ describe("LoginPage", () => {
     renderLogin();
     expect(await screen.findByLabelText("用户名")).toBeVisible();
     expect(screen.getByLabelText("密码")).toBeVisible();
-    // ldap=false and oidc=[] in the default mock: no LDAP toggle, no OIDC.
-    expect(screen.queryByText("LDAP")).not.toBeInTheDocument();
-    expect(screen.queryByText(/使用 .* 登录/)).not.toBeInTheDocument();
+    // The richer default mock advertises LDAP and one OIDC provider.
+    expect(screen.getByRole("button", { name: "LDAP" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "使用 企业 OIDC 登录" })).toBeVisible();
   });
 
   it("shows a mapped INVALID_CREDENTIALS message, never the raw error name", async () => {

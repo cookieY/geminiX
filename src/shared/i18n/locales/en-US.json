@@ -75,7 +75,11 @@
       "password": "Enter your password"
     },
     "noMethods": "No sign-in method is available",
-    "brandTagline": "Database change management and SQL audit platform"
+    "brandBadge": "Yearning v4 · AI-assisted database change review",
+    "brandTitle": "Every SQL change,\nsafely under control",
+    "brandDescription": "Submission, AI precheck, multi-stage approval, execution audit and query governance — Yearning secures the whole database change lifecycle.",
+    "oidcLabel": "Sign in with OIDC",
+    "divider": "or continue with your account"
   },
   "workspace": {
     "placeholderTitle": "Workspace content is not delivered yet",
