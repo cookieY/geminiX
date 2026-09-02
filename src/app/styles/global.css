@@ -53,6 +53,9 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-active-bg: var(--sidebar-active-bg);
+  --color-sidebar-active-fg: var(--sidebar-active-fg);
+  --color-chart-series-user: var(--chart-series-user);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -145,6 +148,12 @@
   --chart-series-3: var(--chart-3);
   --chart-series-4: var(--chart-4);
   --chart-series-5: var(--chart-5);
+  /* Owner-ruled sparkline color for the user-count card (2026-09-02);
+     query/datasource cards reuse --chart-series-2 teal. */
+  --chart-series-user: oklch(0.7 0.19 21.9);
+  /* Active sidebar menu item: pure white pill with black text. */
+  --sidebar-active-bg: oklch(1 0 0);
+  --sidebar-active-fg: oklch(0 0 0);
 }
 
 .dark {
@@ -195,6 +204,12 @@
   --chart-series-3: var(--chart-3);
   --chart-series-4: var(--chart-4);
   --chart-series-5: var(--chart-5);
+  /* Owner-ruled sparkline color for the user-count card (2026-09-02);
+     query/datasource cards reuse --chart-series-2 teal. */
+  --chart-series-user: oklch(0.7 0.19 21.9);
+  /* Active sidebar menu item: pure white pill with black text. */
+  --sidebar-active-bg: oklch(1 0 0);
+  --sidebar-active-fg: oklch(0 0 0);
 }
 
 @utility no-scrollbar {
@@ -264,74 +279,14 @@ html[data-card-shadow="false"] [data-slot="card"] {
 
 /*
  * Sidebar icon-mode hover expansion (template mechanism, enabled by
- * <html data-sidebar-type="true">): while collapsed, the rail widens to the
- * full menu on hover and labels fade back in.
+ * <html data-sidebar-type="true">): while collapsed, the labels are removed
+ * from the icon rail and hovering the rail REALLY expands the sidebar via
+ * SidebarHoverEffects (real state change — CSS cannot beat the collapsed
+ * size utilities' !important inside Tailwind's layer). Leaving the expanded
+ * sidebar collapses it back.
  */
-[data-sidebar-type="true"] {
-  [data-slot="sidebar"][data-collapsible="icon"] {
-    .sidebar-box .hide-menu {
-      @apply hidden;
-    }
-
-    .sidebar-box:hover {
-      width: 250px !important;
-      @apply transition-all duration-300;
-
-      [data-slot="sidebar-container"],
-      [data-sidebar="sidebar"],
-      [data-sidebar="sidebar-inner"] {
-        width: 250px !important;
-        transition: width 0.3s ease-in-out !important;
-      }
-
-      .hide-menu {
-        display: flex !important;
-      }
-
-      div.hide-menu {
-        display: flex !important;
-        flex-direction: column !important;
-      }
-
-      span.hide-menu {
-        display: inline-block !important;
-        white-space: nowrap !important;
-      }
-
-      [data-slot="sidebar-menu-button"],
-      [data-sidebar="menu-button"] {
-        display: flex !important;
-        align-items: center !important;
-        width: 100% !important;
-        height: auto !important;
-        min-height: 44px !important;
-        padding: 0 !important;
-        overflow: visible !important;
-        justify-content: flex-start !important;
-      }
-
-      [data-sidebar="menu-button"] .flex.items-center {
-        padding: 8px 12px !important;
-        width: 100% !important;
-        gap: 12px !important;
-      }
-    }
-
-    .sidebar-box:not(:hover) {
-      [data-sidebar="menu-button"] {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        padding: 0 !important;
-        width: 100% !important;
-      }
-
-      [data-sidebar="menu-button"] .flex.items-center {
-        justify-content: center !important;
-        padding: 0 !important;
-        gap: 0 !important;
-        width: 100% !important;
-      }
-    }
+[data-sidebar-type="true"] [data-slot="sidebar"][data-collapsible="icon"] {
+  .sidebar-box .hide-menu {
+    display: none;
   }
 }

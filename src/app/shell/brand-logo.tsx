@@ -19,19 +19,22 @@ export function BrandLogo({ className }: { className?: string }) {
       aria-label={t("app.name")}
       className={cn("block max-w-[120px] overflow-hidden", className)}
     >
+      {/* h-auto + collapsed max-width keep the wordmark fully visible inside
+          the narrow icon rail (owner ruling 2026-09-02): the asset scales
+          proportionally instead of being clipped. */}
       <img
         src={logoOnLight}
         alt=""
         width={120}
         height={38}
-        className="block max-w-[120px] dark:hidden"
+        className="block h-auto max-w-[120px] group-data-[state=collapsed]:max-w-9 dark:hidden"
       />
       <img
         src={logoOnDark}
         alt=""
         width={120}
         height={38}
-        className="hidden max-w-[120px] dark:block"
+        className="hidden h-auto max-w-[120px] group-data-[state=collapsed]:max-w-9 dark:block"
       />
     </Link>
   );

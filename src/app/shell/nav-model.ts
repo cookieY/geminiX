@@ -15,7 +15,6 @@ import {
   Terminal,
   Users,
   Workflow,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,7 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.reviewEngine",
     items: [
-      { labelKey: "nav.reviewEngine.tools", to: "/admin/review-engine/tools", icon: Wrench, visibility: "admin" },
       { labelKey: "nav.reviewEngine.skills", to: "/admin/review-engine/skills", icon: Puzzle, visibility: "admin" },
       { labelKey: "nav.reviewEngine.knowledge", to: "/admin/review-engine/knowledge", icon: BookOpen, visibility: "admin" },
       { labelKey: "nav.reviewEngine.providers", to: "/admin/review-engine/providers", icon: KeyRound, visibility: "admin" },

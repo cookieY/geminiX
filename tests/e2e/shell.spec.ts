@@ -107,6 +107,51 @@ test("the sidebar collapses to icon mode and back", async ({ page }) => {
   await expect(sidebar).toHaveAttribute("data-state", "expanded");
 });
 
+test("the collapsed sidebar scales the logo, hides the badge, and reveals labels on hover", async ({
+  page,
+}) => {
+  // Owner ruling 2026-09-02: the wordmark scales proportionally instead of
+  // clipping, the version badge hides, and hovering the icon rail widens it
+  // back to the full menu with visible labels (template mechanism).
+  const sidebar = page.locator("[data-slot='sidebar']").first();
+  const logo = page.locator("[data-slot='sidebar'] img").first();
+  const badge = page.getByTestId("sidebar-version-badge");
+
+  // Expanded: the release tag badge sits beside the logo.
+  await expect(logo).toBeVisible();
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText(/^v\d+\./);
+
+  await page.getByRole("button", { name: "折叠侧边栏" }).click();
+  await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+  const collapsedLogoWidth = (await logo.boundingBox())?.width ?? 999;
+  expect(collapsedLogoWidth).toBeLessThanOrEqual(40);
+  await expect(badge).toBeHidden();
+
+  await page.locator(".sidebar-box").hover();
+  await expect(page.getByText("我的工单")).toBeVisible();
+
+  // Leaving the rail auto-collapses back (hover-initiated expansion).
+  await page.mouse.move(700, 400);
+  await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+});
+
+test("the active sidebar item renders as a white pill with black text", async ({ page }) => {
+  // Owner ruling 2026-09-02 (reference image): pure white background, black
+  // text, matching the frozen template's active state.
+  await page.getByRole("link", { name: "查询" }).first().click();
+  await expect(page).toHaveURL(/\/query$/);
+  const active = page.locator("[data-sidebar='menu-button'][data-active]").first();
+  await expect(active).toBeVisible();
+  const styles = await active.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return { bg: computed.backgroundColor, fg: computed.color };
+  });
+  // Chromium reports the oklch token values as authored: pure white bg, black text.
+  expect(styles.bg).toBe("oklch(1 0 0)");
+  expect(styles.fg).toBe("oklch(0 0 0)");
+});
+
 test("the theme toggle switches the document class", async ({ page }) => {
   const html = page.locator("html");
   await page.evaluate(() => window.localStorage.setItem("vite-ui-theme", "light"));

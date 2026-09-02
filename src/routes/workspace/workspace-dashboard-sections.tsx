@@ -78,25 +78,66 @@ async function getCurrentAnnouncement() {
   return fetcher();
 }
 
+/** Purely decorative sparkline for the reference stat cards (owner ruling
+ * 2026-09-02): no axes or values, deterministic points so screenshot
+ * baselines stay byte-stable, and layered beneath the label/value text. */
+function sparkPoints(seed: number, count = 24): string {
+  let state = seed;
+  const points: string[] = [];
+  for (let i = 0; i < count; i++) {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    const x = (i / (count - 1)) * 100;
+    points.push(`${x.toFixed(1)},${(28 - (state / 2147483648) * 22).toFixed(1)}`);
+  }
+  return points.join(" ");
+}
+
+function Sparkline({ seed, stroke }: { seed: number; stroke: string }) {
+  const points = sparkPoints(seed);
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 100 30"
+      preserveAspectRatio="none"
+      className="absolute inset-y-0 right-0 h-full w-[58%]"
+      data-testid="stat-sparkline"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
 interface StatCardProps {
   label: string;
   value: number | undefined;
   testId: string;
   icon: React.ReactNode;
+  sparkSeed: number;
+  sparkStroke: string;
 }
 
-/** Reference-image stat card: label + value left, framed icon right. */
-function OperationsStatCard({ label, value, testId, icon }: StatCardProps) {
+/** Reference-image stat card: label + value left, decorative sparkline in
+ * the middle-right beneath the text layer, framed icon right. */
+function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke }: StatCardProps) {
   return (
-    <Card data-testid="workspace-admin-stat-card">
+    <Card data-testid="workspace-admin-stat-card" className="relative">
       <CardContent className="flex flex-row items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
+        <div className="relative z-10 flex flex-col gap-1">
           <p className="text-sm font-normal">{label}</p>
           <p className="text-2xl font-semibold tabular-nums" data-testid={testId}>
             {value === undefined ? "—" : value}
           </p>
         </div>
-        <div className="rounded-md border border-border p-2.5">{icon}</div>
+        <div className="relative z-10 rounded-md border border-border bg-card p-2.5">{icon}</div>
+        <Sparkline seed={sparkSeed} stroke={sparkStroke} />
       </CardContent>
     </Card>
   );
@@ -253,18 +294,24 @@ export function AdminDashboardSection({
           value={operations.data?.query_execution_total}
           testId="admin-query-total"
           icon={<Terminal className="size-4" />}
+          sparkSeed={11}
+          sparkStroke="var(--chart-series-2)"
         />
         <OperationsStatCard
           label={t("dashboard.admin.userTotal")}
           value={operations.data?.user_total}
           testId="admin-user-total"
           icon={<Users className="size-4" />}
+          sparkSeed={47}
+          sparkStroke="var(--chart-series-user)"
         />
         <OperationsStatCard
           label={t("dashboard.admin.datasourceTotal")}
           value={operations.data?.datasource_total}
           testId="admin-datasource-total"
           icon={<Database className="size-4" />}
+          sparkSeed={83}
+          sparkStroke="var(--chart-series-2)"
         />
       </div>
     </div>
