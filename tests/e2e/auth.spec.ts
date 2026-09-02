@@ -14,6 +14,12 @@ test("login through the form lands on the workspace", async ({ page }) => {
   await loginViaForm(page);
   await expect(page.getByText("等待管理员配置权限")).toBeVisible();
   await expect(page).toHaveURL(/\/workspace$/);
+  // Owner ruling 2026-09-02 (migration contract §18.6): homepage info is for
+  // every logged-in user — the zero-permission notice coexists with the
+  // greeting, the announcement banner and the per-user counters.
+  await expect(page.getByText("henry，欢迎回来")).toBeVisible();
+  await expect(page.getByTestId("workspace-announcement")).toBeVisible();
+  await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
 });
 
 test("login with wrong credentials shows the mapped business error", async ({ page }) => {
