@@ -458,6 +458,11 @@ function VerificationCard({ order, attempt, onRecover }: {
                 if (kind === null) return;
                 setEvidence((entries) => entries.map((item, itemIndex) => (itemIndex === index ? { ...item, kind } : item)));
               }}
+              items={{
+                text: t("orders.execution.evidenceKind.text"),
+                database_fact: t("orders.execution.evidenceKind.database_fact"),
+                external_reference: t("orders.execution.evidenceKind.external_reference"),
+              }}
             >
               <SelectTrigger className="w-44" data-testid={`verification-evidence-kind-${String(index)}`}>
                 <SelectValue />

@@ -59,6 +59,13 @@ export function FindingList({ findings, onOpenEvidence, onLocate, locateInEditor
           value={severity}
           onValueChange={(value) => { setSeverity(value as "all" | "low" | "medium" | "high" | "critical"); }
           }
+          items={{
+            all: t("precheck.findings.filterAll"),
+            low: t("precheck.severity.low"),
+            medium: t("precheck.severity.medium"),
+            high: t("precheck.severity.high"),
+            critical: t("precheck.severity.critical"),
+          }}
         >
           <SelectTrigger className="w-32" aria-label={t("precheck.findings.filter")}>
             <SelectValue />

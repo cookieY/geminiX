@@ -563,6 +563,9 @@ function ReviewInputDialog({
                   if (next === null) return;
                   setForm({ ...form, state: next });
                 }}
+                items={Object.fromEntries(
+                  STATE_ORDER.map((state) => [state, t(`admin.reviewInput.state_${state}`)]),
+                )}
               >
                 <SelectTrigger data-testid="review-input-state-select">
                   <SelectValue />
@@ -605,6 +608,11 @@ function ReviewInputDialog({
                     onValueChange={(next) => {
                       if (next === null) return;
                       setForm({ ...form, scopeType: next });
+                    }}
+                    items={{
+                      global: t("admin.knowledge.scopeGlobal"),
+                      datasource: t("admin.knowledge.scopeDatasource"),
+                      table: t("admin.knowledge.scopeTable"),
                     }}
                   >
                     <SelectTrigger data-testid="knowledge-scope">

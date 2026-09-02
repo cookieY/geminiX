@@ -238,6 +238,13 @@ function CredentialPurposeRow({
                   reuseSource: next === "reuse" ? state.reuseSource : "",
                 });
               }}
+              items={{
+                replace: t("admin.datasources.modeReplace"),
+                ...(reuseSources.length > 0
+                  ? { reuse: t("admin.datasources.modeReuse") }
+                  : {}),
+                ...(configured ? { keep: t("admin.datasources.modeKeep") } : {}),
+              }}
             >
               <SelectTrigger data-testid={`credential-mode-${purpose}`}>
                 <SelectValue />

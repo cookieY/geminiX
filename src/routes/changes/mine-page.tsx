@@ -207,6 +207,12 @@ function MineOrderFilters({
       <Select
         value={filters.state}
         onValueChange={(value) => { onChange({ state: value ?? ALL_STATES }); }}
+        items={{
+          [ALL_STATES]: t("orders.list.filter.allStates"),
+          ...Object.fromEntries(
+            ORDER_STATES.map((state) => [state, t(`orders.state.${state}`)]),
+          ),
+        }}
       >
         <SelectTrigger className="w-40" aria-label={t("orders.list.filter.state")} data-testid="filter-state">
           <SelectValue />
@@ -223,6 +229,10 @@ function MineOrderFilters({
       <Select
         value={filters.datasource}
         onValueChange={(value) => { onChange({ datasource: value ?? ALL_DATASOURCES }); }}
+        items={{
+          [ALL_DATASOURCES]: t("orders.list.filter.allDatasources"),
+          ...Object.fromEntries(datasourceOptions.map((name) => [name, name])),
+        }}
       >
         <SelectTrigger
           className="w-40"

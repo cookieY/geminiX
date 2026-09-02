@@ -171,6 +171,10 @@ function LocaleSelect({ locale, onChange }: { locale: string; onChange: (value: 
         setValue(next);
         onChange(next);
       }}
+      items={{
+        "zh-CN": t("profile.display.zhCN"),
+        "en-US": t("profile.display.enUS"),
+      }}
     >
       <SelectTrigger id="profile-locale" className="w-48" data-testid="profile-locale-select">
         <SelectValue />

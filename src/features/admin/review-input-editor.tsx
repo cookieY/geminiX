@@ -108,6 +108,12 @@ export function ReviewInputDefinitionEditor({
               if (next === null) return;
               patchTemplate({ category: next });
             }}
+            items={Object.fromEntries(
+              CATEGORY_VALUES.map((category) => [
+                category,
+                t(`admin.reviewInput.category_${category}`),
+              ]),
+            )}
           >
             <SelectTrigger data-testid="review-input-category" disabled={disabled}>
               <SelectValue />

@@ -193,6 +193,15 @@ test("server-side filters narrow the personal list without losing event freshnes
   await page.getByTestId("filter-keyword").fill("筛选验收");
   await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 8_000 });
 
+  // The state filter's trigger echoes the translated label, never the raw
+  // value (owner issue: the box showed literal "all").
+  await page.getByTestId("filter-state").click();
+  await page.getByRole("option", { name: "执行中" }).click();
+  await expect(page.getByTestId("filter-state")).toContainText("执行中");
+  await page.getByTestId("filter-state").click();
+  await page.getByRole("option", { name: "全部" }).click();
+  await expect(page.getByTestId("filter-state")).toContainText("全部");
+
   // A keyword that matches nothing flips to the filtered-empty copy.
   await page.getByTestId("filter-keyword").fill("绝不匹配的词");
   await expect(page.getByTestId("orders-empty")).toContainText("没有符合筛选条件的工单", {

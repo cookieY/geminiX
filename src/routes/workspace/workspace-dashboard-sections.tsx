@@ -229,6 +229,12 @@ function OrderTrendCard({
             onValueChange={(value) => {
               if (value) onWindowChange(Number(value));
             }}
+            items={Object.fromEntries(
+              WINDOW_OPTIONS.map((days) => [
+                String(days),
+                t("dashboard.admin.windowDays", { days }),
+              ]),
+            )}
           >
             <SelectTrigger
               data-testid="admin-trend-window"
