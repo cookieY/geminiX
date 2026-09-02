@@ -120,8 +120,22 @@ export default function LoginPage() {
     (error as { err_code: unknown }).err_code === ADMIN_LOCKED_CODE;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <BrandLogo />
+    // Owner ruling 2026-09-02: two-column auth layout per the reference
+    // image — a brand panel with a color-shifting corner glow on the left
+    // and the sign-in card on the right. Demo copy, fake logos and social
+    // sign-in buttons from the reference stay out (design spec §3).
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <div className="relative hidden overflow-hidden border-r border-border lg:flex lg:flex-col lg:justify-center lg:gap-5 p-12">
+        <div className="auth-glow" aria-hidden />
+        <BrandLogo className="relative z-10" />
+        <h2 className="relative z-10 mt-6 text-4xl font-semibold tracking-tight">
+          {t("app.name")}
+        </h2>
+        <p className="relative z-10 max-w-md text-lg text-muted-foreground">
+          {t("login.brandTagline")}
+        </p>
+      </div>
+      <div className="flex items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
@@ -235,6 +249,7 @@ export default function LoginPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

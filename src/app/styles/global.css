@@ -55,6 +55,8 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-active-bg: var(--sidebar-active-bg);
   --color-sidebar-active-fg: var(--sidebar-active-fg);
+  --color-chart-series-1: var(--chart-1);
+  --color-chart-series-2: var(--chart-2);
   --color-chart-series-user: var(--chart-series-user);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -288,5 +290,41 @@ html[data-card-shadow="false"] [data-slot="card"] {
 [data-sidebar-type="true"] [data-slot="sidebar"][data-collapsible="icon"] {
   .sidebar-box .hide-menu {
     display: none;
+  }
+}
+
+/*
+ * Login page color-shifting glow (owner ruling 2026-09-02): a blurred blob
+ * hugging the top-left corner, drifting and hue-rotating through the palette
+ * (pink/purple in light, gold/amber phases in dark). Static under
+ * prefers-reduced-motion so screenshot baselines stay byte-stable.
+ */
+@keyframes auth-glow-drift {
+  0% {
+    transform: translate3d(-18%, -12%, 0) scale(1);
+    filter: hue-rotate(0deg);
+  }
+  33% {
+    transform: translate3d(6%, 4%, 0) scale(1.12);
+    filter: hue-rotate(120deg);
+  }
+  66% {
+    transform: translate3d(-6%, 10%, 0) scale(1.05);
+    filter: hue-rotate(240deg);
+  }
+  100% {
+    transform: translate3d(-18%, -12%, 0) scale(1);
+    filter: hue-rotate(360deg);
+  }
+}
+
+.auth-glow {
+  @apply pointer-events-none absolute -top-40 -left-32 size-[560px] rounded-full bg-chart-series-1/40 opacity-70 blur-3xl;
+  animation: auth-glow-drift 16s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-glow {
+    animation: none;
   }
 }

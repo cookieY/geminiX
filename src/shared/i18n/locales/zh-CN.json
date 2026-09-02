@@ -74,7 +74,8 @@
       "username": "请输入用户名",
       "password": "请输入密码"
     },
-    "noMethods": "登录方式不可用"
+    "noMethods": "登录方式不可用",
+    "brandTagline": "数据库变更管理与 SQL 审核平台"
   },
   "workspace": {
     "placeholderTitle": "工作台内容尚未交付",
