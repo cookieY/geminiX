@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { buttonVariants } from "@/shared/components/ui/button";
 import { summarizeReleaseNotes, type LatestRelease } from "@/routes/workspace/release-notes";
@@ -56,21 +55,9 @@ export function ReleaseBanner({ release }: { release: LatestRelease | undefined 
               {release.tag_name}
             </p>
           </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <p className="text-muted-foreground text-sm" data-testid="release-notes-excerpt">
-                  {summarizeReleaseNotes(release.body ?? "", NOTES_EXCERPT_LIMIT)}
-                </p>
-              }
-            />
-            {/* Full untruncated notes while hovering; closes on leave. */}
-            <TooltipContent data-testid="release-notes-full">
-              <span className="block max-h-64 max-w-lg overflow-y-auto whitespace-pre-line">
-                {release.body ?? ""}
-              </span>
-            </TooltipContent>
-          </Tooltip>
+          <p className="text-muted-foreground text-sm" data-testid="release-notes-excerpt">
+            {summarizeReleaseNotes(release.body ?? "", NOTES_EXCERPT_LIMIT)}
+          </p>
         </div>
         <a
           href={release.html_url}

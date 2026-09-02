@@ -32,7 +32,6 @@ function SidebarGroupSection({ group }: { group: NavGroup }) {
               <SidebarMenuButton
                 render={<Link to={item.to} />}
                 isActive={pathname === item.to}
-                tooltip={t(item.labelKey)}
               >
                 <item.icon />
                 {/* hide-menu lets the icon-mode hover expansion re-show the label */}

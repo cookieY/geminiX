@@ -48,7 +48,6 @@ describe("mock scenario store", () => {
       "review-partial",
       "review-provider-failed",
       "order-partial-execution",
-      "order-gallery",
       "execution-partial",
       "execution-unknown",
       "execution-ghost",

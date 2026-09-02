@@ -104,9 +104,13 @@ test("any rejection immediately rejects the whole order and empties the queue", 
     timeout: 8_000,
   });
 
-  // The rejected order no longer awaits any decision.
+  // The rejected order no longer awaits any decision. (The gallery's demo
+  // approval rows legitimately remain in the queue.)
   await page.getByRole("link", { name: "工单审批" }).click();
-  await expect(page.getByTestId("approval-queue-empty")).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId("approval-queue-table")).toBeVisible({ timeout: 8_000 });
+  await expect(
+    page.getByTestId("approval-queue-row").filter({ hasText: "审批拒绝草稿" }),
+  ).toHaveCount(0);
 });
 
 test("a concurrent peer decision is recoverable: the UI converges on the real state", async ({
@@ -144,7 +148,9 @@ test("a concurrent peer decision is recoverable: the UI converges on the real st
   });
   // Back on the queue the order no longer awaits anyone's decision.
   await page.getByRole("link", { name: "工单审批" }).click();
-  await expect(page.getByTestId("approval-queue-empty")).toBeVisible({ timeout: 8_000 });
+  await expect(
+    page.getByTestId("approval-queue-row").filter({ hasText: "并发审批草稿" }),
+  ).toHaveCount(0);
 });
 
 test("the approval surface offers no transfer, add-signer or remove-signer entry", async ({

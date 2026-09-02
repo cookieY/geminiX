@@ -682,7 +682,7 @@ function seedPartialExecutionOrder(): void {
 //
 // 40 demonstration orders covering every legal change_order state (2-3 per
 // state) so each state's list/detail rendering can be inspected at a glance.
-// Enabled by the "order-gallery" scenario (yearning-mock-scenario). All
+// Seeded in every browser mock world; vitest stays gallery-free. All
 // orders belong to the fixture owner so the relation-scoped list shows them
 // for every session shape; timestamps are anchored on the screenshot clock
 // pin for byte-stable baselines.
@@ -708,6 +708,7 @@ const GALLERY_STATES: Array<FixtureOrder["state"]> = [
   "invalid",
 ];
 
+const GALLERY_FIRST_ID = "7e6f1a2b-0000-4000-8000-900000000001";
 const GALLERY_DATASOURCES = ["staging-mysql", "prod-mysql", "report-pg"];
 const GALLERY_TOTAL = 40;
 
@@ -779,12 +780,16 @@ function isTerminalOrderState(state: FixtureOrder["state"]): boolean {
 }
 
 function seedOrderGallery(): void {
-  if (readStoredScenario() !== "order-gallery" || world.orders.size > 0) return;
+  // Browser mock worlds (dev + e2e build) always carry the gallery so the
+  // owner can inspect every state without any console setup. Vitest contract
+  // tests pin exact list shapes and run with MODE="test" — no gallery there.
+  if (import.meta.env?.MODE === "test") return;
+  if (world.orders.has(GALLERY_FIRST_ID)) return;
   for (let index = 0; index < GALLERY_TOTAL; index++) {
     const state = GALLERY_STATES[index % GALLERY_STATES.length];
     if (state === undefined) continue;
     const round = Math.floor(index / GALLERY_STATES.length) + 1;
-    const id = `7e6f1a2b-0000-4000-8000-9000000000${String(index + 1).padStart(2, "0")}`;
+    const id = index === 0 ? GALLERY_FIRST_ID : `7e6f1a2b-0000-4000-8000-9000000000${String(index + 1).padStart(2, "0")}`;
     const stageId = `${id.slice(0, -2)}s${String(round)}`;
     const submittedAt = gallerySubmittedAt(index);
     const terminal = isTerminalOrderState(state);

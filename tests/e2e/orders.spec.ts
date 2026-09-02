@@ -115,7 +115,9 @@ test("the personal order list updates in place without duplicate rows", async ({
   // mock world (documented F4 limitation §11.4).
   await page.getByRole("link", { name: "我的工单" }).click();
   await expect(page.getByTestId("mine-orders-table")).toBeVisible();
-  await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
+  // The submitted order renders exactly once (event redelivery must not
+  // duplicate rows) — the gallery rows around it are irrelevant here.
+  await expect(page.getByTestId("mine-order-row").filter({ hasText: "列表去重草稿" })).toHaveCount(1);
 
   const orderId = await page.evaluate(async () => {
     const response = await fetch("/change-orders");
@@ -137,7 +139,7 @@ test("the personal order list updates in place without duplicate rows", async ({
   }, orderId);
   expect(withdrawn.err_code).toBe(0);
 
-  await expect(page.getByTestId("mine-order-row")).toHaveCount(1, { timeout: 8_000 });
+  await expect(page.getByTestId("mine-order-row").filter({ hasText: "列表去重草稿" })).toHaveCount(1, { timeout: 8_000 });
   await expect(page.getByTestId("mine-orders-table")).toContainText("已撤回", {
     timeout: 8_000,
   });
@@ -185,7 +187,7 @@ test("server-side filters narrow the personal list without losing event freshnes
 
   await page.getByRole("link", { name: "我的工单" }).click();
   await expect(page.getByTestId("mine-orders-table")).toBeVisible();
-  await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
+  await expect(page.getByTestId("mine-order-row").filter({ hasText: "筛选验收草稿" })).toHaveCount(1);
 
   // A keyword that matches the submitted order keeps the row.
   await page.getByTestId("filter-keyword").fill("筛选验收");
@@ -219,7 +221,7 @@ test("server-side filters narrow the personal list without losing event freshnes
   await expect(page.getByTestId("mine-orders-table")).toContainText("已撤回", {
     timeout: 8_000,
   });
-  await expect(page.getByTestId("mine-order-row")).toHaveCount(1);
+  await expect(page.getByTestId("mine-order-row").filter({ hasText: "筛选验收草稿" })).toHaveCount(1);
 });
 
 test("the order gallery scenario serves 40 demo orders across every state", async ({
@@ -227,10 +229,7 @@ test("the order gallery scenario serves 40 demo orders across every state", asyn
 }) => {
   // Owner issue-collection #5: 40 demonstration orders covering all 18
   // change_order states so each state's rendering can be inspected at a
-  // glance (mock scenario order-gallery).
-  await page.addInitScript(() => {
-    window.localStorage.setItem("yearning-mock-scenario", "order-gallery");
-  });
+  // glance. The gallery ships in every browser mock world — no setup.
   await mockSession(page, "admin");
   await page.goto("/changes/mine");
   await expect(page.getByTestId("mine-order-row")).toHaveCount(40, { timeout: 10_000 });
