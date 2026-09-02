@@ -94,8 +94,10 @@ for (const pageType of KEY_PAGE_TYPES) {
 
     // Chunk isolation per surface (defense in depth over the release-build
     // structural gate): normal-user pages never fetch an admin/migration
-    // chunk; pages without an editor never fetch a Monaco chunk either.
-    const ADMIN_CHUNK = /\/assets\/(admin-|admin-migrations-)/;
+    // chunk; pages without an editor never fetch a Monaco chunk either; the
+    // workspace trend chart (recharts) is admin-only and stays off
+    // normal-user pages too.
+    const ADMIN_CHUNK = /\/assets\/(admin-|admin-migrations-|workspace-order-trend-chart-|recharts-)/;
     if (pageType.session === "default") {
       for (const url of scriptRequests) {
         expect(url, `admin chunk on normal-user page ${pageType.name}: ${url}`).not.toMatch(

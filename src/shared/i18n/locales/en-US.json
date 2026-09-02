@@ -77,7 +77,8 @@
     "placeholderTitle": "Workspace content is not delivered yet",
     "placeholderDesc": "The home overview arrives with the Dashboard work package.",
     "greeting": "Welcome back, {{name}}",
-    "refreshedAt": "Refreshed {{time}}"
+    "refreshedAt": "Refreshed {{time}}",
+    "refresh": "Refresh"
   },
   "states": {
     "loading": "Loading",
@@ -1118,7 +1119,14 @@
       "reviewQuality": "Review quality",
       "systemHealth": "System health",
       "orderTotal": "Orders",
-      "queryTotal": "Query executions",
+      "orderTrend": "Order trend",
+      "windowLabel": "Statistics window",
+      "windowDays": "Last {{days}} days",
+      "emptyTrend": "No orders in this window yet",
+      "trendAria": "Order trend line chart, {{total}} orders across the last {{days}} days",
+      "approvalP50": "Approval p50 (ms)",
+      "approvalP95": "Approval p95 (ms)",
+      "queryTotal": "Queries",
       "userTotal": "Users",
       "datasourceTotal": "Datasources",
       "completed": "Completed",

@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Hourglass } from "lucide-react";
+import { Hourglass, RefreshCw } from "lucide-react";
 import { listCurrentUserFlows } from "@/api/generated/client/change-drafts/change-drafts";
 import { FlowType } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
+import { Button } from "@/shared/components/ui/button";
 import {
   AdminDashboardSection,
   AnnouncementBanner,
@@ -50,11 +51,25 @@ function useCurrentUserFlows(flowType: FlowType) {
 export default function WorkspacePage() {
   const { t } = useTranslation();
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const reviewFlows = useCurrentUserFlows(FlowType.change_review);
   const queryFlows = useCurrentUserFlows(FlowType.query_access);
   const isAdmin = user?.can_access_admin === true;
   const dashboardQuery = useMyDashboardQuery(user !== null);
   const announcementQuery = useCurrentAnnouncementQuery(user !== null);
+
+  // Dashboard PRD §9: 60s auto-refresh plus a manual refresh control.
+  const refreshing =
+    dashboardQuery.isFetching ||
+    announcementQuery.isFetching ||
+    reviewFlows.isFetching ||
+    queryFlows.isFetching;
+  const refreshAll = () => {
+    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["auth", "flows"] });
+  };
 
   const hasFlowGrants =
     (reviewFlows.data?.items.length ?? 0) > 0 || (queryFlows.data?.items.length ?? 0) > 0;
@@ -65,19 +80,31 @@ export default function WorkspacePage() {
   return (
     <div className="flex flex-col gap-5" data-testid="workspace-page">
       <PageBreadcrumb title={t("nav.home")} />
-      <header>
-        <h1 className="text-2xl font-semibold">
-          {t("workspace.greeting", { name: user?.display_name ?? user?.username ?? "" })}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {dashboardQuery.data === undefined
-            ? ""
-            : t("workspace.refreshedAt", {
-                time: dashboardQuery.data.refreshed_at
-                  .replace("T", " ")
-                  .replace("Z", " UTC"),
-              })}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {t("workspace.greeting", { name: user?.display_name ?? user?.username ?? "" })}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {dashboardQuery.data === undefined
+              ? ""
+              : t("workspace.refreshedAt", {
+                  time: dashboardQuery.data.refreshed_at
+                    .replace("T", " ")
+                    .replace("Z", " UTC"),
+                })}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("workspace.refresh")}
+          data-testid="workspace-refresh"
+          disabled={refreshing}
+          onClick={refreshAll}
+        >
+          <RefreshCw className="size-4" />
+        </Button>
       </header>
       {isZeroPermission && (
         <Empty className="rounded-xl border">

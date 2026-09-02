@@ -5,6 +5,14 @@ import {
   getGetMyDashboardResponseBusinessErrorResponseMock,
   getGetMyDashboardResponseMyDashboardSuccessMock,
 } from "@/api/generated/mocks/dashboard/dashboard.msw";
+import {
+  getGetOperationsDashboardMockHandler,
+  getGetOperationsDashboardResponseOperationsDashboardSuccessMock,
+  getGetReviewQualityDashboardMockHandler,
+  getGetReviewQualityDashboardResponseReviewQualityDashboardSuccessMock,
+  getGetSystemHealthDashboardMockHandler,
+  getGetSystemHealthDashboardResponseSystemHealthDashboardSuccessMock,
+} from "@/api/generated/mocks/administration/administration.msw";
 import type { BusinessErrorCode } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import type { SetupWorker } from "msw/browser";
 import type { SetupServer } from "msw/node";
@@ -48,6 +56,98 @@ function codeByName(name: string): BusinessErrorCode {
     if (entry.name === name) return Number(code) as BusinessErrorCode;
   }
   throw new Error(`unknown business error name: ${name}`);
+}
+
+// Reference-image home fixtures (owner layout-alignment ruling 2026-09-02,
+// RCP-20260828-DASHBOARD-REFERENCE surfaces): deterministic, schema-valid
+// admin dashboard payloads anchored on the screenshot clock pin, so the
+// trend chart and stat cards render byte-stable baselines. window_days is
+// honored so the window selector provably round-trips through the client.
+const FIXTURE_WINDOW_END = "2026-09-01";
+
+function shiftDay(isoDate: string, deltaDays: number): string {
+  return new Date(Date.parse(`${isoDate}T00:00:00Z`) + deltaDays * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function trendValue(dayIndex: number): number {
+  // Deterministic pseudo-traffic with a weekly-ish rhythm — never random.
+  return ((dayIndex * 7) % 11) + (dayIndex % 5 === 0 ? 3 : 0);
+}
+
+function fixtureWindow(days: number) {
+  return {
+    window_start: shiftDay(FIXTURE_WINDOW_END, -(days - 1)),
+    window_end: FIXTURE_WINDOW_END,
+    system_timezone: "UTC",
+    refreshed_at: DASHBOARD_DATA.data.refreshed_at,
+    completeness: "complete" as const,
+    unavailable_metric_keys: [] as string[],
+  };
+}
+
+/** Deterministic admin dashboards backing the reference-image home sections
+ * (operations trend + stat cards, review quality, system health). */
+function adminDashboardHandlers() {
+  return [
+    getGetOperationsDashboardMockHandler((info) => {
+      const requested = Number(new URL(info.request.url).searchParams.get("window_days"));
+      const days = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 90) : 30;
+      return getGetOperationsDashboardResponseOperationsDashboardSuccessMock({
+        request_id: DEMO_REQUEST_ID,
+        data: {
+          meta: fixtureWindow(days),
+          change_order_total: 47,
+          ddl_statement_total: 12,
+          dml_statement_total: 35,
+          completed_total: 41,
+          failed_total: 3,
+          partial_failed_total: 2,
+          query_execution_total: 23981,
+          user_total: 12,
+          datasource_total: 5,
+          approval_duration_p50_ms: 18_000,
+          approval_duration_p95_ms: 96_000,
+          order_trend: Array.from({ length: days }, (_, i) => ({
+            day: shiftDay(FIXTURE_WINDOW_END, i - (days - 1)),
+            value: trendValue(i),
+          })),
+        },
+      });
+    }),
+    getGetReviewQualityDashboardMockHandler(
+      getGetReviewQualityDashboardResponseReviewQualityDashboardSuccessMock({
+        request_id: DEMO_REQUEST_ID,
+        data: {
+          meta: fixtureWindow(30),
+          ready_total: 21,
+          blocked_total: 1,
+          partial_total: 2,
+          failed_total: 3,
+          review_duration_p50_ms: 42_000,
+          review_duration_p95_ms: 180_000,
+          fingerprint_coverage_ratio: 0.87,
+          finding_severity_counts: { low: 9, medium: 4, high: 2, critical: 0 },
+        },
+      }),
+    ),
+    getGetSystemHealthDashboardMockHandler(
+      getGetSystemHealthDashboardResponseSystemHealthDashboardSuccessMock({
+        request_id: DEMO_REQUEST_ID,
+        data: {
+          checked_at: DASHBOARD_DATA.data.refreshed_at,
+          components: (
+            ["postgresql", "scheduler", "outbox", "notification", "ai_provider", "datasource"] as const
+          ).map((component) => ({
+            component,
+            status: "healthy" as const,
+            checked_at: DASHBOARD_DATA.data.refreshed_at,
+          })),
+        },
+      }),
+    ),
+  ];
 }
 
 export function scenarioHandlers(scenario: MockScenario) {
@@ -122,6 +222,7 @@ export function baseHandlers() {
         ...DASHBOARD_DATA,
       }),
     ),
+    ...adminDashboardHandlers(),
     ...authMockHandlers(),
     ...reviewFixtureHandlers(),
     ...adminFixtureHandlers(),

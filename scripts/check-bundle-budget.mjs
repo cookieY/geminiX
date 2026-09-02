@@ -63,13 +63,15 @@ if (cssKib > BUDGET_CSS_KIB) {
   violations.push(`initial CSS ${cssKib.toFixed(1)} KiB gzip exceeds budget ${BUDGET_CSS_KIB} KiB`);
 }
 
-// Structural: admin/migration workbench, Monaco and the mock world must never
-// sit on the first screen's critical path.
+// Structural: admin/migration workbench, Monaco, the workspace trend chart
+// and the mock world must never sit on the first screen's critical path.
 const FORBIDDEN_INITIAL = [
   { pattern: /^admin-/, why: "admin surface chunk" },
   { pattern: /^admin-migrations-/, why: "migration workbench chunk" },
   { pattern: /^sql-editor-panel-/, why: "Monaco editor chunk" },
   { pattern: /^editor\.worker-/, why: "Monaco worker chunk" },
+  { pattern: /^workspace-order-trend-chart-/, why: "workspace trend chart chunk" },
+  { pattern: /(^|-)recharts(-|\.|$)/, why: "recharts charting chunk" },
   { pattern: /(^|-)(mock|msw|fixture)(-|\.|$)/, why: "mock/fixture chunk" },
 ];
 for (const row of rows) {

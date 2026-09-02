@@ -1,6 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { Suspense, lazy, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, FileStack, Hourglass, ShieldCheck, Stamp, Terminal } from "lucide-react";
+import {
+  AlertTriangle,
+  Database,
+  FileStack,
+  Hourglass,
+  ShieldCheck,
+  Stamp,
+  Terminal,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { getMyDashboard } from "@/api/generated/client/dashboard/dashboard";
 import {
   getOperationsDashboard,
@@ -16,13 +27,32 @@ import type {
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/shared/components/ui/empty";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+
+const WorkspaceOrderTrendChart = lazy(() => import("./workspace-order-trend-chart"));
 
 /**
- * Workspace dashboard sections (dashboard PRD §2/§9; UI spec §5.1 首页).
- * Every number comes from the declared dashboards API — no fabricated
- * metrics, trends or totals. The 60s auto-refresh default comes from the
- * PRD; the announcement renders the server-sanitized HTML (sanitizer
- * authority stays server-side, dashboard PRD §6).
+ * Workspace dashboard sections (dashboard PRD §2/§3/§9; UI spec §5.1 首页,
+ * §7.6). The admin surfaces follow the frozen reference image layout — trend
+ * chart hero, then the 查询次数/用户数/数据源 stat cards, then the remaining
+ * operations statistics (owner layout-alignment ruling 2026-09-02). Every
+ * number comes from the declared dashboards API — no fabricated metrics,
+ * trends or totals. The 60s auto-refresh default comes from the PRD; the
+ * announcement renders the server-sanitized HTML (sanitizer authority stays
+ * server-side, dashboard PRD §6).
  */
 
 export function useMyDashboardQuery(enabled: boolean) {
@@ -30,6 +60,19 @@ export function useMyDashboardQuery(enabled: boolean) {
     queryKey: ["dashboard", "me"],
     queryFn: async () => (await getMyDashboard()) as unknown as MyDashboard,
     enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useOperationsDashboardQuery(windowDays: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "dashboard", "operations", windowDays],
+    queryFn: async () =>
+      (await getOperationsDashboard({ window_days: windowDays })) as unknown as OperationsDashboard,
+    enabled,
+    // Window switches keep the previous chart on screen instead of
+    // collapsing the card to a skeleton on every refetch.
+    placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
 }
@@ -70,6 +113,23 @@ function CountCard({ label, value, testId, icon }: CountCardProps) {
           {value === undefined ? "—" : value}
         </CardTitle>
       </CardHeader>
+    </Card>
+  );
+}
+
+/** Reference-image stat card: label + value left, framed icon right. */
+function OperationsStatCard({ label, value, testId, icon }: CountCardProps) {
+  return (
+    <Card data-testid="workspace-admin-stat-card">
+      <CardContent className="flex flex-row items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-normal">{label}</p>
+          <p className="text-2xl font-semibold tabular-nums" data-testid={testId}>
+            {value === undefined ? "—" : value}
+          </p>
+        </div>
+        <div className="rounded-md border border-border p-2.5">{icon}</div>
+      </CardContent>
     </Card>
   );
 }
@@ -129,15 +189,19 @@ export function AnnouncementBanner({ publication }: { publication: AnnouncementP
   if (publication === null) return null;
   return (
     <Card data-testid="workspace-announcement">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{publication.revision.title}</CardTitle>
-        <CardDescription>
-          {t("dashboard.announcement.publishedAt", {
-            time: publication.published_at.replace("T", " ").replace("Z", " UTC"),
-          })}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Static marker dot — the template banner's animate-ping is
+              deliberately not copied: baselines are byte-compared. */}
+          <span className="bg-chart-1 size-2 rounded-full" aria-hidden />
+          <p className="text-sm font-medium">{publication.revision.title}</p>
+          <span className="bg-border size-1 rounded-full" aria-hidden />
+          <p className="text-muted-foreground text-sm font-normal">
+            {t("dashboard.announcement.publishedAt", {
+              time: publication.published_at.replace("T", " ").replace("Z", " UTC"),
+            })}
+          </p>
+        </div>
         {/* Server-sanitized HTML (sanitizer_policy_version recorded on the
             revision); the client renders, it does not re-sanitize. */}
         <div
@@ -149,14 +213,93 @@ export function AnnouncementBanner({ publication }: { publication: AnnouncementP
   );
 }
 
+const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
+
+function OrderTrendCard({
+  operations,
+  windowDays,
+  onWindowChange,
+}: {
+  operations: OperationsDashboard | undefined;
+  windowDays: number;
+  onWindowChange: (days: number) => void;
+}) {
+  const { t } = useTranslation();
+  const meta = operations?.meta;
+  return (
+    <Card data-testid="workspace-admin-operations">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingUp size={16} className="text-muted-foreground" />
+          {t("dashboard.admin.orderTrend")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-normal">{t("dashboard.admin.orderTotal")}</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tabular-nums" data-testid="admin-order-total">
+                {operations === undefined ? "—" : operations.change_order_total}
+              </span>
+              {meta !== undefined && (
+                <span className="text-muted-foreground text-xs">
+                  {t("dashboard.admin.window", {
+                    from: meta.window_start,
+                    to: meta.window_end,
+                    zone: meta.system_timezone,
+                  })}
+                  {meta.completeness === "partial" ? ` · ${t("dashboard.admin.partial")}` : ""}
+                </span>
+              )}
+            </div>
+          </div>
+          <Select
+            value={String(windowDays)}
+            onValueChange={(value) => {
+              if (value) onWindowChange(Number(value));
+            }}
+          >
+            <SelectTrigger
+              data-testid="admin-trend-window"
+              aria-label={t("dashboard.admin.windowLabel")}
+              className="h-auto w-fit cursor-pointer gap-1.5 px-3 py-2 text-sm font-medium"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WINDOW_OPTIONS.map((days) => (
+                <SelectItem key={days} value={String(days)} className="cursor-pointer">
+                  {t("dashboard.admin.windowDays", { days })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {operations !== undefined && operations.order_trend.length === 0 ? (
+          // Dashboard PRD §6: charts handle empty data explicitly.
+          <Empty className="rounded-lg border border-dashed">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <TrendingUp />
+              </EmptyMedia>
+              <EmptyTitle>{t("dashboard.admin.emptyTrend")}</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Suspense fallback={<Skeleton className="h-[240px] w-full" aria-hidden />}>
+            <WorkspaceOrderTrendChart points={operations?.order_trend ?? []} />
+          </Suspense>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
   const { t } = useTranslation();
-  const operations = useQuery({
-    queryKey: ["admin", "dashboard", "operations"],
-    queryFn: async () => (await getOperationsDashboard()) as unknown as OperationsDashboard,
-    enabled,
-    refetchInterval: 60_000,
-  });
+  const [windowDays, setWindowDays] = useState(30);
+  const operations = useOperationsDashboardQuery(windowDays, enabled);
   const quality = useQuery({
     queryKey: ["admin", "dashboard", "review-quality"],
     queryFn: async () => (await getReviewQualityDashboard()) as unknown as ReviewQualityDashboard,
@@ -171,30 +314,42 @@ export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
   });
 
   if (!enabled) return null;
-  const completeness = operations.data?.meta.completeness;
 
   return (
-    <section className="flex flex-col gap-3" data-testid="workspace-admin-dashboards">
+    <div className="flex flex-col gap-3" data-testid="workspace-admin-dashboards">
+      <OrderTrendCard
+        operations={operations.data}
+        windowDays={windowDays}
+        onWindowChange={setWindowDays}
+      />
+      <div className="grid gap-3 sm:grid-cols-3" data-testid="workspace-admin-stat-cards">
+        <OperationsStatCard
+          label={t("dashboard.admin.queryTotal")}
+          value={operations.data?.query_execution_total}
+          testId="admin-query-total"
+          icon={<Terminal className="size-4" />}
+        />
+        <OperationsStatCard
+          label={t("dashboard.admin.userTotal")}
+          value={operations.data?.user_total}
+          testId="admin-user-total"
+          icon={<Users className="size-4" />}
+        />
+        <OperationsStatCard
+          label={t("dashboard.admin.datasourceTotal")}
+          value={operations.data?.datasource_total}
+          testId="admin-datasource-total"
+          icon={<Database className="size-4" />}
+        />
+      </div>
       <h2 className="text-base font-semibold">{t("dashboard.admin.title")}</h2>
-      {operations.data !== undefined && (
-        <p className="text-muted-foreground text-xs">
-          {t("dashboard.admin.window", {
-            from: operations.data.meta.window_start,
-            to: operations.data.meta.window_end,
-            zone: operations.data.meta.system_timezone,
-          })}
-          {completeness === "partial" ? ` · ${t("dashboard.admin.partial")}` : ""}
-        </p>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="workspace-admin-operations">
-        <CountCard label={t("dashboard.admin.orderTotal")} value={operations.data?.change_order_total} testId="admin-order-total" icon={<FileStack className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.queryTotal")} value={operations.data?.query_execution_total} testId="admin-query-total" icon={<Terminal className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.userTotal")} value={operations.data?.user_total} testId="admin-user-total" icon={<ShieldCheck className="size-3.5" />} />
-        <CountCard label={t("dashboard.admin.datasourceTotal")} value={operations.data?.datasource_total} testId="admin-datasource-total" icon={<Terminal className="size-3.5" />} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <CountCard label={t("dashboard.admin.completed")} value={operations.data?.completed_total} testId="admin-completed-total" icon={<ShieldCheck className="size-3.5" />} />
         <CountCard label={t("dashboard.admin.failed")} value={operations.data?.failed_total} testId="admin-failed-total" icon={<AlertTriangle className="size-3.5" />} />
         <CountCard label={t("dashboard.admin.partialFailed")} value={operations.data?.partial_failed_total} testId="admin-partial-failed-total" icon={<AlertTriangle className="size-3.5" />} />
         <CountCard label={t("dashboard.admin.ddlStatements")} value={operations.data?.ddl_statement_total} testId="admin-ddl-total" icon={<FileStack className="size-3.5" />} />
+        <CountCard label={t("dashboard.admin.approvalP50")} value={operations.data?.approval_duration_p50_ms} testId="admin-approval-p50" icon={<Hourglass className="size-3.5" />} />
+        <CountCard label={t("dashboard.admin.approvalP95")} value={operations.data?.approval_duration_p95_ms} testId="admin-approval-p95" icon={<Hourglass className="size-3.5" />} />
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         <Card data-testid="workspace-admin-quality">
@@ -239,6 +394,6 @@ export function AdminDashboardSection({ enabled }: { enabled: boolean }) {
           </CardContent>
         </Card>
       </div>
-    </section>
+    </div>
   );
 }
