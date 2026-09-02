@@ -96,6 +96,17 @@ addEventListener('fetch', function (event) {
     return
   }
 
+  // Yearning dev guard (hand-applied on top of `npx msw init public/`; reapply
+  // after regenerating this file): Vite dev serves source modules under
+  // /src/..., and wildcard handler paths like */change-drafts/:draftId —
+  // including ones emitted by the orval-generated mocks — false-match those
+  // two-segment shapes (…/client/change-drafts/change-drafts.ts). Mocking a
+  // module script answers it with JSON and kills lazy route loading in dev.
+  // The v4 API never lives under /src/, so nothing is ever mocked there.
+  if (new URL(event.request.url).pathname.startsWith('/src/')) {
+    return
+  }
+
   // Opening the DevTools triggers the "only-if-cached" request
   // that cannot be handled by the worker. Bypass such requests.
   if (
