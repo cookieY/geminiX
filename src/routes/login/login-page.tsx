@@ -129,31 +129,33 @@ export default function LoginPage() {
         <div className="auth-glow" aria-hidden />
         <div className="auth-glow-accent" aria-hidden />
         <div className="auth-glow-veil" aria-hidden />
-        <div className="relative z-10 flex w-fit items-center gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm">
-          <span className="bg-chart-series-user size-2 rounded-full" aria-hidden />
-          {t("login.brandBadge")}
-        </div>
-        <h2 className="relative z-10 mt-8 text-5xl leading-tight font-semibold tracking-tight whitespace-pre-line">
-          {t("login.brandTitle").split("\n")[0]}
-          {"\n"}
-          <span className="whitespace-nowrap">
-            都
-            <span className="inline-flex" aria-hidden>
-              {["安", "全", "可", "控"].map((char) => (
-                <span key={char} className="flip-slot">
-                  <span>{char}</span>
-                </span>
-              ))}
+        <div className="relative z-10 flex flex-col gap-6 lg:ml-[15%]">
+          <div className="relative z-10 flex w-fit items-center gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm">
+            <span className="bg-chart-series-user size-2 rounded-full" aria-hidden />
+            {t("login.brandBadge")}
+          </div>
+          <h2 className="relative z-10 text-5xl leading-tight font-semibold tracking-tight whitespace-pre-line">
+            {t("login.brandTitle").split("\n")[0]}
+            {"\n"}
+            <span className="whitespace-nowrap">
+              都
+              <span className="inline-flex" aria-hidden>
+                {["安", "全", "可", "控"].map((char) => (
+                  <span key={char} className="flip-slot">
+                    <span>{char}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="sr-only">安全可控</span>
             </span>
-            <span className="sr-only">安全可控</span>
-          </span>
-        </h2>
-        <p className="relative z-10 max-w-md text-lg text-muted-foreground">
-          {t("login.brandDescription")}
-        </p>
+          </h2>
+          <p className="relative z-10 max-w-md text-lg text-muted-foreground">
+            {t("login.brandDescription")}
+          </p>
+        </div>
       </div>
-      <div className="flex items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
+      <div className="relative z-10 flex items-center justify-center p-6">
+      <Card className="w-full max-w-sm rounded-2xl">
         <CardHeader className="items-center text-center">
           <BrandLogo className="mx-auto mb-2" />
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
@@ -183,6 +185,7 @@ export default function LoginPage() {
                     key={provider.key}
                     type="button"
                     variant="outline"
+                    className="rounded-lg"
                     render={
                       <a href={provider.start_url} className="w-full">
                         {t("login.oidcButton", { label: provider.label })}
@@ -194,6 +197,7 @@ export default function LoginPage() {
                 <Button
                   type="button"
                   variant="outline"
+                  className="rounded-lg"
                   aria-pressed={mode === "ldap"}
                   onClick={() => {
                     switchMode(mode === "ldap" ? "local" : "ldap");
@@ -219,6 +223,7 @@ export default function LoginPage() {
                   id="username"
                   name="username"
                   autoComplete="username"
+                  className="rounded-lg"
                   value={username}
                   onChange={(event) => {
                     setUsername(event.target.value);
@@ -231,6 +236,7 @@ export default function LoginPage() {
                 <Label htmlFor="password">{t("login.password")}</Label>
                 <Input
                   id="password"
+                  className="rounded-lg"
                   name="password"
                   type="password"
                   autoComplete="current-password"
@@ -258,6 +264,7 @@ export default function LoginPage() {
                 ))}
               <Button
                 type="submit"
+                className="rounded-lg"
                 disabled={loginMutation.isPending || username === "" || password === ""}
               >
                 {loginMutation.isPending ? t("states.loading") : t("login.submit")}

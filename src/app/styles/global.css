@@ -332,20 +332,20 @@ html[data-card-shadow="false"] [data-slot="card"] {
 }
 
 .auth-glow {
-  @apply -top-[45%] left-[-20%] h-[75%] w-[85%] opacity-75;
-  background: radial-gradient(closest-side, var(--chart-series-user), transparent 74%);
+  @apply -top-[28svh] left-[-18vw] h-[95svh] w-[95vw] opacity-80;
+  background: radial-gradient(closest-side, var(--chart-series-user), transparent 82%);
   animation: auth-glow-drift 19s ease-in-out infinite;
 }
 
 .auth-glow-accent {
-  @apply -top-[55%] left-[28%] h-[80%] w-[80%] opacity-60;
-  background: radial-gradient(closest-side, var(--chart-2), transparent 74%);
+  @apply -top-[30svh] left-[30vw] h-[90svh] w-[80vw] opacity-70;
+  background: radial-gradient(closest-side, var(--chart-2), transparent 82%);
   animation: auth-glow-drift 26s ease-in-out infinite reverse;
 }
 
 .auth-glow-veil {
-  @apply top-[10%] left-[6%] h-[62%] w-[72%] opacity-50;
-  background: radial-gradient(closest-side, var(--chart-series-2), transparent 76%);
+  @apply top-[6svh] left-[4vw] h-[75svh] w-[78vw] opacity-60;
+  background: radial-gradient(closest-side, var(--chart-series-2), transparent 84%);
   animation: auth-glow-drift 31s ease-in-out infinite;
   animation-delay: -9s;
 }
