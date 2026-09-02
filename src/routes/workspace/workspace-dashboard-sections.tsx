@@ -223,49 +223,6 @@ export function AnnouncementCard({ publication }: { publication: AnnouncementPub
   );
 }
 
-/** Service runtime status (template "Update" banner slot). System health is
- * the contract surface for "服务当前运行状态"; the release version has no
- * backend endpoint yet, so none is shown. */
-export function SystemStatusBanner({ health }: { health: SystemHealthDashboard | undefined }) {
-  const { t } = useTranslation();
-  if (health === undefined) return null;
-  const total = health.components.length;
-  const unhealthy = health.components.filter((component) => component.status !== "healthy");
-  const healthy = total - unhealthy.length;
-  const dotClass =
-    unhealthy.some((component) => component.status === "unavailable")
-      ? "bg-destructive"
-      : unhealthy.length > 0
-        ? "bg-warning"
-        : "bg-success";
-  return (
-    <Card data-testid="workspace-status-banner" className="py-3">
-      <CardContent className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`size-2 rounded-full ${dotClass}`} aria-hidden />
-            <p className="text-sm font-medium">{t("dashboard.admin.statusTitle")}</p>
-            <span className="bg-border size-1 rounded-full" aria-hidden />
-            <p className="text-sm font-normal">
-              {unhealthy.length === 0
-                ? t("dashboard.admin.statusHealthy")
-                : t("dashboard.admin.statusIssues", { issues: unhealthy.length })}
-            </p>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            {t("dashboard.admin.statusCheckedAt", {
-              time: health.checked_at.replace("T", " ").replace("Z", " UTC"),
-            })}
-          </p>
-        </div>
-        <Badge variant={unhealthy.length === 0 ? "secondary" : "destructive"}>
-          {t("dashboard.admin.statusComponentsOk", { ok: healthy, total })}
-        </Badge>
-      </CardContent>
-    </Card>
-  );
-}
-
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
 
 function OrderTrendCard({
@@ -378,7 +335,6 @@ export function AdminDashboardSection({
 
   return (
     <div className="flex flex-col gap-3" data-testid="workspace-admin-dashboards">
-      <SystemStatusBanner health={health.data} />
       <div className="grid gap-3 lg:grid-cols-12" data-testid="workspace-home-main-row">
         <div className="lg:col-span-7">
           <OrderTrendCard

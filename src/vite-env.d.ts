@@ -7,6 +7,11 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_MOCK?: string;
 }
 
+/** GitHub releases/latest endpoint, inlined by the vite.config.ts define.
+ * Mock/e2e builds get a same-origin MSW fixture path so tests never leave
+ * localhost; production builds get the upstream GitHub API URL. */
+declare const __RELEASE_LATEST_URL__: string;
+
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }

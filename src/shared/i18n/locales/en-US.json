@@ -1137,12 +1137,11 @@
       "blocked": "Blocked {{count}}",
       "partialRuns": "Partial {{count}}",
       "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "Fingerprint coverage {{percent}}%",
-      "statusTitle": "Service status",
-      "statusHealthy": "All components healthy",
-      "statusIssues": "{{issues}} components unhealthy",
-      "statusCheckedAt": "Checked at {{time}}",
-      "statusComponentsOk": "{{ok}}/{{total}} components healthy"
+      "fingerprintCoverage": "Fingerprint coverage {{percent}}%"
+    },
+    "release": {
+      "latestLabel": "Latest release",
+      "details": "Release details"
     }
   },
   "records": {

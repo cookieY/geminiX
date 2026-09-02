@@ -5,6 +5,7 @@ import { listCurrentUserFlows } from "@/api/generated/client/change-drafts/chang
 import { FlowType } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { Button } from "@/shared/components/ui/button";
+import { ReleaseBanner, useLatestReleaseQuery } from "@/routes/workspace/workspace-release-banner";
 import {
   AdminDashboardSection,
   AnnouncementCard,
@@ -56,6 +57,7 @@ export default function WorkspacePage() {
   const isAdmin = user?.can_access_admin === true;
   const dashboardQuery = useMyDashboardQuery(user !== null);
   const announcementQuery = useCurrentAnnouncementQuery(user !== null);
+  const releaseQuery = useLatestReleaseQuery(user !== null);
 
   // Dashboard PRD §9: 60s auto-refresh plus a manual refresh control.
   const refreshing =
@@ -104,6 +106,7 @@ export default function WorkspacePage() {
           <RefreshCw className="size-4" />
         </Button>
       </header>
+      <ReleaseBanner release={releaseQuery.data} />
       {isZeroPermission && (
         <Empty className="rounded-xl border">
           <EmptyHeader>

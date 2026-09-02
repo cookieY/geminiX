@@ -27,12 +27,17 @@ test("admin home renders the order trend chart and the reference stat cards", as
   await expect(page.getByTestId("admin-user-total")).toHaveText("12");
   await expect(page.getByTestId("admin-datasource-total")).toHaveText("5");
   // The reference "Total Assets" slot carries the announcement; the
-  // reference "Update" slot carries the service runtime status (6/6
-  // healthy components in the deterministic fixture).
+  // reference "Update" slot carries the latest GitHub release with the
+  // notes excerpt and a details link (deterministic same-origin fixture).
   await expect(page.getByTestId("workspace-announcement")).toBeVisible();
-  const banner = page.getByTestId("workspace-status-banner");
+  const banner = page.getByTestId("workspace-release-banner");
   await expect(banner).toBeVisible();
-  await expect(banner).toContainText("6/6");
+  await expect(banner.getByTestId("release-tag")).toHaveText("v4.1.0");
+  await expect(banner.getByTestId("release-notes-excerpt")).toContainText("…");
+  await expect(banner.getByRole("link", { name: "更新内容详情" })).toHaveAttribute(
+    "href",
+    "/mock/github-releases/latest/v4.1.0",
+  );
 });
 
 test("the window selector refetches operations with the requested window", async ({
@@ -68,7 +73,8 @@ test("zero-permission home never fetches the admin dashboards", async ({ page })
   await page.goto("/workspace");
   await expect(page.getByTestId("workspace-dashboard-cards")).toBeVisible();
   await expect(page.getByTestId("workspace-announcement")).toBeVisible();
-  await expect(page.getByTestId("workspace-status-banner")).toHaveCount(0);
+  // The release banner is public repository metadata — every user sees it.
+  await expect(page.getByTestId("workspace-release-banner")).toBeVisible();
   await expect(page.getByTestId("workspace-admin-dashboards")).toHaveCount(0);
   expect(adminCalls).toHaveLength(0);
 });

@@ -1137,12 +1137,11 @@
       "blocked": "Blocked {{count}}",
       "partialRuns": "Partial {{count}}",
       "failedRuns": "Failed {{count}}",
-      "fingerprintCoverage": "指纹覆盖率 {{percent}}%",
-      "statusTitle": "服务状态",
-      "statusHealthy": "全部组件运行正常",
-      "statusIssues": "{{issues}} 项组件异常",
-      "statusCheckedAt": "检查于 {{time}}",
-      "statusComponentsOk": "{{ok}}/{{total}} 组件正常"
+      "fingerprintCoverage": "指纹覆盖率 {{percent}}%"
+    },
+    "release": {
+      "latestLabel": "最新版本",
+      "details": "更新内容详情"
     }
   },
   "records": {

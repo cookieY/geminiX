@@ -7,6 +7,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Mirrors the vite.config.ts define: unit suites render the workspace page,
+  // whose release banner reads the inlined GitHub release endpoint. Tests run
+  // with the endpoint disabled (empty string) — they must never hit network.
+  define: {
+    __RELEASE_LATEST_URL__: JSON.stringify(""),
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
