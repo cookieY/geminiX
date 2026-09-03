@@ -23,7 +23,7 @@ export function FullLayout() {
           the inset is capped to the viewport and the content column scrolls
           internally, so the sidebar and the nav can never drift out of
           alignment. */}
-      <SidebarInset className="m-2 h-[calc(100svh-1rem)] overflow-hidden rounded-none! outline outline-border">
+      <SidebarInset className="m-2 h-[calc(100svh-1rem)] overflow-hidden rounded-xl! outline outline-border">
         <AppHeader />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
           <div className="container mx-auto w-full">
