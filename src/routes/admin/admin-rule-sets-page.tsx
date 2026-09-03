@@ -276,7 +276,7 @@ export default function AdminRuleSetsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const query = useRuleSets(enabled, { limit: pager.pageSize, after: pager.after });
   const flowsQuery = useFlowsForRuleSetImpact(enabled);
   const toolsQuery = usePromptTools(enabled);

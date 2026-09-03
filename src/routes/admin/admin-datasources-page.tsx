@@ -1005,7 +1005,7 @@ export default function AdminDatasourcesPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const query = useDatasources(enabled, { limit: pager.pageSize, after: pager.after });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Datasource | null>(null);

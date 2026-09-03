@@ -311,7 +311,7 @@ export default function MinePage() {
   };
 
   const draftsQuery = useMyDrafts(true);
-  const ordersPager = useCursorPage(50);
+  const ordersPager = useCursorPage(20);
   const ordersQuery = useMyChangeOrders(
     true,
     serverFilters,

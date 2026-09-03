@@ -47,7 +47,7 @@ export default function AuditRecordsPage() {
   const isAdmin = session.user?.can_access_admin === true;
   const [detail, setDetail] = useState<AuditEvent | null>(null);
 
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const eventsQuery = useQuery({
     queryKey: ["admin", "audit-events", pager.after, pager.pageSize],
     queryFn: async () => {

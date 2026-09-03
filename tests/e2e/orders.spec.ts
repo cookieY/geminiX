@@ -241,7 +241,9 @@ test("the order gallery scenario serves 40 demo orders across every state", asyn
   // glance. The gallery ships in every browser mock world — no setup.
   await mockSession(page, "admin");
   await page.goto("/changes/mine");
-  await expect(page.getByTestId("mine-order-row")).toHaveCount(40, { timeout: 10_000 });
+  // Default rows-per-page is 20: page 1 of 2, with Next available.
+  await expect(page.getByTestId("mine-order-row")).toHaveCount(20, { timeout: 10_000 });
+  await expect(page.getByTestId("mine-orders-pagination").getByText("下一页")).toBeEnabled();
   await expect(page.getByText("演示工单 · completed").first()).toBeVisible();
   await expect(page.getByText("演示工单 · rejected").first()).toBeVisible();
 });

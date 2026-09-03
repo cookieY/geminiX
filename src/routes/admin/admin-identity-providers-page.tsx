@@ -148,7 +148,7 @@ export default function AdminIdentityProvidersPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const providersQuery = useIdentityProviders(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [editing, setEditing] = useState<IdentityProvider | null>(null);
   const [createKind, setCreateKind] = useState<"ldap" | "oidc" | null>(null);

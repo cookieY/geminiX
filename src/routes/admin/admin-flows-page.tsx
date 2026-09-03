@@ -79,7 +79,7 @@ export default function AdminFlowsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);

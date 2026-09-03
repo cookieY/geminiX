@@ -38,7 +38,7 @@ export default function AdminAnnouncementsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const revisionsQuery = useAnnouncementRevisions(isAdmin, { limit: pager.pageSize, after: pager.after });
   const currentQuery = useCurrentAnnouncementQuery(isAdmin);
   const createRevision = useCreateAnnouncementRevision();

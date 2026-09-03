@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
-  const pager = useCursorPage(50);
+  const pager = useCursorPage(20);
   const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
