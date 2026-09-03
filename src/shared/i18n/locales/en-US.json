@@ -219,11 +219,12 @@
       "flowCardDescription": "Review flow: the stage chain is frozen by the template",
       "useFlow": "Create draft",
       "dialog": {
-        "title": "Create review draft",
+        "title": "Submit",
         "description": "Stage datasources, reviewers and executors of flow “{{flow}}” are frozen and read-only.",
         "titleLabel": "Title",
         "descriptionLabel": "Description",
-        "confirm": "Create and open draft"
+        "confirm": "Submit",
+        "useFlow": "Submit"
       }
     },
     "workspace": {
@@ -233,7 +234,7 @@
       "sqlCard": "SQL editor",
       "unsaved": "unsaved",
       "loadSql": "Load SQL (audited decrypt)",
-      "saveSql": "Save SQL",
+      "saveSql": "Save draft",
       "runReview": "Run AI precheck"
     },
     "stagePath": {

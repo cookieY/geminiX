@@ -217,13 +217,14 @@
       "description": "选择你有权使用的审核流程并创建草稿；阶段数据源、审核人和执行人由流程模板冻结。",
       "empty": "当前账号没有被授权的审核流程，请联系管理员。",
       "flowCardDescription": "审核流程：阶段链路已由模板冻结",
-      "useFlow": "创建草稿",
+      "useFlow": "提交",
       "dialog": {
-        "title": "创建审核草稿",
+        "title": "提交",
         "description": "流程“{{flow}}”的阶段数据源、审核人和执行人已冻结，只读展示。",
         "titleLabel": "标题",
         "descriptionLabel": "说明",
-        "confirm": "创建并进入草稿"
+        "confirm": "提交",
+        "useFlow": "提交"
       }
     },
     "workspace": {
@@ -233,7 +234,7 @@
       "sqlCard": "SQL 编辑",
       "unsaved": "未保存",
       "loadSql": "载入SQL（记录解密审计）",
-      "saveSql": "保存SQL",
+      "saveSql": "保存草稿",
       "runReview": "运行AI预审"
     },
     "stagePath": {
