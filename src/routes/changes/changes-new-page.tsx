@@ -16,17 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { Textarea } from "@/shared/components/ui/textarea";
 import { FilePlus2, Layers } from "lucide-react";
 import { useCurrentUserChangeFlows } from "@/features/review/use-draft-workspace";
 
@@ -44,15 +33,14 @@ export default function ChangesNewPage() {
   const navigate = useNavigate();
   const flowsQuery = useCurrentUserChangeFlows();
   const [selected, setSelected] = useState<Flow | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
 
   const createMutation = useMutation({
     mutationFn: () =>
       createChangeDraft({
         flow_id: selected?.id as string,
-        title,
-        description: description === "" ? undefined : description,
+        // Contract requires a non-empty title; the workspace lets the user
+        // rename it immediately after entering.
+        title: `${selected?.name ?? ""} · ${new Date().toLocaleDateString("sv-SE")}`,
       }),
     onSuccess: (draft) => {
       const created = draft as unknown as { id: string };
@@ -118,9 +106,9 @@ export default function ChangesNewPage() {
                 <Button
                   onClick={() => {
                     setSelected(flow);
-                    setTitle("");
-                    setDescription("");
+                    createMutation.mutate();
                   }}
+                  disabled={createMutation.isPending && selected?.id === flow.id}
                   data-testid={`use-flow-${flow.id}`}
                 >
                   {t("precheck.new.useFlow")}
@@ -131,56 +119,6 @@ export default function ChangesNewPage() {
         </div>
       )}
 
-      <Dialog
-        open={selected !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-      >
-        <DialogContent data-testid="create-draft-dialog">
-          <DialogHeader>
-            <DialogTitle>{t("precheck.new.dialog.title")}</DialogTitle>
-            <DialogDescription>
-              {t("precheck.new.dialog.description", { flow: selected?.name ?? "" })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="draft-title">{t("precheck.new.dialog.titleLabel")}</Label>
-              <Input
-                id="draft-title"
-                value={title}
-                onChange={(event) => { setTitle(event.target.value); }}
-                maxLength={256}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="draft-description">
-                {t("precheck.new.dialog.descriptionLabel")}
-              </Label>
-              <Textarea
-                id="draft-description"
-                value={description}
-                onChange={(event) => { setDescription(event.target.value); }}
-                rows={3}
-                maxLength={4096}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelected(null); }}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={() => { createMutation.mutate(); }}
-              disabled={title.trim() === "" || createMutation.isPending}
-              data-testid="create-draft-confirm"
-            >
-              {t("precheck.new.dialog.confirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

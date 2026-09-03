@@ -75,8 +75,9 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await page.goto("/changes/new");
       await expect(page.getByTestId("changes-new-page")).toBeVisible();
       await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-      await page.getByTestId("create-draft-dialog").getByRole("textbox").first().fill("视觉基线草稿");
-      await page.getByTestId("create-draft-confirm").click();
+      await expect(page).toHaveURL(/\/changes\/drafts\//);
+      await page.getByTestId("draft-title-input").fill("视觉基线草稿");
+      await page.getByTestId("draft-title-input").blur();
       await expect(page).toHaveURL(/\/changes\/drafts\//);
       await typeSql(page, "sql-editor", "UPDATE orders SET status = 1 WHERE user_id = 42;");
       await page.getByTestId("save-sql").click();

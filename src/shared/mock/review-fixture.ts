@@ -1583,6 +1583,34 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       return HttpResponse.json(successEnvelope(null));
     }),
 
+    // Draft metadata update (title/description) — the workspace exposes the
+    // name and description for editing after creation (owner batch C).
+    http.put("*/change-drafts/:draftId", async ({ request, params }) => {
+      const draft = world.drafts.get(String(params.draftId));
+      if (draft === undefined) return businessError(1002, "draft not found");
+      const body = (await request.json()) as {
+        title?: string;
+        description?: string;
+      };
+      if (body.title !== undefined) {
+        if (body.title.trim() === "") return businessError(1001, "title is required");
+        draft.title = body.title;
+      }
+      if (body.description !== undefined) draft.description = body.description;
+      draft.updated_at = now();
+      return HttpResponse.json(
+        successEnvelope({
+          id: draft.id,
+          flow_id: draft.flow_id,
+          title: draft.title,
+          description: draft.description ?? null,
+          state: draft.state,
+          created_at: draft.created_at,
+          updated_at: draft.updated_at,
+        }),
+      );
+    }),
+
     http.put("*/change-drafts/:draftId/sql", async ({ request, params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");

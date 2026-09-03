@@ -37,8 +37,9 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await page.getByTestId("create-draft-dialog").getByRole("textbox").first().fill("E2E预审草稿");
-  await page.getByTestId("create-draft-confirm").click();
+  await expect(page).toHaveURL(/\/changes\/drafts\//);
+  await page.getByTestId("draft-title-input").fill("E2E预审草稿");
+  await page.getByTestId("draft-title-input").blur();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
 
@@ -77,12 +78,8 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
 
   await page.goto("/changes/new");
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await page
-    .getByTestId("create-draft-dialog")
-    .getByRole("textbox")
-    .first()
-    .fill("E2E预审草稿");
-  await page.getByTestId("create-draft-confirm").click();
+  await page.getByTestId("draft-title-input").fill("E2E预审草稿");
+  await page.getByTestId("draft-title-input").blur();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
 

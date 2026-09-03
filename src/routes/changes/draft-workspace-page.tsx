@@ -48,6 +48,10 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
+import { updateChangeDraft } from "@/api/generated/client/change-drafts/change-drafts";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import {
   Dialog,
@@ -83,6 +87,62 @@ function ifMatch(revision: number | null): Record<string, string> {
  * here even though React has not re-rendered yet. */
 function liveIfMatch(): Record<string, string> {
   return ifMatch(useDraftEditorStore.getState().savedRevision);
+}
+
+
+interface DraftMetaFieldsProps {
+  draftId: string;
+  title?: string;
+  description?: string | null;
+}
+
+/** 标题/说明 (owner batch C): edited in the workspace above the SQL editor;
+ * saved on blur via the draft metadata PUT. Remounts per draft (keyed by the
+ * caller) so switching drafts resets the fields. */
+function DraftMetaFields({ draftId, title, description }: DraftMetaFieldsProps) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const [titleDraft, setTitleDraft] = useState(title ?? "");
+  const [descriptionDraft, setDescriptionDraft] = useState(description ?? "");
+
+  const saveMeta = (): void => {
+    if (titleDraft.trim() === "") return;
+    void updateChangeDraft(draftId, {
+      title: titleDraft,
+      description: descriptionDraft === "" ? undefined : descriptionDraft,
+    });
+    void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+  };
+
+  return (
+    <Card>
+      <CardContent className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="draft-title-input">{t("precheck.new.dialog.titleLabel")}</Label>
+          <Input
+            id="draft-title-input"
+            value={titleDraft}
+            onChange={(event) => { setTitleDraft(event.target.value); }}
+            onBlur={saveMeta}
+            maxLength={256}
+            data-testid="draft-title-input"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="draft-description-input">{t("precheck.new.dialog.descriptionLabel")}</Label>
+          <Textarea
+            id="draft-description-input"
+            value={descriptionDraft}
+            onChange={(event) => { setDescriptionDraft(event.target.value); }}
+            onBlur={saveMeta}
+            rows={2}
+            maxLength={4096}
+            data-testid="draft-description-input"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DraftWorkspacePage() {
@@ -348,6 +408,12 @@ export default function DraftWorkspacePage() {
         </div>
       )}
 
+      <DraftMetaFields
+        key={draft.id}
+        draftId={draftId ?? ""}
+        title={draft.title}
+        description={draft.description ?? null}
+      />
       <ResizablePanelGroup orientation="horizontal" className="min-h-[60vh]">
         <ResizablePanel defaultSize="62%" minSize="40%">
           <div className="flex h-full flex-col gap-4 pr-3">
