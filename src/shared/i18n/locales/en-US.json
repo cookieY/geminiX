@@ -879,7 +879,11 @@
       "evalPrivacy": "Privacy",
       "evalInjection": "Injection",
       "evalSeverity": "Severity",
-      "save": "Save"
+      "save": "Save",
+      "allTitle": "All experiences",
+      "editHeader": "Edit experience",
+      "listLabel": "Experience list",
+      "searchPlaceholder": "Search experiences…"
     },
     "providers": {
       "title": "Provider management",

@@ -879,7 +879,11 @@
       "evalPrivacy": "隐私",
       "evalInjection": "注入",
       "evalSeverity": "级别",
-      "save": "保存"
+      "save": "保存",
+      "allTitle": "全部经验",
+      "editHeader": "编辑经验",
+      "listLabel": "经验列表",
+      "searchPlaceholder": "搜索经验…"
     },
     "providers": {
       "title": "Provider 管理",
