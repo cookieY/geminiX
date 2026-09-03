@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Puzzle, Plus, Trash2, Play, Lock } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
 import type {
   KnowledgeEntry,
   KnowledgeEntryEvaluation,
@@ -179,6 +180,8 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [evaluating, setEvaluating] = useState<KnowledgeEntry | null>(null);
   const [evalResult, setEvalResult] = useState<KnowledgeEntryEvaluation | null>(null);
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
+  const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const evaluateMutation = useEvaluateKnowledgeEntry();
 
   const rows = kind === "skills" ? (toolsQuery.data?.items ?? []) : (entriesQuery.data?.items ?? []);
@@ -188,14 +191,291 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
 
   const isSkills = kind === "skills";
 
+  // 内部经验 renders as the Notes-app master-detail (owner ruling 2026-09-02,
+  // frozen template apps/notes): entry cards on the left, the experience
+  // detail on the right. Skills keep the table view. All CRUD/evaluate
+  // machinery is shared with the table branch below.
+  if (!isSkills) {
+    const entries = entriesQuery.data?.items ?? [];
+    const filtered = entries.filter((entry) =>
+      entry.name.toLowerCase().includes(knowledgeSearch.toLowerCase()),
+    );
+    const selected =
+      filtered.find((entry) => entry.id === selectedKnowledgeId) ?? filtered[0] ?? null;
+    const formatDate = (value: string): string =>
+      value.replace("T", " ").replace("Z", " UTC");
+    return (
+      <div className="flex flex-col gap-4">
+        <Card className="overflow-hidden">
+          <div className="flex min-h-[600px]">
+            <div className="flex w-80 shrink-0 flex-col gap-4 border-e border-border p-6">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  value={knowledgeSearch}
+                  onChange={(event) => { setKnowledgeSearch(event.target.value); }}
+                  placeholder={t("admin.knowledge.searchPlaceholder")}
+                  className="pl-9"
+                  aria-label={t("admin.knowledge.searchPlaceholder")}
+                  data-testid="knowledge-search"
+                />
+              </div>
+              <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
+              <div className="flex flex-col gap-3 overflow-y-auto">
+                {filtered.length === 0 ? (
+                  <p className="text-muted-foreground text-sm" data-testid="knowledge-notes-empty">
+                    {t("admin.knowledge.emptyTitle")}
+                  </p>
+                ) : (
+                  filtered.map((entry) => (
+                    <div
+                      key={entry.id}
+                      data-testid={`review-input-row-${entry.id}`}
+                      onClick={() => { setSelectedKnowledgeId(entry.id); }}
+                      className={cn(
+                        "cursor-pointer p-4 transition-colors",
+                        selected?.id === entry.id
+                          ? "bg-muted/70 ring-1 ring-primary/40"
+                          : "hover:bg-muted/40",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <StateBadge state={entry.state} />
+                        <span className="text-muted-foreground text-xs">
+                          {t(`admin.knowledge.provenance_${entry.provenance}`)}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 truncate font-medium">{entry.name}</p>
+                      {entry.purpose ? (
+                        <p className="text-muted-foreground truncate text-xs">{entry.purpose}</p>
+                      ) : null}
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {entry.scope_type === "global"
+                          ? t("admin.knowledge.scopeGlobal")
+                          : entry.scope_type === "datasource"
+                            ? t("admin.knowledge.scopeDatasource")
+                            : `${entry.database_name ?? "?"}.${entry.table_name ?? "?"}`}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-muted-foreground text-xs">
+                          {formatDate(entry.updated_at)}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEvalErrorKey(null);
+                              evaluateMutation.mutate(
+                                { id: entry.id },
+                                {
+                                  onSuccess: (result) => {
+                                    setEvaluating(entry);
+                                    setEvalResult(result);
+                                    setSelectedKnowledgeId(entry.id);
+                                  },
+                                  onError: (error) => {
+                                    const display = describeError(error, "evaluateKnowledgeEntry");
+                                    setEvalErrorKey(display.messageKey);
+                                  },
+                                },
+                              );
+                            }}
+                            data-testid={`review-input-evaluate-${entry.id}`}
+                          >
+                            <Play /> {t("admin.knowledge.evaluate")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t("common.edit")}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEditing(entry);
+                              setDialogOpen(true);
+                            }}
+                            data-testid={`review-input-edit-${entry.id}`}
+                          >
+                            <Pencil className="size-4" aria-hidden />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t("common.delete")}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleting(entry);
+                            }}
+                            data-testid={`review-input-delete-${entry.id}`}
+                          >
+                            <Trash2 className="size-4" aria-hidden />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col">
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <h6 className="text-base">{t("admin.knowledge.editHeader")}</h6>
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setDialogOpen(true);
+                  }}
+                  data-testid="review-input-create"
+                >
+                  <Plus /> {t("admin.knowledge.createTitle")}
+                </Button>
+              </div>
+              <div className="flex flex-1 flex-col gap-4 p-6">
+                {evalErrorKey !== null ? (
+                  <Alert variant="destructive" data-testid="knowledge-eval-error">
+                    <AlertTitle>{t(evalErrorKey)}</AlertTitle>
+                  </Alert>
+                ) : null}
+                <Alert className="border-[var(--risk-warning)]/40" data-testid="review-input-outdated-note">
+                  <AlertTitle>{t("admin.reviewInput.outdatedNoteTitle")}</AlertTitle>
+                  <AlertDescription>{t("admin.reviewInput.outdatedNoteBody")}</AlertDescription>
+                </Alert>
+                {loading ? (
+                  <LoadingState />
+                ) : errored ? (
+                  <ErrorState error={entriesQuery.error} operationId="listKnowledgeEntries" onRetry={() => void refetch()} />
+                ) : selected === null ? (
+                  <p className="text-muted-foreground text-sm">{t("admin.knowledge.emptyTitle")}</p>
+                ) : (
+                  <div className="flex flex-col gap-4" data-testid="knowledge-detail">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-xl font-semibold">{selected.name}</h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditing(selected);
+                          setDialogOpen(true);
+                        }}
+                        data-testid={`review-input-edit-${selected.id}`}
+                      >
+                        {t("admin.knowledge.editTitle")}
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StateBadge state={selected.state} />
+                      <Badge variant="outline">
+                        {selected.scope_type === "global"
+                          ? t("admin.knowledge.scopeGlobal")
+                          : selected.scope_type === "datasource"
+                            ? t("admin.knowledge.scopeDatasource")
+                            : t("admin.knowledge.scopeTable")}
+                      </Badge>
+                      <Badge variant="secondary">
+                        {t(`admin.knowledge.provenance_${selected.provenance}`)}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {formatDate(selected.updated_at)}
+                      </span>
+                    </div>
+                    {selected.purpose ? (
+                      <p className="text-sm">{selected.purpose}</p>
+                    ) : null}
+                    <pre className="bg-muted/40 text-xs leading-relaxed whitespace-pre-wrap p-4">
+                      {selected.definition.knowledge_text}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {dialogOpen ? (
+          <ReviewInputDialog
+            key={editing?.id ?? "new"}
+            kind="knowledge"
+            editing={editing}
+            onClose={() => {
+              setDialogOpen(false);
+              setEditing(null);
+            }}
+          />
+        ) : null}
+
+        {deleting !== null ? (
+          <DeleteReviewInputDialog
+            key={deleting.id}
+            kind="knowledge"
+            target={deleting}
+            onClose={() => { setDeleting(null); }}
+          />
+        ) : null}
+
+        <Dialog
+          open={evaluating !== null}
+          onOpenChange={(next) => { if (!next) setEvaluating(null); }}
+        >
+          <DialogContent data-testid="knowledge-eval-dialog">
+            <DialogHeader>
+              <DialogTitle>
+                {t("admin.knowledge.evalTitle", { name: evaluating?.name ?? "" })}
+              </DialogTitle>
+              <DialogDescription>{t("admin.knowledge.evalDescription")}</DialogDescription>
+            </DialogHeader>
+            {evalResult !== null ? (
+              <div className="flex flex-col gap-2" data-testid="knowledge-eval-result">
+                <div className="flex gap-1.5">
+                  <Badge variant={evalResult.pass ? "default" : "destructive"}>
+                    {evalResult.pass ? t("admin.knowledge.evalPass") : t("admin.knowledge.evalFail")}
+                  </Badge>
+                  <Badge variant={evalResult.schema_subset_ok ? "secondary" : "destructive"}>
+                    {t("admin.knowledge.evalSchema")}
+                  </Badge>
+                  <Badge variant={evalResult.privacy_ok ? "secondary" : "destructive"}>
+                    {t("admin.knowledge.evalPrivacy")}
+                  </Badge>
+                  <Badge variant={evalResult.injection_ok ? "secondary" : "destructive"}>
+                    {t("admin.knowledge.evalInjection")}
+                  </Badge>
+                  <Badge variant={evalResult.severity_ok ? "secondary" : "destructive"}>
+                    {t("admin.knowledge.evalSeverity")}
+                  </Badge>
+                </div>
+                {evalResult.findings !== undefined && evalResult.findings.length > 0 ? (
+                  <ul className="text-destructive list-disc pl-4 text-xs">
+                    {evalResult.findings.map((finding) => (
+                      <li key={finding}>{finding}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            <DialogFooter>
+              <Button onClick={() => { setEvaluating(null); }}>{t("common.close")}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>{t(isSkills ? "admin.skills.title" : "admin.knowledge.title")}</CardTitle>
+            <CardTitle>{t("admin.skills.title")}</CardTitle>
             <CardDescription>
-              {t(isSkills ? "admin.skills.description" : "admin.knowledge.description")}
+              {t("admin.skills.description")}
             </CardDescription>
           </div>
           <Button
@@ -205,7 +485,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             }}
             data-testid="review-input-create"
           >
-            <Plus /> {t(isSkills ? "admin.skills.createTitle" : "admin.knowledge.createTitle")}
+            <Plus /> {t("admin.skills.createTitle")}
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -221,7 +501,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
           {loading ? (
             <LoadingState />
           ) : errored ? (
-            <ErrorState error={isSkills ? toolsQuery.error : entriesQuery.error} operationId={isSkills ? "listPromptTools" : "listKnowledgeEntries"} onRetry={() => void refetch()} />
+            <ErrorState error={toolsQuery.error} operationId="listPromptTools" onRetry={() => void refetch()} />
           ) : rows.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
@@ -229,10 +509,10 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   <Puzzle />
                 </EmptyMedia>
                 <EmptyTitle>
-                  {t(isSkills ? "admin.skills.emptyTitle" : "admin.knowledge.emptyTitle")}
+                  {t("admin.skills.emptyTitle")}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {t(isSkills ? "admin.skills.emptyDescription" : "admin.knowledge.emptyDescription")}
+                  {t("admin.skills.emptyDescription")}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -241,10 +521,10 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("admin.reviewInput.name")}</TableHead>
-                  {isSkills ? null : <TableHead>{t("admin.knowledge.scope")}</TableHead>}
+                  
                   <TableHead>{t("admin.reviewInput.state")}</TableHead>
                   <TableHead>{t("admin.reviewInput.configHash")}</TableHead>
-                  {isSkills ? null : <TableHead>{t("admin.knowledge.provenance")}</TableHead>}
+                  
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -254,8 +534,8 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const name = row.name;
                   const state = row.state;
                   const configHash = row.config_hash;
-                  const entry = isSkills ? null : (row as KnowledgeEntry);
-                  const builtin = isSkills && (row as PromptTool).is_builtin;
+                  
+                  const builtin = (row as PromptTool).is_builtin;
                   return (
                     <TableRow key={id} data-testid={`review-input-row-${id}`}>
                       <TableCell className="font-medium">
@@ -270,66 +550,16 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                         {builtin ? (
                           <div className="text-muted-foreground text-xs">{t("admin.skills.builtinHint")}</div>
                         ) : null}
-                        {entry !== null && entry.purpose ? (
-                          <div className="text-muted-foreground text-xs">{entry.purpose}</div>
-                        ) : null}
                       </TableCell>
-                      {isSkills ? null : (
-                        <TableCell className="text-xs">
-                          {entry !== null ? (
-                            entry.scope_type === "global" ? (
-                              t("admin.knowledge.scopeGlobal")
-                            ) : entry.scope_type === "datasource" ? (
-                              t("admin.knowledge.scopeDatasource")
-                            ) : (
-                              `${entry.database_name ?? "?"}.${entry.table_name ?? "?"}`
-                            )
-                          ) : null}
-                        </TableCell>
-                      )}
                       <TableCell>
                         <StateBadge state={state} />
                       </TableCell>
                       <TableCell className="font-mono text-xs" data-testid="review-input-hash">
                         {configHash}
                       </TableCell>
-                      {isSkills ? null : (
-                        <TableCell>
-                          {entry !== null ? (
-                            <Badge variant={entry.provenance === "manual" ? "secondary" : "outline"}>
-                              {t(`admin.knowledge.provenance_${entry.provenance}`)}
-                            </Badge>
-                          ) : null}
-                        </TableCell>
-                      )}
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
-                          {isSkills ? null : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={evaluateMutation.isPending}
-                              onClick={() => {
-                                setEvalErrorKey(null);
-                                evaluateMutation.mutate(
-                                  { id },
-                                  {
-                                    onSuccess: (result) => {
-                                      setEvaluating(row as KnowledgeEntry);
-                                      setEvalResult(result);
-                                    },
-                                    onError: (error) => {
-                                      const display = describeError(error, "evaluateKnowledgeEntry");
-                                      setEvalErrorKey(display.messageKey);
-                                    },
-                                  },
-                                );
-                              }}
-                              data-testid={`review-input-evaluate-${id}`}
-                            >
-                              <Play /> {t("admin.knowledge.evaluate")}
-                            </Button>
-                          )}
+
                           <Button
                             variant="ghost"
                             size="sm"
