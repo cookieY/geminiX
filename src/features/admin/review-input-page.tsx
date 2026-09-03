@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent } from "@/shared/components/ui/sheet";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import { Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
 import type {
@@ -186,6 +187,8 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
+  const [knowledgeTextDraft, setKnowledgeTextDraft] = useState<string | null>(null);
+  const replaceEntry = useReplaceKnowledgeEntry();
   const evaluateMutation = useEvaluateKnowledgeEntry();
 
   const rows = kind === "skills" ? (toolsQuery.data?.items ?? []) : (entriesQuery.data?.items ?? []);
@@ -239,12 +242,20 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                     <div
                       key={entry.id}
                       data-testid={`review-input-row-${entry.id}`}
-                      onClick={() => { setSelectedKnowledgeId(entry.id); }}
+                      onClick={() => {
+                        setSelectedKnowledgeId(entry.id);
+                        setKnowledgeTextDraft(null);
+                      }}
                       className={cn(
-                        "cursor-pointer p-4 transition-colors",
+                        "cursor-pointer p-4 rounded-xl transition-all",
+                        entry.state === "disabled"
+                          ? "bg-destructive/10 border border-destructive/20"
+                          : entry.state === "draft"
+                            ? "bg-muted/50 border border-border"
+                            : "bg-chart-2/10 border border-chart-2/20",
                         selected?.id === entry.id
-                          ? "bg-muted/70 ring-1 ring-primary/40"
-                          : "hover:bg-muted/40",
+                          ? "scale-100 opacity-100"
+                          : "scale-95 opacity-90",
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -253,7 +264,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                           {t(`admin.knowledge.provenance_${entry.provenance}`)}
                         </span>
                       </div>
-                      <p className="mt-1.5 truncate font-medium">{entry.name}</p>
+                      <p className="mt-1.5 truncate font-medium text-primary">{entry.name}</p>
                       {entry.purpose ? (
                         <p className="text-muted-foreground truncate text-xs">{entry.purpose}</p>
                       ) : null}
@@ -406,9 +417,57 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                     {selected.purpose ? (
                       <p className="text-sm">{selected.purpose}</p>
                     ) : null}
-                    <pre className="bg-muted/40 text-xs leading-relaxed whitespace-pre-wrap p-4">
-                      {selected.definition.knowledge_text}
-                    </pre>
+                    {(() => {
+                      const serverText = selected.definition.knowledge_text;
+                      const draftText = knowledgeTextDraft ?? serverText;
+                      const dirty = knowledgeTextDraft !== null && knowledgeTextDraft !== serverText;
+                      const save = () => {
+                        replaceEntry.mutate(
+                          {
+                            id: selected.id,
+                            version: selected.version,
+                            write: {
+                              name: selected.name,
+                              purpose: selected.purpose,
+                              state: selected.state,
+                              scope_type: selected.scope_type,
+                              datasource_id: selected.datasource_id,
+                              database_name: selected.database_name,
+                              table_name: selected.table_name,
+                              definition: { ...selected.definition, knowledge_text: draftText },
+                              provenance: selected.provenance,
+                            },
+                          },
+                          {
+                            onSuccess: () => {
+                              setKnowledgeTextDraft(null);
+                            },
+                          },
+                        );
+                      };
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <Textarea
+                            value={draftText}
+                            onChange={(event) => { setKnowledgeTextDraft(event.target.value); }}
+                            onBlur={() => { if (dirty) save(); }}
+                            rows={8}
+                            data-testid="knowledge-notes-editor"
+                            aria-label={t("admin.knowledge.editHeader")}
+                          />
+                          {dirty ? (
+                            <Button
+                              size="sm"
+                              onClick={save}
+                              disabled={replaceEntry.isPending}
+                              data-testid="knowledge-notes-save"
+                            >
+                              {replaceEntry.isPending ? t("states.loading") : t("admin.knowledge.save")}
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

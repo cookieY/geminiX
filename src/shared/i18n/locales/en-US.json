@@ -878,7 +878,8 @@
       "evalSchema": "Schema",
       "evalPrivacy": "Privacy",
       "evalInjection": "Injection",
-      "evalSeverity": "Severity"
+      "evalSeverity": "Severity",
+      "save": "Save"
     },
     "providers": {
       "title": "Provider management",
