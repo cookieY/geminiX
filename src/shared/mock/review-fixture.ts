@@ -621,7 +621,7 @@ function seedPartialExecutionOrder(): void {
   const submittedAt = now();
   const order: FixtureOrder = {
     id: "7e6f1a2b-0000-4000-8000-00000000f601",
-    display_number: "YR-20260829-000042",
+    display_number: "7e6f1a2b-0000-4000-8000-00000000f601",
     submitter_user_id: FIXTURE_OWNER_ID,
     title: "跨阶段存量数据订正（场景）",
     state: "running",
@@ -797,7 +797,7 @@ function seedOrderGallery(): void {
     const datasource = GALLERY_DATASOURCES[index % GALLERY_DATASOURCES.length] ?? "staging-mysql";
     const order: FixtureOrder = {
       id,
-      display_number: `YR-20260901-0${String(100 + index)}`,
+      display_number: id,
       submitter_user_id: FIXTURE_OWNER_ID,
       title: `演示工单 · ${state} · #${String(index + 1)}`,
       state,
@@ -1739,9 +1739,12 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       // the first stage's first step active (backend submit.go: state
       // stage_approval, stage 1 activated, step 1 active) — the approval
       // queue therefore fills the moment an order is submitted.
+      const orderId = uuid();
       const order: FixtureOrder = {
-        id: uuid(),
-        display_number: `YR-20260830-${String(world.orderSequence).padStart(6, "0")}`,
+        id: orderId,
+        // Legacy work_id parity (GenWorkId = uuid.NewString): the UUID is the
+        // user-facing order number.
+        display_number: orderId,
         submitter_user_id: draft.owner_user_id,
         title: draft.title,
         state: "stage_approval_active",

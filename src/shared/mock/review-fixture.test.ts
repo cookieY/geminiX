@@ -157,7 +157,11 @@ describe("review fixture draft and run lifecycle", () => {
     const body = (await response.json()) as {
       data: { display_number: string; state: string; snapshot_hash: string } | null;
     };
-    expect(body.data?.display_number).toMatch(/^YR-/);
+    // Legacy work_id parity (GenWorkId = uuid.NewString): the order number
+    // is a UUID.
+    expect(body.data?.display_number).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
     // Submission freezes the order directly in stage_approval_active with
     // the first approval step active (backend submit.go semantics) — the
     // approval queue fills the moment an order is submitted (FE-F7).

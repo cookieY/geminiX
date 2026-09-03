@@ -119,7 +119,10 @@ test("Ready draft submits through the confirmation and lands on the order detail
   await expect(page.getByTestId("submit-confirm-gate")).toContainText("全部阶段审核通过");
   await page.getByTestId("submit-confirm-accept").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
-  await expect(page.getByTestId("order-detail-page")).toContainText("YR-");
+  // The order number is a UUID (legacy GenWorkId parity).
+  await expect(page.getByTestId("order-detail-page")).toContainText(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
+  );
   await expect(page.getByTestId("order-timeline")).toBeVisible();
 });
 
