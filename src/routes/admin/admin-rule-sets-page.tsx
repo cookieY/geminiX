@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Layers, Plus, Trash2 } from "lucide-react";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { RuleSet, RuleSetWrite } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
   useCreateRuleSet,
@@ -174,12 +175,10 @@ function RuleSetFormDialog({
               />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="rule-set-enabled"
                 checked={form.enabled}
-                onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); }}
-                className="size-4"
+                onCheckedChange={(checked) => { setForm({ ...form, enabled: checked }); }}
                 data-testid="rule-set-enabled"
               />
               <Label htmlFor="rule-set-enabled" className="cursor-pointer">
@@ -205,12 +204,10 @@ function RuleSetFormDialog({
                       data-testid={`rule-set-tool-option-${tool.id}`}
                     >
                       <span className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selected}
-                          onChange={() => { if (bindable) toggleTool(tool.id); }}
+                          onCheckedChange={() => { if (bindable) toggleTool(tool.id); }}
                           disabled={!bindable}
-                          className="size-4"
                         />
                         <span className="text-sm font-medium">{tool.name}</span>
                       </span>

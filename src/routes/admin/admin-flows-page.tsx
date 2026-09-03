@@ -2,6 +2,7 @@ import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, Database, EyeOff, Plus, Trash2, Workflow } from "lucide-react";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, FlowMaskingRule, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -427,10 +428,9 @@ function FlowFormDialog({
             />
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={form.enabled}
-              onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); }}
+              onCheckedChange={(checked) => { setForm({ ...form, enabled: checked }); }}
               data-testid="flow-enabled"
             />
             {t("adminFlows.column.enabled")}
@@ -671,34 +671,34 @@ function FlowFormDialog({
                     const selected = form.queryCapabilities.find((capability) => capability.datasourceId === datasource.id);
                     return (
                       <div key={datasource.id} className="flex items-center gap-2 px-1 py-1 text-sm">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selected !== undefined}
-                          onChange={(event) => { setForm((current) => ({
+                          onCheckedChange={(checked) => {
+                            setForm((current) => ({
                               ...current,
-                              queryCapabilities: event.target.checked
+                              queryCapabilities: checked
                                 ? [...current.queryCapabilities, { datasourceId: datasource.id, canExport: false }]
                                 : current.queryCapabilities.filter((capability) => capability.datasourceId !== datasource.id),
-                            })); }
-                          }
+                            }));
+                          }}
                           data-testid={`flow-query-ds-${datasource.id}`}
                         />
                         <Database className="size-3.5 text-muted-foreground" />
                         {datasource.name}
                         {selected !== undefined && (
                           <label className="ml-auto flex cursor-pointer items-center gap-1 text-xs">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selected.canExport}
-                              onChange={(event) => { setForm((current) => ({
+                              onCheckedChange={(checked) => {
+                                setForm((current) => ({
                                   ...current,
                                   queryCapabilities: current.queryCapabilities.map((capability) =>
                                     capability.datasourceId === datasource.id
-                                      ? { ...capability, canExport: event.target.checked }
+                                      ? { ...capability, canExport: checked }
                                       : capability,
                                   ),
-                                })); }
-                              }
+                                }));
+                              }}
                               data-testid={`flow-query-export-${datasource.id}`}
                             />
                             {t("adminFlows.canExport")}
@@ -800,22 +800,22 @@ function ApprovalStepsEditor({
                     checked ? "bg-secondary" : ""
                   }`}
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={checked}
-                    onChange={(event) => { onChange(
+                    onCheckedChange={(value) => {
+                      onChange(
                         steps.map((item, index) =>
                           index === stepIndex
                             ? {
                                 ...item,
-                                actorIds: event.target.checked
+                                actorIds: value
                                   ? [...item.actorIds, user.id]
                                   : item.actorIds.filter((id) => id !== user.id),
                               }
                             : item,
                         ),
-                      ); }
-                    }
+                      );
+                    }}
                     data-testid={`${testIdPrefix}-step-${String(stepIndex)}-actor-${user.id}`}
                   />
                   {user.display_name}
@@ -856,13 +856,13 @@ function ActorPicker({
                 checked ? "bg-secondary" : ""
               }`}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={checked}
-                onChange={(event) => { onChange(
-                    event.target.checked ? [...selected, user.id] : selected.filter((id) => id !== user.id),
-                  ); }
-                }
+                onCheckedChange={(value) => {
+                  onChange(
+                    value ? [...selected, user.id] : selected.filter((id) => id !== user.id),
+                  );
+                }}
                 data-testid={`${testIdPrefix}-actor-${user.id}`}
               />
               {user.display_name}

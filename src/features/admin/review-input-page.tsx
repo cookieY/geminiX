@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent } from "@/shared/components/ui/sheet";
 import { cn } from "@/shared/lib/utils";
 import { Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
 import type {
@@ -182,6 +185,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const evaluateMutation = useEvaluateKnowledgeEntry();
 
   const rows = kind === "skills" ? (toolsQuery.data?.items ?? []) : (entriesQuery.data?.items ?? []);
@@ -208,7 +212,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
       <div className="flex flex-col gap-4">
         <Card className="overflow-hidden">
           <div className="flex min-h-[600px]">
-            <div className="flex w-80 shrink-0 flex-col gap-4 border-e border-border p-6">
+            <div className="hidden w-80 shrink-0 flex-col gap-4 border-e border-border p-6 lg:flex">
               <div className="relative">
                 <Search
                   size={16}
@@ -327,7 +331,20 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             </div>
             <div className="flex flex-1 flex-col">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h6 className="text-base">{t("admin.knowledge.editHeader")}</h6>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="lg:hidden"
+                    aria-label={t("admin.knowledge.listLabel")}
+                    data-testid="knowledge-list-open"
+                    onClick={() => { setNotesSheetOpen(true); }}
+                  >
+                    <Menu className="size-4" aria-hidden />
+                  </Button>
+                  <h6 className="text-base">{t("admin.knowledge.editHeader")}</h6>
+                </div>
                 <Button
                   onClick={() => {
                     setEditing(null);
@@ -397,6 +414,44 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               </div>
             </div>
           </div>
+          <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+            <SheetContent side="left" className="w-80 gap-4 overflow-y-auto p-6" data-testid="knowledge-notes-sheet">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  value={knowledgeSearch}
+                  onChange={(event) => { setKnowledgeSearch(event.target.value); }}
+                  placeholder={t("admin.knowledge.searchPlaceholder")}
+                  className="pl-9"
+                  aria-label={t("admin.knowledge.searchPlaceholder")}
+                />
+              </div>
+              <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
+              <div className="flex flex-col gap-3">
+                {filtered.map((entry) => (
+                  <div
+                    key={entry.id}
+                    onClick={() => { setSelectedKnowledgeId(entry.id); setNotesSheetOpen(false); }}
+                    className={cn(
+                      "cursor-pointer p-4 transition-colors",
+                      selected?.id === entry.id
+                        ? "bg-muted/70 ring-1 ring-primary/40"
+                        : "hover:bg-muted/40",
+                    )}
+                  >
+                    <p className="truncate font-medium">{entry.name}</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {entry.updated_at.replace("T", " ").replace("Z", " UTC")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
         </Card>
 
         {dialogOpen ? (
@@ -955,21 +1010,21 @@ function DeleteReviewInputDialog({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const mutation = isSkills ? deleteTool : deleteEntry;
   return (
-    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("admin.reviewInput.deleteTitle")}</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("admin.reviewInput.deleteTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
             {t("admin.reviewInput.deleteDescription", { name: target.name })}
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         {errorKey !== null ? (
           <Alert variant="destructive" data-testid="review-input-delete-error">
             <AlertTitle>{t(errorKey)}</AlertTitle>
             <AlertDescription>{t("admin.reviewInput.deleteErrorHint")}</AlertDescription>
           </Alert>
         ) : null}
-        <DialogFooter>
+        <AlertDialogFooter>
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
@@ -991,8 +1046,8 @@ function DeleteReviewInputDialog({
           >
             {t("common.delete")}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

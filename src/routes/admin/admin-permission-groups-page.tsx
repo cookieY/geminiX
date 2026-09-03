@@ -2,6 +2,7 @@ import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, ShieldCheck } from "lucide-react";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, PermissionGroup, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -394,10 +395,9 @@ function GroupFormDialog({
             />
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={form.enabled}
-              onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); }}
+              onCheckedChange={(checked) => { setForm({ ...form, enabled: checked }); }}
               data-testid="group-enabled"
             />
             {t("adminGroups.column.enabled")}
@@ -408,10 +408,9 @@ function GroupFormDialog({
             <div className="max-h-48 overflow-y-auto rounded-md border p-2">
               {users.map((user) => (
                 <label key={user.id} className="flex cursor-pointer items-center gap-2 px-1 py-1 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={form.memberIds.includes(user.id)}
-                    onChange={() => { toggle("memberIds", user.id); }}
+                    onCheckedChange={() => { toggle("memberIds", user.id); }}
                     data-testid={`group-member-${user.id}`}
                   />
                   {user.display_name}
@@ -430,10 +429,9 @@ function GroupFormDialog({
               )}
               {flows.map((flow) => (
                 <label key={flow.id} className="flex cursor-pointer items-center gap-2 px-1 py-1 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={form.flowIds.includes(flow.id)}
-                    onChange={() => { toggle("flowIds", flow.id); }}
+                    onCheckedChange={() => { toggle("flowIds", flow.id); }}
                     data-testid={`group-flow-${flow.id}`}
                   />
                   {flow.name}

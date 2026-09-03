@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { History, ShieldAlert } from "lucide-react";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import type {
   AiBudgetSettings,
   SettingsImpactAssessment,
@@ -124,12 +125,10 @@ function AiBudgetPanel({
       </Alert>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="flex items-center gap-2 md:col-span-2">
-          <input
-            type="checkbox"
+          <Checkbox
             id="ai-budget-enforced"
             checked={form.enforced}
-            onChange={(event) => { setForm({ ...form, enforced: event.target.checked }); }}
-            className="size-4"
+            onCheckedChange={(checked) => { setForm({ ...form, enforced: checked }); }}
             data-testid="ai-budget-enforced"
           />
           <Label htmlFor="ai-budget-enforced" className="cursor-pointer">
