@@ -596,6 +596,19 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   function renderCreate(): ReactNode {
     const infoContent = (
       <div className="space-y-6 py-2">
+        <div className="space-y-5">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold">{t("precheck.wizard.section.meta")}</h4>
+            <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.metaHint")}</p>
+          </div>
+          <MetaFields
+            title={createTitle}
+            description={createDescription}
+            onTitleChange={(value) => { setCreateTitle(value); setStepError(null); }}
+            onDescriptionChange={setCreateDescription}
+          />
+        </div>
+        <Separator />
         <div className="space-y-3">
           <div className="space-y-1">
             <h4 className="text-sm font-semibold">{t("precheck.wizard.section.flow")}</h4>
@@ -617,19 +630,6 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           {flows.length > 0 && (
             <FlowPicker flows={flows} selectedFlowId={selectedFlowId} onSelect={(id) => { setSelectedFlowId(id); setStepError(null); }} />
           )}
-        </div>
-        <Separator />
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">{t("precheck.wizard.section.meta")}</h4>
-            <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.metaHint")}</p>
-          </div>
-          <MetaFields
-            title={createTitle}
-            description={createDescription}
-            onTitleChange={(value) => { setCreateTitle(value); setStepError(null); }}
-            onDescriptionChange={setCreateDescription}
-          />
         </div>
       </div>
     );
