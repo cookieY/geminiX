@@ -455,6 +455,7 @@ function flowView() {
     name: QUERY_FLOW_NAME,
     flow_type: "query_access",
     enabled: true,
+    status: "enabled",
     rule_set_id: null,
     stages: undefined,
     approval_steps: world.flowSteps.map((step) => ({

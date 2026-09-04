@@ -404,24 +404,26 @@ export const ListFlowsQueryParams = zod.object({
   "after": zod.string().optional()
 })
 
-export const listFlowsResponseOneDataTwoItemsItemOneNameMax = 128;
+export const listFlowsResponseOneDataTwoItemsItemNameMax = 128;
 
 
-export const listFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
+export const listFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax = 128;
 
-export const listFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
+export const listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
 
-export const listFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsItemPositionMax = 10;
+export const listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
-
-export const listFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsMax = 10;
-
+export const listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax = 10;
 
 
-export const listFlowsResponseOneDataTwoItemsItemOneApprovalStepsItemPositionMax = 10;
+export const listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsMax = 10;
 
 
-export const listFlowsResponseOneDataTwoItemsItemOneApprovalStepsMax = 10;
+
+export const listFlowsResponseOneDataTwoItemsItemApprovalStepsItemPositionMax = 10;
+
+
+export const listFlowsResponseOneDataTwoItemsItemApprovalStepsMax = 10;
 
 
 
@@ -438,44 +440,45 @@ export const ListFlowsResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "items": zod.array(zod.object({
-  "name": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemOneNameMax),
+  "name": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemNameMax),
   "flow_type": zod.enum(['change_review', 'query_access']),
   "enabled": zod.boolean(),
   "rule_set_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax),
   "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemPhysicalSchemaMax)
+  "logical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax),
+  "physical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax)
 })),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(listFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(listFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsMax),
+})).min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsMax),
   "execution_actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).optional(),
+}).describe('Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.')).min(1).optional(),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(listFlowsResponseOneDataTwoItemsItemOneApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(listFlowsResponseOneDataTwoItemsItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(listFlowsResponseOneDataTwoItemsItemOneApprovalStepsMax).optional(),
+})).min(1).max(listFlowsResponseOneDataTwoItemsItemApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional()
-}).and(zod.object({
+})).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
+  "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-})))
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'))
 })),
   "request_id": zod.uuid()
 }),zod.object({
@@ -545,24 +548,26 @@ export const CreateFlowBody = zod.object({
 })).min(1).optional()
 })
 
-export const createFlowResponseOneDataOneNameMax = 128;
+export const createFlowResponseOneDataNameMax = 128;
 
 
-export const createFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
+export const createFlowResponseOneDataStagesItemDatasourceNameMax = 128;
 
-export const createFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
+export const createFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
 
-export const createFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax = 10;
+export const createFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
-
-export const createFlowResponseOneDataOneStagesItemApprovalStepsMax = 10;
-
+export const createFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
 
-export const createFlowResponseOneDataOneApprovalStepsItemPositionMax = 10;
+export const createFlowResponseOneDataStagesItemApprovalStepsMax = 10;
 
 
-export const createFlowResponseOneDataOneApprovalStepsMax = 10;
+
+export const createFlowResponseOneDataApprovalStepsItemPositionMax = 10;
+
+
+export const createFlowResponseOneDataApprovalStepsMax = 10;
 
 
 
@@ -572,44 +577,45 @@ export const CreateFlowResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "name": zod.string().min(1).max(createFlowResponseOneDataOneNameMax),
+  "name": zod.string().min(1).max(createFlowResponseOneDataNameMax),
   "flow_type": zod.enum(['change_review', 'query_access']),
   "enabled": zod.boolean(),
   "rule_set_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string().min(1).max(createFlowResponseOneDataStagesItemDatasourceNameMax),
   "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(createFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(createFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax)
+  "logical_schema": zod.string().min(1).max(createFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
+  "physical_schema": zod.string().min(1).max(createFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
 })),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(createFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(createFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(createFlowResponseOneDataOneStagesItemApprovalStepsMax),
+})).min(1).max(createFlowResponseOneDataStagesItemApprovalStepsMax),
   "execution_actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).optional(),
+}).describe('Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.')).min(1).optional(),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(createFlowResponseOneDataOneApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(createFlowResponseOneDataApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(createFlowResponseOneDataOneApprovalStepsMax).optional(),
+})).min(1).max(createFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional()
-}).and(zod.object({
+})).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
+  "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-})),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -625,24 +631,26 @@ export const GetFlowParams = zod.object({
   "flow_id": zod.uuid()
 })
 
-export const getFlowResponseOneDataOneNameMax = 128;
+export const getFlowResponseOneDataNameMax = 128;
 
 
-export const getFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
+export const getFlowResponseOneDataStagesItemDatasourceNameMax = 128;
 
-export const getFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
+export const getFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
 
-export const getFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax = 10;
+export const getFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
-
-export const getFlowResponseOneDataOneStagesItemApprovalStepsMax = 10;
-
+export const getFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
 
-export const getFlowResponseOneDataOneApprovalStepsItemPositionMax = 10;
+export const getFlowResponseOneDataStagesItemApprovalStepsMax = 10;
 
 
-export const getFlowResponseOneDataOneApprovalStepsMax = 10;
+
+export const getFlowResponseOneDataApprovalStepsItemPositionMax = 10;
+
+
+export const getFlowResponseOneDataApprovalStepsMax = 10;
 
 
 
@@ -652,44 +660,45 @@ export const GetFlowResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "name": zod.string().min(1).max(getFlowResponseOneDataOneNameMax),
+  "name": zod.string().min(1).max(getFlowResponseOneDataNameMax),
   "flow_type": zod.enum(['change_review', 'query_access']),
   "enabled": zod.boolean(),
   "rule_set_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string().min(1).max(getFlowResponseOneDataStagesItemDatasourceNameMax),
   "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(getFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(getFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax)
+  "logical_schema": zod.string().min(1).max(getFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
+  "physical_schema": zod.string().min(1).max(getFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
 })),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(getFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(getFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(getFlowResponseOneDataOneStagesItemApprovalStepsMax),
+})).min(1).max(getFlowResponseOneDataStagesItemApprovalStepsMax),
   "execution_actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).optional(),
+}).describe('Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.')).min(1).optional(),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(getFlowResponseOneDataOneApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(getFlowResponseOneDataApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(getFlowResponseOneDataOneApprovalStepsMax).optional(),
+})).min(1).max(getFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional()
-}).and(zod.object({
+})).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
+  "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-})),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -769,24 +778,26 @@ export const ReplaceFlowBody = zod.object({
 })).min(1).optional()
 })
 
-export const replaceFlowResponseOneDataOneNameMax = 128;
+export const replaceFlowResponseOneDataNameMax = 128;
 
 
-export const replaceFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
+export const replaceFlowResponseOneDataStagesItemDatasourceNameMax = 128;
 
-export const replaceFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
+export const replaceFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
 
-export const replaceFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax = 10;
+export const replaceFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
-
-export const replaceFlowResponseOneDataOneStagesItemApprovalStepsMax = 10;
-
+export const replaceFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
 
-export const replaceFlowResponseOneDataOneApprovalStepsItemPositionMax = 10;
+export const replaceFlowResponseOneDataStagesItemApprovalStepsMax = 10;
 
 
-export const replaceFlowResponseOneDataOneApprovalStepsMax = 10;
+
+export const replaceFlowResponseOneDataApprovalStepsItemPositionMax = 10;
+
+
+export const replaceFlowResponseOneDataApprovalStepsMax = 10;
 
 
 
@@ -796,44 +807,45 @@ export const ReplaceFlowResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "name": zod.string().min(1).max(replaceFlowResponseOneDataOneNameMax),
+  "name": zod.string().min(1).max(replaceFlowResponseOneDataNameMax),
   "flow_type": zod.enum(['change_review', 'query_access']),
   "enabled": zod.boolean(),
   "rule_set_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemDatasourceNameMax),
   "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(replaceFlowResponseOneDataOneStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(replaceFlowResponseOneDataOneStagesItemSchemaMappingsItemPhysicalSchemaMax)
+  "logical_schema": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
+  "physical_schema": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
 })),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(replaceFlowResponseOneDataOneStagesItemApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(replaceFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(replaceFlowResponseOneDataOneStagesItemApprovalStepsMax),
+})).min(1).max(replaceFlowResponseOneDataStagesItemApprovalStepsMax),
   "execution_actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).optional(),
+}).describe('Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.')).min(1).optional(),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(replaceFlowResponseOneDataOneApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(replaceFlowResponseOneDataApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(replaceFlowResponseOneDataOneApprovalStepsMax).optional(),
+})).min(1).max(replaceFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional()
-}).and(zod.object({
+})).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
+  "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-})),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -4939,24 +4951,26 @@ export const ListCurrentUserFlowsQueryParams = zod.object({
   "flow_type": zod.enum(['change_review', 'query_access'])
 })
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneNameMax = 128;
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemNameMax = 128;
 
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax = 128;
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsItemPositionMax = 10;
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
-
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsMax = 10;
-
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax = 10;
 
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneApprovalStepsItemPositionMax = 10;
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsMax = 10;
 
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemOneApprovalStepsMax = 10;
+
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemApprovalStepsItemPositionMax = 10;
+
+
+export const listCurrentUserFlowsResponseOneDataTwoItemsItemApprovalStepsMax = 10;
 
 
 
@@ -4973,44 +4987,45 @@ export const ListCurrentUserFlowsResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "items": zod.array(zod.object({
-  "name": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneNameMax),
+  "name": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemNameMax),
   "flow_type": zod.enum(['change_review', 'query_access']),
   "enabled": zod.boolean(),
   "rule_set_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax),
   "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemSchemaMappingsItemPhysicalSchemaMax)
+  "logical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax),
+  "physical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax)
 })),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneStagesItemApprovalStepsMax),
+})).min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsMax),
   "execution_actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).optional(),
+}).describe('Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.')).min(1).optional(),
   "approval_steps": zod.array(zod.object({
-  "position": zod.int().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneApprovalStepsItemPositionMax),
+  "position": zod.int().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
   "user_id": zod.uuid()
 })).min(1)
-})).min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemOneApprovalStepsMax).optional(),
+})).min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional()
-}).and(zod.object({
+})).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
+  "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-})))
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'))
 })),
   "request_id": zod.uuid()
 }),zod.object({

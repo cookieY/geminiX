@@ -5,10 +5,11 @@ import "@/shared/i18n";
 import { StagePath } from "./stage-path";
 
 /**
- * The stage path shows the frozen flow chain. Datasource display names are
- * not exposed to submitters by the API (listDatasources is admin-scoped), so
- * the path renders stage positions only — server identifiers, not guessed
- * names.
+ * The stage path shows the frozen flow chain with the server-resolved
+ * datasource catalog name per stage (FlowStageView datasource_name,
+ * RCP-20260904-FLOW-STAGE-DATASOURCE-NAME) — the same name order stages
+ * carry after submission; the frontend never resolves names from the raw
+ * datasource_id.
  */
 
 function flow(stages: number): Flow {
@@ -17,9 +18,11 @@ function flow(stages: number): Flow {
     name: "默认审核流程",
     flow_type: "change_review",
     enabled: true,
+    status: "enabled",
     stages: Array.from({ length: stages }, (_, index) => ({
       position: index + 1,
       datasource_id: "4f6f1a2b-0000-4000-8000-00000000000" + String(index + 2),
+      datasource_name: "orders-mysql-" + String(index + 1),
       schema_mappings: [],
       approval_steps: [],
       execution_actors: [],
@@ -31,12 +34,14 @@ function flow(stages: number): Flow {
 }
 
 describe("StagePath", () => {
-  it("renders every stage position in order", () => {
+  it("renders every stage position with its datasource name in order", () => {
     render(<StagePath flow={flow(3)} />);
-    const path = screen.getByTestId("stage-path");
-    expect(path.textContent).toContain("阶段 1");
-    expect(path.textContent).toContain("阶段 2");
-    expect(path.textContent).toContain("阶段 3");
+    expect(screen.getByTestId("stage-path-1").textContent).toContain("阶段 1");
+    expect(screen.getByTestId("stage-path-1").textContent).toContain("orders-mysql-1");
+    expect(screen.getByTestId("stage-path-2").textContent).toContain("阶段 2");
+    expect(screen.getByTestId("stage-path-2").textContent).toContain("orders-mysql-2");
+    expect(screen.getByTestId("stage-path-3").textContent).toContain("阶段 3");
+    expect(screen.getByTestId("stage-path-3").textContent).toContain("orders-mysql-3");
   });
 
   it("explains when no flow information exists", () => {

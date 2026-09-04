@@ -239,6 +239,7 @@
     },
     "stagePath": {
       "stage": "Stage {{position}}",
+      "stageDatasource": "Stage {{position}} · {{name}}",
       "unavailable": "Flow information is unavailable"
     },
     "review": {

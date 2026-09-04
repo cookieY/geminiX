@@ -4,11 +4,12 @@ import { Badge } from "@/shared/components/ui/badge";
 import { ArrowRight, Database } from "lucide-react";
 
 /**
- * Flow and stage-path summary for the draft workspace header (migration
- * contract §4 item 1). Datasource display names are not exposed to
- * submitters by the API (listDatasources is admin-scoped), so the path shows
- * the stage positions with the frozen datasource references — server
- * identifiers, not guessed names.
+ * Flow and stage-path summary for the submission entry and the draft
+ * workspace header (migration contract §4 item 1). Each stage badge carries
+ * the datasource catalog name resolved server-side (FlowStageView
+ * datasource_name, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME) — the same name
+ * the order stages show after submission; the frontend never resolves or
+ * guesses names from the raw datasource_id.
  */
 export function StagePath({ flow }: { flow: Flow | null | undefined }) {
   const { t } = useTranslation();
@@ -23,9 +24,16 @@ export function StagePath({ flow }: { flow: Flow | null | undefined }) {
       {stages.map((stage, index) => (
         <span key={stage.position} className="flex items-center gap-2">
           {index > 0 && <ArrowRight className="text-muted-foreground size-4" aria-hidden />}
-          <Badge variant="outline" className="gap-1">
+          <Badge
+            variant="outline"
+            className="gap-1"
+            data-testid={`stage-path-${String(stage.position)}`}
+          >
             <Database className="size-3" aria-hidden />
-            {t("precheck.stagePath.stage", { position: stage.position })}
+            {t("precheck.stagePath.stageDatasource", {
+              position: stage.position,
+              name: stage.datasource_name,
+            })}
           </Badge>
         </span>
       ))}

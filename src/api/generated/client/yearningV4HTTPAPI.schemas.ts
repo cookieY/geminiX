@@ -1530,6 +1530,28 @@ export interface FlowStageWrite {
   execution_actors: ActorRef[];
 }
 
+/**
+ * Read-face projection of one flow stage with the resolved datasource catalog name (server-side join, RCP-20260904-FLOW-STAGE-DATASOURCE-NAME). The write face (FlowStageWrite) keeps the bare datasource_id; the name is a live join over the datasource catalog, never a persisted snapshot. The join always resolves while the catalog row exists, and flow stages block datasource deletion (logical-relations on_target_delete=block), so producers must never serialize an empty name; a temporarily missing catalog row falls back to the datasource_id value, which still satisfies minLength 1.
+ */
+export interface FlowStageView {
+  /** @minimum 1 */
+  position: number;
+  datasource_id: Uuid;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  datasource_name: string;
+  schema_mappings: SchemaMapping[];
+  /**
+     * @minItems 1
+     * @maxItems 10
+     */
+  approval_steps: ApprovalStepWrite[];
+  /** @minItems 1 */
+  execution_actors: ActorRef[];
+}
+
 export interface QueryCapabilityWrite {
   datasource_id: Uuid;
   can_query: true;
@@ -1556,13 +1578,43 @@ export interface FlowWrite {
   query_capabilities?: QueryCapabilityWrite[];
 }
 
-export type Flow = FlowWrite & {
+export type FlowStatus = typeof FlowStatus[keyof typeof FlowStatus];
+
+
+export const FlowStatus = {
+  enabled: 'enabled',
+  disabled: 'disabled',
+  invalid: 'invalid',
+} as const;
+
+/**
+ * Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).
+ */
+export interface Flow {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  name: string;
+  flow_type: FlowType;
+  enabled: boolean;
+  rule_set_id?: Uuid | null;
+  /** @minItems 1 */
+  stages?: FlowStageView[];
+  /**
+     * @minItems 1
+     * @maxItems 10
+     */
+  approval_steps?: ApprovalStepWrite[];
+  /** @minItems 1 */
+  query_capabilities?: QueryCapabilityWrite[];
   id: Uuid;
   /** @minimum 1 */
   version: number;
+  status: FlowStatus;
   created_at: Timestamp;
   updated_at: Timestamp;
-};
+}
 
 export type DraftState = typeof DraftState[keyof typeof DraftState];
 

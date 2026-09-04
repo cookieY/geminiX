@@ -1494,11 +1494,15 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         name: "默认审核流程",
         flow_type: "change_review",
         enabled: true,
+        status: "enabled",
         rule_set_id: null,
         stages: [
           {
             position: 1,
             datasource_id: FIXTURE_DATASOURCE_ID,
+            // Server-side catalog join projection (FlowStageView): the stage
+            // name mirrors the name the submitted order's stage carries.
+            datasource_name: "orders-mysql",
             schema_mappings: [{ logical_schema: "app", physical_schema: "app" }],
             approval_steps: [
               { position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }] },

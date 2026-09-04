@@ -1262,8 +1262,18 @@ function flowViewOf(flow: FixtureFlow) {
     name: flow.name,
     flow_type: flow.flow_type,
     enabled: flow.enabled,
+    status: flow.enabled ? ("enabled" as const) : ("disabled" as const),
     rule_set_id: flow.rule_set_id,
-    stages: flow.stages === null ? undefined : flow.stages,
+    // FlowStageView datasource_name mirrors the backend server-side join over
+    // the datasource catalog (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).
+    stages:
+      flow.stages === null
+        ? undefined
+        : flow.stages.map((stage) => ({
+            ...stage,
+            datasource_name:
+              world.datasources.get(stage.datasource_id)?.name ?? stage.datasource_id,
+          })),
     approval_steps: flow.approval_steps === null ? undefined : flow.approval_steps,
     query_capabilities: flow.query_capabilities === null ? undefined : flow.query_capabilities,
     version: flow.version,

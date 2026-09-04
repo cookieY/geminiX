@@ -239,6 +239,7 @@
     },
     "stagePath": {
       "stage": "阶段 {{position}}",
+      "stageDatasource": "阶段 {{position}} · {{name}}",
       "unavailable": "暂无流程信息"
     },
     "review": {
