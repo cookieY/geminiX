@@ -1,5 +1,8 @@
 import { useEffect, useRef } from "react";
-import * as monaco from "monaco-editor/editor/editor.api.js";
+// editor.main (not editor.api): the api entry omits the editor
+// contributions — the suggest widget, find, etc. — which the completion
+// provider depends on. All languages ship here too; the chunk stays lazy.
+import * as monaco from "monaco-editor/editor/editor.main.js";
 // SQL is a monarch-highlighted basic language: tokenization runs on the main
 // thread and only the general editor worker is needed. Bundled workers only —
 // no runtime CDN or floating remote loading (UI spec §14).
@@ -46,6 +49,10 @@ const THEME_COLORS = {
     mutedForeground: "737373",
     card: "ffffff",
     accent: "f5f5f5",
+    // --chart-3 hue (227°) with editor-legible lightness/chroma, static
+    // conversions documented here: light L0.5 C0.13, dark L0.72 C0.07.
+    keywordBlue: "006ba3",
+    schemaTeal: "009689",
   },
   dark: {
     primary: "e5e5e5",
@@ -54,6 +61,8 @@ const THEME_COLORS = {
     mutedForeground: "a1a1a1",
     card: "171717",
     accent: "262626",
+    keywordBlue: "75aec7",
+    schemaTeal: "009689",
   },
 } as const;
 
@@ -64,15 +73,103 @@ function defineYearningThemes(resolved: "light" | "dark"): void {
     base: dark ? "vs-dark" : "vs",
     inherit: true,
     rules: [
-      { token: "keyword", foreground: palette.primary },
+      { token: "keyword", foreground: palette.keywordBlue },
       { token: "string", foreground: palette.success },
       { token: "number", foreground: palette.warning },
       { token: "comment", foreground: palette.mutedForeground, fontStyle: "italic" },
+      { token: "operator", foreground: palette.keywordBlue },
+      { token: "predefined", foreground: palette.schemaTeal },
     ],
     colors: {
       "editor.background": `#${palette.card}`,
       "editorLineNumber.foreground": `#${palette.mutedForeground}`,
       "editor.selectionBackground": `#${palette.accent}`,
+    },
+  });
+}
+
+/** Optional schema/table/column catalog feeding the SQL completion provider.
+ * Schemas come from the frozen flow's schema mappings; tables and columns
+ * require a metadata read surface the submission journey does not have yet
+ * (contract: metadata endpoints are query-session scoped only), so the
+ * catalog ships empty there and lights up when a read surface exists. */
+export interface SqlCompletionCatalog {
+  schemas: string[];
+  tables: Array<{ schema: string | null; name: string }>;
+  columns: Array<{ schema: string | null; table: string; name: string }>;
+}
+
+const EMPTY_CATALOG: SqlCompletionCatalog = { schemas: [], tables: [], columns: [] };
+
+let activeCompletionCatalog: SqlCompletionCatalog = EMPTY_CATALOG;
+
+export function setSqlCompletionCatalog(catalog: SqlCompletionCatalog): void {
+  activeCompletionCatalog = catalog;
+}
+
+/** Curated statement keywords — Monaco's basic SQL tokenizer colors these
+ * but provides no suggestion provider of its own. */
+const SQL_KEYWORDS = [
+  "SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET",
+  "DELETE", "CREATE", "ALTER", "DROP", "TABLE", "INDEX", "VIEW", "JOIN",
+  "LEFT", "RIGHT", "INNER", "OUTER", "ON", "AND", "OR", "NOT", "NULL",
+  "ORDER", "GROUP", "BY", "HAVING", "LIMIT", "OFFSET", "DISTINCT", "AS",
+  "IN", "BETWEEN", "LIKE", "EXISTS", "UNION", "ALL", "ASC", "DESC",
+  "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "DEFAULT", "CONSTRAINT",
+  "BEGIN", "COMMIT", "ROLLBACK", "TRUNCATE", "RENAME", "IF", "EXISTS",
+];
+
+let completionProviderRegistered = false;
+
+function ensureSqlCompletionProvider(): void {
+  if (completionProviderRegistered) return;
+  completionProviderRegistered = true;
+  monaco.languages.registerCompletionItemProvider("sql", {
+    triggerCharacters: [".", " ", "`"],
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn,
+      };
+      const keywordSuggestions = SQL_KEYWORDS.map((keyword) => ({
+        label: keyword,
+        kind: monaco.languages.CompletionItemKind.Keyword,
+        insertText: keyword,
+        range,
+        detail: "SQL",
+      }));
+      const schemaSuggestions = activeCompletionCatalog.schemas.map((schema) => ({
+        label: schema,
+        kind: monaco.languages.CompletionItemKind.Module,
+        insertText: schema,
+        range,
+        detail: "schema",
+      }));
+      const tableSuggestions = activeCompletionCatalog.tables.map((table) => ({
+        label: table.schema === null ? table.name : `${table.schema}.${table.name}`,
+        kind: monaco.languages.CompletionItemKind.Class,
+        insertText: table.schema === null ? table.name : `${table.schema}.${table.name}`,
+        range,
+        detail: "table",
+      }));
+      const columnSuggestions = activeCompletionCatalog.columns.map((column) => ({
+        label: column.name,
+        kind: monaco.languages.CompletionItemKind.Field,
+        insertText: column.name,
+        range,
+        detail: `column · ${column.table}`,
+      }));
+      return {
+        suggestions: [
+          ...schemaSuggestions,
+          ...tableSuggestions,
+          ...columnSuggestions,
+          ...keywordSuggestions,
+        ],
+      };
     },
   });
 }
@@ -84,6 +181,8 @@ export interface SqlEditorPanelProps {
   /** Programmatic value loads (reveal); keeps the user's undo stack intact. */
   loadValue?: { text: string; nonce: number } | null;
   onLocate?: null | { target: string; nonce: number };
+  /** Schema/table/column suggestions for the completion provider. */
+  completionCatalog?: SqlCompletionCatalog;
   "data-testid"?: string;
 }
 
@@ -93,6 +192,7 @@ export function SqlEditorPanel({
   readOnly = false,
   loadValue = null,
   onLocate = null,
+  completionCatalog = EMPTY_CATALOG,
   "data-testid": testId,
 }: SqlEditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -113,7 +213,12 @@ export function SqlEditorPanel({
   useEffect(() => {
     configureWorkers();
     defineYearningThemes(resolvedTheme);
+    ensureSqlCompletionProvider();
   }, [resolvedTheme]);
+
+  useEffect(() => {
+    setSqlCompletionCatalog(completionCatalog);
+  }, [completionCatalog]);
 
   useEffect(() => {
     if (containerRef.current === null) return;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -32,7 +32,11 @@ import {
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
 import { FindingList } from "@/features/review/finding-list";
 import { ReviewStatusCard } from "@/features/review/review-status-card";
-import { SqlEditorPanel } from "@/features/review/sql-editor-panel";
+import {
+  SqlEditorPanel,
+  setSqlCompletionCatalog,
+  type SqlCompletionCatalog,
+} from "@/features/review/sql-editor-panel";
 import { StagePath } from "@/features/review/stage-path";
 import { SubmissionDock } from "@/features/review/submission-dock";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
@@ -509,6 +513,28 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     },
     onError: (error) => { showActionError(error, "updateChangeDraft"); },
   });
+
+  // Completion catalog for the SQL editor: the frozen flow's logical schema
+  // names are the submitter-facing database names. Table/column completion
+  // needs a metadata read surface the submission journey has no contract for
+  // yet, so the catalog carries schemas only.
+  const completionCatalog = useMemo<SqlCompletionCatalog>(
+    () => ({
+      schemas: [
+        ...new Set(
+          (flow?.stages ?? []).flatMap((stage) =>
+            (stage.schema_mappings ?? []).map((mapping) => mapping.logical_schema),
+          ),
+        ),
+      ],
+      tables: [],
+      columns: [],
+    }),
+    [flow],
+  );
+  useEffect(() => {
+    setSqlCompletionCatalog(completionCatalog);
+  }, [completionCatalog]);
 
   const handleRunReview = useCallback(() => {
     if (dirty) {

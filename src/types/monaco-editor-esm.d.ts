@@ -7,5 +7,11 @@ declare module "monaco-editor/editor/editor.api.js" {
   export * from "monaco-editor";
 }
 
+// editor.main carries the full contribution set (suggest widget, find, …)
+// on top of the API surface.
+declare module "monaco-editor/editor/editor.main.js" {
+  export * from "monaco-editor";
+}
+
 // Side-effect contribution: registers the SQL monarch tokenizer.
 declare module "monaco-editor/languages/definitions/sql/register.js";
