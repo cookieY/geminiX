@@ -270,7 +270,9 @@
       "summary.sql": "SQL size",
       "summary.statements": "{{count}} statements",
       "summary.saved": "Saved",
-      "summary.empty": "Not written yet"
+      "summary.empty": "Not written yet",
+      "searchPlaceholder": "Search flows by title…",
+      "searchEmpty": "No matching flows"
     },
     "review": {
       "title": "Review progress",

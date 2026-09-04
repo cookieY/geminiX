@@ -71,6 +71,7 @@ import {
   FileUp,
   Play,
   Save,
+  Search,
   Send,
 } from "lucide-react";
 
@@ -209,33 +210,60 @@ interface FlowPickerProps {
 
 /** Selectable flow cards (create mode, step 1): the frozen stage chain with
  * its datasource names is the deciding information, so each card shows it.
- * The flow is frozen once the draft is created. */
+ * The flow is frozen once the draft is created. With many granted flows the
+ * picker searches by title and scrolls inside a bounded region instead of
+ * stretching the page (owner ruling 2026-09-04). */
 function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const keyword = query.trim().toLowerCase();
+  const visible = keyword === "" ? flows : flows.filter((flow) => flow.name.toLowerCase().includes(keyword));
   return (
-    <div className="grid gap-3 sm:grid-cols-2" data-testid="wizard-flow-picker">
-      {flows.map((flow) => {
-        const selected = flow.id === selectedFlowId;
-        return (
-          <button
-            key={flow.id}
-            type="button"
-            onClick={() => { onSelect(flow.id); }}
-            aria-pressed={selected}
-            className={
-              selected
-                ? "flex flex-col gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary"
-                : "hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors"
-            }
-            data-testid={`use-flow-${flow.id}`}
-          >
-            <span className="flex items-center gap-2 text-sm font-medium">
-              {selected && <CheckCircle2 className="text-primary size-4" aria-hidden />}
-              {flow.name}
-            </span>
-            <StagePath flow={flow} />
-          </button>
-        );
-      })}
+    <div className="space-y-3" data-testid="wizard-flow-picker">
+      <div className="relative">
+        <Search
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          aria-hidden
+        />
+        <Input
+          value={query}
+          onChange={(event) => { setQuery(event.target.value); }}
+          placeholder={t("precheck.wizard.searchPlaceholder")}
+          className="pl-9"
+          data-testid="wizard-flow-search"
+        />
+      </div>
+      {visible.length === 0 ? (
+        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm" data-testid="wizard-flow-search-empty">
+          {t("precheck.wizard.searchEmpty")}
+        </p>
+      ) : (
+        <div className="grid max-h-[380px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+          {visible.map((flow) => {
+            const selected = flow.id === selectedFlowId;
+            return (
+              <button
+                key={flow.id}
+                type="button"
+                onClick={() => { onSelect(flow.id); }}
+                aria-pressed={selected}
+                className={
+                  selected
+                    ? "flex flex-col gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary"
+                    : "hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors"
+                }
+                data-testid={`use-flow-${flow.id}`}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  {selected && <CheckCircle2 className="text-primary size-4" aria-hidden />}
+                  {flow.name}
+                </span>
+                <StagePath flow={flow} />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

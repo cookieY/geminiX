@@ -270,7 +270,9 @@
       "summary.sql": "SQL 规模",
       "summary.statements": "{{count}} 条语句",
       "summary.saved": "已保存",
-      "summary.empty": "未填写"
+      "summary.empty": "未填写",
+      "searchPlaceholder": "搜索流程标题…",
+      "searchEmpty": "未找到匹配的流程"
     },
     "review": {
       "title": "审核进度",
