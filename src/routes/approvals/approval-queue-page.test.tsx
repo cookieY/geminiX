@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
@@ -133,6 +133,26 @@ describe("ApprovalQueuePage", () => {
     expect(table.textContent).toContain("YR-20260830-000081");
     expect(table.textContent).not.toContain("YR-20260830-000082");
     expect(table.textContent).toContain("prod-mysql");
+  });
+
+  it("searches the queue by number, title and datasource (§18.39)", async () => {
+    seedFixtureOrder(queueOrder());
+    renderQueue();
+    await screen.findByTestId("approval-queue-table");
+    fireEvent.change(screen.getByTestId("approval-queue-search"), {
+      target: { value: "审批队列夹具" },
+    });
+    expect(screen.getByTestId("approval-queue-table").textContent).toContain("YR-20260830-000081");
+    fireEvent.change(screen.getByTestId("approval-queue-search"), {
+      target: { value: "prod-mysql" },
+    });
+    expect(screen.getByTestId("approval-queue-table").textContent).toContain("YR-20260830-000081");
+    fireEvent.change(screen.getByTestId("approval-queue-search"), {
+      target: { value: "YR-2099" },
+    });
+    expect(await screen.findByTestId("approval-queue-search-empty")).toBeVisible();
+    fireEvent.change(screen.getByTestId("approval-queue-search"), { target: { value: "" } });
+    expect(screen.getByTestId("approval-queue-table").textContent).toContain("YR-20260830-000081");
   });
 
   it("navigates a queue row to the order detail", async () => {

@@ -225,10 +225,14 @@ describe("admin page flows", () => {
     // (newest created_at) sits on page 2 under the backend's asc ordering —
     // widen the page to see it.
     await userEvent.click(await screen.findByTestId("datasources-page-size"));
-    await userEvent.click(screen.getByRole("option", { name: "50" }));
+    // Parallel workers make the option popup and the list refetch slower
+    // than the 1s defaults — both waits get generous budgets.
+    await userEvent.click(
+      await screen.findByRole("option", { name: "50" }, { timeout: 4000 }),
+    );
     await waitFor(() => {
       expect(screen.getByText("new-warehouse")).toBeInTheDocument();
-    });
+    }, { timeout: 4000 });
   });
 
   it("runs the knowledge eval and shows the governed result", async () => {

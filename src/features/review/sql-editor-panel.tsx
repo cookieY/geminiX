@@ -93,60 +93,14 @@ function defineYearningThemes(resolved: "light" | "dark"): void {
  * require a metadata read surface the submission journey does not have yet
  * (contract: metadata endpoints are query-session scoped only), so the
  * catalog ships empty there and lights up when a read surface exists. */
-export interface SqlCompletionCatalog {
-  schemas: string[];
-  tables: Array<{ schema: string | null; name: string }>;
-  columns: Array<{ schema: string | null; table: string; name: string }>;
-}
+import {
+  buildSqlSuggestions,
+  type SqlCompletionCatalog,
+} from "./sql-completions";
+
+export type { SqlCompletionCatalog };
 
 const EMPTY_CATALOG: SqlCompletionCatalog = { schemas: [], tables: [], columns: [] };
-
-/** Curated statement keywords — Monaco's basic SQL tokenizer colors these
- * but provides no suggestion provider of its own. */
-const SQL_KEYWORDS = [
-  "SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET",
-  "DELETE", "CREATE", "ALTER", "DROP", "TABLE", "INDEX", "VIEW", "JOIN",
-  "LEFT", "RIGHT", "INNER", "OUTER", "ON", "AND", "OR", "NOT", "NULL",
-  "ORDER", "GROUP", "BY", "HAVING", "LIMIT", "OFFSET", "DISTINCT", "AS",
-  "IN", "BETWEEN", "LIKE", "EXISTS", "UNION", "ALL", "ASC", "DESC",
-  "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "DEFAULT", "CONSTRAINT",
-  "BEGIN", "COMMIT", "ROLLBACK", "TRUNCATE", "RENAME", "IF", "EXISTS",
-];
-
-function buildSuggestions(
-  catalog: SqlCompletionCatalog,
-  range: { startLineNumber: number; endLineNumber: number; startColumn: number; endColumn: number },
-): monaco.languages.CompletionItem[] {
-  const keywordSuggestions = SQL_KEYWORDS.map((keyword) => ({
-    label: keyword,
-    kind: monaco.languages.CompletionItemKind.Keyword,
-    insertText: keyword,
-    range,
-    detail: "SQL",
-  }));
-  const schemaSuggestions = catalog.schemas.map((schema) => ({
-    label: schema,
-    kind: monaco.languages.CompletionItemKind.Module,
-    insertText: schema,
-    range,
-    detail: "schema",
-  }));
-  const tableSuggestions = catalog.tables.map((table) => ({
-    label: table.schema === null ? table.name : `${table.schema}.${table.name}`,
-    kind: monaco.languages.CompletionItemKind.Class,
-    insertText: table.schema === null ? table.name : `${table.schema}.${table.name}`,
-    range,
-    detail: "table",
-  }));
-  const columnSuggestions = catalog.columns.map((column) => ({
-    label: column.name,
-    kind: monaco.languages.CompletionItemKind.Field,
-    insertText: column.name,
-    range,
-    detail: `column · ${column.table}`,
-  }));
-  return [...schemaSuggestions, ...tableSuggestions, ...columnSuggestions, ...keywordSuggestions];
-}
 
 export interface SqlEditorPanelProps {
   value: string;
@@ -205,7 +159,20 @@ export function SqlEditorPanel({
           startColumn: word.startColumn,
           endColumn: word.endColumn,
         };
-        return { suggestions: buildSuggestions(catalogRef.current, range) };
+        const KIND_MAP = {
+          keyword: monaco.languages.CompletionItemKind.Keyword,
+          schema: monaco.languages.CompletionItemKind.Module,
+          table: monaco.languages.CompletionItemKind.Class,
+          column: monaco.languages.CompletionItemKind.Field,
+        } as const;
+        const suggestions = buildSqlSuggestions(catalogRef.current).map((item) => ({
+          label: item.label,
+          kind: KIND_MAP[item.kind],
+          insertText: item.insertText,
+          range,
+          detail: item.detail,
+        }));
+        return { suggestions };
       },
     });
     return () => { providerDisposable.dispose(); };

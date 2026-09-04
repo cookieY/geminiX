@@ -126,6 +126,38 @@ describe("SubmissionWizard create mode", () => {
   });
 });
 
+describe("SubmissionWizard flow picker search", () => {
+  it("filters flow cards by title, shows a search empty state and keeps the selection", async () => {
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+
+    // Substring filter: 订单 matches only the catalog order flows.
+    fireEvent.change(screen.getByTestId("wizard-flow-search"), {
+      target: { value: "订单" },
+    });
+    const cards = screen.getAllByTestId(/^use-flow-/);
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((card) => card.textContent.includes("订单"))).toBe(true);
+
+    // No match: the dedicated empty state replaces the grid.
+    fireEvent.change(screen.getByTestId("wizard-flow-search"), {
+      target: { value: "不存在的流程" },
+    });
+    expect(screen.getByTestId("wizard-flow-search-empty")).toBeVisible();
+
+    // Clearing restores the full catalog with the selection preserved.
+    fireEvent.change(screen.getByTestId("wizard-flow-search"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("wizard-flow-search"), {
+      target: { value: "指标" },
+    });
+    fireEvent.change(screen.getByTestId("wizard-flow-search"), { target: { value: "" } });
+    expect(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
 describe("SubmissionWizard draft mode step 1", () => {
   it("shows the frozen flow and saves metadata edits before advancing", async () => {
     const create = (await (
