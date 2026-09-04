@@ -36,6 +36,11 @@ import type {
   ListChangeDraftsParams,
   ListCurrentUserFlows200,
   ListCurrentUserFlowsParams,
+  ListMyFlowDatasourceColumns200,
+  ListMyFlowDatasourceColumnsParams,
+  ListMyFlowDatasourceSchemas200,
+  ListMyFlowDatasourceTables200,
+  ListMyFlowDatasourceTablesParams,
   ListReviewRunFindings200,
   ListReviewRunFindingsParams,
   ProblemResponse,
@@ -156,6 +161,288 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getListCurrentUserFlowsMutationOptions(options), queryClient);
+    }
+    export type listMyFlowDatasourceSchemasResponse200 = {
+  data: ListMyFlowDatasourceSchemas200
+  status: 200
+}
+
+export type listMyFlowDatasourceSchemasResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceSchemasResponseSuccess = (listMyFlowDatasourceSchemasResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceSchemasResponseError = (listMyFlowDatasourceSchemasResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceSchemasResponse = (listMyFlowDatasourceSchemasResponseSuccess | listMyFlowDatasourceSchemasResponseError)
+
+export const getListMyFlowDatasourceSchemasUrl = (flowId: string,
+    datasourceId: string,) => {
+
+
+
+
+  return `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/schemas`
+}
+
+export const listMyFlowDatasourceSchemas = async (flowId: string,
+    datasourceId: string, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceSchemasResponse> => {
+
+  return customInstance<listMyFlowDatasourceSchemasResponse>(getListMyFlowDatasourceSchemasUrl(flowId,datasourceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFlowDatasourceSchemasMutationKey = () => ['listMyFlowDatasourceSchemas'] as const;
+
+export const getListMyFlowDatasourceSchemasMutationOptions = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>, TError,ListMyFlowDatasourceSchemasMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>, TError,ListMyFlowDatasourceSchemasMutationVariables, TContext> => {
+
+const mutationKey = getListMyFlowDatasourceSchemasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>, ListMyFlowDatasourceSchemasMutationVariables> = (props) => {
+          const {flowId,datasourceId} = props ?? {};
+
+          return  listMyFlowDatasourceSchemas(flowId,datasourceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListMyFlowDatasourceSchemasMutationResult = NonNullable<Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>>
+
+    export type ListMyFlowDatasourceSchemasMutationError = ProblemResponse
+    export type ListMyFlowDatasourceSchemasMutationVariables = {flowId: string;datasourceId: string}
+
+    export const useListMyFlowDatasourceSchemas = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>, TError,ListMyFlowDatasourceSchemasMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listMyFlowDatasourceSchemas>>,
+        TError,
+        ListMyFlowDatasourceSchemasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListMyFlowDatasourceSchemasMutationOptions(options), queryClient);
+    }
+    export type listMyFlowDatasourceTablesResponse200 = {
+  data: ListMyFlowDatasourceTables200
+  status: 200
+}
+
+export type listMyFlowDatasourceTablesResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceTablesResponseSuccess = (listMyFlowDatasourceTablesResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceTablesResponseError = (listMyFlowDatasourceTablesResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceTablesResponse = (listMyFlowDatasourceTablesResponseSuccess | listMyFlowDatasourceTablesResponseError)
+
+export const getListMyFlowDatasourceTablesUrl = (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceTablesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables`
+}
+
+export const listMyFlowDatasourceTables = async (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceTablesParams, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceTablesResponse> => {
+
+  return customInstance<listMyFlowDatasourceTablesResponse>(getListMyFlowDatasourceTablesUrl(flowId,datasourceId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFlowDatasourceTablesMutationKey = () => ['listMyFlowDatasourceTables'] as const;
+
+export const getListMyFlowDatasourceTablesMutationOptions = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceTables>>, TError,ListMyFlowDatasourceTablesMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceTables>>, TError,ListMyFlowDatasourceTablesMutationVariables, TContext> => {
+
+const mutationKey = getListMyFlowDatasourceTablesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listMyFlowDatasourceTables>>, ListMyFlowDatasourceTablesMutationVariables> = (props) => {
+          const {flowId,datasourceId,params} = props ?? {};
+
+          return  listMyFlowDatasourceTables(flowId,datasourceId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListMyFlowDatasourceTablesMutationResult = NonNullable<Awaited<ReturnType<typeof listMyFlowDatasourceTables>>>
+
+    export type ListMyFlowDatasourceTablesMutationError = ProblemResponse
+    export type ListMyFlowDatasourceTablesMutationVariables = {flowId: string;datasourceId: string;params: ListMyFlowDatasourceTablesParams}
+
+    export const useListMyFlowDatasourceTables = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceTables>>, TError,ListMyFlowDatasourceTablesMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listMyFlowDatasourceTables>>,
+        TError,
+        ListMyFlowDatasourceTablesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListMyFlowDatasourceTablesMutationOptions(options), queryClient);
+    }
+    export type listMyFlowDatasourceColumnsResponse200 = {
+  data: ListMyFlowDatasourceColumns200
+  status: 200
+}
+
+export type listMyFlowDatasourceColumnsResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceColumnsResponseSuccess = (listMyFlowDatasourceColumnsResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceColumnsResponseError = (listMyFlowDatasourceColumnsResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceColumnsResponse = (listMyFlowDatasourceColumnsResponseSuccess | listMyFlowDatasourceColumnsResponseError)
+
+export const getListMyFlowDatasourceColumnsUrl = (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceColumnsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns`
+}
+
+export const listMyFlowDatasourceColumns = async (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceColumnsParams, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceColumnsResponse> => {
+
+  return customInstance<listMyFlowDatasourceColumnsResponse>(getListMyFlowDatasourceColumnsUrl(flowId,datasourceId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFlowDatasourceColumnsMutationKey = () => ['listMyFlowDatasourceColumns'] as const;
+
+export const getListMyFlowDatasourceColumnsMutationOptions = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>, TError,ListMyFlowDatasourceColumnsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>, TError,ListMyFlowDatasourceColumnsMutationVariables, TContext> => {
+
+const mutationKey = getListMyFlowDatasourceColumnsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>, ListMyFlowDatasourceColumnsMutationVariables> = (props) => {
+          const {flowId,datasourceId,params} = props ?? {};
+
+          return  listMyFlowDatasourceColumns(flowId,datasourceId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListMyFlowDatasourceColumnsMutationResult = NonNullable<Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>>
+
+    export type ListMyFlowDatasourceColumnsMutationError = ProblemResponse
+    export type ListMyFlowDatasourceColumnsMutationVariables = {flowId: string;datasourceId: string;params: ListMyFlowDatasourceColumnsParams}
+
+    export const useListMyFlowDatasourceColumns = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>, TError,ListMyFlowDatasourceColumnsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listMyFlowDatasourceColumns>>,
+        TError,
+        ListMyFlowDatasourceColumnsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListMyFlowDatasourceColumnsMutationOptions(options), queryClient);
     }
     export type listChangeDraftsResponse200 = {
   data: ListChangeDrafts200

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import type {
@@ -9,6 +9,9 @@ import type {
   ReviewFinding,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
+  listMyFlowDatasourceColumns,
+  listMyFlowDatasourceSchemas,
+  listMyFlowDatasourceTables,
   createChangeDraft,
   replaceDraftSql,
   revealDraftSql,
@@ -517,8 +520,54 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // names are the submitter-facing database names. Table/column completion
   // needs a metadata read surface the submission journey has no contract for
   // yet, so the catalog carries schemas only.
-  const completionCatalog = useMemo<SqlCompletionCatalog>(
-    () => ({
+  // Completion catalog (RCP-20260904-SUBMITTER-METADATA-PROJECTION): the
+  // frozen flow's stage datasources are read for schemas/tables/columns —
+  // one query per stage datasource; failures degrade to the mapping-name
+  // catalog (keyword completions keep working). Schema mappings still
+  // contribute the submitter-facing logical names.
+  const stageDatasourceIds = useMemo(
+    () => [...new Set((flow?.stages ?? []).map((stage) => stage.datasource_id))],
+    [flow],
+  );
+  const metadataQueries = useQueries({
+    queries: stageDatasourceIds.map((datasourceId) => ({
+      queryKey: ["submitter-metadata", flow?.id ?? "", datasourceId],
+      enabled: mode === "draft" && flow?.id != null,
+      retry: false,
+      staleTime: 60_000,
+      queryFn: async () => {
+        // The mutator unwraps the success envelope — the SDK returns the
+        // data payload directly ({ items }).
+        const flowId = flow?.id;
+        if (flowId === undefined) return { schemas: [], tables: [], columns: [] };
+        const schemas = (await listMyFlowDatasourceSchemas(flowId, datasourceId)) as unknown as {
+          items: Array<{ name: string }>;
+        };
+        const tables: Array<{ schema: string | null; name: string }> = [];
+        const columns: Array<{ schema: string | null; table: string; name: string }> = [];
+        for (const schema of schemas.items) {
+          const tablesPage = (await listMyFlowDatasourceTables(flowId, datasourceId, {
+            schema_name: schema.name,
+          })) as unknown as { items: Array<{ schema_name: string; table_name: string }> };
+          for (const table of tablesPage.items) {
+            tables.push({ schema: table.schema_name, name: table.table_name });
+          }
+          for (const table of tablesPage.items.slice(0, 20)) {
+            const columnsPage = (await listMyFlowDatasourceColumns(flowId, datasourceId, {
+              schema_name: schema.name,
+              table_name: table.table_name,
+            })) as unknown as { items: Array<{ column_name: string }> };
+            for (const column of columnsPage.items) {
+              columns.push({ schema: schema.name, table: table.table_name, name: column.column_name });
+            }
+          }
+        }
+        return { schemas: schemas.items.map((entry) => entry.name), tables, columns };
+      },
+    })),
+  });
+  const completionCatalog = useMemo<SqlCompletionCatalog>(() => {
+    const merged: SqlCompletionCatalog = {
       schemas: [
         ...new Set(
           (flow?.stages ?? []).flatMap((stage) =>
@@ -528,9 +577,16 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       ],
       tables: [],
       columns: [],
-    }),
-    [flow],
-  );
+    };
+    for (const query of metadataQueries) {
+      const data = query.data;
+      if (data === undefined) continue;
+      merged.schemas.push(...data.schemas);
+      merged.tables.push(...data.tables);
+      merged.columns.push(...data.columns);
+    }
+    return merged;
+  }, [flow, metadataQueries]);
 
   const handleRunReview = useCallback(() => {
     if (dirty) {

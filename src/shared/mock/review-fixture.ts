@@ -1469,6 +1469,60 @@ function advanceRun(draft: FixtureDraft, run: FixtureRun, task: FixtureTask): vo
   }, QUEUED_TO_RUNNING_MS);
 }
 
+// ---- Submitter metadata projection fixtures (RCP-20260904) ----
+
+interface MetadataWorld {
+  schemas: string[];
+  tables: Array<{ schema_name: string; table_name: string; relation_kind: "table" }>;
+  columns: Array<{
+    schema_name: string;
+    table_name: string;
+    column_name: string;
+    ordinal: number;
+    data_type: string;
+    nullable: boolean;
+    masked: boolean;
+  }>;
+}
+
+const METADATA_WORLDS: Record<string, MetadataWorld> = {
+  [FIXTURE_DATASOURCE_ID]: {
+    schemas: ["app"],
+    tables: [
+      { schema_name: "app", table_name: "orders", relation_kind: "table" },
+      { schema_name: "app", table_name: "users", relation_kind: "table" },
+    ],
+    columns: [
+      { schema_name: "app", table_name: "orders", column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, masked: false },
+      { schema_name: "app", table_name: "orders", column_name: "user_id", ordinal: 2, data_type: "bigint", nullable: false, masked: false },
+      { schema_name: "app", table_name: "orders", column_name: "amount", ordinal: 3, data_type: "decimal", nullable: true, masked: false },
+      { schema_name: "app", table_name: "users", column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, masked: false },
+      { schema_name: "app", table_name: "users", column_name: "email", ordinal: 2, data_type: "varchar", nullable: true, masked: true },
+    ],
+  },
+};
+
+function metadataWorld(datasourceId: string): MetadataWorld {
+  return (
+    METADATA_WORLDS[datasourceId] ?? {
+      schemas: ["public"],
+      tables: [{ schema_name: "public", table_name: "demo_table", relation_kind: "table" }],
+      columns: [
+        { schema_name: "public", table_name: "demo_table", column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, masked: false },
+      ],
+    }
+  );
+}
+
+function grantedSubmitterDatasource(flowId: string, datasourceId: string): boolean {
+  const flow = [FIXTURE_FLOW_ID, ...CATALOG_FLOW_IDS].find((id) => id === flowId);
+  if (flow === undefined) return false;
+  if (flowId === FIXTURE_FLOW_ID) return datasourceId === FIXTURE_DATASOURCE_ID;
+  // Catalog flows grant their own stage datasource (the first catalog
+  // datasource id carries the demo world).
+  return datasourceId.startsWith("4f6f1a2b-0000-4000-8000-00000000c1");
+}
+
 export function reviewFixtureHandlers(): HttpHandler[] {
   return [
     // Flow catalog for submitters (flow selection cards). Zero-permission
@@ -1522,6 +1576,51 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         updated_at: "2026-08-01T00:00:00Z",
       };
       return HttpResponse.json(successEnvelope(pageOf([flow, ...catalogFlows], null, null)));
+    }),
+
+    // Submitter metadata projection (RCP-20260904-SUBMITTER-METADATA-
+    // PROJECTION): schemas/tables/columns for a granted flow's stage
+    // datasource. Scope = the default flow (FIXTURE_DATASOURCE_ID) and the
+    // owner catalog flows (their stages reference catalog datasources);
+    // anything else answers 2014 without enumerating existence.
+    http.get("*/users/me/flows/:flowId/datasources/:datasourceId/metadata/schemas", ({ params }) => {
+      if (!grantedSubmitterDatasource(String(params.flowId), String(params.datasourceId))) {
+        return businessError(2014, "flow not granted to the current user");
+      }
+      const schemas = metadataWorld(String(params.datasourceId)).schemas;
+      return HttpResponse.json(successEnvelope({ items: schemas.map((name) => ({ name })) }));
+    }),
+    http.get("*/users/me/flows/:flowId/datasources/:datasourceId/metadata/tables", ({ params, request }) => {
+      if (!grantedSubmitterDatasource(String(params.flowId), String(params.datasourceId))) {
+        return businessError(2014, "flow not granted to the current user");
+      }
+      const schemaName = new URL(request.url).searchParams.get("schema_name") ?? "";
+      const world = metadataWorld(String(params.datasourceId));
+      const schema = world.schemas.find((candidate) => candidate === schemaName);
+      if (schema === undefined) return businessError(1002, "schema not found");
+      return HttpResponse.json(
+        successEnvelope({
+          items: world.tables
+            .filter((table) => table.schema_name === schemaName)
+            .map((table) => ({ ...table })),
+        }),
+      );
+    }),
+    http.get("*/users/me/flows/:flowId/datasources/:datasourceId/metadata/columns", ({ params, request }) => {
+      if (!grantedSubmitterDatasource(String(params.flowId), String(params.datasourceId))) {
+        return businessError(2014, "flow not granted to the current user");
+      }
+      const url = new URL(request.url);
+      const schemaName = url.searchParams.get("schema_name") ?? "";
+      const tableName = url.searchParams.get("table_name") ?? "";
+      const world = metadataWorld(String(params.datasourceId));
+      return HttpResponse.json(
+        successEnvelope({
+          items: world.columns
+            .filter((column) => column.schema_name === schemaName && column.table_name === tableName)
+            .map((column) => ({ ...column })),
+        }),
+      );
     }),
 
     http.post("*/change-drafts", async ({ request }) => {

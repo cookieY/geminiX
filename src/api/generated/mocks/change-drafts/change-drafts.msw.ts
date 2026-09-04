@@ -34,6 +34,9 @@ import type {
   GetReviewRun200,
   ListChangeDrafts200,
   ListCurrentUserFlows200,
+  ListMyFlowDatasourceColumns200,
+  ListMyFlowDatasourceSchemas200,
+  ListMyFlowDatasourceTables200,
   ListReviewRunFindings200,
   Problem,
   ReplaceDraftSql200,
@@ -47,6 +50,18 @@ import type {
 export const getListCurrentUserFlowsResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getListCurrentUserFlowsResponseMock = (): ListCurrentUserFlows200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {...{items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), page: {next_cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), has_more: faker.datatype.boolean()}},...{items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 1, max: 128}}), flow_type: faker.helpers.arrayElement(Object.values(FlowType)), enabled: faker.datatype.boolean(), rule_set_id: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.uuid(),null,]), undefined]), stages: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({position: faker.number.int({min: 1}), datasource_id: faker.string.uuid(), datasource_name: faker.string.alpha({length: {min: 1, max: 128}}), schema_mappings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({logical_schema: faker.string.alpha({length: {min: 1, max: 128}}), physical_schema: faker.string.alpha({length: {min: 1, max: 128}})})), approval_steps: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({position: faker.number.int({min: 1, max: 10}), actors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({user_id: faker.string.uuid()}))})), execution_actors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({user_id: faker.string.uuid()}))})), undefined]), approval_steps: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({position: faker.number.int({min: 1, max: 10}), actors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({user_id: faker.string.uuid()}))})), undefined]), query_capabilities: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({datasource_id: faker.string.uuid(), can_query: true, can_export: faker.datatype.boolean()})), undefined]), id: faker.string.uuid(), version: faker.number.int({min: 1}), status: faker.helpers.arrayElement(['enabled','disabled','invalid'] as const), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'}))},}, request_id: faker.string.uuid()},{...getListCurrentUserFlowsResponseBusinessErrorResponseMock()},]))
+
+export const getListMyFlowDatasourceSchemasResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getListMyFlowDatasourceSchemasResponseMock = (): ListMyFlowDatasourceSchemas200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}})})), request_id: faker.string.uuid()},{...getListMyFlowDatasourceSchemasResponseBusinessErrorResponseMock()},]))
+
+export const getListMyFlowDatasourceTablesResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getListMyFlowDatasourceTablesResponseMock = (): ListMyFlowDatasourceTables200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({schema_name: faker.string.alpha({length: {min: 10, max: 20}}), table_name: faker.string.alpha({length: {min: 10, max: 20}}), relation_kind: faker.helpers.arrayElement(['table','view','materialized_view'] as const)})), request_id: faker.string.uuid()},{...getListMyFlowDatasourceTablesResponseBusinessErrorResponseMock()},]))
+
+export const getListMyFlowDatasourceColumnsResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getListMyFlowDatasourceColumnsResponseMock = (): ListMyFlowDatasourceColumns200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({schema_name: faker.string.alpha({length: {min: 10, max: 20}}), table_name: faker.string.alpha({length: {min: 10, max: 20}}), column_name: faker.string.alpha({length: {min: 10, max: 20}}), ordinal: faker.number.int({min: 1}), data_type: faker.string.alpha({length: {min: 10, max: 20}}), nullable: faker.datatype.boolean(), masked: faker.datatype.boolean()})), request_id: faker.string.uuid()},{...getListMyFlowDatasourceColumnsResponseBusinessErrorResponseMock()},]))
 
 export const getListChangeDraftsResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
@@ -102,6 +117,42 @@ export const getListCurrentUserFlowsMockHandler = (overrideResponse?: ListCurren
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getListCurrentUserFlowsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListMyFlowDatasourceSchemasMockHandler = (overrideResponse?: ListMyFlowDatasourceSchemas200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListMyFlowDatasourceSchemas200> | ListMyFlowDatasourceSchemas200), options?: RequestHandlerOptions) => {
+  return http.get('*/users/me/flows/:flowId/datasources/:datasourceId/metadata/schemas', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListMyFlowDatasourceSchemasResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListMyFlowDatasourceTablesMockHandler = (overrideResponse?: ListMyFlowDatasourceTables200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListMyFlowDatasourceTables200> | ListMyFlowDatasourceTables200), options?: RequestHandlerOptions) => {
+  return http.get('*/users/me/flows/:flowId/datasources/:datasourceId/metadata/tables', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListMyFlowDatasourceTablesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListMyFlowDatasourceColumnsMockHandler = (overrideResponse?: ListMyFlowDatasourceColumns200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListMyFlowDatasourceColumns200> | ListMyFlowDatasourceColumns200), options?: RequestHandlerOptions) => {
+  return http.get('*/users/me/flows/:flowId/datasources/:datasourceId/metadata/columns', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListMyFlowDatasourceColumnsResponseMock(),
       { status: 200
       })
   }, options)
@@ -240,6 +291,9 @@ export const getListReviewRunFindingsMockHandler = (overrideResponse?: ListRevie
 }
 export const getChangeDraftsMock = () => [
   getListCurrentUserFlowsMockHandler(),
+  getListMyFlowDatasourceSchemasMockHandler(),
+  getListMyFlowDatasourceTablesMockHandler(),
+  getListMyFlowDatasourceColumnsMockHandler(),
   getListChangeDraftsMockHandler(),
   getCreateChangeDraftMockHandler(),
   getGetChangeDraftMockHandler(),

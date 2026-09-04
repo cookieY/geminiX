@@ -5038,6 +5038,102 @@ export const ListCurrentUserFlowsResponse = zod.union([zod.object({
 })])
 
 
+export const ListMyFlowDatasourceSchemasParams = zod.object({
+  "flow_id": zod.uuid(),
+  "datasource_id": zod.uuid()
+})
+
+export const ListMyFlowDatasourceSchemasResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.array(zod.object({
+  "name": zod.string()
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const ListMyFlowDatasourceTablesParams = zod.object({
+  "flow_id": zod.uuid(),
+  "datasource_id": zod.uuid()
+})
+
+export const listMyFlowDatasourceTablesQuerySchemaNameMax = 128;
+
+
+
+export const ListMyFlowDatasourceTablesQueryParams = zod.object({
+  "schema_name": zod.string().min(1).max(listMyFlowDatasourceTablesQuerySchemaNameMax)
+})
+
+export const ListMyFlowDatasourceTablesResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.array(zod.object({
+  "schema_name": zod.string(),
+  "table_name": zod.string(),
+  "relation_kind": zod.enum(['table', 'view', 'materialized_view'])
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const ListMyFlowDatasourceColumnsParams = zod.object({
+  "flow_id": zod.uuid(),
+  "datasource_id": zod.uuid()
+})
+
+export const listMyFlowDatasourceColumnsQuerySchemaNameMax = 128;
+
+export const listMyFlowDatasourceColumnsQueryTableNameMax = 128;
+
+
+
+export const ListMyFlowDatasourceColumnsQueryParams = zod.object({
+  "schema_name": zod.string().min(1).max(listMyFlowDatasourceColumnsQuerySchemaNameMax),
+  "table_name": zod.string().min(1).max(listMyFlowDatasourceColumnsQueryTableNameMax)
+})
+
+
+
+
+export const ListMyFlowDatasourceColumnsResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.array(zod.object({
+  "schema_name": zod.string(),
+  "table_name": zod.string(),
+  "column_name": zod.string(),
+  "ordinal": zod.int().min(1),
+  "data_type": zod.string(),
+  "nullable": zod.boolean(),
+  "masked": zod.boolean()
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
 export const listChangeDraftsQueryLimitDefault = 50;
 export const listChangeDraftsQueryLimitMax = 200;
 

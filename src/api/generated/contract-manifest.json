@@ -3,7 +3,7 @@
   "sources": {
     "openapi": {
       "path": "api/openapi/yearning-v4.yaml",
-      "sha256": "e589dca73eac6ebc2170872a7b976eb60c7898e374b9c048743d794e16109e54"
+      "sha256": "6795d66c81bc382df41fc9d7c516b15b7144c7cab0bcb23a2e975a218c446ab1"
     },
     "error_codes": {
       "path": "api/contracts/error-codes.json",
@@ -11,7 +11,7 @@
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "6d480d4bb0c05ec9e27816e6917234cc62d1d08810a5ddc037d093a471394c4f"
+      "sha256": "18b0391e5f3058ecb1a6155f4f247dffc09d273ef903e2a76be8e7191f49b07d"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
@@ -23,25 +23,25 @@
     "version": "8.27.0",
     "version_source": "package.json",
     "lockfile": "pnpm-lock.yaml",
-    "lockfile_sha256": "63acbbfe8071b7995dd3411db05fdd2d44a9c2a2d9f11c84a1686804a1bce458"
+    "lockfile_sha256": "e803be473091346b69b826224fb41ec70a4ee9accbcab1fc4085607ce3900252"
   },
   "generation_command": "pnpm api:generate",
   "outputs": {
     "typescript_client": {
       "path": "src/api/generated/client",
-      "sha256": "e19a16ad2e44dd041b070f3100afa73727e718b169643abd5986ccad19170ef7"
+      "sha256": "2388e3016f5e2ee756d10e4509b8757c040118affd1bb3636827750ecbf7f78d"
     },
     "zod_runtime_schemas": {
       "path": "src/api/generated/zod",
-      "sha256": "0b94d820ce539a5185b2625b9d70f405f6d949042094c5dff6fa797662261e35"
+      "sha256": "b44287ce18417305553441e34c7d71eef6586be4729624fa697fa2a3009c60e2"
     },
     "tanstack_query_hooks": {
       "path": "src/api/generated/hooks",
-      "sha256": "5ed7f544ba892cf4d03ea49beaf1f4d6e6b172209f5241b27d1bdba4499b628b"
+      "sha256": "06b699eb52465cb5a26d5bba98b09258d6924a80b648fe8362135ef5327f963f"
     },
     "msw_mock_handlers": {
       "path": "src/api/generated/mocks",
-      "sha256": "eae654983d53296c54bc67dc2df111e99de3cd4734aa7e587e1a0241cb7aae04"
+      "sha256": "8edc956ffb2cddf8ad7872507be4f382c0de6a6858017baaf56cba3a46c9189e"
     },
     "business_error_catalog": {
       "path": "src/api/generated/projections/business-error-catalog.ts",
@@ -49,7 +49,7 @@
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "8e9c12374927494f6944a0a37b685fce446a0b8ee9db2b967512b63adc4ff3aa"
+      "sha256": "d8fdb28fe2e3ec739ff30e7a347955210bad47b86a8e40d787a48776c3c7bd8e"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-09-04T03:20:51.925Z"
+  "generated_at": "2026-09-04T09:24:28.216Z"
 }

@@ -3554,6 +3554,48 @@ export type ListCurrentUserFlows200 = {
   request_id: Uuid;
 } | BusinessErrorResponse;
 
+export type ListMyFlowDatasourceSchemas200 = {
+  err_code: 0;
+  message: 'ok';
+  data: DatasourceSchema[];
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListMyFlowDatasourceTablesParams = {
+/**
+ * @minLength 1
+ * @maxLength 128
+ */
+schema_name: SchemaNameQueryParameter;
+};
+
+export type ListMyFlowDatasourceTables200 = {
+  err_code: 0;
+  message: 'ok';
+  data: DatasourceTable[];
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListMyFlowDatasourceColumnsParams = {
+/**
+ * @minLength 1
+ * @maxLength 128
+ */
+schema_name: SchemaNameQueryParameter;
+/**
+ * @minLength 1
+ * @maxLength 128
+ */
+table_name: TableNameQueryParameter;
+};
+
+export type ListMyFlowDatasourceColumns200 = {
+  err_code: 0;
+  message: 'ok';
+  data: DatasourceColumn[];
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
 export type ListChangeDraftsParams = {
 /**
  * @minimum 1

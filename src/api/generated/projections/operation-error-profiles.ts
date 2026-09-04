@@ -672,6 +672,18 @@ export const OPERATION_ERROR_PROFILES: {
     "operations": [
       "copyChangeOrderToDraft"
     ]
+  },
+  "submitter_metadata": {
+    "err_codes": [
+      1001,
+      1002,
+      2014
+    ],
+    "operations": [
+      "listMyFlowDatasourceSchemas",
+      "listMyFlowDatasourceTables",
+      "listMyFlowDatasourceColumns"
+    ]
   }
 },
   semantics: {

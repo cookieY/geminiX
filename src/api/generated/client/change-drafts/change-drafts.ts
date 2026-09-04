@@ -17,6 +17,11 @@ import type {
   ListChangeDraftsParams,
   ListCurrentUserFlows200,
   ListCurrentUserFlowsParams,
+  ListMyFlowDatasourceColumns200,
+  ListMyFlowDatasourceColumnsParams,
+  ListMyFlowDatasourceSchemas200,
+  ListMyFlowDatasourceTables200,
+  ListMyFlowDatasourceTablesParams,
   ListReviewRunFindings200,
   ListReviewRunFindingsParams,
   ProblemResponse,
@@ -62,6 +67,147 @@ export const getListCurrentUserFlowsUrl = (params: ListCurrentUserFlowsParams,) 
 export const listCurrentUserFlows = async (params: ListCurrentUserFlowsParams, options?: Parameters<typeof customInstance>[1]): Promise<listCurrentUserFlowsResponse> => {
 
   return customInstance<listCurrentUserFlowsResponse>(getListCurrentUserFlowsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type listMyFlowDatasourceSchemasResponse200 = {
+  data: ListMyFlowDatasourceSchemas200
+  status: 200
+}
+
+export type listMyFlowDatasourceSchemasResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceSchemasResponseSuccess = (listMyFlowDatasourceSchemasResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceSchemasResponseError = (listMyFlowDatasourceSchemasResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceSchemasResponse = (listMyFlowDatasourceSchemasResponseSuccess | listMyFlowDatasourceSchemasResponseError)
+
+export const getListMyFlowDatasourceSchemasUrl = (flowId: string,
+    datasourceId: string,) => {
+
+
+
+
+  return `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/schemas`
+}
+
+export const listMyFlowDatasourceSchemas = async (flowId: string,
+    datasourceId: string, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceSchemasResponse> => {
+
+  return customInstance<listMyFlowDatasourceSchemasResponse>(getListMyFlowDatasourceSchemasUrl(flowId,datasourceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type listMyFlowDatasourceTablesResponse200 = {
+  data: ListMyFlowDatasourceTables200
+  status: 200
+}
+
+export type listMyFlowDatasourceTablesResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceTablesResponseSuccess = (listMyFlowDatasourceTablesResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceTablesResponseError = (listMyFlowDatasourceTablesResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceTablesResponse = (listMyFlowDatasourceTablesResponseSuccess | listMyFlowDatasourceTablesResponseError)
+
+export const getListMyFlowDatasourceTablesUrl = (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceTablesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables`
+}
+
+export const listMyFlowDatasourceTables = async (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceTablesParams, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceTablesResponse> => {
+
+  return customInstance<listMyFlowDatasourceTablesResponse>(getListMyFlowDatasourceTablesUrl(flowId,datasourceId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type listMyFlowDatasourceColumnsResponse200 = {
+  data: ListMyFlowDatasourceColumns200
+  status: 200
+}
+
+export type listMyFlowDatasourceColumnsResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listMyFlowDatasourceColumnsResponseSuccess = (listMyFlowDatasourceColumnsResponse200) & {
+  headers: Headers;
+};
+export type listMyFlowDatasourceColumnsResponseError = (listMyFlowDatasourceColumnsResponse403) & {
+  headers: Headers;
+};
+
+export type listMyFlowDatasourceColumnsResponse = (listMyFlowDatasourceColumnsResponseSuccess | listMyFlowDatasourceColumnsResponseError)
+
+export const getListMyFlowDatasourceColumnsUrl = (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceColumnsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns`
+}
+
+export const listMyFlowDatasourceColumns = async (flowId: string,
+    datasourceId: string,
+    params: ListMyFlowDatasourceColumnsParams, options?: Parameters<typeof customInstance>[1]): Promise<listMyFlowDatasourceColumnsResponse> => {
+
+  return customInstance<listMyFlowDatasourceColumnsResponse>(getListMyFlowDatasourceColumnsUrl(flowId,datasourceId,params),
   {
     ...options,
     method: 'GET'

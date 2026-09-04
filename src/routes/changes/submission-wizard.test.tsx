@@ -126,6 +126,38 @@ describe("SubmissionWizard create mode", () => {
   });
 });
 
+describe("SubmissionWizard metadata completions (§18.42)", () => {
+  it("serves the stage datasource metadata endpoints for the granted flow", async () => {
+    // Wizard consumption needs the editor mounted with real suggestions —
+    // an e2e concern; here we pin the mock contract the wizard consumes:
+    // the three metadata reads answer 200 with items for the granted pair
+    // and 2014 for a non-granted datasource.
+    const grantedDatasource = "4f6f1a2b-0000-4000-8000-000000000002";
+    const base = `/users/me/flows/${FIXTURE_FLOW_ID}/datasources/${grantedDatasource}/metadata`;
+    interface MetadataPage {
+      data: { items: Array<Record<string, string>> };
+      err_code: number;
+    }
+    const schemas = (await (await fetch(`${base}/schemas`)).json()) as MetadataPage;
+    expect(schemas.data.items.map((entry) => entry.name)).toContain("app");
+    const tables = (await (
+      await fetch(`${base}/tables?schema_name=app`)
+    ).json()) as MetadataPage;
+    expect(tables.data.items.map((entry) => entry.table_name)).toContain("orders");
+    const columns = (await (
+      await fetch(`${base}/columns?schema_name=app&table_name=orders`)
+    ).json()) as MetadataPage;
+    expect(columns.data.items.map((entry) => entry.column_name)).toContain("user_id");
+    // A foreign datasource never becomes enumerable, even for a granted flow.
+    const denied = (await (
+      await fetch(
+        `/users/me/flows/${FIXTURE_FLOW_ID}/datasources/99999999-0000-4000-8000-000000000009/metadata/schemas`,
+      )
+    ).json()) as MetadataPage;
+    expect(denied.err_code).toBe(2014);
+  });
+});
+
 describe("SubmissionWizard flow picker search", () => {
   it("filters flow cards by title, shows a search empty state and keeps the selection", async () => {
     renderWizard("/changes/new");
