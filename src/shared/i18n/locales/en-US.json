@@ -218,7 +218,9 @@
       "next": "Next",
       "page": "Page {{page}}",
       "rowsPerPage": "Rows per page"
-    }
+    },
+    "searchPlaceholder": "Search by name…",
+    "emptySearch": "No matching rows"
   },
   "precheck": {
     "new": {

@@ -4,6 +4,7 @@ import { Lock, ScrollText } from "lucide-react";
 import { listAuditEvents } from "@/api/generated/client/administration/administration";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import type { AuditEvent } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
@@ -67,7 +68,23 @@ export default function AuditRecordsPage() {
     enabled: session.status === "authenticated" && isAdmin,
     retry: false,
   });
-  const auditItems = eventsQuery.data?.items ?? [];
+  // Client-side search over the loaded page: the contract declares no filter
+  // parameters for the audit list (§17 RCP-pending gap), so the search only
+  // narrows what the server already returned. Matches time, actor, action,
+  // resource and outcome — the visible row fields.
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  const auditItems = (eventsQuery.data?.items ?? []).filter(
+    (event) =>
+      keyword === "" ||
+      event.occurred_at.toLowerCase().includes(keyword) ||
+      (event.actor_username_snapshot ?? "").toLowerCase().includes(keyword) ||
+      event.action.toLowerCase().includes(keyword) ||
+      event.event_type.toLowerCase().includes(keyword) ||
+      event.resource_type.toLowerCase().includes(keyword) ||
+      (event.resource_id ?? "").toLowerCase().includes(keyword) ||
+      event.outcome.toLowerCase().includes(keyword),
+  );
   const auditNext = eventsQuery.data?.nextCursor ?? null;
   const auditHasMore = eventsQuery.data?.hasMore ?? false;
 
@@ -101,17 +118,20 @@ export default function AuditRecordsPage() {
 
       {isAdmin && !eventsQuery.isPending && eventsQuery.error === null && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <ScrollText className="size-4" />
-              {t("records.card")}
-            </CardTitle>
-            <CardDescription>{t("records.cardDescription")}</CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <ScrollText className="size-4" />
+                {t("records.card")}
+              </CardTitle>
+              <CardDescription>{t("records.cardDescription")}</CardDescription>
+            </div>
+            <TableSearchInput value={search} onChange={setSearch} testId="records-search" />
           </CardHeader>
           <CardContent>
             {auditItems.length === 0 && (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="records-empty">
-                {t("records.empty")}
+                {keyword !== "" ? t("table.emptySearch") : t("records.empty")}
               </p>
             )}
             {auditItems.length > 0 && (

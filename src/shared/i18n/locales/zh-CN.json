@@ -218,7 +218,9 @@
       "next": "下一页",
       "page": "第 {{page}} 页",
       "rowsPerPage": "每页行数"
-    }
+    },
+    "searchPlaceholder": "搜索名称…",
+    "emptySearch": "暂无匹配结果"
   },
   "precheck": {
     "new": {

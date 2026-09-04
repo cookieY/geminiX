@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -8,6 +8,7 @@ import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Table,
@@ -90,6 +91,17 @@ export default function ApprovalQueuePage() {
   const { t } = useTranslation();
   const session = useSession();
   const queueQuery = useApprovalQueue(true);
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  // The queue matches on order number, title and stage datasource names —
+  // the fields an approver uses to locate the order to work on.
+  const queue = (queueQuery.data ?? []).filter(
+    (order) =>
+      keyword === "" ||
+      order.display_number.toLowerCase().includes(keyword) ||
+      (order.title ?? "").toLowerCase().includes(keyword) ||
+      order.stages.some((stage) => stage.datasource_name.toLowerCase().includes(keyword)),
+  );
 
   // The shared event feed keeps the queue live against peer decisions —
   // each row's subject is subscribed by the hook, this page just scopes the
@@ -108,11 +120,12 @@ export default function ApprovalQueuePage() {
         </div>
       </div>
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Inbox className="size-4" aria-hidden />
             {t("approvals.queue.title")}
           </CardTitle>
+          <TableSearchInput value={search} onChange={setSearch} testId="approval-queue-search" />
         </CardHeader>
         <CardContent>
           {queueQuery.isPending ? (
@@ -123,6 +136,10 @@ export default function ApprovalQueuePage() {
               operationId="listChangeOrders"
               onRetry={() => void queueQuery.refetch()}
             />
+          ) : queue.length === 0 && keyword !== "" ? (
+            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="approval-queue-search-empty">
+              {t("table.emptySearch")}
+            </p>
           ) : queueQuery.data.length === 0 ? (
             <p className="text-muted-foreground py-6 text-center text-sm" data-testid="approval-queue-empty">
               {t("approvals.queue.empty")}
@@ -140,7 +157,7 @@ export default function ApprovalQueuePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {queueQuery.data.map((order) => (
+                {queue.map((order) => (
                   <QueueRow key={order.id} order={order} userId={session.user?.id} />
                 ))}
               </TableBody>
