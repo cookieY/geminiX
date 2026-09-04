@@ -4,6 +4,7 @@ import { readStoredScenario } from "@/shared/mock/scenario-store";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 import { adminFixtureTask } from "@/shared/mock/admin-fixture";
 import { queryFlowsCatalogPage } from "@/shared/mock/query-fixture";
+import { CATALOG_FLOW_IDS, reviewCatalogFlowViews } from "@/shared/mock/flow-catalog";
 import { digestSqlText, type SqlDigest } from "@/features/review/bulk-import/sql-digest";
 import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import {
@@ -1489,6 +1490,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (flowType !== "change_review" || behavior !== "admin") {
         return HttpResponse.json(successEnvelope(pageOf([], null, null)));
       }
+      // The default e2e flow first, then the 20-flow owner test catalog
+      // (flow-catalog.ts): the submission wizard shows 18 enabled entries
+      // (two catalog flows are seeded disabled for the admin toggle).
+      const catalogFlows = reviewCatalogFlowViews(FIXTURE_OWNER_ID);
       const flow = {
         id: FIXTURE_FLOW_ID,
         name: "默认审核流程",
@@ -1516,7 +1521,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         created_at: "2026-08-01T00:00:00Z",
         updated_at: "2026-08-01T00:00:00Z",
       };
-      return HttpResponse.json(successEnvelope(pageOf([flow], null, null)));
+      return HttpResponse.json(successEnvelope(pageOf([flow, ...catalogFlows], null, null)));
     }),
 
     http.post("*/change-drafts", async ({ request }) => {
@@ -1525,7 +1530,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         title: string;
         description?: string;
       };
-      if (body.flow_id !== FIXTURE_FLOW_ID) {
+      if (body.flow_id !== FIXTURE_FLOW_ID && !CATALOG_FLOW_IDS.has(body.flow_id)) {
         return businessError(2014, "flow not granted to the current user");
       }
       if (body.title.trim() === "") {

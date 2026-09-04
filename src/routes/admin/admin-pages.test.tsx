@@ -221,6 +221,11 @@ describe("admin page flows", () => {
     await userEvent.type(screen.getByTestId("credential-username-review"), "ro_user");
     await userEvent.type(screen.getByTestId("credential-password-review"), "secret-pw-1");
     await userEvent.click(screen.getByTestId("ds-submit"));
+    // The owner test catalog pushed the table past one page; the created row
+    // (newest created_at) sits on page 2 under the backend's asc ordering —
+    // widen the page to see it.
+    await userEvent.click(await screen.findByTestId("datasources-page-size"));
+    await userEvent.click(screen.getByRole("option", { name: "50" }));
     await waitFor(() => {
       expect(screen.getByText("new-warehouse")).toBeInTheDocument();
     });

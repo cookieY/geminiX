@@ -122,7 +122,8 @@ describe("admin datasources", () => {
     setAuth("admin");
     const { body } = await jsonRequest("/admin/datasources");
     const data = body.data as unknown as { items: Array<Record<string, unknown>> };
-    expect(data.items).toHaveLength(2);
+    // 2 baseline rows + the 27 owner-catalog datasource identities.
+    expect(data.items).toHaveLength(29);
     const mysql = data.items.find((item) => item.id === ADMIN_FIXTURE_DATASOURCE_MYSQL_ID);
     expect(mysql?.credential_status).toEqual({ review: true, query: true, execution: true });
     expect(JSON.stringify(data)).not.toContain("revpw-1");
@@ -671,11 +672,11 @@ describe("admin fixture remaining paths", () => {
 
   it("paginates the datasource list with the after cursor", async () => {
     setAuth("admin");
-    const first = await jsonRequest("/admin/datasources?limit=1");
+    const first = await jsonRequest("/admin/datasources?limit=28");
     const page = first.body.data as unknown as { items: unknown[]; page: { next_cursor: string | null; has_more: boolean } };
-    expect(page.items).toHaveLength(1);
+    expect(page.items).toHaveLength(28);
     expect(page.page.has_more).toBe(true);
-    const second = await jsonRequest(`/admin/datasources?limit=1&after=${String(page.page.next_cursor)}`);
+    const second = await jsonRequest(`/admin/datasources?limit=28&after=${String(page.page.next_cursor)}`);
     const secondPage = second.body.data as unknown as { items: Array<Record<string, unknown>>; page: { has_more: boolean } };
     expect(secondPage.items).toHaveLength(1);
     expect(secondPage.page.has_more).toBe(false);

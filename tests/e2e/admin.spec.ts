@@ -156,10 +156,14 @@ test("builtin skill renders the lock badge and only the state stays toggleable",
 
 test("credential rows edit in exactly one explicit mode; keep only on configured rows", async ({ page }) => {
   await page.goto("/admin/datasources");
-  await expect(page.getByTestId(/ds-tls-verified-/)).toContainText("强制校验TLS");
-  await expect(page.getByTestId(/ds-tls-plaintext-/)).toContainText("明文");
-
+  // Scoped to the two baseline rows: the owner test catalog adds many more
+  // plaintext rows that would break the regex locators' strict mode.
+  const mysqlRow = page.locator("tr", { hasText: "prod-order-mysql" });
   const pgRow = page.locator("tr", { hasText: "analytics-pg" });
+  await expect(pgRow.getByTestId(/ds-tls-verified-/)).toContainText("强制校验TLS");
+  await expect(mysqlRow.getByTestId(/ds-tls-plaintext-/)).toContainText("明文");
+
+
   await pgRow.getByTestId(/ds-edit-/).click();
   const dialog = page.getByRole("dialog");
   // Configured rows open in keep mode — the storage-preserving no-op.

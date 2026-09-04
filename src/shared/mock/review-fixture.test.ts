@@ -90,9 +90,14 @@ describe("review fixture flow catalog", () => {
   it("grants the change flow to an admin session", async () => {
     setMockAuthBehavior("admin");
     const response = await fetch("https://yearning.test/users/me/flows?flow_type=change_review");
-    const body = (await response.json()) as { data: { items: Array<{ id: string; flow_type: string }> } };
-    expect(body.data.items).toHaveLength(1);
+    const body = (await response.json()) as { data: { items: Array<{ id: string; flow_type: string; enabled: boolean }> } };
+    // Default e2e flow first, then the 20-flow owner catalog (two catalog
+    // entries are disabled and still listed — the wizard filters nothing;
+    // the backend list only ever returns enabled flows, the mock mirrors
+    // that by listing the disabled rows as enabled=false).
+    expect(body.data.items).toHaveLength(21);
     expect(body.data.items[0]?.id).toBe(FIXTURE_FLOW_ID);
+    expect(body.data.items.filter((item) => item.enabled)).toHaveLength(19);
   });
 
   it("returns an empty page for query_access flow type", async () => {

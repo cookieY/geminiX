@@ -1,6 +1,10 @@
 import { HttpResponse, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import {
+  CATALOG_DATASOURCES,
+  CATALOG_FLOWS,
+} from "@/shared/mock/flow-catalog";
 import type {
   AiProvider,
   AuditEvent,
@@ -544,6 +548,42 @@ export function seedAdminFixture(): void {
     },
     capabilities: null,
   });
+  // Owner test catalog (flow-catalog.ts): one datasource row per catalog
+  // identity so the flow editor joins real catalog names, not UUID
+  // fallbacks. Plaintext connections, one credential purpose, no TLS.
+  // Created a day after the baseline clock so the baseline rows stay on
+  // page 1 of the paginated tables (created_at asc, id asc). Derived from
+  // now() so the ordering holds under both the real clock (vitest) and the
+  // pinned e2e clock.
+  const catalogTs = new Date(Date.now() + 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  for (const entry of CATALOG_DATASOURCES) {
+    const referenced = CATALOG_FLOWS.filter((flow) =>
+      flow.stages.some((stage) => stage.datasource_id === entry.id),
+    ).length;
+    world.datasources.set(entry.id, {
+      id: entry.id,
+      name: entry.name,
+      engine: entry.engine,
+      compatibility_mode: entry.compatibility_mode,
+      deployment_kind: "native",
+      host: `10.1.0.${String(10 + (Number(entry.id.slice(-2)) % 200))}`,
+      port: entry.engine === "postgresql" ? 5432 : 3306,
+      database_name: null,
+      enabled: true,
+      credential_status: { review: true, query: true, execution: true },
+      referenced_by_flow_count: referenced,
+      version: 1,
+      created_at: catalogTs,
+      updated_at: catalogTs,
+      credentials: {
+        review: { username: "review_ro", password: `catpw-${entry.id.slice(-3)}` },
+        query: { username: "query_ro", password: `catpw-${entry.id.slice(-3)}` },
+        execution: { username: "exec_rw", password: `catpw-${entry.id.slice(-3)}` },
+      },
+      tls: null,
+      capabilities: null,
+    });
+  }
   world.providers.set(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID, {
     id: ADMIN_FIXTURE_PROVIDER_PRIMARY_ID,
     name: "primary-glm",
@@ -807,6 +847,37 @@ export function seedAdminFixture(): void {
     updated_at: ts,
   });
   seedSiteFixture();
+  // Owner test catalog (flow-catalog.ts): the same 20 flows the submission
+  // wizard offers, so a flow submitted from the wizard is editable here.
+  // Approval steps and executors reference the seeded admin identity. Seeded
+  // LAST so pageOf's insertion-order slicing keeps the baseline flows on
+  // table page 1.
+  for (const spec of CATALOG_FLOWS) {
+    world.flows.set(spec.id, {
+      id: spec.id,
+      name: spec.name,
+      flow_type: "change_review",
+      enabled: spec.enabled,
+      rule_set_id: ADMIN_FIXTURE_RULE_SET_ID,
+      stages: spec.stages.map((stage, index) => ({
+        position: index + 1,
+        datasource_id: stage.datasource_id,
+        schema_mappings: [{ logical_schema: "app", physical_schema: "app" }],
+        approval_steps: Array.from({ length: stage.approvers }, (_, position) => ({
+          position: position + 1,
+          actors: [{ user_id: SEED_ADMIN_ID }],
+        })),
+        execution_actors: Array.from({ length: stage.executors }, () => ({
+          user_id: SEED_ADMIN_ID,
+        })),
+      })),
+      approval_steps: null,
+      query_capabilities: null,
+      version: 1,
+      created_at: catalogTs,
+      updated_at: catalogTs,
+    });
+  }
 }
 
 // ===========================================================================
