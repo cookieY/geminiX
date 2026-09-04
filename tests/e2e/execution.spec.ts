@@ -22,6 +22,14 @@ const FIXTURE_FLOW_ID = "4f6f1a2b-0000-4000-8000-000000000001";
 const SEEDED_EXECUTION_ORDER = "/changes/orders/7e6f1a2b-0000-4000-8000-00000000f801";
 const SQL_TEXT = "UPDATE orders SET status = 1 WHERE user_id = 42;";
 
+
+/** The submission dock lives on wizard step 3; continue (auto-saving dirty
+ * SQL first) advances from the SQL step to the confirm step. */
+async function gotoConfirmStep(page: Page): Promise<void> {
+  await page.getByTestId("wizard-continue").click();
+  await expect(page.getByTestId("wizard-summary")).toBeVisible();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("yearning-locale", "zh-CN");
@@ -43,10 +51,8 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("draft-title-input").blur();
+  await page.getByTestId("wizard-continue").click();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
@@ -56,8 +62,10 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
+  await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();
+
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
 
   // Final approval as the frozen reviewer of step 1 — approval never

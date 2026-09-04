@@ -35,10 +35,8 @@ async function createDraft(page: Page, title: string): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("draft-title-input").blur();
+  await page.getByTestId("wizard-continue").click();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
 }

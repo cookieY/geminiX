@@ -40,6 +40,7 @@
     "i18next": "26.4.0",
     "lucide-react": "1.37.0",
     "monaco-editor": "^0.56.0",
+    "motion": "^13.2.0",
     "react": "19.2.8",
     "react-day-picker": "9.11.1",
     "react-dom": "19.2.8",

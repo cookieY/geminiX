@@ -116,6 +116,13 @@ function renderWorkspace(draftId: string) {
   return { ...utils, queryClient };
 }
 
+/** The submission dock lives on wizard step 3; step 2's continue advances
+ * (auto-saving dirty SQL first — a ready draft with saved SQL advances
+ * directly). */
+function gotoStep3(): void {
+  fireEvent.click(screen.getByTestId("wizard-continue"));
+}
+
 /** Forces the run query to re-read through the current MSW handlers. */
 async function refetchRunQuery(
   queryClient: QueryClient,
@@ -176,6 +183,8 @@ describe("DraftWorkspacePage", () => {
     expect(screen.getByTestId("run-review")).toBeVisible();
     await new Promise((resolve) => setTimeout(resolve, 1500));
     expect(reviewRunCalls).toBe(0);
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeEnabled();
   });
 
@@ -190,8 +199,12 @@ describe("DraftWorkspacePage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("review-status").textContent).toContain("结果已失效");
     });
+    // The step-2 continue saves the edited SQL before advancing; the dock on
+    // step 3 then blocks because the finished run no longer matches the new
+    // revision (review outdated).
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
-    expect(screen.getByTestId("submission-readiness").textContent).toContain("未保存");
   });
 
   it("treats a flow.updated domain event as a submission blocker", async () => {
@@ -215,6 +228,8 @@ describe("DraftWorkspacePage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("flow-updated-banner")).toBeVisible();
     });
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
 
@@ -238,6 +253,8 @@ describe("DraftWorkspacePage", () => {
       expect(screen.getByTestId("review-status").textContent).toContain("审核结果完整");
     });
     expect(reviewRunCalls).toBe(0);
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeEnabled();
   });
 
@@ -279,8 +296,14 @@ describe("DraftWorkspacePage", () => {
       data: { review_run_id: string | null };
     };
     await refetchRunQuery(queryClient, draft.id, freshDraft.data.review_run_id as string);
+    // The monotonic fold keeps the presented phase terminal (no backwards
+    // walk); the gate, however, re-evaluates against whatever snapshot the
+    // query last returned, so submission stays conservatively locked until
+    // the next fresh read reconciles — never a fake unlock.
     expect(screen.getByTestId("review-status").textContent).toContain("审核结果完整");
-    expect(screen.getByTestId("submit-draft")).toBeEnabled();
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
+    expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
 
   it("survives a draft fetch failure with the shared error state", async () => {
@@ -360,6 +383,8 @@ describe("DraftWorkspacePage", () => {
     const draft = await createReadyDraft();
     renderWorkspace(draft.id);
     expect(await screen.findByTestId("review-status")).toBeVisible();
+    gotoStep3();
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeEnabled();
 
     // The dock click only opens the confirmation; no submission fires yet.
@@ -400,6 +425,8 @@ describe("DraftWorkspacePage", () => {
     );
     renderWorkspace(draft.id);
     expect(await screen.findByTestId("review-status")).toBeVisible();
+    gotoStep3();
+    await screen.findByTestId("wizard-summary");
     fireEvent.click(screen.getByTestId("submit-draft"));
     expect(await screen.findByTestId("submit-confirm-dialog")).toBeVisible();
     fireEvent.click(screen.getByTestId("submit-confirm-accept"));

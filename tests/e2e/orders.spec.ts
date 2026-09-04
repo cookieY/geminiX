@@ -30,10 +30,8 @@ async function createDraft(page: Page, title: string): Promise<string> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("draft-title-input").blur();
+  await page.getByTestId("wizard-continue").click();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
   return page.url().split("/").at(-1) ?? "";
@@ -51,15 +49,25 @@ async function reviewToReady(page: Page): Promise<void> {
   });
 }
 
+
+/** The submission dock lives on wizard step 3; continue (auto-saving dirty
+ * SQL first) advances from the SQL step to the confirm step. */
+async function gotoConfirmStep(page: Page): Promise<void> {
+  await page.getByTestId("wizard-continue").click();
+  await expect(page.getByTestId("wizard-summary")).toBeVisible();
+}
+
 test("a draft without a passing gate cannot be submitted from the UI", async ({ page }) => {
   await createDraft(page, "未预审草稿");
-  // No SQL, no review, no gate: the dock blocks the action entirely.
-  await expect(page.getByTestId("submit-draft")).toBeDisabled();
-  // Even with saved SQL, only a Ready gate unlocks submission.
+  // No SQL: the wizard blocks the step-2 continue outright.
+  await page.getByTestId("wizard-continue").click();
+  await expect(page.getByTestId("wizard-step-error")).toBeVisible();
+  // Even with saved SQL, only a Ready gate unlocks submission on step 3.
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
   await page.getByTestId("save-sql").click();
   await expect(page.getByTestId("save-sql")).toBeDisabled();
+  await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
 });
 
@@ -69,6 +77,7 @@ test("a racing backend rejection keeps the dialog open without faking success", 
   test.setTimeout(30_000);
   await createDraft(page, "并发撤回草稿");
   await reviewToReady(page);
+  await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
@@ -109,6 +118,7 @@ test("the personal order list updates in place without duplicate rows", async ({
   test.setTimeout(30_000);
   await createDraft(page, "列表去重草稿");
   await reviewToReady(page);
+  await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
@@ -183,6 +193,7 @@ test("server-side filters narrow the personal list without losing event freshnes
   test.setTimeout(30_000);
   await createDraft(page, "筛选验收草稿");
   await reviewToReady(page);
+  await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });

@@ -75,17 +75,18 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await page.goto("/changes/new");
       await expect(page.getByTestId("changes-new-page")).toBeVisible();
       await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-      await expect(page).toHaveURL(/\/changes\/drafts\//);
       await page.getByTestId("draft-title-input").fill("视觉基线草稿");
-      await page.getByTestId("draft-title-input").blur();
+      await page.getByTestId("wizard-continue").click();
       await expect(page).toHaveURL(/\/changes\/drafts\//);
       await typeSql(page, "sql-editor", "UPDATE orders SET status = 1 WHERE user_id = 42;");
       await page.getByTestId("save-sql").click();
       await expect(page.getByTestId("save-sql")).toBeDisabled();
       await page.getByTestId("run-review").click();
-      // The submit dock unlocks exactly when the terminal Ready state lands —
-      // a locale-neutral terminal signal (fixture timeline ≈1.3s).
-      await expect(page.getByTestId("submit-draft")).toBeEnabled({ timeout: 10_000 });
+      // The run button disables while queued/running and re-enables exactly
+      // when the terminal state lands — a locale-neutral terminal signal
+      // (fixture timeline ≈1.3s).
+      await expect(page.getByTestId("run-review")).toBeDisabled({ timeout: 5_000 });
+      await expect(page.getByTestId("run-review")).toBeEnabled({ timeout: 10_000 });
     },
   },
   {

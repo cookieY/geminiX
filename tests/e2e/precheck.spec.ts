@@ -37,9 +37,8 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  await page.getByTestId("draft-title-input").blur();
+  await page.getByTestId("wizard-continue").click();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
 
@@ -53,6 +52,14 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText(/审核结果完整|已阻断|部分完成|预审失败/, {
     timeout: 8_000,
   });
+}
+
+
+/** The submission dock lives on wizard step 3; continue (auto-saving dirty
+ * SQL first) advances from the SQL step to the confirm step. */
+async function gotoConfirmStep(page: Page): Promise<void> {
+  await page.getByTestId("wizard-continue").click();
+  await expect(page.getByTestId("wizard-summary")).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -79,7 +86,7 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await page.goto("/changes/new");
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  await page.getByTestId("draft-title-input").blur();
+  await page.getByTestId("wizard-continue").click();
   await expect(page).toHaveURL(/\/changes\/drafts\//);
   await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
 
@@ -96,9 +103,13 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
     timeout: 8_000,
   });
   expect(reviewRunCalls).toHaveLength(1);
+  await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeEnabled();
 
-  // Findings and evidence stay structured; no reasoning channel exists.
+  // Back on the SQL step, findings and evidence stay structured; no
+  // reasoning channel exists.
+  await page.getByTestId("wizard-back").click();
+  await expect(page.getByTestId("tab-findings")).toBeVisible();
   await page.getByTestId("tab-findings").click();
   await expect(page.getByTestId("finding-item").first()).toBeVisible();
   const body = await page.locator("body").textContent();
@@ -109,6 +120,7 @@ test("Ready draft submits through the confirmation and lands on the order detail
   page,
 }) => {
   await runReviewThroughUi(page);
+  await gotoConfirmStep(page);
   // F6: the dock click opens the explicit confirmation; the submission only
   // fires on accept and lands on the immutable order detail.
   await page.getByTestId("submit-draft").click();
@@ -126,6 +138,7 @@ test("Ready draft submits through the confirmation and lands on the order detail
 test("Blocked outcome lists gate blockers and keeps submit disabled", async ({ page }) => {
   await setReviewScenario(page, "review-blocked");
   await runReviewThroughUi(page);
+  await gotoConfirmStep(page);
   await expect(page.getByTestId("gate-blockers")).toContainText("存在严重风险发现");
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
   await expect(page.getByTestId("review-status")).toContainText("已阻断");
@@ -135,6 +148,7 @@ test("Partial outcome reports incompleteness and keeps submit disabled", async (
   await setReviewScenario(page, "review-partial");
   await runReviewThroughUi(page);
   await expect(page.getByTestId("review-status")).toContainText("部分完成");
+  await gotoConfirmStep(page);
   await expect(page.getByTestId("gate-blockers")).toContainText("存在未完成的审核阶段");
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
 });
@@ -144,6 +158,7 @@ test("Provider failure shows honest failure copy and keeps submit disabled", asy
   await runReviewThroughUi(page);
   await expect(page.getByTestId("review-status")).toContainText("预审失败");
   await expect(page.getByTestId("review-failure")).toContainText("AI服务暂不可用");
+  await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
 });
 

@@ -27,11 +27,12 @@ import { mergeRunPhase, type RunPhase } from "./run-state";
 
 const RUNNING_REFETCH_MS = 1_000;
 
-export function useChangeDraft(draftId: string) {
+export function useChangeDraft(draftId: string, enabled = true) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["change-draft", draftId],
     queryFn: async () => (await getChangeDraft(draftId)) as unknown as ChangeDraft,
+    enabled: enabled && draftId !== "",
   });
 
   useDomainEvent(
