@@ -101,12 +101,6 @@ export interface SqlCompletionCatalog {
 
 const EMPTY_CATALOG: SqlCompletionCatalog = { schemas: [], tables: [], columns: [] };
 
-let activeCompletionCatalog: SqlCompletionCatalog = EMPTY_CATALOG;
-
-export function setSqlCompletionCatalog(catalog: SqlCompletionCatalog): void {
-  activeCompletionCatalog = catalog;
-}
-
 /** Curated statement keywords — Monaco's basic SQL tokenizer colors these
  * but provides no suggestion provider of its own. */
 const SQL_KEYWORDS = [
@@ -119,59 +113,39 @@ const SQL_KEYWORDS = [
   "BEGIN", "COMMIT", "ROLLBACK", "TRUNCATE", "RENAME", "IF", "EXISTS",
 ];
 
-let completionProviderRegistered = false;
-
-function ensureSqlCompletionProvider(): void {
-  if (completionProviderRegistered) return;
-  completionProviderRegistered = true;
-  monaco.languages.registerCompletionItemProvider("sql", {
-    triggerCharacters: [".", " ", "`"],
-    provideCompletionItems(model, position) {
-      const word = model.getWordUntilPosition(position);
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn,
-      };
-      const keywordSuggestions = SQL_KEYWORDS.map((keyword) => ({
-        label: keyword,
-        kind: monaco.languages.CompletionItemKind.Keyword,
-        insertText: keyword,
-        range,
-        detail: "SQL",
-      }));
-      const schemaSuggestions = activeCompletionCatalog.schemas.map((schema) => ({
-        label: schema,
-        kind: monaco.languages.CompletionItemKind.Module,
-        insertText: schema,
-        range,
-        detail: "schema",
-      }));
-      const tableSuggestions = activeCompletionCatalog.tables.map((table) => ({
-        label: table.schema === null ? table.name : `${table.schema}.${table.name}`,
-        kind: monaco.languages.CompletionItemKind.Class,
-        insertText: table.schema === null ? table.name : `${table.schema}.${table.name}`,
-        range,
-        detail: "table",
-      }));
-      const columnSuggestions = activeCompletionCatalog.columns.map((column) => ({
-        label: column.name,
-        kind: monaco.languages.CompletionItemKind.Field,
-        insertText: column.name,
-        range,
-        detail: `column · ${column.table}`,
-      }));
-      return {
-        suggestions: [
-          ...schemaSuggestions,
-          ...tableSuggestions,
-          ...columnSuggestions,
-          ...keywordSuggestions,
-        ],
-      };
-    },
-  });
+function buildSuggestions(
+  catalog: SqlCompletionCatalog,
+  range: { startLineNumber: number; endLineNumber: number; startColumn: number; endColumn: number },
+): monaco.languages.CompletionItem[] {
+  const keywordSuggestions = SQL_KEYWORDS.map((keyword) => ({
+    label: keyword,
+    kind: monaco.languages.CompletionItemKind.Keyword,
+    insertText: keyword,
+    range,
+    detail: "SQL",
+  }));
+  const schemaSuggestions = catalog.schemas.map((schema) => ({
+    label: schema,
+    kind: monaco.languages.CompletionItemKind.Module,
+    insertText: schema,
+    range,
+    detail: "schema",
+  }));
+  const tableSuggestions = catalog.tables.map((table) => ({
+    label: table.schema === null ? table.name : `${table.schema}.${table.name}`,
+    kind: monaco.languages.CompletionItemKind.Class,
+    insertText: table.schema === null ? table.name : `${table.schema}.${table.name}`,
+    range,
+    detail: "table",
+  }));
+  const columnSuggestions = catalog.columns.map((column) => ({
+    label: column.name,
+    kind: monaco.languages.CompletionItemKind.Field,
+    insertText: column.name,
+    range,
+    detail: `column · ${column.table}`,
+  }));
+  return [...schemaSuggestions, ...tableSuggestions, ...columnSuggestions, ...keywordSuggestions];
 }
 
 export interface SqlEditorPanelProps {
@@ -210,15 +184,32 @@ export function SqlEditorPanel({
     valueRef.current = value;
   });
 
+  // The provider reads the catalog through a ref so hot-reloads and late
+  // catalog arrivals are always honored by the live editor instance; the
+  // registration is per-panel and disposed with it (no leaked providers).
+  const catalogRef = useRef(completionCatalog);
+  useEffect(() => {
+    catalogRef.current = completionCatalog;
+  }, [completionCatalog]);
+
   useEffect(() => {
     configureWorkers();
     defineYearningThemes(resolvedTheme);
-    ensureSqlCompletionProvider();
+    const providerDisposable = monaco.languages.registerCompletionItemProvider("sql", {
+      triggerCharacters: [".", " ", "`"],
+      provideCompletionItems(model, position) {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        return { suggestions: buildSuggestions(catalogRef.current, range) };
+      },
+    });
+    return () => { providerDisposable.dispose(); };
   }, [resolvedTheme]);
-
-  useEffect(() => {
-    setSqlCompletionCatalog(completionCatalog);
-  }, [completionCatalog]);
 
   useEffect(() => {
     if (containerRef.current === null) return;

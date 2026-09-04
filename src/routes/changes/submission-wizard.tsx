@@ -34,7 +34,6 @@ import { FindingList } from "@/features/review/finding-list";
 import { ReviewStatusCard } from "@/features/review/review-status-card";
 import {
   SqlEditorPanel,
-  setSqlCompletionCatalog,
   type SqlCompletionCatalog,
 } from "@/features/review/sql-editor-panel";
 import { StagePath } from "@/features/review/stage-path";
@@ -523,7 +522,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       schemas: [
         ...new Set(
           (flow?.stages ?? []).flatMap((stage) =>
-            (stage.schema_mappings ?? []).map((mapping) => mapping.logical_schema),
+            stage.schema_mappings.map((mapping) => mapping.logical_schema),
           ),
         ),
       ],
@@ -532,9 +531,6 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     }),
     [flow],
   );
-  useEffect(() => {
-    setSqlCompletionCatalog(completionCatalog);
-  }, [completionCatalog]);
 
   const handleRunReview = useCallback(() => {
     if (dirty) {
@@ -939,6 +935,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 readOnly={store.serverState === "submitted"}
                 loadValue={loadValue}
                 onLocate={locate}
+                completionCatalog={completionCatalog}
                 data-testid="sql-editor"
               />
             )}
