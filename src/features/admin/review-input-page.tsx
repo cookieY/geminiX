@@ -35,6 +35,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import {
   Card,
   CardContent,
@@ -185,6 +186,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [evalResult, setEvalResult] = useState<KnowledgeEntryEvaluation | null>(null);
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  const [skillSearch, setSkillSearch] = useState("");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [knowledgeTextDraft, setKnowledgeTextDraft] = useState<string | null>(null);
@@ -197,6 +199,11 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const refetch = kind === "skills" ? toolsQuery.refetch : entriesQuery.refetch;
 
   const isSkills = kind === "skills";
+  const skillKeyword = skillSearch.trim().toLowerCase();
+  const visibleSkillRows =
+    skillKeyword === ""
+      ? rows
+      : rows.filter((row) => row.name.toLowerCase().includes(skillKeyword));
 
   // 内部经验 renders as the Notes-app master-detail (owner ruling 2026-09-02,
   // frozen template apps/notes): entry cards on the left, the experience
@@ -592,15 +599,18 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               {t("admin.skills.description")}
             </CardDescription>
           </div>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
-            }}
-            data-testid="review-input-create"
-          >
-            <Plus /> {t("admin.skills.createTitle")}
-          </Button>
+          <div className="flex items-center gap-3">
+            <TableSearchInput value={skillSearch} onChange={setSkillSearch} testId="admin-skills-search" />
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
+              data-testid="review-input-create"
+            >
+              <Plus /> {t("admin.skills.createTitle")}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {evalErrorKey !== null ? (
@@ -616,7 +626,11 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             <LoadingState />
           ) : errored ? (
             <ErrorState error={toolsQuery.error} operationId="listPromptTools" onRetry={() => void refetch()} />
-          ) : rows.length === 0 ? (
+          ) : visibleSkillRows.length === 0 && skillSearch.trim() !== "" ? (
+            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-skills-search-empty">
+              {t("table.emptySearch")}
+            </p>
+          ) : visibleSkillRows.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -643,7 +657,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => {
+                {visibleSkillRows.map((row) => {
                   const id = row.id;
                   const name = row.name;
                   const state = row.state;

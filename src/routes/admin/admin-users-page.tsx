@@ -9,6 +9,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -56,7 +57,15 @@ export default function AdminUsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  const users = usersQuery.data?.items ?? [];
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  const users = (usersQuery.data?.items ?? []).filter(
+    (user) =>
+      keyword === "" ||
+      user.username.toLowerCase().includes(keyword) ||
+      (user.display_name ?? "").toLowerCase().includes(keyword) ||
+      (user.email ?? "").toLowerCase().includes(keyword),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-users-page">
@@ -78,14 +87,17 @@ export default function AdminUsersPage() {
 
       {!usersQuery.isPending && usersQuery.error === null && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">{t("adminUsers.card")}</CardTitle>
-            <CardDescription>{t("adminUsers.cardDescription")}</CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+            <div className="space-y-1">
+              <CardTitle className="text-sm">{t("adminUsers.card")}</CardTitle>
+              <CardDescription>{t("adminUsers.cardDescription")}</CardDescription>
+            </div>
+            <TableSearchInput value={search} onChange={setSearch} testId="admin-users-search" />
           </CardHeader>
           <CardContent>
             {users.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-users-empty">
-                {t("adminUsers.empty")}
+                {keyword !== "" ? t("table.emptySearch") : t("adminUsers.empty")}
               </p>
             ) : (
               <>

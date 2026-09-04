@@ -17,6 +17,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import {
   Card,
   CardContent,
@@ -279,6 +280,8 @@ export default function AdminRuleSetsPage() {
   const toolsQuery = usePromptTools(enabled);
   const [editing, setEditing] = useState<RuleSet | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
   const [deleting, setDeleting] = useState<RuleSet | null>(null);
   const deleteMutation = useDeleteRuleSet();
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
@@ -289,11 +292,12 @@ export default function AdminRuleSetsPage() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.ruleSets.title")}</CardTitle>
             <CardDescription>{t("admin.ruleSets.description")}</CardDescription>
           </div>
+          <TableSearchInput value={search} onChange={setSearch} testId="admin-rule-sets-search" />
           <Button
             onClick={() => {
               setEditing(null);
@@ -309,6 +313,10 @@ export default function AdminRuleSetsPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listRuleSets" onRetry={() => void query.refetch()} />
+          ) : query.data.items.filter((ruleSet: RuleSet) => keyword === "" || ruleSet.name.toLowerCase().includes(keyword)).length === 0 && keyword !== "" ? (
+            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-rule-sets-search-empty">
+              {t("table.emptySearch")}
+            </p>
           ) : query.data.items.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
@@ -332,7 +340,9 @@ export default function AdminRuleSetsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {query.data.items.map((ruleSet: RuleSet) => {
+                {query.data.items
+                  .filter((ruleSet: RuleSet) => keyword === "" || ruleSet.name.toLowerCase().includes(keyword))
+                  .map((ruleSet: RuleSet) => {
                   const boundFlows = (flowsQuery.data ?? []).filter(
                     (flow) => flow.rule_set_id === ruleSet.id,
                   );

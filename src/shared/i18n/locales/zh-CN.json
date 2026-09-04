@@ -209,7 +209,16 @@
     "edit": "编辑",
     "delete": "删除",
     "close": "关闭",
-    "actions": "操作"
+    "actions": "操作",
+    "clear": "清空"
+  },
+  "table": {
+    "pagination": {
+      "prev": "上一页",
+      "next": "下一页",
+      "page": "第 {{page}} 页",
+      "rowsPerPage": "每页行数"
+    }
   },
   "precheck": {
     "new": {
@@ -1627,13 +1636,5 @@
     "maintenanceTitle": "系统维护中（迁移审查模式）",
     "maintenanceDescription": "服务器正在迁移审查模式下运行，普通业务功能不可用。",
     "gotoWorkbench": "前往迁移审查工作台"
-  },
-  "table": {
-    "pagination": {
-      "prev": "上一页",
-      "next": "下一页",
-      "page": "第 {{page}} 页",
-      "rowsPerPage": "每页行数"
-    }
   }
 }

@@ -20,6 +20,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import {
   Card,
   CardContent,
@@ -481,16 +482,26 @@ export default function AdminProvidersPage() {
   const query = useAiProviders(enabled);
   const [editing, setEditing] = useState<AiProvider | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  const providers = (query.data ?? []).filter(
+    (provider) =>
+      keyword === "" ||
+      provider.name.toLowerCase().includes(keyword) ||
+      provider.base_url.toLowerCase().includes(keyword) ||
+      provider.model_name.toLowerCase().includes(keyword),
+  );
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.providers.title")}</CardTitle>
             <CardDescription>{t("admin.providers.description")}</CardDescription>
           </div>
+          <TableSearchInput value={search} onChange={setSearch} testId="admin-providers-search" />
           <Button
             onClick={() => {
               setEditing(null);
@@ -506,6 +517,10 @@ export default function AdminProvidersPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listAiProviders" onRetry={() => void query.refetch()} />
+          ) : providers.length === 0 && keyword !== "" ? (
+            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-providers-search-empty">
+              {t("table.emptySearch")}
+            </p>
           ) : query.data.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
@@ -531,7 +546,7 @@ export default function AdminProvidersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {query.data.map((provider, index) => (
+                {providers.map((provider, index) => (
                   <ProviderRow
                     key={provider.id}
                     provider={provider}

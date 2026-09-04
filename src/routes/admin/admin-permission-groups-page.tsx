@@ -10,6 +10,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -61,7 +62,11 @@ export default function AdminPermissionGroupsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [previewUser, setPreviewUser] = useState<string>("");
 
-  const groups = groupsQuery.data?.items ?? [];
+  const [groupSearch, setGroupSearch] = useState("");
+  const groupKeyword = groupSearch.trim().toLowerCase();
+  const groups = (groupsQuery.data?.items ?? []).filter(
+    (group) => groupKeyword === "" || group.name.toLowerCase().includes(groupKeyword),
+  );
   const users = usersQuery.data?.items ?? [];
   const flows = flowsQuery.data?.items ?? [];
   const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
@@ -157,17 +162,20 @@ export default function AdminPermissionGroupsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <ShieldCheck className="size-4" />
-                {t("adminGroups.card")}
-              </CardTitle>
-              <CardDescription>{t("adminGroups.cardDescription")}</CardDescription>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <ShieldCheck className="size-4" />
+                  {t("adminGroups.card")}
+                </CardTitle>
+                <CardDescription>{t("adminGroups.cardDescription")}</CardDescription>
+              </div>
+              <TableSearchInput value={groupSearch} onChange={setGroupSearch} testId="admin-groups-search" />
             </CardHeader>
             <CardContent>
               {groups.length === 0 ? (
                 <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-groups-empty">
-                  {t("adminGroups.empty")}
+                  {groupKeyword !== "" ? t("table.emptySearch") : t("adminGroups.empty")}
                 </p>
               ) : (
               <>

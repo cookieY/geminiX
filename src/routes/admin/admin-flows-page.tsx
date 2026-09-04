@@ -10,6 +10,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -85,7 +86,11 @@ export default function AdminFlowsPage() {
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);
 
-  const flows = flowsQuery.data?.items ?? [];
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  const flows = (flowsQuery.data?.items ?? []).filter(
+    (flow) => keyword === "" || flow.name.toLowerCase().includes(keyword),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">
@@ -113,17 +118,20 @@ export default function AdminFlowsPage() {
 
       {!flowsQuery.isPending && flowsQuery.error === null && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Workflow className="size-4" />
-              {t("adminFlows.card")}
-            </CardTitle>
-            <CardDescription>{t("adminFlows.cardDescription")}</CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Workflow className="size-4" />
+                {t("adminFlows.card")}
+              </CardTitle>
+              <CardDescription>{t("adminFlows.cardDescription")}</CardDescription>
+            </div>
+            <TableSearchInput value={search} onChange={setSearch} testId="admin-flows-search" />
           </CardHeader>
           <CardContent>
             {flows.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-flows-empty">
-                {t("adminFlows.empty")}
+                {keyword !== "" ? t("table.emptySearch") : t("adminFlows.empty")}
               </p>
             ) : (
               <>

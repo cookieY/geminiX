@@ -21,6 +21,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import {
   Card,
   CardContent,
@@ -1013,15 +1014,24 @@ export default function AdminDatasourcesPage() {
   // Expanded capability row: datasource id + the probe task id that keyed
   // the latest capabilities fetch (a re-test starts a fresh key).
   const [probe, setProbe] = useState<{ datasourceId: string; taskId: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const keyword = search.trim().toLowerCase();
+  const datasources = query.data?.items.filter(
+    (datasource) =>
+      keyword === "" ||
+      datasource.name.toLowerCase().includes(keyword) ||
+      datasource.host.toLowerCase().includes(keyword),
+  ) ?? [];
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.datasources.title")}</CardTitle>
             <CardDescription>{t("admin.datasources.description")}</CardDescription>
           </div>
+          <TableSearchInput value={search} onChange={setSearch} testId="admin-datasources-search" />
           <Button
             onClick={() => {
               setEditing(null);
@@ -1037,6 +1047,10 @@ export default function AdminDatasourcesPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listDatasources" onRetry={() => void query.refetch()} />
+          ) : datasources.length === 0 && keyword !== "" ? (
+            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-datasources-search-empty">
+              {t("table.emptySearch")}
+            </p>
           ) : query.data.items.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
@@ -1061,7 +1075,7 @@ export default function AdminDatasourcesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {query.data.items.map((datasource) => (
+                {datasources.map((datasource) => (
                   <Fragment key={datasource.id}>
                     <DatasourceRow
                       datasource={datasource}
