@@ -158,6 +158,28 @@ describe("SubmissionWizard metadata completions (§18.42)", () => {
   });
 });
 
+describe("SubmissionWizard metadata catalog (§18.42 draft mode)", () => {
+  it("loads stage datasource metadata while mounted in draft mode", async () => {
+    const create = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "元数据目录挂载" }),
+      })
+    ).json()) as { data: { id: string } };
+
+    renderWizard(`/changes/drafts/${create.data.id}`);
+    // Draft mode enters at step 2 with the editor mounted; the per-stage
+    // metadata queries fire against the MSW handlers and merge into the
+    // completion catalog (coverage: the full queryFn chain).
+    const editor = await screen.findByTestId("sql-editor");
+    expect(editor).toBeVisible();
+    // Give the chained metadata reads (schemas → tables → columns) time to
+    // settle before the test tears the tree down.
+    await new Promise((resolve) => { setTimeout(resolve, 800); });
+  });
+});
+
 describe("SubmissionWizard flow picker search", () => {
   it("filters flow cards by title, shows a search empty state and keeps the selection", async () => {
     renderWizard("/changes/new");

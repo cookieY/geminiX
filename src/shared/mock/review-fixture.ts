@@ -713,8 +713,10 @@ const GALLERY_FIRST_ID = "7e6f1a2b-0000-4000-8000-900000000001";
 const GALLERY_DATASOURCES = ["staging-mysql", "prod-mysql", "report-pg"];
 const GALLERY_TOTAL = 40;
 
-/** Stage/step shape implied by each order state (single-stage orders). */
-function galleryStageState(orderState: FixtureOrder["state"]): FixtureOrder["stages"][number]["state"] {
+/** Stage/step shape implied by each order state (single-stage orders).
+ * Exported for the pure-mapping unit test (browser-only gallery seeding
+ * never runs under vitest's MODE guard). */
+export function galleryStageState(orderState: FixtureOrder["state"]): FixtureOrder["stages"][number]["state"] {
   switch (orderState) {
     case "submitted":
       return "pending";
@@ -747,7 +749,7 @@ function galleryStageState(orderState: FixtureOrder["state"]): FixtureOrder["sta
   }
 }
 
-function galleryStepState(orderState: FixtureOrder["state"]): FixtureStepState {
+export function galleryStepState(orderState: FixtureOrder["state"]): FixtureStepState {
   switch (orderState) {
     case "submitted":
     case "stage_approval_active":
