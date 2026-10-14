@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { KEY_PAGE_TYPES } from "./helpers/key-pages";
-import { mockSession } from "./helpers/auth";
+import { mockSession, setMockIdentity } from "./helpers/auth";
 
 // FE-F11 runtime performance gate (migration contract §8: 路由级Code
 // Splitting、管理Bundle不进入普通用户首屏; §18 defines the budgets).
@@ -83,6 +83,7 @@ for (const pageType of KEY_PAGE_TYPES) {
       );
     }
     await mockSession(page, pageType.session);
+    await setMockIdentity(page, pageType.identity);
 
     const started = Date.now();
     await pageType.prepare(page);

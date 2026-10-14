@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import type { MockIdentity } from "./auth";
 
 /**
  * FE-F11 six key page types (yearning-ui-design-spec.md §7.1–§7.6): the
@@ -16,6 +17,9 @@ export interface KeyPageType {
   scenario: string | null;
   /** Session identity the page requires. */
   session: "default" | "admin";
+  /** Mock identity (§18.44): henry submits, reviewer-a approves, executor-a
+   * executes — role surfaces only render for their identity. */
+  identity: MockIdentity;
   /** Navigates and drives the page into its informative state. */
   prepare: (page: Page) => Promise<void>;
 }
@@ -35,6 +39,7 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "dashboard",
     scenario: "query-session",
     session: "default",
+    identity: "henry",
     prepare: async (page) => {
       await page.goto("/workspace");
       await expect(page.getByTestId("workspace-release-banner")).toBeVisible();
@@ -47,6 +52,7 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "list",
     scenario: "execution-partial",
     session: "default",
+    identity: "henry",
     prepare: async (page) => {
       await page.goto("/changes/mine");
       await expect(page.getByTestId("mine-order-row").first()).toBeVisible();
@@ -56,6 +62,9 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "detail",
     scenario: "execution-partial",
     session: "default",
+    // The execution action card is the executor's surface (§18.44): the
+    // seeded order's submitter (henry) never sees it.
+    identity: "executor-a",
     prepare: async (page) => {
       await page.goto(SEEDED_EXECUTION_ORDER);
       await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -71,6 +80,7 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "precheck",
     scenario: "review-ready",
     session: "admin",
+    identity: "henry",
     prepare: async (page) => {
       await page.goto("/changes/new");
       await expect(page.getByTestId("changes-new-page")).toBeVisible();
@@ -93,10 +103,12 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "query",
     scenario: "query-session",
     session: "default",
+    identity: "henry",
     prepare: async (page) => {
       await page.goto("/query/sessions/qs-fixture-active");
       await expect(page.getByTestId("query-workspace")).toBeVisible();
-      await page.getByTestId("query-schema-input").fill("app");
+      await page.getByTestId("query-schema-input").click();
+      await page.getByRole("option", { name: "app" }).click();
       await typeSql(page, "query-sql-editor", "select id, email from app.users");
       await page.getByTestId("query-run").click();
       await expect(page.locator("[data-testid^='query-result-loaded-']").first()).toBeVisible({
@@ -108,6 +120,7 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     name: "admin",
     scenario: null,
     session: "admin",
+    identity: "henry",
     prepare: async (page) => {
       await page.goto("/admin/datasources");
       await expect(page.getByTestId(/ds-row-/).first()).toBeVisible();

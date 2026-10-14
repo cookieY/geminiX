@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test } from "@playwright/test";
 import { KEY_PAGE_TYPES } from "./helpers/key-pages";
-import { mockSession } from "./helpers/auth";
+import { mockSession, setMockIdentity } from "./helpers/auth";
 
 // FE-F11 six key page types (yearning-ui-design-spec.md §7.1–§7.6), captured
 // from the real React pages at the four standard viewports in zh-CN and
@@ -48,6 +48,7 @@ for (const pageType of KEY_PAGE_TYPES) {
             );
           }
           await mockSession(page, pageType.session);
+          await setMockIdentity(page, pageType.identity);
           await page.setViewportSize({ width: viewport.width, height: viewport.height });
           await pageType.prepare(page);
           await page.evaluate(() => document.fonts.ready);

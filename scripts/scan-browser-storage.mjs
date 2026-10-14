@@ -38,6 +38,8 @@ const ALLOWED = {
   // Mock world (dev/E2E only, behind VITE_ENABLE_MOCK): scenario selectors.
   "shared/mock/scenario-store.ts": ["localStorage"],
   "shared/mock/auth-scenario-store.ts": ["localStorage"],
+  "shared/mock/identity-store.ts": ["localStorage"],
+  "shared/mock/settings-bridge.ts": ["localStorage"],
 };
 
 const STORAGE_PATTERNS = [

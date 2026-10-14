@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useNavigate, useParams } from "react-router";
+import { Navigate, useParams } from "react-router";
 import type {
   ExecutionWindowDaysOfWeekItem,
   SettingsImpactAssessment,
   SettingsValue,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
+import { BusinessError } from "@/shared/api/mutator";
+import i18next from "@/shared/i18n";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -15,7 +17,6 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import {
   useAssessSettingsImpact,
   useReplaceSettings,
@@ -36,7 +37,7 @@ import {
  * render.
  */
 
-export type SettingsRouteNamespace = "general" | "query" | "execution" | "branding";
+import { SettingsNavTabs, type SettingsRouteNamespace } from "@/routes/admin/settings-tabs";
 
 const ROUTE_NAMESPACES: SettingsRouteNamespace[] = ["general", "query", "execution", "branding"];
 
@@ -45,12 +46,21 @@ export default function AdminSettingsNamespacePage() {
   if (!ROUTE_NAMESPACES.includes(namespace as SettingsRouteNamespace)) {
     return <Navigate to="/admin/settings/general" replace />;
   }
-  return <NamespaceSettings namespace={namespace as SettingsRouteNamespace} />;
+  // §18.47 follow-up: each namespace is an independent form. Without the
+  // key, switching tabs keeps the previous namespace's draft state alive —
+  // same version numbers then never trigger the re-seed and the new
+  // namespace renders a fieldless card with the old namespace's assessment.
+  return <NamespaceSettings key={namespace} namespace={namespace as SettingsRouteNamespace} />;
+}
+
+function describeErrorText(display: { messageKey: string; requestId: string | null }): string {
+  // Translated through the shared i18n bundle so users never see raw keys.
+  const text = i18next.t(display.messageKey);
+  return display.requestId === null ? text : `${text} (${display.requestId})`;
 }
 
 function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const settingsQuery = useSettingsNamespace(namespace, isAdmin);
@@ -64,12 +74,13 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
 
   // Draft initialization keyed by the loaded namespace version: a remount
   // or a reload after save re-seeds the form exactly once, without a
-  // setState-in-effect cascade.
+  // setState-in-effect cascade. The saved note and the (auto-generated)
+  // assessment intentionally survive the post-save re-seed — both hide on
+  // their own once the form goes dirty again; wiping them here made every
+  // successful save look like a silent no-op (§18.47 follow-up).
   if (settingsQuery.data !== undefined && draftFor !== settingsQuery.data.version) {
     setDraftFor(settingsQuery.data.version);
     setDraft(structuredClone(settingsQuery.data.settings));
-    setAssessment(null);
-    setSavedNote(false);
   }
 
   const dirty = useMemo(() => {
@@ -79,7 +90,12 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
 
   const highImpact = assessment?.impact.level === "high";
 
-  const save = () => {
+  // High-impact saves need a one-time impact token. Rather than making the
+  // user run the assess ceremony by hand, a PRECONDITION_REQUIRED (1011)
+  // answer triggers exactly one automatic assess → retry cycle with the
+  // fresh token (server-driven: the client never guesses impact levels);
+  // the resulting assessment renders so the effects are still shown.
+  const save = (impactToken: string | null): void => {
     if (draft === null) return;
     setErrorText(null);
     replaceMutation.mutate(
@@ -87,16 +103,29 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
         namespace,
         version: settingsQuery.data === undefined ? 1 : settingsQuery.data.version,
         settings: draft,
-        impactToken: assessment !== null && highImpact ? assessment.impact_token : null,
+        impactToken,
       },
       {
         onSuccess: () => {
-          setAssessment(null);
           setSavedNote(true);
         },
         onError: (error) => {
-          const display = describeError(error, "replaceSettingsNamespace");
-          setErrorText(`${display.messageKey}${display.requestId === null ? "" : ` (${display.requestId})`}`);
+          if (error instanceof BusinessError && error.err_code === 1011 && impactToken === null) {
+            assessMutation.mutate(
+              { namespace, settings: draft },
+              {
+                onSuccess: (next) => {
+                  setAssessment(next);
+                  save(next.impact_token);
+                },
+                onError: (assessError) => {
+                  setErrorText(describeErrorText(describeError(assessError, "assessSettingsImpact")));
+                },
+              },
+            );
+            return;
+          }
+          setErrorText(describeErrorText(describeError(error, "replaceSettingsNamespace")));
         },
       },
     );
@@ -109,25 +138,7 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
           <h1 className="text-2xl font-semibold">{t(`adminSettings.${namespace}.title`)}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t(`adminSettings.${namespace}.description`)}</p>
         </div>
-        <Tabs defaultValue={namespace}>
-          <TabsList>
-            <TabsTrigger value="general" onClick={() => { void navigate("/admin/settings/general"); }}>
-              {t("adminSettings.tab.general")}
-            </TabsTrigger>
-            <TabsTrigger value="query" onClick={() => { void navigate("/admin/settings/query"); }}>
-              {t("adminSettings.tab.query")}
-            </TabsTrigger>
-            <TabsTrigger value="execution" onClick={() => { void navigate("/admin/settings/execution"); }}>
-              {t("adminSettings.tab.execution")}
-            </TabsTrigger>
-            <TabsTrigger value="branding" onClick={() => { void navigate("/admin/settings/branding"); }}>
-              {t("adminSettings.tab.branding")}
-            </TabsTrigger>
-            <TabsTrigger value="ai-budget" onClick={() => { void navigate("/admin/settings/ai-budget"); }}>
-              {t("adminSettings.tab.aiBudget")}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <SettingsNavTabs current={namespace} />
       </header>
 
       {settingsQuery.isPending && <LoadingState />}
@@ -195,10 +206,7 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
                     {
                       onSuccess: (next) => { setAssessment(next); },
                       onError: (error) => {
-                        const display = describeError(error, "assessSettingsImpact");
-                        setErrorText(
-                          `${display.messageKey}${display.requestId === null ? "" : ` (${display.requestId})`}`,
-                        );
+                        setErrorText(describeErrorText(describeError(error, "assessSettingsImpact")));
                       },
                     },
                   );
@@ -207,7 +215,11 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
               >
                 {t("adminSettings.assess")}
               </Button>
-              <Button disabled={!dirty || replaceMutation.isPending} onClick={save} data-testid="settings-save">
+              <Button
+                disabled={!dirty || replaceMutation.isPending || assessMutation.isPending}
+                onClick={() => { save(assessment !== null && highImpact ? assessment.impact_token : null); }}
+                data-testid="settings-save"
+              >
                 {replaceMutation.isPending ? t("common.saving") : t("common.save")}
               </Button>
             </div>

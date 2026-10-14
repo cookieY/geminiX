@@ -1,4 +1,6 @@
 import { HttpResponse, http } from "msw";
+import { applySettingsToBridge, settingsBridge } from "@/shared/mock/settings-bridge";
+import type { ExecutionWindow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 import {
@@ -612,9 +614,27 @@ export function seedAdminFixture(): void {
     updated_at: ts,
     apiKey: "pkey-b1",
   });
+function seededSettingsFor(ns: string): SettingsValue {
+  const base = structuredClone(DEFAULT_SETTINGS[ns]) as SettingsValue;
+  if (ns === "query") {
+    return { ...base, approval_enabled: settingsBridge.queryApprovalEnabled };
+  }
+  if (ns === "execution") {
+    return {
+      ...base,
+      restriction_enabled: settingsBridge.executionRestrictionEnabled,
+      windows: structuredClone(settingsBridge.executionWindows) as unknown as ExecutionWindow[],
+    };
+  }
+  return base;
+}
+
   for (const ns of SETTING_NAMESPACES) {
+    // §18.47: seed query/execution from the persisted settings bridge so
+    // the displayed rows match the behavior that survived the page load.
+    const seed = seededSettingsFor(ns);
     world.settings.set(ns, {
-      settings: structuredClone(DEFAULT_SETTINGS[ns]) as SettingsValue,
+      settings: seed,
       version: 1,
       updated_by: SEED_ADMIN_ID,
       updated_at: ts,
@@ -2805,6 +2825,8 @@ export function adminFixtureHandlers(): HttpHandler[] {
         if (!valid) return businessError(1011, "impact token invalid, expired or already consumed");
       }
       current.settings = body.settings;
+      // §18.47: the saved knobs drive the query/execution domain worlds.
+      applySettingsToBridge(ns, body.settings);
       current.version += 1;
       current.updated_by = SEED_ADMIN_ID;
       current.updated_at = now();

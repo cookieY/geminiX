@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 // jsdom cannot host the lazy Monaco chunk; the established stub swaps in a
 // controlled textarea (draft-workspace test precedent).
 vi.mock("@/features/review/sql-editor-panel", () => ({
@@ -17,9 +17,10 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { HttpResponse, http } from "msw";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/test/msw/server";
 import { resetQueryFixture, seedQueryScenario } from "@/shared/mock/query-fixture";
+import { setMockIdentity } from "@/shared/mock/identity-store";
 import { SessionProvider } from "@/features/auth/session-provider";
 import "@/shared/i18n";
 import QueryEntryPage from "@/routes/query/query-entry-page";
@@ -34,6 +35,7 @@ import QueryAccessApprovalsPage from "@/routes/approvals/query-access-page";
  */
 
 const SESSION_USER_ID = "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac";
+const REVIEWER_USER_ID = "0198d9cc-e65d-7b9d-a8aa-3c81945fa001";
 
 function stubSession(admin: boolean): void {
   server.use(
@@ -88,13 +90,30 @@ beforeEach(() => {
   resetQueryFixture();
 });
 
+/**
+ * §18.48: schema selection through the real UI. The Base UI Select popup
+ * never mounts under jsdom (F9 popup-isolation reality), so tests pick the
+ * schema the way users increasingly do: click the table in the metadata
+ * tree — that activates its schema and drops a template, which the caller
+ * then overwrites with its own SQL (the editor is cleared here).
+ */
+async function chooseSchema(name: string): Promise<void> {
+  const schemaNode = await screen.findByTestId(`query-tree-schema-${name}`);
+  await userEvent.click(schemaNode);
+  const tables = await screen.findAllByTestId(new RegExp(`^query-tree-table-${name}-`));
+  const table = tables[0];
+  if (table === undefined) throw new Error(`no tables rendered under schema ${name}`);
+  await userEvent.click(table);
+  await userEvent.clear(screen.getByTestId("query-sql-editor"));
+}
+
 describe("gate: 查询仅单SELECT且无限总量分页", () => {
   it("renders the server's 4007 refusal inline and never blocks client-side only", async () => {
     seedQueryScenario("query-session");
     stubSession(false);
     renderAt("/query/sessions/qs-fixture-active");
     await screen.findByTestId("query-workspace");
-    await userEvent.type(screen.getByTestId("query-schema-input"), "app");
+    await chooseSchema("app");
     // The editor is a lazy Monaco chunk in jsdom; set the SQL through the
     // textarea the SqlEditorPanel renders as its fallback area.
     const textarea = screen.getByTestId("query-sql-editor");
@@ -108,12 +127,16 @@ describe("gate: 查询仅单SELECT且无限总量分页", () => {
     stubSession(false);
     renderAt("/query/sessions/qs-fixture-active");
     await screen.findByTestId("query-workspace");
-    await userEvent.type(screen.getByTestId("query-schema-input"), "app");
+    await chooseSchema("app");
     const textarea = screen.getByTestId("query-sql-editor");
     await userEvent.type(textarea, "select id from app.users");
     await userEvent.click(screen.getByTestId("query-run"));
     const loaded = await screen.findByTestId(/query-result-loaded-/);
-    expect(loaded).toHaveTextContent("已读取 500 行");
+    // §18.50 follow-up: the background drain loads the whole result —
+    // the honest loaded count lands on the full 1200, still no total.
+    await waitFor(() => {
+      expect(loaded).toHaveTextContent("已读取 1200 行");
+    });
     // No total-row display anywhere on the workspace (Q005).
     expect(screen.getByTestId("query-workspace").textContent).not.toContain("共 ");
   });
@@ -123,12 +146,34 @@ describe("gate: 查询仅单SELECT且无限总量分页", () => {
     stubSession(false);
     renderAt("/query/sessions/qs-fixture-active");
     await screen.findByTestId("query-workspace");
-    await userEvent.type(screen.getByTestId("query-schema-input"), "app");
+    await chooseSchema("app");
     const textarea = screen.getByTestId("query-sql-editor");
     await userEvent.type(textarea, "select id, email from app.users");
     await userEvent.click(screen.getByTestId("query-run"));
     await screen.findByTestId(/query-result-loaded-/);
     expect(await screen.findByText("已按敏感字段策略脱敏")).toBeVisible();
+  });
+
+  it("shows SHOW FULL FIELDS parity columns in the structure dialog (§18.51)", async () => {
+    seedQueryScenario("query-session");
+    stubSession(false);
+    renderAt("/query/sessions/qs-fixture-active");
+    await screen.findByTestId("query-workspace");
+    await chooseSchema("app");
+    fireEvent.contextMenu(screen.getByTestId("query-tree-table-app-users"));
+    await userEvent.click(await screen.findByTestId("query-inspect-open"));
+    const dialog = await screen.findByTestId("query-table-structure");
+    expect(dialog).toBeVisible();
+    // 键/默认值/额外/注释 —— 旧版SHOW FULL FIELDS对齐（空值渲染为"—"）。
+    expect(within(dialog).getByText("PRI")).toBeVisible();
+    expect(within(dialog).getByText("auto_increment")).toBeVisible();
+    expect(within(dialog).getByText("CURRENT_TIMESTAMP")).toBeVisible();
+    expect(within(dialog).getByText("主键")).toBeVisible();
+    expect(within(dialog).getByText("注册时间")).toBeVisible();
+    // 键列之外的普通列渲染空占位，不串列。
+    const usernameRow = within(dialog).getByTestId("query-structure-username");
+    expect(usernameRow).toHaveTextContent("用户名");
+    expect(usernameRow.textContent).not.toContain("PRI");
   });
 });
 
@@ -157,13 +202,21 @@ describe("gate: admin撤销用户可感知且admin不能查看查询", () => {
     expect(dialog.textContent).not.toContain("查看查询");
   });
 
-  it("serves the admin identity no query objects (admin_is_not_business_override)", async () => {
+  it("grants apply to the builtin admin identity too — no implicit override, no exclusion (§18.48)", async () => {
     seedQueryScenario("query-session");
     stubSession(true);
+    // The builtin-admin ACTOR comes from the behavior dimension (the /users/me
+    // stub alone keeps the henry identity, which owns the seeded session).
+    window.localStorage.setItem("yearning-mock-auth", "admin");
     renderAt("/query");
-    await screen.findByTestId("query-entry");
+    // A granted world serves the flow entry to the admin identity exactly
+    // like to a regular user (permission-group semantics, backend
+    // flowGranted has no admin exclusion)…
+    await screen.findByTestId(/query-flow-enter-/);
+    // …while the admin still owns no query objects of its own (no session
+    // rows — it never went through the request/approval chain).
     await waitFor(() => {
-      expect(screen.getByTestId("query-entry").textContent).not.toContain("进行中的会话");
+      expect(screen.queryByTestId(/query-session-/)).toBeNull();
     });
   });
 });
@@ -182,6 +235,9 @@ describe("query entry mode branches (server-driven)", () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderAt("/query");
+    // §18.49: apply is server-driven — the grant-required answer reveals it.
+    await userEvent.click(await screen.findByTestId(/query-flow-enter-/));
+    await screen.findByTestId("query-needs-access-hint");
     await userEvent.click(await screen.findByTestId(/query-flow-apply-/));
     const dialog = await screen.findByTestId("query-access-request-dialog");
     expect(dialog).toBeInTheDocument();
@@ -259,7 +315,31 @@ describe("review R1 fixes", () => {
 
   it("H-2: deciding a pending request removes it from the queue via cache invalidation", async () => {
     seedQueryScenario("query-approval");
-    stubSession(false);
+    // The queue and its decision surface belong to the frozen reviewer
+    // identity (§18.44) — henry is only the requester and sees no row.
+    // The handlers read the identity dimension (localStorage), so both the
+    // session stub and the store must say reviewer-a.
+    setMockIdentity("reviewer-a");
+    server.use(
+      http.get("*/users/me", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: REVIEWER_USER_ID,
+            username: "reviewer-a",
+            display_name: "reviewer-a",
+            email: null,
+            is_builtin_admin: false,
+            version: 1,
+            created_at: "2026-08-28T08:00:00Z",
+            updated_at: "2026-08-28T08:00:00Z",
+            can_access_admin: false,
+          },
+          request_id: SESSION_USER_ID,
+        }),
+      ),
+    );
     window.localStorage.setItem("yearning-mock-auth", "default");
     renderAt("/approvals/query-access");
     const row = await screen.findByTestId("query-access-pending-qar-fixture-pending");
@@ -274,6 +354,13 @@ describe("review R1 fixes", () => {
       { timeout: 4000 },
     );
   });
+
+  // The identity dimension is localStorage-backed and setup.ts never clears
+  // storage between tests — a reviewer-a leak would 404 every later henry
+  // read in this file (the export test reads the henry-owned session).
+  afterEach(() => {
+    setMockIdentity("henry");
+  });
 });
 
 describe("review R2 fix L-8: export dialog reset at the component level", () => {
@@ -282,7 +369,7 @@ describe("review R2 fix L-8: export dialog reset at the component level", () => 
     stubSession(false);
     renderAt("/query/sessions/qs-fixture-active");
     await screen.findByTestId("query-workspace");
-    await userEvent.type(screen.getByTestId("query-schema-input"), "app");
+    await chooseSchema("app");
 
     const downloads: string[] = [];
     const downloadSpy = vi.spyOn(

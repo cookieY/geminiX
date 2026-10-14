@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { KEY_PAGE_TYPES } from "./helpers/key-pages";
-import { mockSession } from "./helpers/auth";
+import { mockSession, setMockIdentity } from "./helpers/auth";
 
 // FE-F11 WCAG 2.1 AA audit (migration contract §8, design spec §11): the six
 // key page types must be free of critical and serious violations under
@@ -28,6 +28,7 @@ for (const pageType of KEY_PAGE_TYPES) {
           );
         }
         await mockSession(page, pageType.session);
+        await setMockIdentity(page, pageType.identity);
         await page.emulateMedia({ reducedMotion: "reduce" });
         await pageType.prepare(page);
         await page.evaluate(() => document.fonts.ready);

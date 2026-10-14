@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockSession } from "./helpers/auth";
+import { becomeIdentity, mockSession, setMockIdentity } from "./helpers/auth";
 
 // FE-F8 acceptance gates (执行结果与调度), driven by the stateful execution
 // fixture over the production build with the shared MSW worker:
@@ -14,9 +14,11 @@ import { mockSession } from "./helpers/auth";
 //      own high-risk wording and resolve only through manual verification
 //      (E005).
 //
-// The mock session user is the frozen executor of every scenario order, so
-// one browser session exercises the executor side; the backend keeps the
-// authoritative checks (3001/3003/3004).
+// Identity role separation (§18.44): the seeded scenario orders freeze
+// executor-a in their execution slots, so the executor legs run as that
+// identity; the submit-approve-execute chain switches identities in-world
+// (logout + login, no reload — a reload would reset the mock world). The
+// backend keeps the authoritative checks (3001/3003/3004).
 
 const FIXTURE_FLOW_ID = "4f6f1a2b-0000-4000-8000-000000000001";
 const SEEDED_EXECUTION_ORDER = "/changes/orders/7e6f1a2b-0000-4000-8000-00000000f801";
@@ -45,8 +47,8 @@ async function useScenario(page: Page, scenario: string): Promise<void> {
   }, scenario);
 }
 
-/** Submits a ready draft through the UI, approves it as the frozen reviewer
- * and lands on the execution-pending order detail. */
+/** Submits a ready draft as henry, approves it as reviewer-a and lands on
+ * the execution-pending order detail as executor-a (§18.44 role chain). */
 async function submitAndApprove(page: Page, title: string): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
@@ -68,10 +70,21 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
 
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
 
-  // Final approval as the frozen reviewer of step 1 — approval never
-  // auto-executes, the executor area only appears afterwards (W006).
+  // Final approval as the frozen reviewer of step 1 (§18.44: the submitter
+  // henry is not an actor — switch identity in-world, the order survives;
+  // login redirects back to this detail). Approval never auto-executes, the
+  // executor area only appears after the executor identity takes over (W006).
+  await becomeIdentity(page, "reviewer-a");
+  await expect(page.getByTestId("approval-decision-card")).toBeVisible({ timeout: 8_000 });
   await page.getByTestId("approval-approve").click();
   await page.getByTestId("approval-decision-confirm").click();
+  await expect(page.getByTestId("order-detail-page")).toContainText("等待执行", {
+    timeout: 8_000,
+  });
+
+  // The executor logs in and lands on the same detail with the executor
+  // area; 我的工单 is submitter-scoped and would never carry them here.
+  await becomeIdentity(page, "executor-a");
   await expect(page.getByTestId("execution-action-card")).toBeVisible({ timeout: 8_000 });
 }
 
@@ -113,6 +126,8 @@ test("shows the approved hash as the executed hash, with no rollback entry", asy
 test("after a partial DDL fate only copy-to-new-draft remains", async ({ page }) => {
   test.setTimeout(40_000);
   await useScenario(page, "execution-partial");
+  // The seeded order's frozen executor is executor-a (§18.44).
+  await setMockIdentity(page, "executor-a");
   await page.goto(SEEDED_EXECUTION_ORDER);
   await expect(page.getByTestId("execution-action-card")).toBeVisible({ timeout: 8_000 });
 
@@ -142,6 +157,8 @@ test("schedules are executor-created and missed schedules never catch up", async
   // claim — never an immediate execution (E007). The window check is real:
   // a due time beyond 30 days would keep the button disabled.
   await useScenario(page, "execution-partial");
+  // The seeded order's frozen executor is executor-a (§18.44).
+  await setMockIdentity(page, "executor-a");
   await page.goto(SEEDED_EXECUTION_ORDER);
   await expect(page.getByTestId("execution-action-card")).toBeVisible({ timeout: 8_000 });
   const due = new Date(Date.now() + 60 * 60 * 1000);
@@ -177,6 +194,7 @@ test("unknown statement results are never not-executed and verify manually", asy
 }) => {
   test.setTimeout(60_000);
   await useScenario(page, "execution-unknown");
+  await setMockIdentity(page, "executor-a");
   await page.goto(SEEDED_EXECUTION_ORDER);
   await expect(page.getByTestId("execution-action-card")).toBeVisible({ timeout: 8_000 });
 

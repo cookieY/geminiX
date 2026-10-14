@@ -59,6 +59,7 @@ describe("mock scenario store", () => {
       "query-flow-direct",
       "query-session",
       "query-revoked",
+    "query-huge",
       "query-approval",
     ]);
   });

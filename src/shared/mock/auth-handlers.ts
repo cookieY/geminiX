@@ -1,6 +1,7 @@
 import { HttpResponse, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import { currentIdentity } from "@/shared/mock/identity-store";
 
 /**
  * Hand-written MSW handlers for the authentication endpoints, layered on the
@@ -18,7 +19,6 @@ const CSRF_COOKIE = "yearning_csrf";
 const MOCK_SESSION_TOKEN = "mock-session-token";
 const MOCK_CSRF_TOKEN = "mock-csrf-token";
 
-const UUID = "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac";
 const NOW = "2026-08-28T08:00:00Z";
 
 function successEnvelope(data: DefaultBodyType) {
@@ -70,9 +70,13 @@ function hasSession(cookies: Record<string, string>): boolean {
 }
 
 function mockUser(canAccessAdmin: boolean) {
+  // Identity dimension (§18.44): /users/me answers with the stored mock
+  // identity — henry by default; e2e and manual testing flip it to act as
+  // the frozen reviewer or the executor without a second login.
+  const identity = currentIdentity();
   return {
-    id: UUID,
-    username: "henry",
+    id: identity.id,
+    username: identity.username,
     email: null,
     is_builtin_admin: canAccessAdmin,
     version: 1,

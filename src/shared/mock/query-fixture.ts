@@ -1,6 +1,8 @@
 import { HttpResponse, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import { MOCK_IDENTITY_IDS, currentIdentityId } from "@/shared/mock/identity-store";
+import { settingsBridge } from "@/shared/mock/settings-bridge";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 
 /**
@@ -44,6 +46,12 @@ interface FixtureColumnDef {
   ordinal: number;
   data_type: string;
   nullable: boolean;
+  // §18.51 表结构丰富化（SHOW FULL FIELDS 对齐，后端同型可选字段）；
+  // 省略 = 无。
+  column_key?: string;
+  column_default?: string;
+  extra?: string;
+  comment?: string;
 }
 
 interface FixtureTableDef {
@@ -229,7 +237,7 @@ function pageOf<T>(items: T[], limit: number | null, after: string | null) {
  * session runs the admin behavior the query actor owns nothing and relates
  * to nothing (authorization-policy admin_is_not_business_override). */
 function queryActorUserId(): string {
-  return readStoredAuthBehavior() === "admin" ? "__builtin_admin__" : QUERY_FIXTURE_SESSION_USER_ID;
+  return readStoredAuthBehavior() === "admin" ? "__builtin_admin__" : currentIdentityId();
 }
 
 /** Session presence follows the admin fixture convention: jsdom fetches
@@ -266,11 +274,11 @@ const MYSQL_SCHEMAS: FixtureSchemaDef[] = [
         relation_kind: "table",
         rowCount: 1200,
         columns: [
-          { column_name: "id", ordinal: 1, data_type: "int", nullable: false },
-          { column_name: "username", ordinal: 2, data_type: "varchar(64)", nullable: false },
-          { column_name: "email", ordinal: 3, data_type: "varchar(255)", nullable: true },
-          { column_name: "phone", ordinal: 4, data_type: "varchar(32)", nullable: true },
-          { column_name: "created_at", ordinal: 5, data_type: "datetime", nullable: false },
+          { column_name: "id", ordinal: 1, data_type: "int", nullable: false, column_key: "PRI", extra: "auto_increment", comment: "主键" },
+          { column_name: "username", ordinal: 2, data_type: "varchar(64)", nullable: false, comment: "用户名" },
+          { column_name: "email", ordinal: 3, data_type: "varchar(255)", nullable: true, comment: "邮箱（脱敏词表命中）" },
+          { column_name: "phone", ordinal: 4, data_type: "varchar(32)", nullable: true, comment: "手机号（脱敏词表命中）" },
+          { column_name: "created_at", ordinal: 5, data_type: "datetime", nullable: false, column_default: "CURRENT_TIMESTAMP", comment: "注册时间" },
         ],
       },
       {
@@ -278,11 +286,11 @@ const MYSQL_SCHEMAS: FixtureSchemaDef[] = [
         relation_kind: "table",
         rowCount: 260,
         columns: [
-          { column_name: "id", ordinal: 1, data_type: "bigint", nullable: false },
-          { column_name: "order_no", ordinal: 2, data_type: "varchar(32)", nullable: false },
-          { column_name: "amount", ordinal: 3, data_type: "decimal(12,2)", nullable: false },
-          { column_name: "status", ordinal: 4, data_type: "varchar(16)", nullable: false },
-          { column_name: "user_id", ordinal: 5, data_type: "int", nullable: false },
+          { column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, column_key: "PRI", extra: "auto_increment", comment: "订单主键" },
+          { column_name: "order_no", ordinal: 2, data_type: "varchar(32)", nullable: false, column_key: "UNI", comment: "业务单号（唯一）" },
+          { column_name: "amount", ordinal: 3, data_type: "decimal(12,2)", nullable: false, column_default: "0.00", comment: "订单金额" },
+          { column_name: "status", ordinal: 4, data_type: "varchar(16)", nullable: false, column_default: "created", comment: "订单状态" },
+          { column_name: "user_id", ordinal: 5, data_type: "int", nullable: false, column_key: "MUL", comment: "下单用户（FK users.id）" },
         ],
       },
     ],
@@ -295,9 +303,9 @@ const MYSQL_SCHEMAS: FixtureSchemaDef[] = [
         relation_kind: "view",
         rowCount: 30,
         columns: [
-          { column_name: "day", ordinal: 1, data_type: "date", nullable: false },
-          { column_name: "order_count", ordinal: 2, data_type: "int", nullable: false },
-          { column_name: "gmv", ordinal: 3, data_type: "decimal(14,2)", nullable: false },
+          { column_name: "day", ordinal: 1, data_type: "date", nullable: false, comment: "统计日" },
+          { column_name: "order_count", ordinal: 2, data_type: "int", nullable: false, comment: "当日订单数" },
+          { column_name: "gmv", ordinal: 3, data_type: "decimal(14,2)", nullable: false, comment: "当日成交额" },
         ],
       },
     ],
@@ -313,9 +321,9 @@ const PG_SCHEMAS: FixtureSchemaDef[] = [
         relation_kind: "table",
         rowCount: 80,
         columns: [
-          { column_name: "id", ordinal: 1, data_type: "bigint", nullable: false },
-          { column_name: "kind", ordinal: 2, data_type: "text", nullable: false },
-          { column_name: "payload", ordinal: 3, data_type: "jsonb", nullable: true },
+          { column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, extra: "auto_increment", comment: "事件主键（identity）" },
+          { column_name: "kind", ordinal: 2, data_type: "text", nullable: false, comment: "事件类型" },
+          { column_name: "payload", ordinal: 3, data_type: "jsonb", nullable: true, comment: "事件载荷（脱敏词表命中）" },
         ],
       },
     ],
@@ -328,6 +336,14 @@ function cellValue(table: string, column: string, rowIndex: number): string {
     case "id":
       return String(rowIndex + 1);
     case "username":
+      // §18.50补记4: one oversized cell (first row of app.users) so the
+      // ellipsis+tooltip and column-resize behavior is testable in the
+      // default world without switching scenarios — exactly 1000 chars.
+      // username is deliberately NOT in the masking vocabulary (email/phone
+      // are), so the long content actually reaches the grid.
+      if (table === "users" && rowIndex === 0) {
+        return `big-cell-${"x".repeat(991)}`;
+      }
       return `user_${String((rowIndex % 40) + 1)}`;
     case "email":
       return `user_${String((rowIndex % 40) + 1)}@example.test`;
@@ -351,6 +367,10 @@ function cellValue(table: string, column: string, rowIndex: number): string {
       return (["login", "view", "click"][rowIndex % 3]) ?? "login";
     case "payload":
       return JSON.stringify({ seq: rowIndex });
+    case "event_blob":
+      // §18.50: a deliberately huge deterministic string (~1400 chars) for
+      // the query-huge scenario — ellipsis + tooltip stress data.
+      return `blob-${String(rowIndex)}-` + "x".repeat(1400);
     default:
       return `${table}-${column}-${String(rowIndex)}`;
   }
@@ -563,7 +583,7 @@ function seedBase(): void {
     { datasource_id: QUERY_FIXTURE_DS_MYSQL_ID, can_query: true, can_export: true },
     { datasource_id: QUERY_FIXTURE_DS_PG_ID, can_query: true, can_export: false },
   ];
-  world.flowSteps = [{ position: 1, actors: [QUERY_FIXTURE_SESSION_USER_ID] }];
+  world.flowSteps = [{ position: 1, actors: [MOCK_IDENTITY_IDS.reviewer] }];
   world.maskingRules.set(`${QUERY_FIXTURE_FLOW_ID}:${QUERY_FIXTURE_DS_MYSQL_ID}`, [
     "email",
     "phone",
@@ -572,16 +592,91 @@ function seedBase(): void {
 }
 
 let lastSeededScenario: string | null = null;
+const DEFAULT_DEMO_SEED = "__default_demo__";
 
 /** Lazy world sync: every query handler calls this first so a query-*
  * scenario always has its seeded world regardless of browser worker
  * bootstrap timing (self-healing reseed). Non-query scenarios never clobber
- * a world that a test seeded explicitly. */
+ * a world that a test seeded explicitly — except the browser default world,
+ * which carries the pending-approval demo layer below. */
 function ensureQueryWorld(): void {
   const scenario = readStoredScenario();
-  if (scenario.startsWith("query-") && scenario !== lastSeededScenario) {
-    seedQueryScenario(scenario);
-    lastSeededScenario = scenario;
+  if (scenario.startsWith("query-")) {
+    if (scenario !== lastSeededScenario) {
+      seedQueryScenario(scenario);
+      lastSeededScenario = scenario;
+    }
+    return;
+  }
+  seedDefaultQueryDemo();
+}
+
+
+/** Q002: approval is required only when BOTH the scenario world enables it
+ * AND the admin settings knob is on — the settings toggle (§18.47) opens
+ * the direct path without touching the scenario. */
+function approvalRequired(): boolean {
+  return world.approvalEnabled && settingsBridge.queryApprovalEnabled;
+}
+
+/** Mock approximation for the Q002 direct path: the flow's group-grant
+ * cannot be driven from the admin UI here (separate fixture worlds), so
+ * with approval disabled the visible flow is treated as granted — the
+ * demo-world equivalent of "the group already holds the query flow". With
+ * approval on, world.flowGranted keeps its exact scenario semantics. */
+function flowGrantEffective(): boolean {
+  return world.flowGranted || !approvalRequired();
+}
+
+// ---- Default-world pending approvals (§18.44 follow-up, 2026-10-14) -------
+//
+// Owner-facing queue data: the query domain previously existed only under
+// query-* scenarios, so the default mock world left the 查询审批 queue empty
+// for every identity. The default world now carries the base catalog plus
+// two henry-requested access_pending requests whose frozen reviewer is
+// reviewer-a — reviewer-a's queue has rows to decide, henry sees his own
+// pending requests. Browser worlds only (vitest pins exact scenario shapes);
+// timestamps anchored for determinism.
+
+function seedDefaultQueryDemo(): void {
+  if (import.meta.env.MODE === "test") return;
+  if (lastSeededScenario === DEFAULT_DEMO_SEED) return;
+  resetQueryFixture();
+  seedBase();
+  lastSeededScenario = DEFAULT_DEMO_SEED;
+  const requests: Array<{
+    id: string;
+    datasourceIds: string[];
+    reason: string;
+    createdAt: string;
+  }> = [
+    {
+      id: "qar-demo-mysql",
+      datasourceIds: [QUERY_FIXTURE_DS_MYSQL_ID],
+      reason: "月末对账，需要查询订单库",
+      createdAt: "2026-09-01T07:40:00Z",
+    },
+    {
+      id: "qar-demo-pg",
+      datasourceIds: [QUERY_FIXTURE_DS_PG_ID],
+      reason: "排查报表口径差异，需要读取报表库",
+      createdAt: "2026-09-01T07:45:00Z",
+    },
+  ];
+  for (const request of requests) {
+    world.accessRequests.set(request.id, {
+      id: request.id,
+      requester_user_id: MOCK_IDENTITY_IDS.submitter,
+      flow_id: QUERY_FIXTURE_FLOW_ID,
+      state: "access_pending",
+      datasource_ids: request.datasourceIds,
+      grant_id: null,
+      reason: request.reason,
+      requested_until: "2026-09-15T08:00:00Z",
+      steps: [{ position: 1, actors: [MOCK_IDENTITY_IDS.reviewer], state: "active", decided_at: null }],
+      version: 1,
+      created_at: request.createdAt,
+    });
   }
 }
 
@@ -626,7 +721,7 @@ export function seedQueryScenario(scenario: string): void {
         grant_id: null,
         reason: "incident analysis window",
         requested_until: until,
-        steps: [{ position: 1, actors: [QUERY_FIXTURE_SESSION_USER_ID], state: "approved", decided_at: nowIso() }],
+        steps: [{ position: 1, actors: [MOCK_IDENTITY_IDS.reviewer], state: "approved", decided_at: nowIso() }],
         version: 2,
         created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
       };
@@ -662,6 +757,56 @@ export function seedQueryScenario(scenario: string): void {
       }
       break;
     }
+    case "query-huge": {
+      // §18.50: 超大结果测试世界——granted flow + active session；mysql目录
+      // 附加大行数宽表（2600行×超长文本列），走与生产一致的游标分页。
+      world.flowGranted = true;
+      world.approvalEnabled = true;
+      const request: FixtureAccessRequest = {
+        id: uuid(),
+        requester_user_id: QUERY_FIXTURE_SESSION_USER_ID,
+        flow_id: QUERY_FIXTURE_FLOW_ID,
+        state: "grant_active",
+        datasource_ids: [QUERY_FIXTURE_DS_MYSQL_ID],
+        grant_id: null,
+        reason: "large result verification",
+        requested_until: until,
+        steps: [{ position: 1, actors: [MOCK_IDENTITY_IDS.reviewer], state: "approved", decided_at: nowIso() }],
+        version: 2,
+        created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+      };
+      const grant = createGrantFromRequest(request);
+      request.grant_id = grant.id;
+      world.accessRequests.set(request.id, request);
+      world.sessions.set("qs-fixture-active", {
+        id: "qs-fixture-active",
+        user_id: QUERY_FIXTURE_SESSION_USER_ID,
+        flow_id: QUERY_FIXTURE_FLOW_ID,
+        grant_id: grant.id,
+        state: "active",
+        capabilities: activeGrantCapabilityRows(grant),
+        created_at: new Date(Date.now() - 1800 * 1000).toISOString(),
+      });
+      const mysql = world.datasources.get(QUERY_FIXTURE_DS_MYSQL_ID);
+      if (mysql !== undefined && !mysql.schemas.some((entry) => entry.name === "events")) {
+        mysql.schemas.push({
+          name: "events",
+          tables: [
+            {
+              table_name: "wide_events",
+              relation_kind: "table",
+              rowCount: 2600,
+              columns: [
+                { column_name: "id", ordinal: 1, data_type: "bigint", nullable: false, column_key: "PRI", extra: "auto_increment", comment: "事件主键" },
+                { column_name: "kind", ordinal: 2, data_type: "varchar(16)", nullable: false, comment: "事件类型" },
+                { column_name: "event_blob", ordinal: 3, data_type: "longtext", nullable: true, comment: "超大载荷列（展示压测用）" },
+              ],
+            },
+          ],
+        });
+      }
+      break;
+    }
     case "query-approval": {
       world.flowGranted = true;
       const pending: FixtureAccessRequest = {
@@ -673,7 +818,7 @@ export function seedQueryScenario(scenario: string): void {
         grant_id: null,
         reason: "month-end reconciliation",
         requested_until: until,
-        steps: [{ position: 1, actors: [QUERY_FIXTURE_SESSION_USER_ID], state: "active", decided_at: null }],
+        steps: [{ position: 1, actors: [MOCK_IDENTITY_IDS.reviewer], state: "active", decided_at: null }],
         version: 1,
         created_at: new Date(Date.now() - 600 * 1000).toISOString(),
       };
@@ -794,27 +939,27 @@ function cursorPage(execution: FixtureExecution, token: string, pageSize: number
 /** Catalog page served by the review fixture's /users/me/flows handler for
  * flow_type=query_access (single route ownership stays there; this module
  * exports the data so both fixtures share one world). */
-export function queryFlowsCatalogPage(authenticated: boolean, behavior: string) {
+export function queryFlowsCatalogPage(authenticated: boolean) {
   // The catalog may be the first query-surface request in a fresh browser
   // page; sync the seeded world before answering (self-healing reseed).
   ensureQueryWorld();
-  if (!authenticated || !world.flowGranted || behavior === "admin") {
+  if (!authenticated || !flowGrantEffective()) {
     return pageOf([], null, null);
   }
   return pageOf([flowView()], null, null);
 }
 
 /** Owner/relation scoping for grants (grant.go ListGrants): owner or frozen
- * query-flow reviewer; the builtin admin identity reads nothing. */
+ * query-flow reviewer — pure relation matching, no identity exclusions (the
+ * builtin admin reads exactly what its relations grant, §18.48). */
 function canReadGrantRow(actorId: string, grant: FixtureGrant): boolean {
-  if (actorId === "__builtin_admin__") return false;
   if (grant.requester_user_id === actorId) return true;
   return world.flowSteps.some((step) => step.actors.includes(actorId));
 }
 
-/** Owner/relation scoping for access requests (access.go listRequestsFor). */
+/** Owner/relation scoping for access requests (access.go listRequestsFor):
+ * requester ∪ frozen reviewer — no identity exclusions (§18.48). */
 function canReadRequestRow(actorId: string, row: FixtureAccessRequest): boolean {
-  if (actorId === "__builtin_admin__") return false;
   if (row.requester_user_id === actorId) return true;
   return row.steps.some((step) => step.actors.includes(actorId));
 }
@@ -862,8 +1007,8 @@ export function queryFixtureHandlers(): HttpHandler[] {
         (id) => !world.flowCapabilities.some((capability) => capability.datasource_id === id),
       );
       if (outside.length > 0) return HttpResponse.json(businessError(2014, "flow not granted"));
-      if (!world.approvalEnabled) return HttpResponse.json(businessError(1010, "approval disabled"));
-      if (!world.flowGranted || actorId === "__builtin_admin__") {
+      if (!approvalRequired()) return HttpResponse.json(businessError(1010, "approval disabled"));
+      if (!flowGrantEffective()) {
         return HttpResponse.json(businessError(2014, "flow not granted"));
       }
       const open = [...world.accessRequests.values()].find(
@@ -915,7 +1060,7 @@ export function queryFixtureHandlers(): HttpHandler[] {
       if (body?.decision !== "approve" && body?.decision !== "reject") {
         return HttpResponse.json(businessError(1001, "decision required"));
       }
-      if (!world.approvalEnabled) return HttpResponse.json(businessError(1010, "approval disabled"));
+      if (!approvalRequired()) return HttpResponse.json(businessError(1010, "approval disabled"));
       if (parseIfMatch(request) !== String(row.version)) {
         return HttpResponse.json(businessError(1004, "version mismatch"));
       }
@@ -1098,7 +1243,6 @@ export function queryFixtureHandlers(): HttpHandler[] {
       if (!sessionAuthenticated()) return unauthenticated();
     ensureQueryWorld();
       const actorId = queryActorUserId();
-      if (actorId === "__builtin_admin__") return HttpResponse.json(businessError(2014, "no query flows"));
       const body = (await request.json().catch(() => null)) as {
         flow_id?: string;
         grant_id?: string | null;
@@ -1110,10 +1254,10 @@ export function queryFixtureHandlers(): HttpHandler[] {
       ) {
         return HttpResponse.json(businessError(1001, "validation failed"));
       }
-      if (!world.flowGranted) return HttpResponse.json(businessError(2014, "flow not granted"));
+      if (!flowGrantEffective()) return HttpResponse.json(businessError(2014, "flow not granted"));
       const requested = new Set(body.datasource_ids);
       let capabilityRows: FixtureSessionCapability[];
-      if (world.approvalEnabled) {
+      if (approvalRequired()) {
         const grant =
           body.grant_id !== undefined && body.grant_id !== null
             ? world.grants.get(body.grant_id)
@@ -1177,8 +1321,10 @@ export function queryFixtureHandlers(): HttpHandler[] {
         return HttpResponse.json(businessError(1002, "not found"));
       }
       const body = (await request.json().catch(() => null)) as { reason?: string } | null;
-      if (body?.reason === undefined || body.reason === "" || body.reason.length > 4096) {
-        return HttpResponse.json(businessError(1001, "reason required"));
+      // §18.49: reason is OPTIONAL (backend session.go defaults empty to
+      // "user_closed") — only the length needs guarding.
+      if (body?.reason !== undefined && body.reason.length > 4096) {
+        return HttpResponse.json(businessError(1001, "reason too long"));
       }
       if (session.state !== "active") return HttpResponse.json(businessError(4006, "session closed"));
       session.state = "closed";
@@ -1254,6 +1400,10 @@ export function queryFixtureHandlers(): HttpHandler[] {
             data_type: column.data_type,
             nullable: column.nullable,
             masked: vocabulary.includes(foldCase(column.column_name)),
+            column_key: column.column_key ?? "",
+            column_default: column.column_default ?? "",
+            extra: column.extra ?? "",
+            comment: column.comment ?? "",
           })),
         ),
       );

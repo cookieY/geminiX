@@ -12,6 +12,7 @@ import "@/shared/i18n";
 import AuditRecordsPage from "@/routes/records/audit-records-page";
 import ProfilePage from "@/routes/profile/profile-page";
 import AdminSettingsNamespacePage from "@/routes/admin/admin-settings-page";
+import AdminAiBudgetPage from "@/routes/admin/admin-ai-budget-page";
 import AdminIdentityProvidersPage from "@/routes/admin/admin-identity-providers-page";
 import AdminNotificationsPage from "@/routes/admin/admin-notifications-page";
 import WorkspacePage from "@/routes/workspace/workspace-page";
@@ -132,6 +133,48 @@ describe("settings namespaces", () => {
     expect(approval).toBeChecked();
     expect(await screen.findByTestId("settings-query-no-limit")).toBeTruthy();
     expect(screen.getByTestId("admin-settings-query").textContent).not.toContain("最大返回行数");
+  });
+
+  it("saving a high-impact toggle directly succeeds via the auto assess retry (§18.47)", async () => {
+    stubSession(true);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <SessionProvider>
+          <MemoryRouter initialEntries={["/admin/settings/query"]}>
+            <Routes>
+              <Route path="/admin/settings/:namespace" element={<AdminSettingsNamespacePage />} />
+            </Routes>
+          </MemoryRouter>
+        </SessionProvider>
+      </QueryClientProvider>,
+    );
+    const approval = await screen.findByTestId("settings-query-approval");
+    expect(approval).toBeChecked();
+    // The owner journey: toggle the high-impact knob and hit 保存 WITHOUT
+    // the manual 评估影响 ceremony — the first PUT answers 1011 and the
+    // page must run assess → retry with the fresh token by itself.
+    await userEvent.click(approval);
+    await userEvent.click(screen.getByTestId("settings-save"));
+    expect(await screen.findByTestId("settings-saved-note", {}, { timeout: 4000 })).toBeVisible();
+    // The auto-generated assessment renders, so the effects are still shown.
+    expect(screen.getByTestId("settings-assessment")).toBeVisible();
+  });
+});
+
+
+describe("settings tabs (§18.47)", () => {
+  it("the AI-budget page carries the shared settings tab bar", async () => {
+    stubSession(true);
+    renderPage(<AdminAiBudgetPage />);
+    expect(await screen.findByTestId("admin-settings-ai-budget")).toBeVisible();
+    // The five namespace tabs render with ai-budget active — the bar no
+    // longer disappears on the standalone page.
+    for (const label of ["通用", "查询", "执行", "品牌", "AI预算"]) {
+      expect(screen.getByRole("tab", { name: label })).toBeVisible();
+    }
   });
 });
 

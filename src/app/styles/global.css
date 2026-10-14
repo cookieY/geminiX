@@ -378,3 +378,19 @@ html[data-card-shadow="false"] [data-slot="card"] {
   transform-style: preserve-3d;
   animation: flip-page-cycle 5.6s ease-in-out infinite;
 }
+
+/* Accessibility + screenshot determinism: under prefers-reduced-motion every
+ * entrance/transition completes instantly (final state) and infinite
+ * decorative loops stop after one instant pass (their unfilled base state).
+ * The harness captures with reducedMotion: reduce, so baselines always see
+ * settled pages instead of racing whatever animate-in frame the load allows. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

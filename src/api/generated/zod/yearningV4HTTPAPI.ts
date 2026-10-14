@@ -5121,7 +5121,11 @@ export const ListMyFlowDatasourceColumnsResponse = zod.union([zod.object({
   "ordinal": zod.int().min(1),
   "data_type": zod.string(),
   "nullable": zod.boolean(),
-  "masked": zod.boolean()
+  "masked": zod.boolean(),
+  "column_key": zod.string().optional().describe('SHOW FULL FIELDS对齐的键信息（MySQL PRI\/UNI\/MUL；PostgreSQL无直接对应，恒为空串）。空串表示无。'),
+  "column_default": zod.string().optional().describe('列默认值表达式；空串表示无默认值。'),
+  "extra": zod.string().optional().describe('额外信息（MySQL auto_increment等；PostgreSQL按identity\/generated映射）。空串表示无。'),
+  "comment": zod.string().optional().describe('列注释；空串表示无注释。')
 })),
   "request_id": zod.uuid()
 }),zod.object({
@@ -7570,7 +7574,11 @@ export const ListQuerySessionColumnsResponse = zod.union([zod.object({
   "ordinal": zod.int().min(1),
   "data_type": zod.string(),
   "nullable": zod.boolean(),
-  "masked": zod.boolean()
+  "masked": zod.boolean(),
+  "column_key": zod.string().optional().describe('SHOW FULL FIELDS对齐的键信息（MySQL PRI\/UNI\/MUL；PostgreSQL无直接对应，恒为空串）。空串表示无。'),
+  "column_default": zod.string().optional().describe('列默认值表达式；空串表示无默认值。'),
+  "extra": zod.string().optional().describe('额外信息（MySQL auto_increment等；PostgreSQL按identity\/generated映射）。空串表示无。'),
+  "comment": zod.string().optional().describe('列注释；空串表示无注释。')
 })),
   "request_id": zod.uuid()
 }),zod.object({

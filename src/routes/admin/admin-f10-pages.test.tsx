@@ -101,13 +101,38 @@ describe("gate: 权限组表单符合新模型（P101）", () => {
     const row = await screen.findByTestId("admin-group-row-7a1a3c4d-2222-4222-8222-00000000g001");
     const edit = within(row).getAllByRole("button")[0];
     await userEvent.click(edit ?? row);
-    const memberCheckboxes = await screen.findAllByTestId(/group-member-/);
+    const memberCheckboxes = await screen.findAllByTestId(/^group-member-[0-9a-f]{8}-/);
     expect(memberCheckboxes.length).toBeGreaterThan(0);
     // The legacy ddl/dml/query transfer vocabulary must not appear.
     expect(screen.queryByText(/DDL 数据源权限/)).not.toBeInTheDocument();
     // The deleted legacy transfer field never appears (name assembled so
     // this source file itself stays clean for the prohibited scanner).
     expect(document.body.textContent).not.toContain(["ddl", "_source"].join(""));
+
+    // §18.46 (same dialog instance — popup isolation contract): the member
+    // list narrows by name/username and the filtered select-all unions into
+    // the selection without touching hidden rows.
+    await userEvent.type(screen.getByTestId("group-member-search"), "busy");
+    expect(await screen.findAllByTestId(/^group-member-[0-9a-f]{8}-/)).toHaveLength(1);
+    expect(screen.getByTestId("group-member-select-all-count").textContent).toBe("0/1");
+    await userEvent.click(screen.getByTestId("group-member-select-all"));
+    expect(screen.getByTestId("group-member-select-all-count").textContent).toBe("1/1");
+    await userEvent.click(screen.getByTestId("group-member-search-clear"));
+    // Anne (pre-selected before the search) keeps her state — the union
+    // semantics never unselect rows the filter hid.
+    expect(screen.getByTestId("group-member-7a1a3c4d-1111-4111-8111-00000000u001").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("group-member-7a1a3c4d-1111-4111-8111-00000000u002").getAttribute("aria-checked")).toBe("true");
+
+    // The flow list searches by name and its select-all flips the whole
+    // filtered set (订单 matches several seeded catalog flows).
+    await userEvent.type(screen.getByTestId("group-flow-search"), "订单");
+    const visibleFlows = await screen.findAllByTestId(/^group-flow-[0-9a-f]{8}-/);
+    expect(visibleFlows.length).toBeGreaterThan(1);
+    const total = visibleFlows.length;
+    await userEvent.click(screen.getByTestId("group-flow-select-all"));
+    expect(screen.getByTestId("group-flow-select-all-count").textContent).toBe(`${String(total)}/${String(total)}`);
+    await userEvent.click(screen.getByTestId("group-flow-select-all"));
+    expect(screen.getByTestId("group-flow-select-all-count").textContent).toBe(`0/${String(total)}`);
   });
 });
 

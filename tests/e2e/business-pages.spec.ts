@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockSession } from "./helpers/auth";
+import { mockSession, setMockIdentity } from "./helpers/auth";
 
 /**
  * FE-F10 acceptance gates (work package acceptance_gates):
@@ -55,7 +55,8 @@ test("gate 1: single-SELECT only and cursor pagination without totals", async ({
 
   // A write statement is refused by the server's safety check (4007) and
   // renders inline — the client hint never replaces server validation.
-  await page.getByTestId("query-schema-input").fill("app");
+  await page.getByTestId("query-schema-input").click();
+      await page.getByRole("option", { name: "app" }).click();
   await typeSql(page, "delete from app.users");
   await page.getByTestId("query-run").click();
   await expect(page.getByTestId("query-run-error")).toContainText("仅允许执行单条SELECT");
@@ -65,10 +66,11 @@ test("gate 1: single-SELECT only and cursor pagination without totals", async ({
   await typeSql(page, "select id from app.users");
   await page.getByTestId("query-run").click();
   const loaded = page.locator("[data-testid^='query-result-loaded-']").first();
-  await expect(loaded).toContainText("已读取 500 行");
+  // §18.50 follow-up (legacy parity): the background drain pulls every
+  // cursor page automatically — the pager pages locally over the full
+  // result and never fetches.
+  await expect(loaded).toContainText("已读取 1200 行", { timeout: 15_000 });
   await expect(page.getByTestId("query-workspace")).not.toContainText("共 ");
-  await page.getByTestId("query-result-load-more").click();
-  await expect(loaded).toContainText("已读取 1000 行");
 
   // Masked vocabulary columns render the unified masking badge.
   await typeSql(page, "select id, email from app.users");
@@ -81,11 +83,14 @@ test("gate 2: revocation is perceivable and the admin has no query read face", a
   await page.goto("/query/sessions/qs-fixture-active");
   await expect(page.getByTestId("query-workspace")).toBeVisible();
 
-  // The session user is the frozen flow reviewer. A full page reload would
-  // reset the in-memory mock world (F4-recorded limitation), so the
-  // revocation command runs through the page's own fetch — the same module
-  // world the workspace poll reads; the approvals-page revocation UI is
-  // covered by component tests.
+  // §18.44: the workspace belongs to the session owner (henry), while
+  // revocation authority sits with the frozen reviewer identity — the
+  // handlers read the identity dimension per request, so the revoke fetch
+  // below runs as reviewer-a through a plain localStorage flip (no reload:
+  // that would reset the in-memory mock world, F4-recorded limitation) and
+  // the identity returns to the owner before the poll re-reads. The
+  // approvals-page revocation UI is covered by component tests.
+  await setMockIdentity(page, "reviewer-a");
   await page.evaluate(async () => {
     const grants = await (await fetch("/api/v4/query-grants")).json();
     const grant = grants.data.items.find((row: { state: string }) => row.state === "active");
@@ -97,6 +102,8 @@ test("gate 2: revocation is perceivable and the admin has no query read face", a
     const envelope = await response.json();
     if (envelope.err_code !== 0) throw new Error(`revoke failed: ${JSON.stringify(envelope)}`);
   });
+
+  await setMockIdentity(page, "henry");
 
   // The workspace poll flips into the non-dismissible blocked notice with
   // the reason (Q004 撤销必须向查询人可见).
@@ -117,10 +124,12 @@ test("gate 2b: the builtin admin identity owns no query objects", async ({ page 
   await mockSession(page, "admin");
   await page.goto("/query");
   await expect(page.getByTestId("query-entry")).toBeVisible();
-  // admin_is_not_business_override: the admin reads no query flows, grants
-  // or sessions — the fresh admin session sees the honest empty page.
-  await expect(page.getByTestId("query-entry")).not.toContainText("进行中的会话");
-  await expect(page.getByTestId("query-entry")).toContainText("暂无可用查询流程");
+  // §18.48 (owner ruling): the builtin admin gets no business rights by
+  // implicit override, but explicit grants apply to it like to any user —
+  // this granted scenario world serves the flow entry, while the admin
+  // still owns no sessions or grants of its own.
+  await expect(page.getByTestId(/query-flow-enter-/).first()).toBeVisible();
+  await expect(page.locator('[data-testid^="query-session-"]')).toHaveCount(0);
 });
 
 test("gate 3: flow and permission-group forms follow the new model", async ({ page }) => {

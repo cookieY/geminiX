@@ -84,6 +84,10 @@ export default function QueryEntryPage() {
   const [requestFlow, setRequestFlow] = useState<Flow | null>(null);
   const [entryError, setEntryError] = useState<string | null>(null);
   const [needsAccessHint, setNeedsAccessHint] = useState<string | null>(null);
+  // §18.49 (owner ruling): the apply affordance is server-driven — it only
+  // appears for flows the server answered QUERY_GRANT_REQUIRED for. With
+  // query approval disabled (Q002 direct path) it never shows.
+  const [needsAccessFlows, setNeedsAccessFlows] = useState<Set<string>>(new Set());
 
   const flows = flowsQuery.data ?? [];
   const requests = requestsQuery.data ?? [];
@@ -113,6 +117,7 @@ export default function QueryEntryPage() {
         error.err_code === businessErrCodeByName("QUERY_GRANT_REQUIRED")
       ) {
         setNeedsAccessHint(flow.name);
+        setNeedsAccessFlows((current) => new Set(current).add(flow.id));
         return;
       }
       setEntryError(describeErrorText(describeError(error, "createQuerySession")));
@@ -158,11 +163,14 @@ export default function QueryEntryPage() {
       {loadError === null && !anyLoading && (
         <>
           {flows.length === 0 && sessions.length === 0 && (
-            <Empty className="rounded-xl border">
+            <Empty className="rounded-xl border" data-testid="query-entry-empty">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Database />
                 </EmptyMedia>
+                {/* §18.48: grants apply to the builtin admin exactly as to
+                    regular users — the generic waiting-for-grants copy is
+                    accurate for every ungranted identity. */}
                 <EmptyTitle>{t("query.entry.emptyTitle")}</EmptyTitle>
                 <EmptyDescription>{t("query.entry.emptyDescription")}</EmptyDescription>
               </EmptyHeader>
@@ -202,10 +210,12 @@ export default function QueryEntryPage() {
                         )}
                       </div>
                       <div className="flex shrink-0 flex-row gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { setRequestFlow(flow); }} data-testid={`query-flow-apply-${flow.id}`}>
-                          <FilePlus2 />
-                          {t("query.entry.applyAccess")}
-                        </Button>
+                        {match === null && needsAccessFlows.has(flow.id) && (
+                          <Button size="sm" variant="outline" onClick={() => { setRequestFlow(flow); }} data-testid={`query-flow-apply-${flow.id}`}>
+                            <FilePlus2 />
+                            {t("query.entry.applyAccess")}
+                          </Button>
+                        )}
                         <Button size="sm" onClick={() => { void enter(flow, match); }} data-testid={`query-flow-enter-${flow.id}`}>
                           {t("query.entry.enter")}
                           <ChevronRight />

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { HttpResponse, http } from "msw";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/test/msw/server";
 import "@/shared/i18n";
 import {
@@ -15,6 +15,30 @@ import {
   type FixtureOrder,
 } from "@/shared/mock/review-fixture";
 import OrderDetailPage from "@/routes/changes/order-detail-page";
+
+// jsdom cannot host the lazy Monaco chunk (query-pages precedent); the
+// revealed SQL renders through the read-only viewer, so the reveal test
+// below needs the module stubbed with a plain text surface.
+vi.mock("@/features/review/sql-editor-panel", () => ({
+  SqlEditorPanel: ({
+    value,
+    "data-testid": testId,
+  }: {
+    value: string;
+    "data-testid"?: string;
+  }) => (
+    <textarea data-testid={testId ?? "sql-editor-stub"} readOnly value={value} onChange={() => {}} />
+  ),
+  SqlReadOnlyViewer: ({
+    value,
+    "data-testid": testId,
+  }: {
+    value: string;
+    "data-testid"?: string;
+  }) => (
+    <pre data-testid={testId ?? "sql-readonly-stub"}>{value}</pre>
+  ),
+}));
 
 /**
  * Approval decision gates (work package FE-F7): the decision card renders
@@ -307,9 +331,11 @@ describe("frozen review and comments on the order detail page", () => {
     seedFixtureOrder(approvalOrder({ sql_text: "UPDATE orders SET status = 1;" }));
     renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
     await user.click(await screen.findByTestId("reveal-order-sql"));
-    const view = await screen.findByTestId("order-sql-view");
+    // The viewer chunk is lazy (§18.45): wait for the stub surface, not the
+    // instantly-rendered card frame.
+    const view = await screen.findByTestId("order-sql-readonly");
     expect(view.textContent).toContain("UPDATE orders SET status = 1;");
-    expect(view.textContent).toContain("Yearning SQL Viewer: henry @");
+    expect(screen.getByTestId("order-sql-view").textContent).toContain("Yearning SQL Viewer: henry @");
     // Memory-only: plaintext never touches web storage.
     expect(JSON.stringify(localStorage)).not.toContain("UPDATE orders SET status = 1;");
     expect(sessionStorage.length).toBe(0);

@@ -2349,6 +2349,14 @@ export interface DatasourceColumn {
   data_type: string;
   nullable: boolean;
   masked: boolean;
+  /** SHOW FULL FIELDS对齐的键信息（MySQL PRI/UNI/MUL；PostgreSQL无直接对应，恒为空串）。空串表示无。 */
+  column_key?: string;
+  /** 列默认值表达式；空串表示无默认值。 */
+  column_default?: string;
+  /** 额外信息（MySQL auto_increment等；PostgreSQL按identity/generated映射）。空串表示无。 */
+  extra?: string;
+  /** 列注释；空串表示无注释。 */
+  comment?: string;
 }
 
 export interface ExecuteQueryRequest {

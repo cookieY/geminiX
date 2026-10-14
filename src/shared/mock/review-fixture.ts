@@ -1,7 +1,14 @@
 import { HttpResponse, delay, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
+import { executionWindowAllows } from "@/shared/mock/settings-bridge";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import {
+  MOCK_IDENTITY_IDS,
+  currentIdentity,
+  currentIdentityId,
+  identityUsernameOf,
+} from "@/shared/mock/identity-store";
 import { adminFixtureTask } from "@/shared/mock/admin-fixture";
 import { queryFlowsCatalogPage } from "@/shared/mock/query-fixture";
 import { CATALOG_FLOW_IDS, reviewCatalogFlowViews } from "@/shared/mock/flow-catalog";
@@ -547,10 +554,11 @@ function runPublic(run: FixtureRun) {
  */
 function fixtureUser(userId: string) {
   const now = "2026-08-01T00:00:00Z";
+  const username = identityUsernameOf(userId);
   return {
     id: userId,
-    username: "henry",
-    display_name: "henry",
+    username,
+    display_name: username,
     email: null,
     is_builtin_admin: true,
     version: 1,
@@ -563,7 +571,8 @@ function fixtureUser(userId: string) {
  * display_name) — the order surface freezes display names, unlike the flow
  * stage ActorRef ({user_id}) wire shape. */
 function fixtureActor(userId: string) {
-  return { id: userId, username: "henry", display_name: "henry" };
+  const username = identityUsernameOf(userId);
+  return { id: userId, username, display_name: username };
 }
 
 function orderPublic(order: FixtureOrder) {
@@ -603,7 +612,7 @@ function recordOrderEvent(
     occurred_at: now(),
     actor_kind: actorKind,
     actor_user_id: actorUserId,
-    actor_display_name: actorUserId === null ? null : "henry",
+    actor_display_name: actorUserId === null ? null : identityUsernameOf(actorUserId),
     summary,
     stage_position: stagePosition,
     state,
@@ -639,10 +648,10 @@ function seedPartialExecutionOrder(): void {
             position: 1,
             state: "approved",
             decided_at: submittedAt,
-            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+            actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
           },
         ],
-        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+        execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
       },
       {
         id: "7e6f1a2b-0000-4000-8000-00000000f612",
@@ -655,10 +664,10 @@ function seedPartialExecutionOrder(): void {
             position: 1,
             state: "approved",
             decided_at: submittedAt,
-            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+            actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
           },
         ],
-        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+        execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
       },
     ],
     has_sql: true,
@@ -817,10 +826,10 @@ function seedOrderGallery(): void {
               position: 1,
               state: galleryStepState(state),
               decided_at: terminal ? submittedAt : null,
-              actors: [fixtureActor(FIXTURE_OWNER_ID)],
+              actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
             },
           ],
-          execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+          execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
         },
       ],
       has_sql: true,
@@ -840,6 +849,76 @@ function seedOrderGallery(): void {
       recordOrderEvent(order, "change_order.state_changed", "system", null, `演示状态：${state}`, 2, state);
     }
   }
+}
+
+// ---- Pending approval demos (§18.44 follow-up, 2026-10-14) ----------------
+//
+// Owner-facing queue data: with the three-identity split the 工单审批 queue
+// belongs to reviewer-a, but the gallery only parks two demonstration rows
+// in stage_approval_active. These three henry-submitted orders (realistic
+// titles, one two-step chain for the serial-step fold) fill the queue for
+// manual reviewer testing. Browser worlds only (vitest stays clean, gallery
+// precedent); submitted_at anchored OLDER than every gallery row so they
+// never enter page 1 of the 我的工单 baselines and live e2e submissions
+// always sort ahead of them in the queue.
+
+const PENDING_DEMO_FIRST_ID = "7e6f1a2b-0000-4000-8000-a00000000001";
+
+function seedPendingApprovalOrders(): void {
+  if (import.meta.env.MODE === "test") return;
+  if (world.orders.has(PENDING_DEMO_FIRST_ID)) return;
+  const specs: Array<{ suffix: string; title: string; datasource: string; steps: number }> = [
+    { suffix: "01", title: "订单表新增归档状态字段", datasource: "staging-mysql", steps: 2 },
+    { suffix: "02", title: "清理失效账号并回收配额", datasource: "report-pg", steps: 1 },
+    { suffix: "03", title: "会员表补充索引与分区维护", datasource: "prod-mysql", steps: 1 },
+  ];
+  specs.forEach((spec, index) => {
+    const id = `${PENDING_DEMO_FIRST_ID.slice(0, -2)}${spec.suffix}`;
+    // Older than the oldest gallery row (anchor - (40+i) days) — deterministic
+    // under the screenshot clock pin and invisible to baselines' page 1.
+    const submittedAt = new Date(
+      Date.parse("2026-09-01T08:00:00Z") - (GALLERY_TOTAL + index) * 86_400_000,
+    )
+      .toISOString()
+      .slice(0, 19)
+      .concat("Z");
+    const steps: FixtureApprovalStep[] = Array.from({ length: spec.steps }, (_, stepIndex) => ({
+      id: `${id}-a${String(stepIndex + 1)}`,
+      position: stepIndex + 1,
+      state: stepIndex === 0 ? "active" : "pending",
+      decided_at: null,
+      actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
+    }));
+    const order: FixtureOrder = {
+      id,
+      display_number: `YR-20260901-A${spec.suffix}`,
+      submitter_user_id: FIXTURE_OWNER_ID,
+      title: spec.title,
+      state: "stage_approval_active",
+      current_stage_position: 1,
+      stages: [
+        {
+          id: `${id}-s1`,
+          position: 1,
+          datasource_name: spec.datasource,
+          state: "approval_active",
+          approval_steps: steps,
+          execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
+        },
+      ],
+      has_sql: true,
+      sql_hash: `hash-pending-${spec.suffix}`,
+      snapshot_hash: `snap-pending-${spec.suffix}`,
+      manually_verified: false,
+      version: 2,
+      submitted_at: submittedAt,
+      terminal_at: null,
+      review_run_id: null,
+      sql_text: `-- ${spec.title}\nUPDATE demo SET applied = 1 WHERE id = ${String(index + 1)};`,
+    };
+    world.orders.set(order.id, order);
+    recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结", 1, "submitted");
+  });
 }
 
 // ---- Execution domain (FE-F8) ---------------------------------------------
@@ -1169,10 +1248,10 @@ function seedExecutionScenarioOrder(): void {
             position: 1,
             state: "approved",
             decided_at: submittedAt,
-            actors: [fixtureActor(FIXTURE_OWNER_ID)],
+            actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
           },
         ],
-        execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+        execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
       },
     ],
     has_sql: true,
@@ -1540,7 +1619,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         // Session presence follows the shared behavior-dimension convention
         // (jsdom fetches carry no cookies; see admin-fixture adminGuard).
         return HttpResponse.json(
-          successEnvelope(pageOf(queryFlowsCatalogPage(behavior !== "expired", behavior).items as unknown[], null, null)),
+          successEnvelope(pageOf(queryFlowsCatalogPage(behavior !== "expired").items as unknown[], null, null)),
         );
       }
       if (flowType !== "change_review" || behavior !== "admin") {
@@ -1549,7 +1628,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       // The default e2e flow first, then the 20-flow owner test catalog
       // (flow-catalog.ts): the submission wizard shows 18 enabled entries
       // (two catalog flows are seeded disabled for the admin toggle).
-      const catalogFlows = reviewCatalogFlowViews(FIXTURE_OWNER_ID);
+      const catalogFlows = reviewCatalogFlowViews(MOCK_IDENTITY_IDS.reviewer, MOCK_IDENTITY_IDS.executor);
       const flow = {
         id: FIXTURE_FLOW_ID,
         name: "默认审核流程",
@@ -1566,9 +1645,9 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             datasource_name: "orders-mysql",
             schema_mappings: [{ logical_schema: "app", physical_schema: "app" }],
             approval_steps: [
-              { position: 1, actors: [{ user_id: FIXTURE_OWNER_ID }] },
+              { position: 1, actors: [{ user_id: MOCK_IDENTITY_IDS.reviewer }] },
             ],
-            execution_actors: [{ user_id: FIXTURE_OWNER_ID }],
+            execution_actors: [{ user_id: MOCK_IDENTITY_IDS.executor }],
           },
         ],
         approval_steps: undefined,
@@ -1639,7 +1718,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       }
       const draft: FixtureDraft = {
         id: uuid(),
-        owner_user_id: FIXTURE_OWNER_ID,
+        owner_user_id: currentIdentityId(),
         flow_id: body.flow_id,
         title: body.title,
         description: body.description ?? null,
@@ -1663,7 +1742,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const limit = Number(url.searchParams.get("limit") ?? "50");
       const after = url.searchParams.get("after");
       const drafts = [...world.drafts.values()]
-        .filter((draft) => draft.owner_user_id === FIXTURE_OWNER_ID)
+        .filter((draft) => draft.owner_user_id === currentIdentityId())
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(successEnvelope(pageOf(drafts.map(draftPublic), limit, after)));
     }),
@@ -1759,7 +1838,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.post("*/change-drafts/:draftId/sql-reveals", ({ params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");
-      if (draft.owner_user_id !== FIXTURE_OWNER_ID) {
+      if (draft.owner_user_id !== currentIdentityId()) {
         return HttpResponse.json(
           {
             type: "about:blank",
@@ -1775,7 +1854,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         successEnvelope({
           reveal_id: uuid(),
           sql: draft.sql ?? `${FIXTURE_SQL_MARKER} SELECT 1`,
-          watermark: `henry · ${now()} · draft:${draft.id}`,
+          watermark: `${currentIdentity().username} · ${now()} · draft:${draft.id}`,
           valid_until: new Date(Date.now() + 10 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
         }),
       );
@@ -1899,10 +1978,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
                 position: 1,
                 state: "active",
                 decided_at: null,
-                actors: [fixtureActor(FIXTURE_OWNER_ID)],
+                actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
               },
             ],
-            execution_actors: [fixtureUser(FIXTURE_OWNER_ID)],
+            execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
           },
         ],
         has_sql: true,
@@ -1965,12 +2044,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       seedPartialExecutionOrder();
       seedExecutionScenarioOrder();
       seedOrderGallery();
+      seedPendingApprovalOrders();
       const relatedTo = (order: FixtureOrder): boolean =>
-        order.submitter_user_id === FIXTURE_OWNER_ID ||
+        order.submitter_user_id === currentIdentityId() ||
         order.stages.some(
           (stage) =>
-            stage.approval_steps.some((step) => step.actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) ||
-            stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID),
+            stage.approval_steps.some((step) => step.actors.some((actor) => actor.id === currentIdentityId())) ||
+            stage.execution_actors.some((actor) => actor.id === currentIdentityId()),
         );
       const orders = [...world.orders.values()]
         .filter(relatedTo)
@@ -2016,6 +2096,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.post("*/change-orders/:orderId/withdrawal", async ({ request, params }) => {
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
+      // W008: only the submitter may withdraw — anyone else learns nothing
+      // (backend lifecycleOnce maps the mismatch to not-found).
+      if (currentIdentityId() !== order.submitter_user_id) {
+        return businessError(1002, "order not found");
+      }
       if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
         return businessError(1004, "order changed elsewhere");
       }
@@ -2055,6 +2140,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.post("*/change-orders/:orderId/voidance", async ({ request, params }) => {
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
+      // W008: only the submitter may void (same not-found mirror as withdrawal).
+      if (currentIdentityId() !== order.submitter_user_id) {
+        return businessError(1002, "order not found");
+      }
       if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
         return businessError(1004, "order changed elsewhere");
       }
@@ -2108,7 +2197,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (body.title.trim() === "") return businessError(1001, "title is required");
       const draft: FixtureDraft = {
         id: uuid(),
-        owner_user_id: FIXTURE_OWNER_ID,
+        owner_user_id: currentIdentityId(),
         flow_id: body.target_flow_id,
         title: body.title,
         description: body.description ?? null,
@@ -2155,7 +2244,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined || step === undefined) {
         return businessError(1010, "no active approval step");
       }
-      if (!step.actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+      if (!step.actors.some((actor) => actor.id === currentIdentityId())) {
         return businessError(3001, "current user is not a frozen reviewer of this step");
       }
       if (step.decided_at !== null) {
@@ -2178,11 +2267,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       step.state = body.decision === "approve" ? "approved" : "rejected";
       order.version += 1;
       const from = order.state;
-      const decisionSummary = `审批人 henry ${body.decision === "approve" ? "通过" : "拒绝"}阶段 ${String(stage.position)} 审批步 ${String(step.position)}${
+      const decisionSummary = `审批人 ${currentIdentity().username} ${body.decision === "approve" ? "通过" : "拒绝"}阶段 ${String(stage.position)} 审批步 ${String(step.position)}${
         body.comment ? `：${body.comment}` : ""
       }`;
       const decidedEmit = (): void => {
-        recordOrderEvent(order, "change_order.approval_decided", "user", FIXTURE_OWNER_ID, decisionSummary, stage.position, null);
+        recordOrderEvent(order, "change_order.approval_decided", "user", currentIdentityId(), decisionSummary, stage.position, null);
         emit(
           `change-orders/${order.id}`,
           "io.yearning.v4.change_order.approval_decided",
@@ -2190,11 +2279,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             aggregate_id: order.id,
             stage_id: stage.id,
             step_id: step.id,
-            reviewer_user_id: FIXTURE_OWNER_ID,
+            reviewer_user_id: currentIdentityId(),
             decision: body.decision,
             aggregate_version: order.version,
           },
-          { kind: "user", user_id: FIXTURE_OWNER_ID },
+          { kind: "user", user_id: currentIdentityId() },
         );
       };
       if (body.decision === "approve") {
@@ -2241,7 +2330,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         order.state = "rejected";
         order.terminal_at = decidedAt;
         decidedEmit();
-        recordOrderEvent(order, "change_order.rejected", "user", FIXTURE_OWNER_ID, "审批拒绝：任一拒绝立即拒绝整单", stage.position, order.state);
+        recordOrderEvent(order, "change_order.rejected", "user", currentIdentityId(), "审批拒绝：任一拒绝立即拒绝整单", stage.position, order.state);
         emit(
           `change-orders/${order.id}`,
           "io.yearning.v4.change_order.state_changed",
@@ -2252,7 +2341,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             reason_code: "approval_rejected",
             aggregate_version: order.version,
           },
-          { kind: "user", user_id: FIXTURE_OWNER_ID },
+          { kind: "user", user_id: currentIdentityId() },
         );
       }
       return HttpResponse.json(successEnvelope(orderPublic(order)));
@@ -2284,8 +2373,8 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const comment: FixtureComment = {
         id: uuid(),
         order_id: order.id,
-        author_user_id: FIXTURE_OWNER_ID,
-        author_display_name: "henry",
+        author_user_id: currentIdentityId(),
+        author_display_name: currentIdentity().username,
         content: body.content,
         occurred_at: now(),
       };
@@ -2327,7 +2416,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         successEnvelope({
           reveal_id: revealId,
           sql: order.sql_text,
-          watermark: `Yearning SQL Viewer: henry @ ${now()}`,
+          watermark: `Yearning SQL Viewer: ${currentIdentity().username} @ ${now()}`,
           valid_until: new Date(Date.now() + 5 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
         }),
       );
@@ -2375,7 +2464,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined) {
         return businessError(1010, `execution is not legal from state ${order.state}`);
       }
-      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       const facts = [...world.attempts.values()].filter(
@@ -2392,6 +2481,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         // no crash-recovery reconciliation, so "running" re-begin is out of
         // scope here (recorded in the migration contract §15).
         return businessError(1010, `execution is not legal from state ${order.state}`);
+      }
+      // Global execution window (settings restriction, §18.47): mirrors the
+      // backend preflight's checkExecutionWindow — OUTSIDE_EXECUTION_WINDOW.
+      if (!executionWindowAllows(new Date())) {
+        return businessError(3008, "outside the allowed execution window");
       }
       const body = (await request.json().catch(() => ({}))) as {
         osc_overrides?: Record<string, unknown>;
@@ -2445,10 +2539,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       stage.state = "running";
       order.state = "running";
       order.version += 1;
-      recordOrderEvent(order, "stage.execution_started", "user", FIXTURE_OWNER_ID, `阶段 ${String(stage.position)}（${stage.datasource_name}）开始执行${behavior.kind === "gh_ost" ? "（gh-ost 在线变更）" : ""}`, stage.position, "running");
+      recordOrderEvent(order, "stage.execution_started", "user", currentIdentityId(), `阶段 ${String(stage.position)}（${stage.datasource_name}）开始执行${behavior.kind === "gh_ost" ? "（gh-ost 在线变更）" : ""}`, stage.position, "running");
       emitExecutionState(order, "stage_execution_pending", "execution_started", stage.id, {
         kind: "user",
-        user_id: FIXTURE_OWNER_ID,
+        user_id: currentIdentityId(),
       });
       advanceAttempt(order, attempt);
       return HttpResponse.json(successEnvelope(attemptPublic(attempt)));
@@ -2482,7 +2576,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const order = world.orders.get(attempt.order_id);
       const stage = order?.stages.find((candidate) => candidate.id === attempt.stage_id);
       if (order === undefined || stage === undefined) return businessError(1002, "order not found");
-      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (isAttemptTerminal(attempt.state)) {
@@ -2544,7 +2638,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           return businessError(1001, "evidence content must be 1..16384 characters");
         }
       }
-      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (attempt.state !== "result_unknown") {
@@ -2565,7 +2659,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           kind: entry.kind as "text" | "database_fact" | "external_reference",
           content: entry.content as string,
         })),
-        verified_by_user_id: FIXTURE_OWNER_ID,
+        verified_by_user_id: currentIdentityId(),
         occurred_at: now(),
       };
       const entries = world.verifications.get(attempt.id) ?? [];
@@ -2596,13 +2690,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           order,
           "change_order.unknown_resolved",
           "user",
-          FIXTURE_OWNER_ID,
+          currentIdentityId(),
           `人工核验结论 ${body.result}：工单${toState === "completed" ? "完成" : "终止"}（执行结果由人工确认）`,
           stage.position,
           toState,
         );
       } else {
-        recordOrderEvent(order, "change_order.unknown_resolved", "user", FIXTURE_OWNER_ID, "人工核验结论 still_unknown：继续阻断后续阶段", stage.position, "result_unknown");
+        recordOrderEvent(order, "change_order.unknown_resolved", "user", currentIdentityId(), "人工核验结论 still_unknown：继续阻断后续阶段", stage.position, "result_unknown");
       }
       emit(
         `change-orders/${order.id}`,
@@ -2610,12 +2704,12 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         {
           order_id: order.id,
           attempt_id: attempt.id,
-          verified_by_user_id: FIXTURE_OWNER_ID,
+          verified_by_user_id: currentIdentityId(),
           result: body.result,
           evidence_count: body.evidence.length,
           aggregate_version: order.version,
         },
-        { kind: "user", user_id: FIXTURE_OWNER_ID },
+        { kind: "user", user_id: currentIdentityId() },
       );
       emit(
         `change-orders/${order.id}`,
@@ -2628,7 +2722,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           stage_id: stage.id,
           aggregate_version: order.version,
         },
-        { kind: "user", user_id: FIXTURE_OWNER_ID },
+        { kind: "user", user_id: currentIdentityId() },
       );
       return HttpResponse.json(successEnvelope(orderPublic(order)));
     }),
@@ -2657,7 +2751,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined) {
         return businessError(1010, `scheduling is not legal from state ${order.state}`);
       }
-      if (!stage.execution_actors.some((actor) => actor.id === FIXTURE_OWNER_ID)) {
+      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (order.state !== "stage_execution_pending" || stage.state !== "execution_pending") {
@@ -2683,6 +2777,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (leadMs < 5 * 60 * 1000 || leadMs > 30 * 24 * 3600 * 1000) {
         return businessError(3007, "scheduled_for must be 5 minutes to 30 days ahead");
       }
+      // The due instant must fall inside the global execution window
+      // (backend checkExecutionWindowAt, B11/E007; settings §18.47).
+      if (!executionWindowAllows(new Date(due))) {
+        return businessError(3008, "scheduled_for is outside the allowed execution window");
+      }
       const schedule: FixtureSchedule = {
         id: uuid(),
         order_id: order.id,
@@ -2696,10 +2795,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       stage.state = "scheduled";
       order.state = "scheduled";
       order.version += 1;
-      recordOrderEvent(order, "execution.scheduled", "user", FIXTURE_OWNER_ID, `阶段 ${String(stage.position)} 已预约 ${schedule.scheduled_for} 到点执行（到点未领取将标记错过，不自动补跑）`, stage.position, "scheduled");
+      recordOrderEvent(order, "execution.scheduled", "user", currentIdentityId(), `阶段 ${String(stage.position)} 已预约 ${schedule.scheduled_for} 到点执行（到点未领取将标记错过，不自动补跑）`, stage.position, "scheduled");
       emitExecutionState(order, from, "executor_scheduled", stage.id, {
         kind: "user",
-        user_id: FIXTURE_OWNER_ID,
+        user_id: currentIdentityId(),
       });
       return HttpResponse.json(
         successEnvelope({
@@ -2781,7 +2880,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             rows: [{ name: "orders", rows: 128400, index_length: 4587520 }],
             note: FIXTURE_RAW_EVIDENCE_MARKER,
           },
-          watermark: `henry · ${now()} · evidence:${evidence.id}`,
+          watermark: `${currentIdentity().username} · ${now()} · evidence:${evidence.id}`,
           valid_until: new Date(Date.now() + 10 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
         }),
       );

@@ -15,6 +15,7 @@ import {
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
+import { SettingsNavTabs } from "@/routes/admin/settings-tabs";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -300,7 +301,12 @@ export default function AdminAiBudgetPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-testid="admin-settings-ai-budget">
+      {/* §18.47: the shared settings tabs — the bar no longer disappears on
+          this standalone page. */}
+      <header className="flex flex-row items-end justify-end gap-4">
+        <SettingsNavTabs current="ai-budget" />
+      </header>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

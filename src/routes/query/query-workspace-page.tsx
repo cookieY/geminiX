@@ -7,10 +7,12 @@ import {
   Ban,
   Database,
   Download,
+  EyeOff,
   History,
   LogOut,
   Play,
   ShieldAlert,
+  Table2,
   X,
 } from "lucide-react";
 import type { QueryGrant, QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -22,7 +24,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
-import { Input } from "@/shared/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Label } from "@/shared/components/ui/label";
 import { Progress } from "@/shared/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -39,6 +42,7 @@ import {
   useMyGrants,
   useQuerySession,
   useSessionColumns,
+  useSessionSchemas,
 } from "@/features/query/use-query-domain";
 import {
   downloadXlsx,
@@ -75,6 +79,8 @@ interface HistoryEntry {
   failed: boolean;
 }
 
+const AUTO_LOAD_ROW_LIMIT = 100_000;
+
 const HISTORY_LIMIT = 100;
 
 export default function QueryWorkspacePage() {
@@ -107,7 +113,6 @@ export default function QueryWorkspacePage() {
   const [runError, setRunError] = useState<string | null>(null);
   const [tabs, setTabs] = useState<ResultTabState[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
-  const [loadingMore, setLoadingMore] = useState(false);
   const [continuationErrors, setContinuationErrors] = useState<Record<string, string | null>>({});
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [leftPanel, setLeftPanel] = useState<"tree" | "history">("tree");
@@ -131,6 +136,11 @@ export default function QueryWorkspacePage() {
     () => row?.capabilities.find((item) => item.datasource_id === datasourceId) ?? null,
     [datasourceId, row],
   );
+
+  // §18.48: the schema picker lists the session's live schemas for the
+  // active datasource (same read the metadata tree uses) — typing is gone.
+  const schemasQuery = useSessionSchemas(sessionId, datasourceId, row?.state === "active");
+  const schemaNames = (schemasQuery.data ?? []).map((schema) => schema.name);
 
   // The masked-column cross reference: loaded for the active schema/table
   // selection is impractical per query, so the workspace consults the
@@ -163,9 +173,23 @@ export default function QueryWorkspacePage() {
   // identity_changed) block runs and exports up-front with the reason
   // badge instead of surfacing only as a 3010 at execution time.
   const capabilityBlocked = capability !== null && capability.state !== "active";
+  // §18.48: right-click a table → a small context menu with 查看表结构.
+  const [inspectMenu, setInspectMenu] = useState<{ schema: string; table: string; x: number; y: number } | null>(null);
+  const [inspectTarget, setInspectTarget] = useState<{ schema: string; table: string } | null>(null);
+  const structureQuery = useSessionColumns(
+    sessionId,
+    inspectTarget === null ? "" : datasourceId,
+    inspectTarget?.schema ?? "",
+    inspectTarget?.table ?? "",
+    inspectTarget !== null,
+  );
+
   const insertTemplate = useCallback((nextSchema: string, tableName: string) => {
     const template = `SELECT *\nFROM ${nextSchema}.${tableName}\nLIMIT 100;`.replace(/;$/, "");
     setLoadValue({ text: template, nonce: Date.now() });
+    // Clicking a table also activates its schema (§18.48, legacy parity):
+    // the run's schema/SQL pairing stays consistent without a second pick.
+    setSchemaName(nextSchema);
   }, []);
 
   const pushHistory = (entry: HistoryEntry) => {
@@ -200,6 +224,9 @@ export default function QueryWorkspacePage() {
       };
       setTabs((current) => [tab, ...current].slice(0, 10));
       setActiveTab(tab.executionId);
+      if (!tab.exhausted && tab.nextCursor !== null) {
+        void drainCursor(tab.executionId, tab.nextCursor, tab.rows.length);
+      }
       pushHistory({
         id: tab.executionId,
         sql,
@@ -225,36 +252,37 @@ export default function QueryWorkspacePage() {
     }
   };
 
-  const loadMore = async (executionId: string) => {
-    setLoadingMore(true);
-    const tab = tabs.find((item) => item.executionId === executionId);
-    if (tab === undefined || tab.nextCursor === null) {
-      setLoadingMore(false);
-      return;
-    }
-    try {
-      const page: QueryResultPage = await fetchPage(executionId, tab.nextCursor, "display");
-      setTabs((current) =>
-        current.map((item) =>
-          item.executionId === executionId
-            ? {
-                ...item,
-                rows: [...item.rows, ...page.rows],
-                nextCursor:
-                  ((page as { page?: { next_cursor?: string | null } }).page?.next_cursor as string | null) ?? null,
-                exhausted: !((page as { page?: { has_more?: boolean } }).page?.has_more ?? false),
-              }
-            : item,
-        ),
-      );
-      setContinuationErrors((current) => ({ ...current, [executionId]: null }));
-    } catch (error) {
-      setContinuationErrors((current) => ({
-        ...current,
-        [executionId]: describeErrorText(describeError(error, "fetchQueryResultPage")),
-      }));
-    } finally {
-      setLoadingMore(false);
+  // §18.50 follow-up (owner ruling: legacy parity, pure frontend paging):
+  // after an execution lands, its remaining server cursor pages drain
+  // automatically in the background until exhausted — the pager then pages
+  // entirely over the loaded rows and the user never sees a fetch step.
+  // A generous ceiling keeps a pathological result from draining forever;
+  // past it the tab simply stops growing (exhausted stays false).
+  const drainCursor = async (executionId: string, fromCursor: string, rowsSoFar: number): Promise<void> => {
+    let cursor: string | null = fromCursor;
+    let total = rowsSoFar;
+    while (cursor !== null && total < AUTO_LOAD_ROW_LIMIT) {
+      try {
+        const page: QueryResultPage = await fetchPage(executionId, cursor, "display");
+        total += page.rows.length;
+        const nextCursor =
+          ((page as { page?: { next_cursor?: string | null } }).page?.next_cursor as string | null) ?? null;
+        const exhausted = !((page as { page?: { has_more?: boolean } }).page?.has_more ?? false);
+        setTabs((current) =>
+          current.map((item) =>
+            item.executionId === executionId ? { ...item, rows: [...item.rows, ...page.rows], nextCursor, exhausted } : item,
+          ),
+        );
+        setContinuationErrors((current) => ({ ...current, [executionId]: null }));
+        if (exhausted) return;
+        cursor = nextCursor;
+      } catch (error) {
+        setContinuationErrors((current) => ({
+          ...current,
+          [executionId]: describeErrorText(describeError(error, "fetchQueryResultPage")),
+        }));
+        return;
+      }
     }
   };
 
@@ -366,7 +394,12 @@ export default function QueryWorkspacePage() {
               <TabsContent value="tree" className="mt-0 min-h-0">
                 <div className="h-[calc(100vh-18rem)] min-h-0">
                   {row.state === "active" ? (
-                    <MetadataTree session={row} activeDatasourceId={datasourceId} onTableSelected={insertTemplate} />
+                    <MetadataTree
+                    session={row}
+                    activeDatasourceId={datasourceId}
+                    onTableSelected={insertTemplate}
+                    onInspectTable={(schema, table, x, y) => { setInspectTarget(null); setInspectMenu({ schema, table, x, y }); }}
+                  />
                   ) : (
                     <p className="text-muted-foreground p-3 text-xs">{t("query.workspace.treeBlocked")}</p>
                   )}
@@ -410,14 +443,26 @@ export default function QueryWorkspacePage() {
                   {t(`query.capability.state.${(capability as { state: "datasource_unavailable" | "identity_changed" } | null)?.state ?? "datasource_unavailable"}`)}
                 </Badge>
               )}
-              <Input
-                value={schemaName}
-                onChange={(event) => { setSchemaName(event.target.value); }}
-                placeholder={t("query.workspace.schemaPlaceholder")}
-                className="h-8 w-40 font-mono text-xs"
+              {/* §18.48: UI-framework Select over the session's live schemas. */}
+              <Select
+                value={schemaName === "" ? undefined : schemaName}
+                onValueChange={(value) => { setSchemaName(value ?? ""); }}
+                items={Object.fromEntries(schemaNames.map((name) => [name, name]))}
                 disabled={blocked}
-                data-testid="query-schema-input"
-              />
+              >
+                <SelectTrigger
+                  className="h-8 w-40 font-mono text-xs"
+                  aria-label={t("query.workspace.schemaPlaceholder")}
+                  data-testid="query-schema-input"
+                >
+                  <SelectValue placeholder={t("query.workspace.schemaPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {schemaNames.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 onClick={() => void run()}
@@ -485,8 +530,6 @@ export default function QueryWorkspacePage() {
                     <TabsContent key={tab.executionId} value={tab.executionId} className="min-h-0 flex-1">
                       <ResultGrid
                         tab={tab}
-                        loadingMore={loadingMore}
-                        onLoadMore={() => void loadMore(tab.executionId)}
                         continuationError={continuationErrors[tab.executionId] ?? null}
                       />
                     </TabsContent>
@@ -497,6 +540,90 @@ export default function QueryWorkspacePage() {
           </CardContent>
         </Card>
       </div>
+
+      {inspectMenu !== null && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => { setInspectMenu(null); }}
+          onContextMenu={(event) => { event.preventDefault(); setInspectMenu(null); }}
+          data-testid="query-inspect-overlay"
+        >
+          <div
+            className="bg-popover text-popover-foreground absolute w-44 rounded-md border p-1 shadow-md"
+            style={{ left: inspectMenu.x, top: inspectMenu.y }}
+            onClick={(event) => { event.stopPropagation(); }}
+          >
+            <button
+              type="button"
+              className="hover:bg-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs"
+              onClick={() => {
+                setInspectTarget({ schema: inspectMenu.schema, table: inspectMenu.table });
+                setInspectMenu(null);
+              }}
+              data-testid="query-inspect-open"
+            >
+              <Table2 className="size-3.5" aria-hidden />
+              {t("query.tree.viewStructure")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={inspectTarget !== null} onOpenChange={(next) => { if (!next) setInspectTarget(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">
+              {inspectTarget === null ? "" : `${inspectTarget.schema}.${inspectTarget.table}`}
+            </DialogTitle>
+            <DialogDescription>{t("query.structure.description")}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto" data-testid="query-table-structure">
+            {structureQuery.isPending && <p className="text-muted-foreground p-2 text-xs">{t("common.loading")}</p>}
+            {structureQuery.error !== null && <p className="text-destructive p-2 text-xs">{t("query.tree.loadFailed")}</p>}
+            {structureQuery.data !== undefined && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>{t("query.structure.column")}</TableHead>
+                    <TableHead>{t("query.structure.type")}</TableHead>
+                    <TableHead className="w-14">{t("query.structure.key")}</TableHead>
+                    <TableHead className="w-20">{t("query.structure.nullable")}</TableHead>
+                    <TableHead>{t("query.structure.default")}</TableHead>
+                    <TableHead>{t("query.structure.extra")}</TableHead>
+                    <TableHead>{t("query.structure.comment")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {structureQuery.data.map((column) => (
+                    <TableRow key={column.column_name} data-testid={`query-structure-${column.column_name}`}>
+                      <TableCell className="text-muted-foreground text-xs tabular-nums">{column.ordinal}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {column.column_name}
+                        {column.masked && <EyeOff className="ml-1 inline size-3 text-muted-foreground" aria-label={t("query.result.maskedColumns")} />}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{column.data_type}</TableCell>
+                      <TableCell className="text-xs">
+                        {column.column_key ? (
+                          <Badge variant={column.column_key === "PRI" ? "default" : "secondary"} className="px-1.5 font-mono text-[10px]">
+                            {column.column_key}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{column.nullable ? "NULL" : "NOT NULL"}</TableCell>
+                      <TableCell className="font-mono text-xs">{column.column_default || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="font-mono text-xs">{column.extra || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-xs">{column.comment || <span className="text-muted-foreground">—</span>}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CloseSessionDialog
         open={closeOpen}
@@ -562,7 +689,7 @@ function CloseSessionDialog({
           </Button>
           <Button
             variant="destructive"
-            disabled={reason.trim() === "" || submitting}
+            disabled={submitting}
             onClick={() => { onSubmit(); }}
             data-testid="query-exit-confirm"
           >

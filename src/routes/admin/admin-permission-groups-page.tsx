@@ -344,6 +344,8 @@ function GroupFormDialog({
   const [form, setForm] = useState<GroupFormState>({ name: "", enabled: true, memberIds: [], flowIds: [] });
   const [openFor, setOpenFor] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [flowSearch, setFlowSearch] = useState("");
 
   const formKey = editing?.id ?? "create";
   if (open && openFor !== formKey) {
@@ -354,6 +356,8 @@ function GroupFormDialog({
         : { name: editing.name, enabled: editing.enabled, memberIds: [...editing.member_user_ids], flowIds: [...editing.granted_flow_ids] },
     );
     setErrorText(null);
+    setMemberSearch("");
+    setFlowSearch("");
   }
   if (!open && openFor !== null) setOpenFor(null);
 
@@ -363,6 +367,38 @@ function GroupFormDialog({
       [list]: current[list].includes(id) ? current[list].filter((item) => item !== id) : [...current[list], id],
     }));
   };
+
+  // Select-all applies to the FILTERED rows only (§18.46): checking it unions
+  // the visible ids into the selection, unchecking removes exactly the
+  // visible ones — rows hidden by the search keep their state untouched.
+  const toggleAll = (list: "memberIds" | "flowIds", visibleIds: string[]) => {
+    setForm((current) => {
+      const selected = new Set(current[list]);
+      const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+      for (const id of visibleIds) {
+        if (allVisibleSelected) selected.delete(id);
+        else selected.add(id);
+      }
+      return { ...current, [list]: [...selected] };
+    });
+  };
+
+  const memberKeyword = memberSearch.trim().toLowerCase();
+  const visibleUsers =
+    memberKeyword === ""
+      ? users
+      : users.filter(
+          (user) =>
+            (user.display_name ?? "").toLowerCase().includes(memberKeyword) ||
+            user.username.toLowerCase().includes(memberKeyword),
+        );
+  const flowKeyword = flowSearch.trim().toLowerCase();
+  const visibleFlows =
+    flowKeyword === "" ? flows : flows.filter((flow) => flow.name.toLowerCase().includes(flowKeyword));
+  const visibleMemberIds = visibleUsers.map((user) => user.id);
+  const visibleFlowIds = visibleFlows.map((flow) => flow.id);
+  const selectedVisibleMembers = visibleMemberIds.filter((id) => form.memberIds.includes(id)).length;
+  const selectedVisibleFlows = visibleFlowIds.filter((id) => form.flowIds.includes(id)).length;
 
   const submit = async () => {
     setErrorText(null);
@@ -412,9 +448,32 @@ function GroupFormDialog({
           </label>
 
           <div className="flex flex-col gap-2">
-            <Label>{t("adminGroups.members")}</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>{t("adminGroups.members")}</Label>
+              <TableSearchInput
+                value={memberSearch}
+                onChange={setMemberSearch}
+                placeholder={t("adminGroups.memberSearchPlaceholder")}
+                testId="group-member-search"
+              />
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 border-b pb-2 text-sm" data-testid="group-member-select-all-row">
+              <Checkbox
+                checked={visibleMemberIds.length > 0 && selectedVisibleMembers === visibleMemberIds.length}
+                indeterminate={selectedVisibleMembers > 0 && selectedVisibleMembers < visibleMemberIds.length}
+                onCheckedChange={() => { toggleAll("memberIds", visibleMemberIds); }}
+                data-testid="group-member-select-all"
+              />
+              {t("adminGroups.selectAll")}
+              <span className="text-muted-foreground text-xs" data-testid="group-member-select-all-count">
+                {String(selectedVisibleMembers)}/{String(visibleMemberIds.length)}
+              </span>
+            </label>
             <div className="max-h-48 overflow-y-auto rounded-md border p-2">
-              {users.map((user) => (
+              {visibleUsers.length === 0 && (
+                <p className="text-muted-foreground p-2 text-xs">{t("table.emptySearch")}</p>
+              )}
+              {visibleUsers.map((user) => (
                 <label key={user.id} className="flex cursor-pointer items-center gap-2 px-1 py-1 text-sm">
                   <Checkbox
                     checked={form.memberIds.includes(user.id)}
@@ -429,13 +488,35 @@ function GroupFormDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>{t("adminGroups.flows")}</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>{t("adminGroups.flows")}</Label>
+              <TableSearchInput
+                value={flowSearch}
+                onChange={setFlowSearch}
+                placeholder={t("adminGroups.flowSearchPlaceholder")}
+                testId="group-flow-search"
+              />
+            </div>
             <p className="text-muted-foreground text-xs">{t("adminGroups.flowsHint")}</p>
+            <label className="flex cursor-pointer items-center gap-2 border-b pb-2 text-sm" data-testid="group-flow-select-all-row">
+              <Checkbox
+                checked={visibleFlowIds.length > 0 && selectedVisibleFlows === visibleFlowIds.length}
+                indeterminate={selectedVisibleFlows > 0 && selectedVisibleFlows < visibleFlowIds.length}
+                onCheckedChange={() => { toggleAll("flowIds", visibleFlowIds); }}
+                data-testid="group-flow-select-all"
+              />
+              {t("adminGroups.selectAll")}
+              <span className="text-muted-foreground text-xs" data-testid="group-flow-select-all-count">
+                {String(selectedVisibleFlows)}/{String(visibleFlowIds.length)}
+              </span>
+            </label>
             <div className="max-h-48 overflow-y-auto rounded-md border p-2">
-              {flows.length === 0 && (
-                <p className="text-muted-foreground p-2 text-xs">{t("adminGroups.noFlows")}</p>
+              {visibleFlows.length === 0 && (
+                <p className="text-muted-foreground p-2 text-xs">
+                  {flowKeyword !== "" ? t("table.emptySearch") : t("adminGroups.noFlows")}
+                </p>
               )}
-              {flows.map((flow) => (
+              {visibleFlows.map((flow) => (
                 <label key={flow.id} className="flex cursor-pointer items-center gap-2 px-1 py-1 text-sm">
                   <Checkbox
                     checked={form.flowIds.includes(flow.id)}

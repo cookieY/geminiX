@@ -572,6 +572,7 @@
       "title": "SQL原文（冻结Revision）",
       "reveal": "查看SQL明文",
       "revealNote": "明文经显式Reveal获取，带查看者水印，5分钟内有效；每次查看与复制均写审计。",
+      "loading": "加载 SQL 原文…",
       "copy": "复制",
       "close": "收起",
       "validUntil": "有效期至 {{time}}"
@@ -1092,6 +1093,7 @@
       "searchPlaceholder": "搜索表名",
       "loadFailed": "元数据加载失败",
       "insertTemplate": "插入 SELECT 模板",
+      "viewStructure": "查看表结构",
       "masked": "脱敏"
     },
     "run": {
@@ -1106,8 +1108,8 @@
       "elapsed": "耗时 {{ms}} ms",
       "rowsLoaded": "已读取 {{count}} 行",
       "gridLabel": "查询结果表格",
+      "resizeColumn": "调整列宽：{{name}}",
       "maskedColumns": "已按敏感字段策略脱敏",
-      "loadMore": "读取下一页",
       "exhausted": "已读取全部结果"
     },
     "export": {
@@ -1122,7 +1124,7 @@
     "exit": {
       "title": "退出查询会话",
       "description": "退出将终止本会话并请求取消仍在运行的查询；重新进入会按当前流程重新解析数据源。",
-      "reason": "退出原因",
+      "reason": "退出原因（选填）",
       "confirm": "确认退出"
     },
     "session": {
@@ -1156,6 +1158,16 @@
         "datasource_unavailable": "数据源不可用",
         "identity_changed": "数据源身份已变更"
       }
+    },
+    "structure": {
+      "description": "来自查询会话元数据的列结构（掩码列按会话脱敏规则展示）。",
+      "column": "列名",
+      "type": "类型",
+      "nullable": "可空",
+      "key": "键",
+      "default": "默认值",
+      "extra": "额外",
+      "comment": "注释"
     }
   },
   "dashboard": {
@@ -1315,6 +1327,9 @@
     "enabled": "启用",
     "disabled": "停用",
     "members": "成员",
+    "memberSearchPlaceholder": "搜索成员",
+    "flowSearchPlaceholder": "搜索流程",
+    "selectAll": "全选",
     "flows": "授权流程",
     "flowsHint": "同时支持审核流程与查询流程。",
     "noFlows": "暂无流程可授权。",

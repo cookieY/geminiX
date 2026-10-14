@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRecordOrderSqlCopy, useRevealOrderSql, type OrderSqlReveal } from "@/features/orders/use-approvals";
 import { describeError } from "@/shared/api/error-display";
@@ -6,6 +6,14 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { ClipboardCopy, Eye, FileCode2, ShieldAlert } from "lucide-react";
+
+// §18.45: the revealed plaintext renders in the read-only Monaco viewer —
+// SQL highlighting plus line numbers/folding for bulk statements inside the
+// hard height cap. Lazily imported so an unrevealed detail page never
+// downloads the editor chunk at all.
+const SqlReadOnlyViewer = lazy(() =>
+  import("@/features/review/sql-editor-panel").then((module) => ({ default: module.SqlReadOnlyViewer })),
+);
 
 /**
  * Frozen SQL Revision viewer (PRD F7 item 1 — the reviewer judges the exact
@@ -97,9 +105,19 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
               <ShieldAlert className="size-3.5" aria-hidden />
               {revealed.watermark}
             </p>
-            <pre className="bg-muted max-h-72 overflow-auto rounded-md p-3 font-mono text-xs">
-              {revealed.sql}
-            </pre>
+            <Suspense
+              fallback={
+                <div
+                  className="bg-muted text-muted-foreground flex h-20 items-center justify-center gap-2 rounded-md border text-xs"
+                  data-testid="order-sql-loading"
+                >
+                  <Spinner className="size-3.5" />
+                  {t("orders.sql.loading")}
+                </div>
+              }
+            >
+              <SqlReadOnlyViewer value={revealed.sql} data-testid="order-sql-readonly" />
+            </Suspense>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={copyRevealed} data-testid="copy-order-sql">
                 <ClipboardCopy className="size-3.5" aria-hidden />

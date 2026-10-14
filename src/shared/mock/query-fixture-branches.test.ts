@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setMockIdentity } from "@/shared/mock/identity-store";
 import {
   QUERY_FIXTURE_DS_MYSQL_ID,
   QUERY_FIXTURE_DS_PG_ID,
@@ -131,9 +132,13 @@ describe("grant lifecycle refusals", () => {
 
   it("refuses to revoke twice (QUERY_GRANT_REVOKED) and blocks new sessions on the revoked grant", async () => {
     const id = await grantId();
+    // Revocation authority is the frozen reviewer (§18.44); the session
+    // attempt below returns to the grant owner.
+    setMockIdentity("reviewer-a");
     await call("POST", `/query-grants/${id}/revocations`, { reason: "rotation" }, { "If-Match": '"1"', "Idempotency-Key": "r1" });
     const again = await call("POST", `/query-grants/${id}/revocations`, { reason: "again" }, { "If-Match": '"2"', "Idempotency-Key": "r2" });
     expect(again.err_code).toBe(4004);
+    setMockIdentity("henry");
     const session = await call("POST", "/query-sessions", {
       flow_id: QUERY_FIXTURE_FLOW_ID,
       grant_id: id,
@@ -185,8 +190,10 @@ describe("session and execution guards", () => {
     await call("POST", "/query-sessions/qs-fixture-active/closure", { reason: "bye" }, { "Idempotency-Key": "c1" });
     const again = await call("POST", "/query-sessions/qs-fixture-active/closure", { reason: "again" }, { "Idempotency-Key": "c2" });
     expect(again.err_code).toBe(4006);
+    // §18.49: reason is OPTIONAL (backend defaults empty to user_closed) —
+    // a reasonless closure no longer trips validation; the state gate rules.
     const reasonless = await call("POST", "/query-sessions/qs-fixture-active/closure", {}, { "Idempotency-Key": "c3" });
-    expect(reasonless.err_code).toBe(1001);
+    expect(reasonless.err_code).toBe(4006);
   });
 
   it("blocks metadata reads once the session is closed", async () => {
@@ -268,10 +275,15 @@ describe("direct-entry branches (approval disabled)", () => {
 });
 
 describe("approval decision guards", () => {
+  // The decision surface belongs to the frozen reviewer identity (§18.44).
   beforeEach(() => {
+    setMockIdentity("reviewer-a");
     seedQueryScenario("query-approval");
   });
 
+  afterEach(() => {
+    setMockIdentity("henry");
+  });
   it("refuses invalid decisions and closed requests", async () => {
     const invalid = await call(
       "POST",

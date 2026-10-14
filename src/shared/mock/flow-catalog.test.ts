@@ -24,7 +24,7 @@ describe("flow catalog", () => {
   });
 
   it("resolves every stage datasource and reflects enabled status in the view", () => {
-    const views = reviewCatalogFlowViews("owner-id");
+    const views = reviewCatalogFlowViews("reviewer-id", "executor-id");
     expect(views).toHaveLength(20);
     const knownNames = new Set(CATALOG_DATASOURCES.map((entry) => entry.name));
     for (const view of views) {
@@ -34,6 +34,14 @@ describe("flow catalog", () => {
         expect(knownNames.has(stage.datasource_name)).toBe(true);
         expect(stage.approval_steps.length).toBeGreaterThanOrEqual(1);
         expect(stage.execution_actors.length).toBeGreaterThanOrEqual(1);
+        // Distinct role slots (§18.44): approval actors are the reviewer
+        // identity, execution actors the executor — never collapsed.
+        for (const step of stage.approval_steps) {
+          expect(step.actors.map((actor) => actor.user_id)).toEqual(["reviewer-id"]);
+        }
+        expect(stage.execution_actors.map((actor) => actor.user_id)).toEqual(
+          Array.from({ length: stage.execution_actors.length }, () => "executor-id"),
+        );
       }
     }
   });

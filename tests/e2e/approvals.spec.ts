@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockSession } from "./helpers/auth";
+import { becomeIdentity, mockSession } from "./helpers/auth";
 
 // FE-F7 acceptance gates (审批Workspace), driven by the stateful order
 // fixture over the production build with the shared MSW worker:
@@ -13,9 +13,11 @@ import { mockSession } from "./helpers/auth";
 //   4. 无转交加签减签入口 — the frozen order offers no delegation surface
 //      anywhere (W004).
 //
-// The mock world's single session user is also the frozen reviewer of the
-// submitted order, so one browser session exercises the reviewer side; the
-// backend keeps the authoritative frozen-actor checks (3001/3002).
+// Identity role separation (§18.44): henry submits, reviewer-a holds the
+// frozen approval slots. The reviewer legs switch identity in-world
+// (logout + login, no reload — a reload would reset the mock world), so
+// the submitted order survives across the role change; the backend keeps
+// the authoritative frozen-actor checks (3001/3002).
 
 const FIXTURE_FLOW_ID = "4f6f1a2b-0000-4000-8000-000000000001";
 const SQL_TEXT = "UPDATE orders SET status = 1 WHERE user_id = 42;";
@@ -64,6 +66,7 @@ test("opening and operating the approval workspace never creates a Review Run", 
 }) => {
   test.setTimeout(30_000);
   await submitOrder(page, "零重跑审批草稿");
+  await becomeIdentity(page, "reviewer-a");
 
   // From here on the user acts as a reviewer: every request must stay on
   // the frozen review reads — not one Review Run creation.
@@ -98,6 +101,7 @@ test("any rejection immediately rejects the whole order and empties the queue", 
 }) => {
   test.setTimeout(30_000);
   await submitOrder(page, "审批拒绝草稿");
+  await becomeIdentity(page, "reviewer-a");
 
   await page.getByRole("link", { name: "工单审批" }).click();
   await expect(page.getByTestId("approval-queue-table")).toBeVisible();
@@ -129,6 +133,11 @@ test("a concurrent peer decision is recoverable: the UI converges on the real st
   test.setTimeout(30_000);
   await submitOrder(page, "并发审批草稿");
   const orderId = page.url().split("/").at(-1) ?? "";
+
+  // The submitter's detail view carries no decision surface anymore; the
+  // reviewer logs in and lands back on the same order (redirect-back).
+  await becomeIdentity(page, "reviewer-a");
+  await expect(page.getByTestId("approval-decision-card")).toBeVisible({ timeout: 8_000 });
 
   await page.getByTestId("approval-approve").click();
   await expect(page.getByTestId("approval-decision-dialog")).toBeVisible();
@@ -168,6 +177,7 @@ test("the approval surface offers no transfer, add-signer or remove-signer entry
 }) => {
   test.setTimeout(30_000);
   await submitOrder(page, "冻结工单草稿");
+  await becomeIdentity(page, "reviewer-a");
 
   await page.getByRole("link", { name: "工单审批" }).click();
   await expect(page.getByTestId("approval-queue-table")).toBeVisible();

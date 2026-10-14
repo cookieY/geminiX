@@ -22,9 +22,11 @@ interface MetadataTreeProps {
   session: QuerySession;
   activeDatasourceId: string;
   onTableSelected: (schemaName: string, tableName: string) => void;
+  /** §18.48 legacy parity: right-click a table → view its structure. */
+  onInspectTable?: (schemaName: string, tableName: string, x: number, y: number) => void;
 }
 
-export function MetadataTree({ session, activeDatasourceId, onTableSelected }: MetadataTreeProps) {
+export function MetadataTree({ session, activeDatasourceId, onTableSelected, onInspectTable }: MetadataTreeProps) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState("");
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set());
@@ -73,6 +75,7 @@ export function MetadataTree({ session, activeDatasourceId, onTableSelected }: M
                 }); }
               }
               onTableSelected={onTableSelected}
+              onInspectTable={onInspectTable}
             />
           ))}
       </div>
@@ -90,6 +93,7 @@ interface SchemaNodeProps {
   onToggle: () => void;
   onToggleTable: (tableName: string) => void;
   onTableSelected: (schemaName: string, tableName: string) => void;
+  onInspectTable?: (schemaName: string, tableName: string, x: number, y: number) => void;
 }
 
 function SchemaNode({
@@ -102,6 +106,7 @@ function SchemaNode({
   onToggle,
   onToggleTable,
   onTableSelected,
+  onInspectTable,
 }: SchemaNodeProps) {
   const { t } = useTranslation();
   const tablesQuery = useSessionTables(sessionId, datasourceId, schemaName, expanded);
@@ -148,6 +153,11 @@ function SchemaNode({
                   <button
                     type="button"
                     onClick={() => { onTableSelected(schemaName, table.table_name); }}
+                    onContextMenu={(event) => {
+                      if (onInspectTable === undefined) return;
+                      event.preventDefault();
+                      onInspectTable(schemaName, table.table_name, event.clientX, event.clientY);
+                    }}
                     title={t("query.tree.insertTemplate")}
                     className="hover:bg-accent flex min-w-0 flex-1 items-center gap-1 rounded px-1 py-1 text-left text-sm"
                     data-testid={`query-tree-table-${schemaName}-${table.table_name}`}

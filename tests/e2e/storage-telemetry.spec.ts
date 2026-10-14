@@ -92,16 +92,17 @@ test("revealed SQL and query results never reach storage, third parties or the c
   });
   await mockSession(page, "default");
 
-  // Flow 1: authorized SQL reveal on the order detail — plaintext in the DOM.
+  // Flow 1: authorized SQL reveal on the order detail — plaintext in the DOM
+  // (the read-only Monaco viewer renders the revealed statements; §18.45).
   await page.goto("/changes/orders/7e6f1a2b-0000-4000-8000-00000000f801");
   await expect(page.getByTestId("order-sql-card")).toBeVisible();
   await page.getByTestId("reveal-order-sql").click();
-  await expect(page.getByTestId("order-sql-view")).toBeVisible();
-  const revealedSql = await page
-    .getByTestId("order-sql-view")
-    .locator("pre")
-    .textContent();
-  expect(revealedSql ?? "").not.toBe("");
+  await expect(page.getByTestId("order-sql-readonly")).toBeVisible({ timeout: 15_000 });
+  // Monaco tokenizes into spans and word-wrap splits the long line into
+  // view-lines whose textContent join may drop the wrapping spaces —
+  // normalize whitespace before asserting the plaintext is in the DOM.
+  const revealedSql = (await page.getByTestId("order-sql-view").textContent()) ?? "";
+  expect(revealedSql.replace(/\s+/g, " ")).toContain("ALTER TABLE orders");
 
   // Close the viewer: the reveal wipes from memory (unmount contract) — the
   // storage dump below must not find it anywhere.
@@ -114,7 +115,8 @@ test("revealed SQL and query results never reach storage, third parties or the c
   });
   await page.goto("/query/sessions/qs-fixture-active");
   await expect(page.getByTestId("query-workspace")).toBeVisible();
-  await page.getByTestId("query-schema-input").fill("app");
+  await page.getByTestId("query-schema-input").click();
+      await page.getByRole("option", { name: "app" }).click();
   await page.getByTestId("query-sql-editor").click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("select id, email from app.users");

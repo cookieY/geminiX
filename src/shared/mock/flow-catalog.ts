@@ -146,9 +146,10 @@ const SCHEMA_MAPPING = [{ logical_schema: "app", physical_schema: "app" }];
 
 /** The review fixture's read shape (FlowStageView): the datasource catalog
  * name is resolved server-side in the real backend, so the mock resolves it
- * from the catalog directly. Actors are the fixture owner — the same
- * identity the submit chain already freezes into orders. */
-export function reviewCatalogFlowViews(ownerId: string): Flow[] {
+ * from the catalog directly. Approval-step actors and execution actors are
+ * distinct identity slots (§18.44): reviewerId fills the frozen approval
+ * slots, executorId the execution slots — never the submitter. */
+export function reviewCatalogFlowViews(reviewerId: string, executorId: string): Flow[] {
   return CATALOG_FLOWS.map((spec) => ({
     id: spec.id,
     name: spec.name,
@@ -165,10 +166,10 @@ export function reviewCatalogFlowViews(ownerId: string): Flow[] {
       schema_mappings: SCHEMA_MAPPING,
       approval_steps: Array.from({ length: entry.approvers }, (_, position) => ({
         position: position + 1,
-        actors: [{ user_id: ownerId }],
+        actors: [{ user_id: reviewerId }],
       })),
       execution_actors: Array.from({ length: entry.executors }, () => ({
-        user_id: ownerId,
+        user_id: executorId,
       })),
     })),
     version: 1,

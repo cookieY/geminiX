@@ -572,6 +572,7 @@
       "title": "Frozen SQL revision",
       "reveal": "Reveal SQL plaintext",
       "revealNote": "Plaintext requires an explicit reveal, is watermarked with the viewer identity and stays valid for 5 minutes; every reveal and copy is audited.",
+      "loading": "Loading SQL…",
       "copy": "Copy",
       "close": "Hide",
       "validUntil": "Valid until {{time}}"
@@ -1092,6 +1093,7 @@
       "searchPlaceholder": "Search tables",
       "loadFailed": "Failed to load metadata",
       "insertTemplate": "Insert SELECT template",
+      "viewStructure": "View table structure",
       "masked": "masked"
     },
     "run": {
@@ -1106,8 +1108,8 @@
       "elapsed": "{{ms}} ms",
       "rowsLoaded": "{{count}} rows loaded",
       "gridLabel": "Query result table",
+      "resizeColumn": "Resize column: {{name}}",
       "maskedColumns": "Masked by sensitive-column policy",
-      "loadMore": "Load next page",
       "exhausted": "All rows read"
     },
     "export": {
@@ -1122,7 +1124,7 @@
     "exit": {
       "title": "Exit query session",
       "description": "Exiting terminates this session and requests cancellation of running queries; re-entering resolves datasources from the current flow.",
-      "reason": "Reason",
+      "reason": "Reason (optional)",
       "confirm": "Confirm exit"
     },
     "session": {
@@ -1156,6 +1158,16 @@
         "datasource_unavailable": "Datasource unavailable",
         "identity_changed": "Datasource identity changed"
       }
+    },
+    "structure": {
+      "description": "Column structure from the query session metadata (masked columns follow the session masking rules).",
+      "column": "Column",
+      "type": "Type",
+      "nullable": "Nullable",
+      "key": "Key",
+      "default": "Default",
+      "extra": "Extra",
+      "comment": "Comment"
     }
   },
   "dashboard": {
@@ -1315,6 +1327,9 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "members": "Members",
+    "memberSearchPlaceholder": "Search members",
+    "flowSearchPlaceholder": "Search flows",
+    "selectAll": "Select all",
     "flows": "Granted flows",
     "flowsHint": "Both change-review and query flows.",
     "noFlows": "No flows to grant.",

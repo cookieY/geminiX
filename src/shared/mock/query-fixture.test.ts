@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { setMockIdentity } from "@/shared/mock/identity-store";
 import {
   QUERY_FIXTURE_DS_MYSQL_ID,
   QUERY_FIXTURE_DS_PG_ID,
@@ -187,6 +188,13 @@ describe("query fixture cursor semantics", () => {
 describe("query fixture access approval chain", () => {
   beforeEach(() => {
     seedQueryScenario("query-approval");
+    // The frozen approval actor is the reviewer identity (§18.44); henry is
+    // only the grant requester on this surface.
+    setMockIdentity("reviewer-a");
+  });
+
+  afterEach(() => {
+    setMockIdentity("henry");
   });
 
   it("decides approve into an active grant covering the requested datasources", async () => {
@@ -223,6 +231,13 @@ describe("query fixture access approval chain", () => {
 describe("query fixture revocation and owner scoping", () => {
   beforeEach(() => {
     seedQueryScenario("query-session");
+    // Revocation authority sits with the frozen reviewer (or the builtin
+    // admin), not the grant owner — the owner relinquishes instead.
+    setMockIdentity("reviewer-a");
+  });
+
+  afterEach(() => {
+    setMockIdentity("henry");
   });
 
   it("revoking the grant terminates its sessions and blocks further execution with QUERY_GRANT_REVOKED", async () => {
@@ -244,6 +259,9 @@ describe("query fixture revocation and owner scoping", () => {
       (sessions.data.items as { state: string }[]).every((row) => row.state === "revoked"),
     ).toBe(true);
 
+    // The blocked execution runs as the session owner (henry), not the
+    // reviewer who revoked the grant.
+    setMockIdentity("henry");
     const execution = await post("/query-sessions/qs-fixture-active/executions", {
       datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
       schema_name: "app",

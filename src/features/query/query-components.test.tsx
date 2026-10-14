@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HttpResponse, http } from "msw";
@@ -134,13 +134,10 @@ describe("ResultGrid", () => {
     };
   }
 
-  it("renders virtualized rows with the masked header badge and loaded count", async () => {
-    const onLoadMore = vi.fn();
+  it("renders virtualized rows with the masked header badge and loaded count", () => {
     render(
       <ResultGrid
         tab={tabOf()}
-        loadingMore={false}
-        onLoadMore={onLoadMore}
         continuationError={null}
       />,
     );
@@ -148,22 +145,39 @@ describe("ResultGrid", () => {
     expect(screen.getByTestId("query-result-elapsed-exec-grid")).toHaveTextContent("12 ms");
     expect(screen.getByTestId("query-result-loaded-exec-grid")).toHaveTextContent("已读取 2 行");
     expect(screen.getByText("已按敏感字段策略脱敏")).toBeVisible();
-    await userEvent.click(screen.getByTestId("query-result-load-more"));
-    expect(onLoadMore).toHaveBeenCalledTimes(1);
+    // §18.50 follow-up (legacy parity): paging is purely local over the
+    // loaded rows — with everything loaded the pager's Next is disabled.
+    expect(within(screen.getByTestId("query-result-pagination")).getByRole("button", { name: "下一页" })).toBeDisabled();
   });
 
   it("reports exhaustion instead of a fabricated total", () => {
     render(
       <ResultGrid
         tab={tabOf({ rows: [[1]], nextCursor: null, exhausted: true })}
-        loadingMore={false}
-        onLoadMore={() => {}}
         continuationError={null}
       />,
     );
     expect(screen.getByTestId("query-result-exhausted-exec-grid")).toHaveTextContent("已读取全部结果");
-    expect(screen.queryByTestId("query-result-load-more")).not.toBeInTheDocument();
+    // Everything loaded and exhausted: the local pager has nothing more.
+    expect(within(screen.getByTestId("query-result-pagination")).getByRole("button", { name: "下一页" })).toBeDisabled();
     expect(screen.getByTestId("query-result-exec-grid").textContent).not.toContain("共 ");
+  });
+
+  it("pages the loaded rows locally and offers a resize handle per column (§18.50)", () => {
+    render(
+      <ResultGrid
+        tab={tabOf({ rows: Array.from({ length: 250 }, (_, i) => [i + 1, "***"]) })}
+        continuationError={null}
+      />,
+    );
+    // Client-side pager over the loaded rows (no fabricated total).
+    expect(screen.getByTestId("query-result-pagination")).toBeVisible();
+    expect(screen.getByTestId("query-result-page").textContent).toContain("1");
+    // Drag-resize handles exist for every column with a screen-reader label.
+    for (const name of ["id", "email"]) {
+      expect(screen.getByTestId(`query-col-resize-${name}`)).toBeVisible();
+    }
+    expect(screen.getByRole("separator", { name: "调整列宽：id" })).toBeVisible();
   });
 
   it("stringifies non-string cells losslessly (never [object Object])", () => {
@@ -179,8 +193,6 @@ describe("ResultGrid", () => {
     render(
       <ResultGrid
         tab={tabOf({ rows: [[1]] })}
-        loadingMore={false}
-        onLoadMore={() => {}}
         continuationError="游标已过期，请重新执行查询"
       />,
     );

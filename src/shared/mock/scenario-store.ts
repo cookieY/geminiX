@@ -28,6 +28,7 @@ export type MockScenario =
   | "query-flow-direct"
   | "query-session"
   | "query-revoked"
+  | "query-huge"
   | "query-approval";
 export const MOCK_SCENARIOS: MockScenario[] = [
   "ready",
@@ -48,6 +49,7 @@ export const MOCK_SCENARIOS: MockScenario[] = [
   "query-flow-direct",
   "query-session",
   "query-revoked",
+  "query-huge",
   "query-approval",
 ];
 
