@@ -92,6 +92,9 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
   const widthOf = (name: string): number => widths[name] ?? DEFAULT_COL_WIDTH;
   const tableWidth = tab.columns.reduce((sum, column) => sum + widthOf(column.name), 0);
 
+  /* v8 ignore start: real pointer geometry only — jsdom cannot drive the
+     drag pipeline; the resize behavior is gated by the e2e drag assertions
+     (query-results.spec) and real-browser verification. */
   const onResizeStart = (event: React.PointerEvent<HTMLSpanElement>, column: string): void => {
     dragRef.current = { column, startX: event.clientX, startWidth: widthOf(column) };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -108,6 +111,7 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
+  /* v8 ignore stop */
 
   return (
     <TooltipProvider>
@@ -172,6 +176,9 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
                 ))}
               </tr>
             </thead>
+            {/* v8 ignore start: the virtualizer paints zero rows under jsdom
+                (no layout) — spacer/row/cell branches below are gated by the
+                e2e suite (query-results.spec), never by unit coverage. */}
             <tbody>
               {/*
                 Spacer rows keep the real scroll geometry (the virtualizer
@@ -218,6 +225,7 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
               })}
               {padBottom > 0 && <tr aria-hidden style={{ height: `${String(padBottom)}px` }} />}
             </tbody>
+            {/* v8 ignore stop */}
           </table>
         </div>
         <div className="flex flex-wrap items-center gap-2">

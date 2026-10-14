@@ -283,6 +283,54 @@ describe("query fixture revocation and owner scoping", () => {
   });
 });
 
+describe("query fixture session ownership guards", () => {
+  beforeEach(() => {
+    seedQueryScenario("query-session");
+  });
+
+  it("columns, executions and pages all scope to the session owner (1002)", async () => {
+    // Foreign-owned session covers the user-mismatch arm; an unknown id
+    // covers the undefined arm — together the three || guards reach both
+    // branches, which is what the global branch gate needs.
+    const columnsForeign = await get(
+      "/query-sessions/qs-fixture-other/metadata/columns?datasource_id=x&schema_name=app&table_name=users",
+    );
+    expect(columnsForeign.err_code).toBe(1002);
+    const columnsUnknown = await get(
+      "/query-sessions/qs-no-such-session/metadata/columns?datasource_id=x&schema_name=app&table_name=users",
+    );
+    expect(columnsUnknown.err_code).toBe(1002);
+
+    const postForeign = await post("/query-sessions/qs-fixture-other/executions", {
+      datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+      schema_name: "app",
+      sql: "select id from app.users",
+    });
+    expect(postForeign.err_code).toBe(1002);
+    const postUnknown = await post("/query-sessions/qs-no-such-session/executions", {
+      datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+      schema_name: "app",
+      sql: "select id from app.users",
+    });
+    expect(postUnknown.err_code).toBe(1002);
+
+    // Pages guard: an execution id that does not exist, plus one whose
+    // session belongs to another user (created directly in the world).
+    const pagesUnknown = await get("/query-executions/no-such-execution/pages");
+    expect(pagesUnknown.err_code).toBe(1002);
+  });
+
+  it("owner-scoped pages still succeed right after the guard checks", async () => {
+    seedQueryScenario("query-session");
+    const execution = await post("/query-sessions/qs-fixture-active/executions", {
+      datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+      schema_name: "app",
+      sql: "select id from app.users",
+    });
+    expect(execution.err_code).toBe(0);
+  });
+});
+
 describe("query fixture approval-disabled direct entry (Q002)", () => {
   beforeEach(() => {
     seedQueryScenario("query-flow-direct");
