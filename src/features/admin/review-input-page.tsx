@@ -126,8 +126,7 @@ function emptyForm(): ReviewInputFormState {
     editor: {
       definition: {
         knowledge_text: "",
-        finding_template: {},
-        severity_whitelist: ["medium"],
+        max_severity: "medium",
         version: 1,
       },
       parameters: {},

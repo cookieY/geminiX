@@ -118,13 +118,17 @@ test("any rejection immediately rejects the whole order and empties the queue", 
     timeout: 8_000,
   });
 
-  // The rejected order no longer awaits any decision. (The gallery's demo
-  // approval rows legitimately remain in the queue.)
+  // §18.58 owner ruling: the rejected order STAYS in the queue (the user
+  // was its frozen approver) — the row now carries the decided outcome.
   await page.getByRole("link", { name: "工单审批" }).click();
   await expect(page.getByTestId("approval-queue-table")).toBeVisible({ timeout: 8_000 });
-  await expect(
-    page.getByTestId("approval-queue-row").filter({ hasText: "审批拒绝草稿" }),
-  ).toHaveCount(0);
+  const rejectedRow = page
+    .getByTestId("approval-queue-row")
+    .filter({ hasText: "审批拒绝草稿" });
+  await expect(rejectedRow).toHaveCount(1);
+  await expect(rejectedRow).toContainText("已拒绝");
+  // §18.60：我已给出拒绝决定 → 是否已审批 = 是。
+  await expect(rejectedRow).toContainText("是");
 });
 
 test("a concurrent peer decision is recoverable: the UI converges on the real state", async ({

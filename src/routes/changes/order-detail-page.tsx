@@ -23,7 +23,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { Ban, CircleAlert, FileCode2, History, ShieldCheck, Undo2, User, Wrench } from "lucide-react";
+import { Ban, CircleAlert, Clock, FileCode2, History, ShieldCheck, Undo2, User, Wrench } from "lucide-react";
 
 /**
  * Order detail (route /changes/orders/:id; migration contract §2 keeps the
@@ -256,6 +256,29 @@ export default function OrderDetailPage() {
 
       <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
       <OrderSqlCard orderId={order.id} />
+      {/* §18.57：执行等待期，非冻结执行人视角没有任何解释（§18.47补记5
+          同类缺陷）——补一块说明面板，点名冻结执行人。 */}
+      {order.state === "stage_execution_pending" &&
+        (() => {
+          const pendingStage = order.stages.find((stage) => stage.state === "execution_pending");
+          const isExecutor =
+            pendingStage !== undefined &&
+            session.user !== null &&
+            pendingStage.execution_actors.some((actor) => actor.id === session.user?.id);
+          if (isExecutor || pendingStage === undefined) return null;
+          const names = pendingStage.execution_actors.map((actor) => actor.display_name).join("、");
+          return (
+            <Card data-testid="execution-wait-note">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Clock className="size-4" aria-hidden />
+                  {t("orders.execution.waitTitle")}
+                </CardTitle>
+                <CardDescription>{t("orders.execution.waitNote", { names })}</CardDescription>
+              </CardHeader>
+            </Card>
+          );
+        })()}
       <ExecutionWorkspaceCard
         order={order}
         attemptId={attemptId}
@@ -321,6 +344,12 @@ export default function OrderDetailPage() {
               <span className="text-muted-foreground">{t("orders.detail.submittedAt")}</span>
               <span>{formatTimestamp(order.submitted_at)}</span>
             </p>
+            {order.requested_scheduled_for != null && (
+              <p className="flex justify-between gap-3" data-testid="order-requested-schedule">
+                <span className="text-muted-foreground">{t("orders.detail.requestedSchedule")}</span>
+                <span>{formatTimestamp(order.requested_scheduled_for)}</span>
+              </p>
+            )}
             <p className="flex justify-between gap-3">
               <span className="text-muted-foreground">{t("orders.detail.terminalAt")}</span>
               <span>{formatTimestamp(order.terminal_at)}</span>

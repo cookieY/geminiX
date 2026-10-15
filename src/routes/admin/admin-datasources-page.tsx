@@ -63,6 +63,7 @@ import {
   EmptyTitle,
 } from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
@@ -121,6 +122,13 @@ interface TLSFormState {
   clientKeyPem: string;
 }
 
+/** Credential-class vocabulary of the connection-test purpose (§18.62,
+ * aligned with the list's 只读/读写 badge): the select speaks two classes,
+ * submit resolves them onto the contract's purpose enum — read-write probes
+ * the execution credential, read-only probes review (falling back to query
+ * when the payload keeps no review credential). */
+type TestCredentialKind = "readonly" | "readwrite";
+
 interface DatasourceFormState {
   name: string;
   engine: string;
@@ -131,6 +139,10 @@ interface DatasourceFormState {
   databaseName: string;
   versionConstraint: string;
   enabled: boolean;
+  /** §18.61：连接测试用途持久化在数据源上——表格「测试连接」按它选择
+   * 已存凭据；变更收敛到本表单（全量替换语义，提交即写入）。§18.62：
+   * 表单以只读/读写两态呈现，提交时解析为契约枚举。 */
+  testKind: TestCredentialKind;
   purposes: Record<Purpose, PurposeFormState>;
   tls: TLSFormState;
 }
@@ -154,6 +166,7 @@ function formForCreate(): DatasourceFormState {
     databaseName: "",
     versionConstraint: "",
     enabled: true,
+    testKind: "readonly",
     purposes: freshPurposes(),
     tls: { enabled: false, caPem: "", clientCertPem: "", clientKeyPem: "" },
   };
@@ -178,6 +191,7 @@ function formForEdit(ds: Datasource): DatasourceFormState {
     databaseName: ds.database_name ?? "",
     versionConstraint: "",
     enabled: ds.enabled,
+    testKind: ds.test_purpose === "execution" ? "readwrite" : "readonly",
     purposes,
     // Materials never echo; the checkbox reflects the current state only.
     tls: { enabled: ds.tls_verified, caPem: "", clientCertPem: "", clientKeyPem: "" },
@@ -539,6 +553,14 @@ function DatasourceFormDialog({
       database_name: form.databaseName === "" ? null : form.databaseName,
       version_constraint: form.versionConstraint,
       enabled: form.enabled,
+      // §18.62：只读/读写解析到契约枚举——读写=执行凭据；只读=审核凭据，
+      // 本次载荷不再保留审核凭据时回落查询凭据。
+      test_purpose:
+        form.testKind === "readwrite"
+          ? "execution"
+          : form.purposes.review.included
+            ? "review"
+            : "query",
       credentials,
       // Always explicit: null is the declared removal path, so an unchecked
       // box can never "accidentally" keep stale material.
@@ -699,14 +721,39 @@ function DatasourceFormDialog({
               {t("admin.datasources.enabled")}
             </Label>
           </div>
+          {/* §18.61 owner ruling: the connection-test purpose is a persisted
+              datasource attribute changed HERE — never a per-row select in
+              the table. The list's 测试连接 button probes with this
+              purpose's stored credential. §18.62: the select speaks the
+              same 只读/读写 credential-class vocabulary as the list badge. */}
+          <div className="flex flex-col gap-1">
+            <Label>{t("admin.datasources.testPurpose")}</Label>
+            <Select
+              value={form.testKind}
+              onValueChange={(next) => {
+                if (next !== null) setForm({ ...form, testKind: next });
+              }}
+              items={{
+                readonly: t("admin.datasources.credModeReadOnly"),
+                readwrite: t("admin.datasources.credModeReadWrite"),
+              }}
+            >
+              <SelectTrigger data-testid="ds-test-purpose" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="readonly">{t("admin.datasources.credModeReadOnly")}</SelectItem>
+                <SelectItem value="readwrite">{t("admin.datasources.credModeReadWrite")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">{t("admin.datasources.testPurposeHint")}</p>
+          </div>
           <div className="flex flex-col gap-2">
             <Label>{t("admin.datasources.credentialsTitle")}</Label>
+            {/* §18.63：用途行标签自带只读/读写类别（审核（只读）等），
+                区块提示不再做标签插值。 */}
             <p className="text-muted-foreground text-xs">
-              {t("admin.datasources.credentialsHint", {
-                review: t("admin.datasources.purpose.review"),
-                query: t("admin.datasources.purpose.query"),
-                execution: t("admin.datasources.purpose.execution"),
-              })}
+              {t("admin.datasources.credentialsHint")}
             </p>
             {PURPOSES.map((purpose) => (
               <CredentialPurposeRow
@@ -803,7 +850,6 @@ function ConnectionTestControls({
   onTestStarted: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
-  const [purpose, setPurpose] = useState<Purpose>("review");
   const [taskId, setTaskId] = useState<string | null>(null);
   const testMutation = useTestDatasourceConnection();
   const taskQuery = useAdminTask(taskId ?? "", taskId !== null);
@@ -811,11 +857,10 @@ function ConnectionTestControls({
 
   const runTest = () => {
     setTestErrorKey(null);
-    // Expanding the capability matrix is a user-event side effect; the
-    // matrix is keyed by the probe task id and polls until the probe
-    // materializes the facts.
+    // §18.61：探测用途取数据源持久化的test_purpose（编辑表单变更），
+    // 表格不再出现用途选择器。
     testMutation.mutate(
-      { id: datasource.id, purpose },
+      { id: datasource.id, purpose: datasource.test_purpose },
       {
         onSuccess: (task) => {
           setTaskId(task.id);
@@ -832,22 +877,6 @@ function ConnectionTestControls({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
-        <Select value={purpose} onValueChange={(next) => { if (next !== null) setPurpose(next); }}>
-          <SelectTrigger
-            className="h-8 w-32"
-            aria-label={t("admin.datasources.testPurpose")}
-            data-testid={`ds-test-purpose-${datasource.id}`}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PURPOSES.map((candidate) => (
-              <SelectItem key={candidate} value={candidate}>
-                {t(`admin.datasources.purpose.${candidate}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Button
           variant="outline"
           size="sm"
@@ -910,17 +939,18 @@ function DatasourceRow({
         </div>
       </TableCell>
       <TableCell>
-        <div className="flex gap-1">
-          {PURPOSES.map((purpose) => (
-            <Badge
-              key={purpose}
-              variant={datasource.credential_status[purpose] === true ? "secondary" : "outline"}
-              data-testid={`ds-cred-${purpose}-${datasource.credential_status[purpose] === true ? "ok" : "missing"}`}
-            >
-              {t(`admin.datasources.purpose.${purpose}`)}
-            </Badge>
-          ))}
-        </div>
+        {/* §18.58 owner ruling: the credential state is a single 只读/读写
+            badge (read-write = execution credential stored); the per-purpose
+            detail and every credential change live in the edit dialog (B13
+            keep/replace/reuse), never in the table. */}
+        <Badge
+          variant={datasource.credential_status.execution === true ? "secondary" : "outline"}
+          data-testid={`ds-cred-mode-${datasource.credential_status.execution === true ? "readwrite" : "readonly"}`}
+        >
+          {datasource.credential_status.execution === true
+            ? t("admin.datasources.credModeReadWrite")
+            : t("admin.datasources.credModeReadOnly")}
+        </Badge>
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
         {t("admin.datasources.referencedBy", { count: datasource.referenced_by_flow_count ?? 0 })}
@@ -931,20 +961,36 @@ function DatasourceRow({
           <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`ds-edit-${datasource.id}`}>
             <Pencil /> {t("common.edit")}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            disabled={(datasource.referenced_by_flow_count ?? 0) > 0}
-            title={
-              (datasource.referenced_by_flow_count ?? 0) > 0
-                ? t("admin.datasources.deleteBlockedHint")
-                : undefined
-            }
-            data-testid={`ds-delete-${datasource.id}`}
-          >
-            <Trash2 /> {t("common.delete")}
-          </Button>
+          {/* §18.58: a referenced datasource cannot be deleted (1107, 只能停
+              用) — the disabled button carries a Tooltip explaining why. The
+              trigger is an interactive span wrapper: disabled buttons swallow
+              pointer events, so the tooltip could never open on the button
+              itself. */}
+          {(datasource.referenced_by_flow_count ?? 0) > 0 ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span
+                      className="inline-flex"
+                      data-testid={`ds-delete-${datasource.id}`}
+                    >
+                      <Button variant="ghost" size="sm" disabled>
+                        <Trash2 /> {t("common.delete")}
+                      </Button>
+                    </span>
+                  }
+                />
+                <TooltipContent data-testid={`ds-delete-tooltip-${datasource.id}`}>
+                  {t("admin.datasources.deleteBlockedHint")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={onDelete} data-testid={`ds-delete-${datasource.id}`}>
+              <Trash2 /> {t("common.delete")}
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>

@@ -49,6 +49,7 @@ function approvalActiveOrder(): FixtureOrder {
     id: "8a6f1a2b-0000-4000-8000-00000000id01",
     display_number: "YR-20261013-000001",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "身份分离验证工单",
     state: "stage_approval_active",
     current_stage_position: 1,

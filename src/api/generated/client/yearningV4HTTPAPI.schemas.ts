@@ -43,6 +43,7 @@ export const BusinessErrorCode = {
   NUMBER_1106: 1106,
   NUMBER_1107: 1107,
   NUMBER_1108: 1108,
+  NUMBER_1109: 1109,
   NUMBER_2001: 2001,
   NUMBER_2002: 2002,
   NUMBER_2003: 2003,
@@ -153,9 +154,36 @@ export interface User {
   updated_at: Timestamp;
 }
 
+/**
+ * Where the account password is managed. local accounts may use the self-service password change; ldap/oidc accounts have their password managed by the identity source. Absent means local.
+ */
+export type CurrentUserAuthProvider = typeof CurrentUserAuthProvider[keyof typeof CurrentUserAuthProvider];
+
+
+export const CurrentUserAuthProvider = {
+  local: 'local',
+  ldap: 'ldap',
+  oidc: 'oidc',
+} as const;
+
 export type CurrentUser = User & {
   can_access_admin: boolean;
+  /** Where the account password is managed. local accounts may use the self-service password change; ldap/oidc accounts have their password managed by the identity source. Absent means local. */
+  auth_provider?: CurrentUserAuthProvider;
 };
+
+export interface ChangeMyPasswordRequest {
+  /**
+     * @minLength 1
+     * @maxLength 1024
+     */
+  old_password: string;
+  /**
+     * @minLength 12
+     * @maxLength 1024
+     */
+  new_password: string;
+}
 
 export interface CreateUserRequest {
   /**
@@ -652,6 +680,18 @@ export const DatasourceWriteDeploymentKind = {
 } as const;
 
 /**
+ * Connection test purpose stored on the datasource; the connection-test action probes with this purpose's stored credential. Full-replacement semantics like every other field — omitting it resets the purpose to review.
+ */
+export type DatasourceWriteTestPurpose = typeof DatasourceWriteTestPurpose[keyof typeof DatasourceWriteTestPurpose];
+
+
+export const DatasourceWriteTestPurpose = {
+  review: 'review',
+  query: 'query',
+  execution: 'execution',
+} as const;
+
+/**
  * Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.
  * @nullable
  */
@@ -694,6 +734,8 @@ export interface DatasourceWrite {
      */
   version_constraint: string;
   enabled: boolean;
+  /** Connection test purpose stored on the datasource; the connection-test action probes with this purpose's stored credential. Full-replacement semantics like every other field — omitting it resets the purpose to review. */
+  test_purpose?: DatasourceWriteTestPurpose;
   /**
      * @minItems 1
      * @maxItems 3
@@ -730,6 +772,18 @@ export const DatasourceDeploymentKind = {
 } as const;
 
 /**
+ * Purpose whose stored credential the connection test uses for this datasource. Pure configuration, never a secret echo.
+ */
+export type DatasourceTestPurpose = typeof DatasourceTestPurpose[keyof typeof DatasourceTestPurpose];
+
+
+export const DatasourceTestPurpose = {
+  review: 'review',
+  query: 'query',
+  execution: 'execution',
+} as const;
+
+/**
  * Presence only; no secret values
  */
 export type DatasourceCredentialStatus = {[key: string]: boolean};
@@ -745,6 +799,8 @@ export interface Datasource {
   /** @nullable */
   database_name?: string | null;
   enabled: boolean;
+  /** Purpose whose stored credential the connection test uses for this datasource. Pure configuration, never a secret echo. */
+  test_purpose: DatasourceTestPurpose;
   /** Presence only; no secret values */
   credential_status: DatasourceCredentialStatus;
   /** True when TLS material is stored for this datasource, which means verified TLS (full chain plus hostname) is enforced on every connection; false means plaintext. Never exposes the material itself. */
@@ -832,62 +888,19 @@ export const PromptToolWriteEngine = {
  */
 export type PromptToolWriteParameters = {[key: string]: number | string | boolean | string[]};
 
-export type ReviewInputDefinitionFindingTemplateCategory = typeof ReviewInputDefinitionFindingTemplateCategory[keyof typeof ReviewInputDefinitionFindingTemplateCategory];
+/**
+ * Maximum severity this input's findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.
+ */
+export type ReviewInputDefinitionMaxSeverity = typeof ReviewInputDefinitionMaxSeverity[keyof typeof ReviewInputDefinitionMaxSeverity];
 
 
-export const ReviewInputDefinitionFindingTemplateCategory = {
-  correctness: 'correctness',
-  performance: 'performance',
-  availability: 'availability',
-  security: 'security',
-  governance: 'governance',
-  compatibility: 'compatibility',
-  operability: 'operability',
-} as const;
-
-export type ReviewInputDefinitionFindingTemplateSeverity = typeof ReviewInputDefinitionFindingTemplateSeverity[keyof typeof ReviewInputDefinitionFindingTemplateSeverity];
-
-
-export const ReviewInputDefinitionFindingTemplateSeverity = {
+export const ReviewInputDefinitionMaxSeverity = {
   info: 'info',
   low: 'low',
   medium: 'medium',
   high: 'high',
   critical: 'critical',
 } as const;
-
-export type ReviewInputDefinitionSeverityWhitelistItem = typeof ReviewInputDefinitionSeverityWhitelistItem[keyof typeof ReviewInputDefinitionSeverityWhitelistItem];
-
-
-export const ReviewInputDefinitionSeverityWhitelistItem = {
-  info: 'info',
-  low: 'low',
-  medium: 'medium',
-  high: 'high',
-  critical: 'critical',
-} as const;
-
-export type ReviewInputDefinitionFindingTemplate = {
-  /** @pattern ^[a-z][a-z0-9._-]{0,127}$ */
-  finding_key?: string;
-  category?: ReviewInputDefinitionFindingTemplateCategory;
-  severity?: ReviewInputDefinitionFindingTemplateSeverity;
-  /**
-     * @minLength 1
-     * @maxLength 200
-     */
-  title?: string;
-  /**
-     * @minLength 1
-     * @maxLength 4000
-     */
-  message?: string;
-  /**
-     * @minLength 1
-     * @maxLength 4000
-     */
-  suggestion?: string;
-};
 
 export interface ReviewInputDefinition {
   /**
@@ -895,9 +908,8 @@ export interface ReviewInputDefinition {
      * @maxLength 65536
      */
   knowledge_text: string;
-  finding_template: ReviewInputDefinitionFindingTemplate;
-  /** @minItems 1 */
-  severity_whitelist: ReviewInputDefinitionSeverityWhitelistItem[];
+  /** Maximum severity this input's findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text. */
+  max_severity: ReviewInputDefinitionMaxSeverity;
   /** @minimum 1 */
   version: number;
 }
@@ -1636,6 +1648,11 @@ export interface ChangeDraft {
   flow_id: Uuid;
   title?: string;
   description?: string;
+  /**
+     * Submitter's desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor's schedule confirmation. Never an execution authorization.
+     * @nullable
+     */
+  requested_scheduled_for?: string | null;
   /** @minimum 1 */
   revision: number;
   state: DraftState;
@@ -1666,6 +1683,8 @@ export interface CreateChangeDraftRequest {
   title: string;
   /** @maxLength 4096 */
   description?: string;
+  /** Desired execution time (RFC3339, must be in the future at save time). Optional; §18.56 ruling B. */
+  requested_scheduled_for?: string;
 }
 
 export interface UpdateChangeDraftRequest {
@@ -1677,6 +1696,11 @@ export interface UpdateChangeDraftRequest {
   /** @maxLength 4096 */
   description?: string;
   flow_id?: Uuid;
+  /**
+     * Set (future RFC3339) or clear (null); absent leaves the value unchanged. §18.56 ruling B.
+     * @nullable
+     */
+  requested_scheduled_for?: string | null;
 }
 
 export type ChangeOrderState = typeof ChangeOrderState[keyof typeof ChangeOrderState];
@@ -1738,8 +1762,17 @@ export interface ChangeOrder {
   /** @pattern ^YR-[0-9]{8}-[0-9]{6}$ */
   display_number: string;
   submitter_user_id: Uuid;
+  /** Submitter username snapshot frozen at submission (§18.58). */
+  submitter_username?: string;
+  /** Submitter display-name snapshot frozen at submission (§18.58). */
+  submitter_display_name?: string;
   title?: string;
   state: ChangeOrderState;
+  /**
+     * Submitter's desired execution time frozen at submission (§18.56 ruling B). Displayed on the order and prefilled for the frozen executor's schedule confirmation; never an execution authorization.
+     * @nullable
+     */
+  requested_scheduled_for?: string | null;
   /**
      * @minimum 1
      * @nullable
@@ -2969,6 +3002,14 @@ export type GetCurrentUser200 = {
   err_code: 0;
   message: 'ok';
   data: CurrentUser;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ChangeMyPassword200 = {
+  err_code: 0;
+  message: 'ok';
+  /** @nullable */
+  data: null;
   request_id: Uuid;
 } | BusinessErrorResponse;
 

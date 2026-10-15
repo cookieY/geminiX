@@ -74,6 +74,7 @@ function executionOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
     id: "ee6f1a2b-0000-4000-8000-00000000f901",
     display_number: "YR-20260830-000301",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "执行夹具工单",
     state: "stage_execution_pending",
     current_stage_position: 1,
@@ -518,4 +519,33 @@ describe("execution error and evidence branches", () => {
     }, { timeout: 5_000 });
     expect(screen.getByTestId("verification-result-still_unknown")).toHaveAttribute("aria-checked", "true");
   }, 20_000);
+});
+
+describe("execution schedule prefill (§18.56 ruling B)", () => {
+  it("prefills the schedule input from the submitter's requested time while it stays in range", async () => {
+    const requested = new Date(Date.now() + 6 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const order = executionOrder({ requested_scheduled_for: requested });
+    seedFixtureOrder(order);
+    renderDetail(order.id);
+    await waitFor(() => {
+      expect(screen.getByTestId("execution-action-card")).toBeVisible();
+    });
+    // DateTimePicker trigger shows the prefilled instant (no "--" placeholder).
+    expect(screen.getByTestId("execution-schedule-input").textContent).not.toContain("--");
+    expect(screen.getByTestId("execution-schedule-prefilled")).toBeVisible();
+    // 预填值直接可提交（区间内）。
+    expect(screen.getByTestId("execution-schedule-submit")).toBeEnabled();
+  });
+
+  it("does not prefill an expired requested time", async () => {
+    const order = executionOrder({ requested_scheduled_for: "2020-01-01T00:00:00Z" });
+    seedFixtureOrder(order);
+    renderDetail(order.id);
+    await waitFor(() => {
+      expect(screen.getByTestId("execution-action-card")).toBeVisible();
+    });
+    expect(screen.getByTestId("execution-schedule-input").textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(screen.queryByTestId("execution-schedule-prefilled")).toBeNull();
+    expect(screen.getByTestId("execution-schedule-submit")).toBeDisabled();
+  });
 });

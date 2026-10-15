@@ -72,6 +72,7 @@ function executionPendingOrder(id: string, stepId: string): FixtureOrder {
     id,
     display_number: id,
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: `窗口验证工单 ${id.slice(-4)}`,
     state: "stage_execution_pending",
     current_stage_position: 1,

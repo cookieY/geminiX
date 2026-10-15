@@ -60,10 +60,16 @@ test("review-input editor offers no executable-code, HTTP or database-write surf
   await page.getByTestId("review-input-create").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByTestId("review-input-knowledge-text")).toBeVisible();
-  await expect(dialog.getByTestId("review-input-finding-key")).toBeVisible();
-  await expect(dialog.getByTestId("review-input-title")).toBeVisible();
-  await expect(dialog.getByTestId("review-input-message")).toBeVisible();
-  await expect(dialog.getByTestId("review-input-suggestion")).toBeVisible();
+  // §18.66: the five-field editor — rule text plus the single max-severity
+  // control; finding key / template fields no longer render.
+  await expect(dialog.getByTestId("review-input-max-severity")).toBeVisible();
+  await expect(dialog.getByTestId("review-input-max-severity-medium")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(dialog.getByTestId("review-input-finding-key")).toHaveCount(0);
+  await expect(dialog.getByTestId("review-input-title")).toHaveCount(0);
+  await expect(dialog.getByTestId("review-input-message")).toHaveCount(0);
   for (const button of await dialog.getByRole("button").all()) {
     expect(await button.textContent()).not.toMatch(/HTTP|执行代码|写库|Webhook/);
   }
@@ -101,9 +107,9 @@ test("a datasource connection test materializes the capability matrix with expla
   await page.goto("/admin/datasources");
   // analytics-pg has no execution credential — probing review succeeds and
   // materializes capabilities where execution is explicitly unavailable.
+  // §18.61: the probe purpose is the datasource's stored test_purpose
+  // (seeded review) — the table carries no purpose select anymore.
   const pgRow = page.locator("tr", { hasText: "analytics-pg" });
-  await pgRow.getByTestId(/ds-test-purpose-/).click();
-  await page.getByRole("option", { name: "Review" }).click();
   await pgRow.getByTestId(/ds-test-button-/).click();
   const capabilities = page.getByTestId("ds-capabilities");
   await expect(capabilities).toContainText("16.3", { timeout: 8_000 });

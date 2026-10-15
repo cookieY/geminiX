@@ -52,6 +52,7 @@ import {
 } from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
 
 /**
  * Rule Set 组合管理 (route /admin/rule-sets; migration contract §2 maps the
@@ -231,16 +232,25 @@ function RuleSetFormDialog({
           </div>
           {editing !== null ? (
             <div className="rounded-lg border p-3" data-testid="rule-set-impact-preview">
-              <p className="text-sm font-medium">{t("admin.ruleSets.impactTitle")}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">{t("admin.ruleSets.impactTitle")}</p>
+                <Badge variant={bindingFlows.length > 0 ? "secondary" : "outline"}>
+                  {t("admin.ruleSets.boundFlows", { count: bindingFlows.length })}
+                </Badge>
+              </div>
               <p className="text-muted-foreground mt-1 text-xs">{t("admin.ruleSets.impactHashNote")}</p>
-              <p className="mt-2 text-xs">
-                {t("admin.ruleSets.boundFlows", { count: bindingFlows.length })}:{" "}
+              {/* §18.59：受影响流程用tag徽章网格展示（原先逗号串）。 */}
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {bindingFlows.length === 0 ? (
-                  <span className="text-muted-foreground">{t("admin.ruleSets.noBoundFlows")}</span>
+                  <span className="text-muted-foreground text-xs">{t("admin.ruleSets.noBoundFlows")}</span>
                 ) : (
-                  bindingFlows.map((flow) => flow.name).join(", ")
+                  bindingFlows.map((flow) => (
+                    <Badge key={flow.id} variant="secondary" className="max-w-56">
+                      <span className="truncate">{flow.name}</span>
+                    </Badge>
+                  ))
                 )}
-              </p>
+              </div>
               {bindingWillChange ? (
                 <p className="mt-1 text-xs text-[var(--risk-warning)]">
                   {t("admin.ruleSets.bindingChangeNote")}
@@ -277,7 +287,6 @@ export default function AdminRuleSetsPage() {
   const pager = useCursorPage(20);
   const query = useRuleSets(enabled, { limit: pager.pageSize, after: pager.after });
   const flowsQuery = useFlowsForRuleSetImpact(enabled);
-  const toolsQuery = usePromptTools(enabled);
   const [editing, setEditing] = useState<RuleSet | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -286,8 +295,6 @@ export default function AdminRuleSetsPage() {
   const deleteMutation = useDeleteRuleSet();
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
 
-  const toolName = (toolId: string) =>
-    (toolsQuery.data?.items ?? []).find((tool) => tool.id === toolId)?.name ?? toolId;
 
   return (
     <div className="flex flex-col gap-4">
@@ -333,9 +340,10 @@ export default function AdminRuleSetsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("admin.ruleSets.name")}</TableHead>
-                  <TableHead>{t("admin.ruleSets.toolsTitle")}</TableHead>
                   <TableHead>{t("admin.reviewInput.configHash")}</TableHead>
-                  <TableHead>{t("admin.ruleSets.boundFlowsColumn")}</TableHead>
+                  {/* §18.59 owner ruling: 被引用流程/技能包组合列移出表格
+                      （引用数仍驱动删除禁用；技能明细在编辑弹窗）。 */}
+                  <TableHead>{t("admin.ruleSets.createdAtColumn")}</TableHead>
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -356,30 +364,11 @@ export default function AdminRuleSetsPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {ruleSet.prompt_tool_ids.length === 0 ? (
-                            <span className="text-muted-foreground text-xs">
-                              {t("admin.ruleSets.noTools")}
-                            </span>
-                          ) : (
-                            ruleSet.prompt_tool_ids.map((toolId: string) => (
-                              <Badge key={toolId} variant="secondary" data-testid="rule-set-tool-chip">
-                                {toolName(toolId)}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      </TableCell>
                       <TableCell className="font-mono text-xs" data-testid="rule-set-hash">
                         {ruleSet.config_hash}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {boundFlows.length === 0 ? (
-                          <span className="text-muted-foreground">{t("admin.ruleSets.noBoundFlows")}</span>
-                        ) : (
-                          boundFlows.map((flow) => flow.name).join(", ")
-                        )}
+                      <TableCell className="text-muted-foreground text-xs" data-testid={`rule-set-created-${ruleSet.id}`}>
+                        {ruleSet.created_at.replace("T", " ").replace("Z", " UTC")}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
@@ -394,18 +383,39 @@ export default function AdminRuleSetsPage() {
                           >
                             {t("common.edit")}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={deleteMutation.isPending || boundFlows.length > 0}
-                            title={
-                              boundFlows.length > 0 ? t("admin.ruleSets.deleteBlockedHint") : undefined
-                            }
-                            onClick={() => { setDeleting(ruleSet); }}
-                            data-testid={`rule-set-delete-${ruleSet.id}`}
-                          >
-                            <Trash2 /> {t("common.delete")}
-                          </Button>
+                          {/* §18.59：被引用规则集删除禁用改Tooltip说明
+                              （span包裹层——disabled按钮吞pointer events）。 */}
+                          {boundFlows.length > 0 ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <span
+                                      className="inline-flex"
+                                      data-testid={`rule-set-delete-${ruleSet.id}`}
+                                    >
+                                      <Button variant="ghost" size="sm" disabled>
+                                        <Trash2 /> {t("common.delete")}
+                                      </Button>
+                                    </span>
+                                  }
+                                />
+                                <TooltipContent>
+                                  {t("admin.ruleSets.deleteBlockedHint")}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deleteMutation.isPending}
+                              onClick={() => { setDeleting(ruleSet); }}
+                              data-testid={`rule-set-delete-${ruleSet.id}`}
+                            >
+                              <Trash2 /> {t("common.delete")}
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

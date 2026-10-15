@@ -3,10 +3,11 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useApprovalQueue } from "@/features/orders/use-approvals";
-import { activeApprovalStepFor } from "@/features/orders/order-state";
+import { myApprovalStepFor, ORDER_STATE_TONE_CLASS, orderStateTone } from "@/features/orders/order-state";
 import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -22,17 +23,15 @@ import { ArrowRight, Inbox, Stamp } from "lucide-react";
 
 /**
  * 审批Workspace queue (route /approvals/changes; migration contract §2 maps
- * the legacy /server/order/audit/list here — "只列出当前用户为冻结审核人的节
- * 点"). The queue lists orders where the current user is a frozen actor of
- * the currently active approval step (W003 同级任一审批); the decision
- * itself happens on the order detail page. Opening or operating this page
- * never creates a Review Run — the reviewer consumes the frozen submission
- * review (R003, gate: 打开操作审批页不创建Review Run).
- *
- * Legacy continuity (orderTable.vue audit view): work_id→工单号,
- * source→数据源, remark→标题, date→提交时间, status→状态胶囊; the legacy
- * type/delay columns have no v4 counterpart (DDL/DML types and global delay
- * were dropped by the field-mapping contract).
+ * the legacy /server/order/audit/list here). §18.58 owner ruling: the queue
+ * keeps EVERY order where the current user is a frozen approval actor —
+ * decided steps stay listed with their outcome (工单状态/提交人 columns); the
+ * decision itself still happens on the order detail page. §18.60: my-step
+ * column narrows to 是否已审批 — 是 only when my frozen step carries my own
+ * decision (approved/rejected), 否 otherwise.
+ * Opening or operating this page never creates a Review Run — the reviewer
+ * consumes the frozen submission review (R003, gate: 打开操作审批页不创建
+ * Review Run).
  */
 
 function formatTimestamp(value: string): string {
@@ -40,9 +39,16 @@ function formatTimestamp(value: string): string {
 }
 
 function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | undefined }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const pending = activeApprovalStepFor(order, userId);
+  const mine = myApprovalStepFor(order, userId);
+  const orderStateLabel = (state: string): string => {
+    const key = `orders.state.${state}`;
+    return i18n.exists(key) ? t(key) : state;
+  };
+  // §18.60：已审批=我的冻结步骤带上我自己的决定（通过/拒绝）；
+  // 待轮到/审批中/被跳过/失效都还不是"我审过"。
+  const iHaveReviewed = mine !== null && (mine.stepState === "approved" || mine.stepState === "rejected");
   // Keyboard/AT users open rows through the explicit 打开详情 button (a
   // real button element); the row-level onClick is a pointer convenience
   // only, mirroring the mine-page rows.
@@ -55,16 +61,28 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
       <TableCell className="font-mono text-xs">{order.display_number}</TableCell>
       <TableCell className="max-w-56 truncate">{order.title}</TableCell>
       <TableCell className="font-mono text-xs">
-        {pending === null ? "—" : pending.datasourceName}
+        {mine === null ? "—" : mine.datasourceName}
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {pending === null
-          ? "—"
-          : t("approvals.queue.pendingStep", {
-              stage: pending.stagePosition,
-              step: pending.stepPosition,
-              reviewers: pending.actorCount,
-            })}
+      <TableCell>
+        <Badge
+          variant="outline"
+          className={`text-xs ${ORDER_STATE_TONE_CLASS[orderStateTone(order.state)]}`}
+          data-testid={`approval-row-state-${order.id}`}
+        >
+          {orderStateLabel(order.state)}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-xs">
+        {order.submitter_display_name ?? order.submitter_username ?? "—"}
+      </TableCell>
+      <TableCell className="text-xs">
+        {mine === null ? (
+          "—"
+        ) : (
+          <span data-testid={`approval-reviewed-${order.id}`}>
+            {iHaveReviewed ? t("approvals.queue.reviewedYes") : t("approvals.queue.reviewedNo")}
+          </span>
+        )}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
         {formatTimestamp(order.submitted_at)}
@@ -151,7 +169,9 @@ export default function ApprovalQueuePage() {
                   <TableHead>{t("approvals.queue.column.number")}</TableHead>
                   <TableHead>{t("approvals.queue.column.title")}</TableHead>
                   <TableHead>{t("approvals.queue.column.datasource")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.pendingStep")}</TableHead>
+                  <TableHead>{t("approvals.queue.column.state")}</TableHead>
+                  <TableHead>{t("approvals.queue.column.submitter")}</TableHead>
+                  <TableHead>{t("approvals.queue.column.reviewed")}</TableHead>
                   <TableHead>{t("approvals.queue.column.submittedAt")}</TableHead>
                   <TableHead />
                 </TableRow>

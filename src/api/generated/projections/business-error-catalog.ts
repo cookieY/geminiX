@@ -115,6 +115,11 @@ export const BUSINESS_ERROR_CATALOG: {
     "retryability": "never",
     "domain": "workflow"
   },
+  "1109": {
+    "name": "PASSWORD_MANAGED_BY_IDENTITY_SOURCE",
+    "retryability": "never",
+    "domain": "identity"
+  },
   "2001": {
     "name": "REVIEW_OUTDATED",
     "retryability": "never",

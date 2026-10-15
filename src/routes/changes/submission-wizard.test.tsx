@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, within, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -123,6 +123,35 @@ describe("SubmissionWizard create mode", () => {
       data: { items: Array<{ title: string }> };
     };
     expect(drafts.data.items[0]?.title).toBe("向导创建草稿");
+  });
+
+  it("carries the desired execution time onto the created draft (§18.56)", async () => {
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "定时工单" },
+    });
+    // DateTimePicker（§18.56补记2 antd式）：输入框开面板→点ISO天→
+    // 底部"时间"切换到时分列→选09/30→确定。
+    fireEvent.click(screen.getByTestId("draft-requested-for"));
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    const iso = `${String(tomorrow.getFullYear())}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+    fireEvent.click(await screen.findByRole("button", { name: iso }));
+    fireEvent.click(screen.getByTestId("draft-requested-for-time-toggle"));
+    fireEvent.click(within(screen.getByTestId("dtp-hours")).getByRole("button", { name: "09" }));
+    fireEvent.click(within(screen.getByTestId("dtp-minutes")).getByRole("button", { name: "30" }));
+    fireEvent.click(screen.getByTestId("draft-requested-for-confirm"));
+    expect(screen.queryByTestId("draft-requested-for-panel")).toBeNull();
+    expect(screen.getByTestId("draft-requested-for")).toHaveValue("2026-10-16 09:30".replace("2026-10-16", iso));
+    fireEvent.click(screen.getByTestId("wizard-continue"));
+    await waitFor(() => {
+      expect(screen.getByTestId("draft-workspace-page")).toBeVisible();
+    });
+    const drafts = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ requested_scheduled_for: string | null }> };
+    };
+    expect(drafts.data.items[0]?.requested_scheduled_for).not.toBeNull();
   });
 });
 

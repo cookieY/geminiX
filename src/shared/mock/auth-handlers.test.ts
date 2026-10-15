@@ -26,10 +26,13 @@ beforeEach(() => {
   setMockAuthBehavior("default");
 });
 
-async function post(path: string, body?: unknown): Promise<Response> {
+async function post(path: string, body?: unknown, session?: string): Promise<Response> {
   return fetch(path, {
     method: "POST",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    headers: {
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(session === undefined ? {} : { cookie: `yearning_session=${session}` }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -158,5 +161,44 @@ describe("authMockHandlers", () => {
     });
     const body = (await response.json()) as { err_code: number };
     expect(body.err_code).toBe(1001);
+  });
+
+  it("changes the password for a valid body and clears the session cookies (§18.52)", async () => {
+    const response = await post("https://yearning.test/api/v4/users/me/password", {
+      old_password: "fixture-pw",
+      new_password: "new-fixture-pw-12",
+    }, "mock-session-token");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { err_code: number };
+    expect(body.err_code).toBe(0);
+    // Mirrors the backend: every session is revoked on change.
+    const cookies = response.headers.getSetCookie().join("; ");
+    expect(cookies).toContain("yearning_session=;");
+    expect(cookies).toContain("Max-Age=0");
+  });
+
+  it("answers 1001 on password change for a short new password", async () => {
+    const response = await post("https://yearning.test/api/v4/users/me/password", {
+      old_password: "fixture-pw",
+      new_password: "short",
+    }, "mock-session-token");
+    const body = (await response.json()) as { err_code: number };
+    expect(body.err_code).toBe(1001);
+  });
+
+  it("answers 1001 on password change for a missing old password", async () => {
+    const response = await post("https://yearning.test/api/v4/users/me/password", {
+      new_password: "new-fixture-pw-12",
+    }, "mock-session-token");
+    const body = (await response.json()) as { err_code: number };
+    expect(body.err_code).toBe(1001);
+  });
+
+  it("answers 401 on password change without a session cookie", async () => {
+    const response = await post("https://yearning.test/api/v4/users/me/password", {
+      old_password: "fixture-pw",
+      new_password: "new-fixture-pw-12",
+    });
+    expect(response.status).toBe(401);
   });
 });

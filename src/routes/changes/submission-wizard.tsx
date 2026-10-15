@@ -19,6 +19,7 @@ import {
   submitChangeDraft,
   updateChangeDraft,
 } from "@/api/generated/client/change-drafts/change-drafts";
+import { DateTimePicker } from "@/shared/components/ui/date-time-picker";
 import { useDraftEditorStore, selectDirty } from "@/features/review/draft-editor-store";
 import { isTerminalPhase, presentPhase, type RunPhase } from "@/features/review/run-state";
 import { CapacityBanner } from "@/features/review/bulk-browser/capacity-banner";
@@ -171,10 +172,23 @@ interface MetaFieldsProps {
   onTitleChange: (title: string) => void;
   onDescriptionChange: (description: string) => void;
   titleError?: string | null;
+  /** §18.56方案B：期望执行时间（datetime-local字符串，空=未设置）。 */
+  requestedFor: string;
+  onRequestedForChange: (value: string) => void;
+  requestedForError?: string | null;
 }
 
-/** 标题/说明 fields shared by step 1 in both modes. */
-function MetaFields({ title, description, onTitleChange, onDescriptionChange, titleError }: MetaFieldsProps) {
+/** 标题/说明/期望执行时间 fields shared by step 1 in both modes. */
+function MetaFields({
+  title,
+  description,
+  onTitleChange,
+  onDescriptionChange,
+  requestedFor,
+  onRequestedForChange,
+  titleError,
+  requestedForError,
+}: MetaFieldsProps) {
   const { t } = useTranslation();
   return (
     <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
@@ -193,6 +207,25 @@ function MetaFields({ title, description, onTitleChange, onDescriptionChange, ti
           <p className="text-destructive text-xs" data-testid="wizard-title-error">{titleError}</p>
         )}
       </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="draft-requested-for">{t("precheck.wizard.requestedScheduleLabel")}</Label>
+        <DateTimePicker
+          id="draft-requested-for"
+          value={requestedFor}
+          onChange={onRequestedForChange}
+          enforceFuture
+          ariaLabel={t("precheck.wizard.requestedScheduleLabel")}
+          placeholder={t("precheck.wizard.requestedSchedulePlaceholder")}
+          testId="draft-requested-for"
+          className="w-56"
+        />
+        <p className="text-muted-foreground text-xs" data-testid="draft-requested-for-hint">
+          {t("precheck.wizard.requestedScheduleHint")}
+        </p>
+        {requestedForError != null && (
+          <p className="text-destructive text-xs" data-testid="wizard-requested-for-error">{requestedForError}</p>
+        )}
+      </div>
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor="draft-description-input">{t("precheck.new.dialog.descriptionLabel")}</Label>
         <Textarea
@@ -206,6 +239,23 @@ function MetaFields({ title, description, onTitleChange, onDescriptionChange, ti
       </div>
     </div>
   );
+}
+
+/** §18.56方案B：datetime-local（本地时区）→ RFC3339 UTC；空/非法返回null。 */
+export function requestedForToIso(value: string): string | null {
+  if (value === "") return null;
+  const due = new Date(value);
+  if (Number.isNaN(due.getTime())) return null;
+  return due.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+/** RFC3339 → datetime-local（展示/预填用）；null/过去时刻返回""。 */
+export function isoToRequestedFor(iso: string | null | undefined): string {
+  if (iso == null || iso === "") return "";
+  const due = new Date(iso);
+  if (Number.isNaN(due.getTime()) || due.getTime() <= Date.now()) return "";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${String(due.getFullYear())}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}T${pad(due.getHours())}:${pad(due.getMinutes())}`;
 }
 
 interface FlowPickerProps {
@@ -292,6 +342,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
+  const [createRequestedFor, setCreateRequestedFor] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
 
   // ---- shared data ----
@@ -306,6 +357,8 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // ---- step 1 state (draft mode, keyed remount via draft.id below) ----
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  // §18.56方案B：期望执行时间（datetime-local；空=清除）。
+  const [metaRequestedFor, setMetaRequestedFor] = useState("");
 
   // ---- workspace engine (steps 2-3); survives step switches so the run
   // keeps polling and the dock stays live on step 3. ----
@@ -337,6 +390,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     // Step 1 metadata starts from the persisted draft (async load lands here).
     setMetaTitle(draft.title ?? "");
     setMetaDescription(draft.description ?? "");
+    setMetaRequestedFor(isoToRequestedFor(draft.requested_scheduled_for));
   }, [draft, store]);
 
   // The shared event feed lives for the wizard's lifetime in draft mode.
@@ -495,6 +549,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         flow_id: selectedFlowId as string,
         title: createTitle.trim(),
         description: createDescription === "" ? undefined : createDescription,
+        requested_scheduled_for: requestedForToIso(createRequestedFor) ?? undefined,
       }),
     onSuccess: (created) => {
       const draftCreated = created as unknown as { id: string };
@@ -508,6 +563,8 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       updateChangeDraft(draftId as string, {
         title: metaTitle.trim(),
         description: metaDescription === "" ? undefined : metaDescription,
+        // §18.56方案B：显式null清除（is-null语义）；值=设置。
+        requested_scheduled_for: requestedForToIso(metaRequestedFor),
       }),
     onSuccess: () => {
       setActionError(null);
@@ -599,6 +656,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
   // ---- step transitions ----
   const continueFromInfo = (): void => {
+    // §18.56方案B：期望执行时间客户端gate（后端仍会复核）。
+    const requestedIssue = (value: string): string | null => {
+      if (value === "") return null;
+      if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
+      if (new Date(value).getTime() <= Date.now()) return t("precheck.wizard.requestedSchedulePast");
+      return null;
+    };
     if (mode === "create") {
       if (selectedFlowId === null) {
         setStepError(t("precheck.wizard.error.needFlow"));
@@ -608,6 +672,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         setStepError(t("precheck.wizard.error.needTitle"));
         return;
       }
+      const issue = requestedIssue(createRequestedFor);
+      if (issue !== null) {
+        setStepError(issue);
+        return;
+      }
       setStepError(null);
       createMutation.mutate();
       return;
@@ -615,6 +684,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     // Draft mode: persist metadata edits, then advance to the SQL step.
     if (metaTitle.trim() === "") {
       setStepError(t("precheck.wizard.error.needTitle"));
+      return;
+    }
+    const draftIssue = requestedIssue(metaRequestedFor);
+    if (draftIssue !== null) {
+      setStepError(draftIssue);
       return;
     }
     setStepError(null);
@@ -684,6 +758,15 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             description={createDescription}
             onTitleChange={(value) => { setCreateTitle(value); setStepError(null); }}
             onDescriptionChange={setCreateDescription}
+            requestedFor={createRequestedFor}
+            onRequestedForChange={(value) => { setCreateRequestedFor(value); setStepError(null); }}
+            requestedForError={
+              createRequestedFor !== "" && requestedForToIso(createRequestedFor) === null
+                ? t("precheck.wizard.requestedScheduleInvalid")
+                : createRequestedFor !== "" && new Date(createRequestedFor).getTime() <= Date.now()
+                  ? t("precheck.wizard.requestedSchedulePast")
+                  : null
+            }
           />
         </div>
         <Separator />
@@ -762,6 +845,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 description={metaDescription}
                 onTitleChange={setMetaTitle}
                 onDescriptionChange={setMetaDescription}
+                requestedFor={metaRequestedFor}
+                onRequestedForChange={(value) => { setMetaRequestedFor(value); setStepError(null); }}
+                requestedForError={
+                  metaRequestedFor !== "" && new Date(metaRequestedFor).getTime() <= Date.now()
+                    ? t("precheck.wizard.requestedSchedulePast")
+                    : null
+                }
                 titleError={stepError}
               />
             </div>

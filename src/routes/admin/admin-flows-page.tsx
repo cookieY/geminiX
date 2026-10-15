@@ -9,6 +9,7 @@ import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -448,19 +449,27 @@ function FlowFormDialog({
             <>
               <div className="flex flex-col gap-2">
                 <Label>{t("adminFlows.ruleSet")}</Label>
-                <select
-                  value={form.ruleSetId}
-                  onChange={(event) => { setForm({ ...form, ruleSetId: event.target.value }); }}
-                  className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                  data-testid="flow-rule-set"
+                {/* §18.59：Base UI Select（owner裁定"必须使用UI组件"）。 */}
+                <Select
+                  value={form.ruleSetId === "" ? undefined : form.ruleSetId}
+                  onValueChange={(value) => { setForm({ ...form, ruleSetId: value ?? "" }); }}
+                  items={Object.fromEntries(ruleSets.map((ruleSet) => [ruleSet.id, ruleSet.name]))}
                 >
-                  <option value="">{t("adminFlows.noRuleSet")}</option>
-                  {ruleSets.map((ruleSet) => (
-                    <option key={ruleSet.id} value={ruleSet.id}>
-                      {ruleSet.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    className="h-9 w-full text-sm"
+                    aria-label={t("adminFlows.ruleSet")}
+                    data-testid="flow-rule-set"
+                  >
+                    <SelectValue placeholder={t("adminFlows.noRuleSet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ruleSets.map((ruleSet) => (
+                      <SelectItem key={ruleSet.id} value={ruleSet.id}>
+                        {ruleSet.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -551,24 +560,31 @@ function FlowFormDialog({
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label>{t("adminFlows.stageDatasource")}</Label>
-                      <select
-                        value={stage.datasourceId}
-                        onChange={(event) => { setForm((current) => {
+                      <Select
+                        value={stage.datasourceId === "" ? undefined : stage.datasourceId}
+                        onValueChange={(value) => { setForm((current) => {
                             const stages = [...current.stages];
-                            stages[stageIndex] = { ...stage, datasourceId: event.target.value };
+                            stages[stageIndex] = { ...stage, datasourceId: value ?? "" };
                             return { ...current, stages };
                           }); }
                         }
-                        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                        data-testid={`flow-stage-datasource-${String(stageIndex)}`}
+                        items={Object.fromEntries(datasources.map((datasource) => [datasource.id, datasource.name]))}
                       >
-                        <option value="">{t("adminFlows.pickDatasource")}</option>
-                        {datasources.map((datasource) => (
-                          <option key={datasource.id} value={datasource.id}>
-                            {datasource.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          className="h-9 w-full text-sm"
+                          aria-label={t("adminFlows.stageDatasource", { index: String(stage.position) })}
+                          data-testid={`flow-stage-datasource-${String(stageIndex)}`}
+                        >
+                          <SelectValue placeholder={t("adminFlows.pickDatasource")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {datasources.map((datasource) => (
+                            <SelectItem key={datasource.id} value={datasource.id}>
+                              {datasource.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label>{t("adminFlows.schemaMappings")}</Label>
@@ -781,22 +797,45 @@ function ApprovalStepsEditor({
         <div key={stepIndex} className="flex flex-col gap-1 rounded-md border p-2" data-testid={`${testIdPrefix}-step-${String(stepIndex)}`}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium">{t("adminFlows.stepTitle", { index: step.position })}</span>
-            {steps.length > 1 && (
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => { onChange(
-                    steps
-                      .filter((_, index) => index !== stepIndex)
-                      .map((item, index) => ({ ...item, position: index + 1 })),
-                  ); }
-                }
-                aria-label={t("adminFlows.stepRemove", { index: String(step.position) })}
-                data-testid={`${testIdPrefix}-step-remove-${String(stepIndex)}`}
-              >
-                <Trash2 />
-              </Button>
-            )}
+            <span className="flex items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={step.actorIds.length > 0 && step.actorIds.length === users.length}
+                  indeterminate={step.actorIds.length > 0 && step.actorIds.length < users.length}
+                  onCheckedChange={() => {
+                    const allSelected = step.actorIds.length > 0 && step.actorIds.length === users.length;
+                    onChange(
+                      steps.map((item, index) =>
+                        index === stepIndex
+                          ? { ...item, actorIds: allSelected ? [] : users.map((user) => user.id) }
+                          : item,
+                      ),
+                    );
+                  }}
+                  data-testid={`${testIdPrefix}-step-${String(stepIndex)}-select-all`}
+                />
+                {t("adminFlows.selectAll")}
+                <span data-testid={`${testIdPrefix}-step-${String(stepIndex)}-select-all-count`}>
+                  {String(step.actorIds.length)}/{String(users.length)}
+                </span>
+              </label>
+              {steps.length > 1 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => { onChange(
+                      steps
+                        .filter((_, index) => index !== stepIndex)
+                        .map((item, index) => ({ ...item, position: index + 1 })),
+                    ); }
+                  }
+                  aria-label={t("adminFlows.stepRemove", { index: String(step.position) })}
+                  data-testid={`${testIdPrefix}-step-remove-${String(stepIndex)}`}
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </span>
           </div>
           <div className="flex flex-wrap gap-1">
             {users.map((user) => {
@@ -853,7 +892,23 @@ function ActorPicker({
   const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-2">
-      <Label>{label}</Label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label>{label}</Label>
+        <label className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground">
+          <Checkbox
+            checked={selected.length > 0 && selected.length === users.length}
+            indeterminate={selected.length > 0 && selected.length < users.length}
+            onCheckedChange={() => {
+              onChange(selected.length === users.length ? [] : users.map((user) => user.id));
+            }}
+            data-testid={`${testIdPrefix}-select-all`}
+          />
+          {t("adminFlows.selectAll")}
+          <span data-testid={`${testIdPrefix}-select-all-count`}>
+            {String(selected.length)}/{String(users.length)}
+          </span>
+        </label>
+      </div>
       <div className="flex flex-wrap gap-1">
         {users.map((user) => {
           const checked = selected.includes(user.id);

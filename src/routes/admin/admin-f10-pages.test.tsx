@@ -79,8 +79,48 @@ describe("gate: 用户删除影响预览（P105）", () => {
     await screen.findByTestId("admin-users-table");
     await userEvent.click(screen.getByTestId(`admin-user-delete-${ADMIN_FIXTURE_USER_BLOCKED_ID}`));
     const impact = await screen.findByTestId("admin-user-delete-impact");
-    expect(impact).toHaveTextContent("active_orders");
+    // §18.54: blocker codes render as translated sentences, not raw keys.
+    expect(impact).toHaveTextContent("仍是未终结工单的提交人");
+    expect(impact).toHaveTextContent("流程模板Actor引用");
+    expect(impact).not.toHaveTextContent("active_orders");
     expect(screen.getByTestId("admin-user-delete-confirm")).toBeDisabled();
+  });
+
+  it("creates a user only after the initial password is confirmed (§18.54)", async () => {
+    stubSession(true);
+    renderPage(<AdminUsersPage />);
+    await screen.findByTestId("admin-users-table");
+    await userEvent.click(screen.getByTestId("admin-users-create"));
+    const submit = await screen.findByTestId("user-create-submit");
+    expect(submit).toBeDisabled();
+
+    await userEvent.type(screen.getByTestId("user-create-username"), "carol");
+    await userEvent.type(screen.getByTestId("user-create-display"), "Carol Wu");
+    await userEvent.type(screen.getByTestId("user-create-password"), "carol-password-123");
+    // Confirm field empty → still disabled; mismatched → still disabled with the note.
+    expect(submit).toBeDisabled();
+    await userEvent.type(screen.getByTestId("user-create-confirm-password"), "different-fixture");
+    expect(await screen.findByTestId("user-create-confirm-mismatch")).toBeVisible();
+    expect(submit).toBeDisabled();
+
+    await userEvent.clear(screen.getByTestId("user-create-confirm-password"));
+    await userEvent.type(screen.getByTestId("user-create-confirm-password"), "carol-password-123");
+    expect(screen.queryByTestId("user-create-confirm-mismatch")).toBeNull();
+    expect(submit).toBeEnabled();
+
+    // §18.54: a malformed email shows the format note and blocks submit.
+    await userEvent.type(screen.getByTestId("user-create-email"), "not-an-email");
+    expect(await screen.findByTestId("user-create-email-invalid")).toBeVisible();
+    expect(submit).toBeDisabled();
+    await userEvent.clear(screen.getByTestId("user-create-email"));
+    await userEvent.type(screen.getByTestId("user-create-email"), "carol@yearning.test");
+    expect(screen.queryByTestId("user-create-email-invalid")).toBeNull();
+    expect(submit).toBeEnabled();
+
+    await userEvent.click(submit);
+    // The mock create handler succeeds; the dialog closes back to the table.
+    await screen.findByTestId("admin-users-table");
+    expect(screen.queryByTestId("user-create-submit")).toBeNull();
   });
 
   it("renders no role or department management anywhere (P102)", async () => {
@@ -163,6 +203,46 @@ describe("gate: 流程双表单符合新模型（§3）", () => {
     expect(masking).toHaveTextContent("敏感字段词表");
     const ruleInput = await within(masking).findAllByTestId(/flow-masking-rule-/);
     expect(ruleInput.some((input) => (input as HTMLTextAreaElement).value === "email, phone")).toBe(true);
+  });
+
+  // §18.64: every approval-step card and the execution-actor picker carry a
+  // tri-state master toggle (all -> clear, partial -> mixed) mirroring the
+  // permission-groups select-all.
+  it("toggles all actors per approval step and for execution actors (§18.64)", async () => {
+    stubSession(true);
+    renderPage(<AdminFlowsPage />);
+    await screen.findByTestId("admin-flows-table");
+    await userEvent.click(screen.getByTestId("admin-flows-create-change"));
+    const dialog = await screen.findByRole("dialog");
+    // A fresh change flow starts with zero stages — add the first one.
+    await userEvent.click(within(dialog).getByTestId("flow-add-stage"));
+
+    const stepAll = await within(dialog).findByTestId("flow-stage-0-step-0-select-all");
+    const chips = await within(dialog).findAllByTestId(/^flow-stage-0-step-0-actor-/);
+    expect(chips.length).toBeGreaterThan(1);
+    expect(stepAll.getAttribute("aria-checked")).toBe("false");
+
+    await userEvent.click(stepAll);
+    for (const chip of chips) {
+      expect(chip.getAttribute("aria-checked")).toBe("true");
+    }
+    expect(within(dialog).getByTestId("flow-stage-0-step-0-select-all-count").textContent)
+      .toBe(`${String(chips.length)}/${String(chips.length)}`);
+
+    // Dropping one chip moves the master checkbox to the mixed state.
+    const [firstChip] = chips;
+    if (firstChip === undefined) throw new Error("expected at least one actor chip");
+    await userEvent.click(firstChip);
+    expect(stepAll.getAttribute("aria-checked")).toBe("mixed");
+
+    const execAll = within(dialog).getByTestId("flow-stage-0-exec-select-all");
+    await userEvent.click(execAll);
+    const execChips = within(dialog).getAllByTestId(/^flow-stage-0-exec-actor-/);
+    for (const chip of execChips) {
+      expect(chip.getAttribute("aria-checked")).toBe("true");
+    }
+    expect(within(dialog).getByTestId("flow-stage-0-exec-select-all-count").textContent)
+      .toBe(`${String(execChips.length)}/${String(execChips.length)}`);
   });
 });
 

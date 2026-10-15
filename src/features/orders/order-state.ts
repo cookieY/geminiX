@@ -161,6 +161,39 @@ export function activeApprovalStepFor(
   return null;
 }
 
+/** §18.58：当前用户在该工单里"自己的"审批步——优先返回仍在等待决定的
+ * active步；否则返回第一个包含该用户的步骤（已决定/未激活/被跳过），
+ * 供审批队列在已审工单上展示我的参与状态。纯展示派生，权威判定在
+ * 后端决策命令。 */
+export interface MyApprovalStep extends ActiveApprovalStep {
+  stepState: string;
+}
+
+export function myApprovalStepFor(
+  order: ChangeOrder,
+  userId: string | undefined,
+): MyApprovalStep | null {
+  if (userId === undefined) return null;
+  let fallback: MyApprovalStep | null = null;
+  for (const stage of order.stages) {
+    for (const step of stageApprovalSteps(stage)) {
+      if (!step.actors.some((actor) => actor.id === userId)) continue;
+      const found: MyApprovalStep = {
+        stageId: stage.id,
+        stagePosition: stage.position,
+        datasourceName: stage.datasource_name,
+        stepId: step.id,
+        stepPosition: step.position,
+        actorCount: step.actors.length,
+        stepState: step.state,
+      };
+      if (step.state === "active") return found;
+      if (fallback === null) fallback = found;
+    }
+  }
+  return fallback;
+}
+
 /** Badge tone per approval-step state (order_approval_steps vocabulary,
  * including the W008 invalid state when frozen actors were removed). */
 export function approvalStepTone(state: string): OrderStateTone {

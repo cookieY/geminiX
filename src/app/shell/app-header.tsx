@@ -18,7 +18,9 @@ export function AppHeader() {
     <header className="sticky top-0 z-20 border-b border-border bg-background">
       <nav aria-label={t("shell.headerNav")} className="mx-auto flex flex-wrap items-center justify-between p-2">
         <div className="flex items-center gap-2">
-          <div className="block lg:hidden">
+          {/* §18.59：断点对齐侧栏（ui/sidebar 在md:flex显示）——原lg:hidden
+              在768~1024px与侧栏logo双显；改md:hidden后两者严格互补。 */}
+          <div className="md:hidden">
             <BrandLogo />
           </div>
           <SidebarTrigger
@@ -27,7 +29,7 @@ export function AppHeader() {
           />
           <Separator
             orientation="vertical"
-            className="mr-4 ml-2 h-4 w-px self-center bg-border max-lg:hidden"
+            className="mr-4 ml-2 h-4 w-px self-center bg-border max-md:hidden"
           />
         </div>
         <div className="flex items-center gap-1">

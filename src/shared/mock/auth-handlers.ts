@@ -21,6 +21,9 @@ const MOCK_CSRF_TOKEN = "mock-csrf-token";
 
 const NOW = "2026-08-28T08:00:00Z";
 
+// 与契约ChangeMyPasswordRequest.new_password的minLength一致。
+const MIN_NEW_PASSWORD_LENGTH = 12;
+
 function successEnvelope(data: DefaultBodyType) {
   return { err_code: 0, message: "ok", data, request_id: MOCK_REQUEST_ID };
 }
@@ -83,6 +86,9 @@ function mockUser(canAccessAdmin: boolean) {
     created_at: NOW,
     updated_at: NOW,
     can_access_admin: canAccessAdmin,
+    // §18.52: all mock identities are local accounts; the ldap/oidc branch of
+    // the profile security tab is covered by tests overriding /users/me.
+    auth_provider: "local",
   };
 }
 
@@ -160,6 +166,31 @@ export function authMockHandlers(): HttpHandler[] {
     http.post("*/auth/logout", () =>
       HttpResponse.json(successEnvelope(null), { headers: clearedSessionCookieHeaders() }),
     ),
+
+    // §18.52 自助改密。Demo语义：mock没有真实密码存储（登录接受任意凭据，
+    // 由auth-behavior维度控制），故只按契约做入参校验——old_password非空、
+    // new_password≥12否则1001；成功时清空会话Cookie，镜像后端
+    // “改密后全部会话失效、客户端回登录页”的语义。真实旧密码校验/1109
+    // 由后端契约测试覆盖。
+    http.post("*/users/me/password", async ({ request, cookies }) => {
+      const behavior = readStoredAuthBehavior();
+      if (behavior === "expired" || !hasSession(cookies)) {
+        return unauthenticated();
+      }
+      const body = (await request.json().catch(() => null)) as
+        | { old_password?: unknown; new_password?: unknown }
+        | null;
+      if (
+        body === null ||
+        typeof body.old_password !== "string" ||
+        body.old_password === "" ||
+        typeof body.new_password !== "string" ||
+        body.new_password.length < MIN_NEW_PASSWORD_LENGTH
+      ) {
+        return HttpResponse.json(businessError(1001, "validation failed"));
+      }
+      return HttpResponse.json(successEnvelope(null), { headers: clearedSessionCookieHeaders() });
+    }),
 
     http.get("*/auth/providers", () =>
       HttpResponse.json(

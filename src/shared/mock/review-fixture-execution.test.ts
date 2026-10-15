@@ -74,6 +74,7 @@ function seedExecutionOrder(overrides: Partial<FixtureOrder> = {}, suffix = "cd"
     id: `8a6f1a2b-0000-4000-8000-00000000${suffix}01`,
     display_number: "YR-20260830-000201",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "执行夹具工单",
     state: "stage_execution_pending",
     current_stage_position: 1,

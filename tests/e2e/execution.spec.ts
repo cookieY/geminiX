@@ -163,8 +163,14 @@ test("schedules are executor-created and missed schedules never catch up", async
   await expect(page.getByTestId("execution-action-card")).toBeVisible({ timeout: 8_000 });
   const due = new Date(Date.now() + 60 * 60 * 1000);
   const pad = (value: number): string => String(value).padStart(2, "0");
-  const dueLocal = `${String(due.getFullYear())}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}T${pad(due.getHours())}:${pad(due.getMinutes())}`;
-  await page.getByTestId("execution-schedule-input").fill(dueLocal);
+  // §18.56补记2：antd式选择器——输入框开面板→ISO天→"时间"切列→时/分→确定。
+  await page.getByTestId("execution-schedule-input").click();
+  const iso = `${String(due.getFullYear())}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}`;
+  await page.getByTestId("execution-schedule-input-panel").getByRole("button", { name: iso, exact: true }).click();
+  await page.getByTestId("execution-schedule-input-time-toggle").click();
+  await page.getByTestId("dtp-hours").getByRole("button", { name: pad(due.getHours()), exact: true }).click();
+  await page.getByTestId("dtp-minutes").getByRole("button", { name: pad(due.getMinutes()), exact: true }).click();
+  await page.getByTestId("execution-schedule-input-confirm").click();
   await page.getByTestId("execution-schedule-submit").click();
   // The success note lives on the action card, which unmounts once the order
   // refetches into `scheduled` — assert the persisted surfaces instead: the

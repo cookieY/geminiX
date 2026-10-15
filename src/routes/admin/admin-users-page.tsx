@@ -46,6 +46,7 @@ interface UserFormState {
   displayName: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 export default function AdminUsersPage() {
@@ -248,11 +249,18 @@ function DeleteUserDialog({
                 <AlertTitle>{t("adminUsers.delete.blocked")}</AlertTitle>
                 <AlertDescription>
                   <ul className="list-disc pl-4">
-                    {impact.blockers.map((blocker) => (
-                      <li key={blocker.code}>
-                        {blocker.code} × {blocker.count}
-                      </li>
-                    ))}
+                    {impact.blockers.map((blocker) => {
+                      // §18.54: blocker codes are a backend/mock string set;
+                      // render the translated sentence, raw code only as an
+                      // unknown-code fallback.
+                      const key = `adminUsers.delete.blocker.${blocker.code}`;
+                      const text = i18next.exists(key) ? i18next.t(key) : blocker.code;
+                      return (
+                        <li key={blocker.code}>
+                          {text} × {blocker.count}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -299,14 +307,25 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
     displayName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  // §18.54: the initial password must be retyped before the form can submit.
+  const confirmMismatch =
+    form.confirmPassword !== "" && form.confirmPassword !== form.password;
+  // Email is optional; when filled it must look like an address, and the
+  // failure must be visible instead of a silently disabled submit (§18.54).
+  const emailInvalid =
+    form.email.trim() !== "" && !/.+@.+\..+/.test(form.email);
 
   const valid =
     form.username.trim() !== "" &&
     form.displayName.trim() !== "" &&
     form.password.length >= 12 &&
-    (form.email.trim() === "" || /.+@.+\..+/.test(form.email));
+    form.confirmPassword !== "" &&
+    !confirmMismatch &&
+    !emailInvalid;
 
   const submit = async () => {
     setErrorText(null);
@@ -317,7 +336,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
         email: form.email.trim() === "" ? null : form.email,
         password: form.password,
       });
-      setForm({ username: "", displayName: "", email: "", password: "" });
+      setForm({ username: "", displayName: "", email: "", password: "", confirmPassword: "" });
       onClose();
     } catch (error) {
       setErrorText(describeErrorText(describeError(error, "createUser")));
@@ -359,19 +378,43 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
               type="email"
               value={form.email}
               onChange={(event) => { setForm({ ...form, email: event.target.value }); }}
+              aria-invalid={emailInvalid || undefined}
               data-testid="user-create-email"
             />
+            {emailInvalid && (
+              <p className="text-destructive text-xs" data-testid="user-create-email-invalid">
+                {t("adminUsers.emailInvalid")}
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="user-create-password">{t("adminUsers.password")}</Label>
             <Input
               id="user-create-password"
               type="password"
+              autoComplete="new-password"
               value={form.password}
               onChange={(event) => { setForm({ ...form, password: event.target.value }); }}
               data-testid="user-create-password"
             />
             <p className="text-muted-foreground text-xs">{t("adminUsers.passwordHint")}</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="user-create-confirm-password">{t("adminUsers.confirmPassword")}</Label>
+            <Input
+              id="user-create-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={form.confirmPassword}
+              onChange={(event) => { setForm({ ...form, confirmPassword: event.target.value }); }}
+              aria-invalid={confirmMismatch || undefined}
+              data-testid="user-create-confirm-password"
+            />
+            {confirmMismatch && (
+              <p className="text-destructive text-xs" data-testid="user-create-confirm-mismatch">
+                {t("adminUsers.confirmMismatch")}
+              </p>
+            )}
           </div>
           {errorText !== null && (
             <Alert variant="destructive" data-testid="admin-user-create-error">

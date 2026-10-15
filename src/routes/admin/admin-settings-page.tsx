@@ -5,6 +5,7 @@ import type {
   ExecutionWindowDaysOfWeekItem,
   SettingsImpactAssessment,
   SettingsValue,
+  OscOverrides,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { BusinessError } from "@/shared/api/mutator";
@@ -14,8 +15,9 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import {
   useAssessSettingsImpact,
@@ -152,10 +154,9 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
 
       {draft !== null && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">{t("adminSettings.form")}</CardTitle>
-            <CardDescription>{t("adminSettings.formDescription")}</CardDescription>
-          </CardHeader>
+          {/* §18.55: the redundant inner card header（设置表单/按声明Schema编辑）
+              was removed by owner ruling — the page header already names the
+              namespace. */}
           <CardContent className="flex flex-col gap-4">
             {namespace === "general" && <GeneralFields draft={draft} setDraft={setDraft} />}
             {namespace === "query" && <QueryFields draft={draft} setDraft={setDraft} />}
@@ -324,6 +325,24 @@ function QueryFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Draf
 function ExecutionFields({ draft, setDraft }: { draft: SettingsValue; setDraft: DraftSetter }) {
   const { t } = useTranslation();
   if (!("restriction_enabled" in draft)) return null;
+
+  /** 空值剔除：OscOverrides全键可选，空串不发送（pattern会拒""）。
+   * exec捕获in-收窄后的ExecutionSettings（闭包内对参数的收窄不保持）。 */
+  const exec = draft;
+  function setOscDefault(key: "max_load" | "critical_load" | "chunk_size" | "max_lag" | "retries", raw: string): void {
+    const trimmed = raw.trim();
+    const previous: OscOverrides = exec.osc.defaults;
+    // 解构剔除动态键（no-dynamic-delete）。
+    const { [key]: _removed, ...rest } = previous;
+    const base: OscOverrides = rest;
+    if (key === "max_load" || key === "critical_load") {
+      if (trimmed !== "") base[key] = trimmed;
+    } else {
+      const parsed = Number(trimmed);
+      if (trimmed !== "" && !Number.isNaN(parsed)) base[key] = parsed;
+    }
+    setDraft({ ...exec, osc: { ...exec.osc, defaults: base } });
+  }
   return (
     <>
       <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -409,18 +428,88 @@ function ExecutionFields({ draft, setDraft }: { draft: SettingsValue; setDraft: 
       </div>
       <div className="flex flex-col gap-2">
         <Label>{t("adminSettings.execution.oscTool")}</Label>
-        <select
-          value={draft.osc.tool}
-          onChange={(event) => { setDraft({ ...draft, osc: { ...draft.osc, tool: event.target.value as "none" | "gh-ost" } }); }}
-          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-          data-testid="settings-execution-osc"
+        {/* §18.59：Base UI Select + gh-ost选中时展开typed参数输入
+            （OscOverrides五键，契约已声明；空值不发送）。 */}
+        <Select
+          value={draft.osc.tool === "none" ? undefined : draft.osc.tool}
+          onValueChange={(value) => { setDraft({ ...draft, osc: { ...draft.osc, tool: value ?? "none" } }); }}
+          items={{ "gh-ost": "gh-ost" }}
         >
-          <option value="none">none</option>
-          <option value="gh-ost">gh-ost</option>
-        </select>
+          <SelectTrigger
+            className="h-9 w-40 text-sm"
+            aria-label={t("adminSettings.execution.oscTool")}
+            data-testid="settings-execution-osc"
+          >
+            <SelectValue placeholder="none" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="gh-ost">gh-ost</SelectItem>
+          </SelectContent>
+        </Select>
         <p className="text-muted-foreground text-xs">{t("adminSettings.execution.oscHint")}</p>
+        {draft.osc.tool === "gh-ost" && (
+          <div className="mt-1 flex flex-col gap-3 rounded-md border p-3" data-testid="settings-osc-defaults">
+            <p className="text-muted-foreground text-xs">{t("adminSettings.execution.oscDefaultsHint")}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <OscTextField
+                label={t("adminSettings.execution.oscMaxLoad")}
+                placeholder="Threads_running=50"
+                value={draft.osc.defaults.max_load ?? ""}
+                onChange={(next) => { setOscDefault("max_load", next); }}
+                testId="settings-osc-max-load"
+              />
+              <OscTextField
+                label={t("adminSettings.execution.oscCriticalLoad")}
+                placeholder="Threads_running=100"
+                value={draft.osc.defaults.critical_load ?? ""}
+                onChange={(next) => { setOscDefault("critical_load", next); }}
+                testId="settings-osc-critical-load"
+              />
+              <OscNumberField
+                label={t("adminSettings.execution.oscChunkSize")}
+                value={draft.osc.defaults.chunk_size === undefined ? "" : String(draft.osc.defaults.chunk_size)}
+                onChange={(next) => { setOscDefault("chunk_size", next); }}
+                testId="settings-osc-chunk-size"
+              />
+              <OscNumberField
+                label={t("adminSettings.execution.oscMaxLag")}
+                value={draft.osc.defaults.max_lag === undefined ? "" : String(draft.osc.defaults.max_lag)}
+                onChange={(next) => { setOscDefault("max_lag", next); }}
+                testId="settings-osc-max-lag"
+              />
+              <OscNumberField
+                label={t("adminSettings.execution.oscRetries")}
+                value={draft.osc.defaults.retries === undefined ? "" : String(draft.osc.defaults.retries)}
+                onChange={(next) => { setOscDefault("retries", next); }}
+                testId="settings-osc-retries"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
+  );
+}
+
+function OscTextField({ label, placeholder, value, onChange, testId }: {
+  label: string; placeholder: string; value: string; onChange: (next: string) => void; testId: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={testId} className="text-xs">{label}</Label>
+      <Input id={testId} value={value} placeholder={placeholder} onChange={(event) => { onChange(event.target.value); }} className="h-8 font-mono text-xs" data-testid={testId} />
+    </div>
+  );
+}
+
+function OscNumberField({ label, value, onChange, testId }: {
+  label: string; value: string; onChange: (next: string) => void; testId: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={testId} className="text-xs">{label}</Label>
+      <Input id={testId} type="number" value={value} onChange={(event) => { onChange(event.target.value); }} className="h-8 text-xs" data-testid={testId} />
+    </div>
   );
 }
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import {
@@ -30,6 +31,9 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
+  // §18.53: the sheet is controlled so menu actions close it — navigating to
+  // the profile page used to leave the drawer open over the destination.
+  const [open, setOpen] = useState(false);
   const user =
     userOverride ??
     (session.user === null ? null : toSessionUser(session.user));
@@ -40,6 +44,7 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
       : "shell.role.user";
 
   const handleLogout = async () => {
+    setOpen(false);
     try {
       await session.logout();
     } catch {
@@ -49,7 +54,7 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full hover:bg-primary/5"
         aria-label={t("shell.userMenu.open")}
@@ -80,7 +85,10 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-3 px-3"
-                onClick={() => void navigate("/profile")}
+                onClick={() => {
+                  setOpen(false);
+                  void navigate("/profile");
+                }}
                 disabled={session.status !== "authenticated"}
                 data-testid="user-menu-profile"
               >

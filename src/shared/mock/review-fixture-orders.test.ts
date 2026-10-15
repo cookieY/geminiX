@@ -50,6 +50,7 @@ function seedOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
     id: "8a6f1a2b-0000-4000-8000-00000000ab01",
     display_number: "YR-20260830-000007",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "夹具工单",
     state: "submitted",
     current_stage_position: 1,
@@ -582,5 +583,32 @@ describe("approval decision fixture contract (FE-F7)", () => {
     const listed = await jsonRequest("/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/review-findings");
     expect(listed.body.err_code).toBe(0);
     expect(listed.body.data.items).toEqual([]);
+  });
+});
+
+describe("requested execution time fixture contract (§18.56 ruling B)", () => {
+  it("rejects a past requested time on draft create and clears via null on update", async () => {
+    const past = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const future = new Date(Date.now() + 48 * 3600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+    const bad = await jsonRequest("/change-drafts", post({
+      flow_id: FIXTURE_FLOW_ID, title: "sched-mock", requested_scheduled_for: past,
+    }));
+    expect(bad.body.err_code).toBe(1001);
+
+    const created = await jsonRequest("/change-drafts", post({
+      flow_id: FIXTURE_FLOW_ID, title: "sched-mock", requested_scheduled_for: future,
+    }));
+    expect(created.body.err_code).toBe(0);
+    expect(created.body.data.requested_scheduled_for).toBe(future);
+    const draftId = created.body.data.id as string;
+
+    const cleared = await jsonRequest(`/change-drafts/${draftId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requested_scheduled_for: null }),
+    });
+    expect(cleared.body.err_code).toBe(0);
+    expect(cleared.body.data.requested_scheduled_for).toBeNull();
   });
 });

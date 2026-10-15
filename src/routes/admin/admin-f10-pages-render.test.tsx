@@ -105,9 +105,13 @@ describe("profile page", () => {
     expect(screen.getByTestId("profile-tab-appearance")).toBeVisible();
     expect(screen.getByTestId("profile-tab-notifications")).toBeVisible();
     expect(screen.getByTestId("profile-tab-display")).toBeVisible();
-    // The security tab states the no-self-service-password boundary.
+    // §18.52: the security tab now renders the self-service password form
+    // for local accounts (mock identities are always local).
     await userEvent.click(screen.getByTestId("profile-tab-security"));
-    expect(await screen.findByText(/未声明自助改密端点/)).toBeVisible();
+    expect(await screen.findByTestId("profile-old-password")).toBeVisible();
+    expect(screen.getByTestId("profile-new-password")).toBeVisible();
+    expect(screen.getByTestId("profile-confirm-password")).toBeVisible();
+    expect(screen.getByTestId("profile-change-password-submit")).toBeVisible();
   });
 });
 

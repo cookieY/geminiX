@@ -198,7 +198,24 @@
     "NOTIFICATION_CHANNEL_FAILED": "通知渠道发送失败，请检查配置。",
     "TEMPLATE_RENDER_FAILED": "通知模板渲染失败。",
     "SYSTEM_MAINTENANCE": "系统维护中，请稍后重试。",
-    "MIGRATION_MODE_ACTIVE": "迁移模式生效中，仅允许迁移操作。"
+    "MIGRATION_MODE_ACTIVE": "迁移模式生效中，仅允许迁移操作。",
+    "PASSWORD_MANAGED_BY_IDENTITY_SOURCE": "账号绑定LDAP/OIDC身份源，密码由身份源管理。"
+  },
+  "dateTimePicker": {
+    "title": "选择时间",
+    "hint": "选择年月日与小时、分钟。",
+    "futureHint": "选择年月日与小时、分钟；不得早于当前时间。",
+    "hour": "时",
+    "minute": "分",
+    "clear": "清空",
+    "confirm": "确定",
+    "placeholder": "请选择时间",
+    "time": "时间",
+    "backToDate": "返回日期",
+    "prevYear": "上一年",
+    "nextYear": "下一年",
+    "prevMonth": "上个月",
+    "nextMonth": "下个月"
   },
   "common": {
     "cancel": "取消",
@@ -283,7 +300,12 @@
       "summary.saved": "已保存",
       "summary.empty": "未填写",
       "searchPlaceholder": "搜索流程标题…",
-      "searchEmpty": "未找到匹配的流程"
+      "searchEmpty": "未找到匹配的流程",
+      "requestedScheduleLabel": "期望执行时间（可选）",
+      "requestedScheduleHint": "审批通过后预填为执行人的预约时间；到点自动执行仍需执行人确认预约。",
+      "requestedScheduleInvalid": "期望执行时间格式不正确。",
+      "requestedSchedulePast": "期望执行时间必须是未来时刻。",
+      "requestedSchedulePlaceholder": "选择期望执行时间"
     },
     "review": {
       "title": "审核进度",
@@ -532,7 +554,8 @@
       "commentSubmit": "发送",
       "commentsEmpty": "暂无评论",
       "stepTitle": "步骤 {{position}}",
-      "stepDecidedAt": "决定于 {{time}}"
+      "stepDecidedAt": "决定于 {{time}}",
+      "requestedSchedule": "期望执行时间"
     },
     "state": {
       "submitted": "已提交",
@@ -634,7 +657,11 @@
       "copyFlow": "目标流程",
       "copyFlowPlaceholder": "选择流程",
       "copyTitleLabel": "标题",
-      "copySuffix": "副本"
+      "copySuffix": "副本",
+      "schedulePrefilled": "已按提交人期望时间预填，可直接确认或修改。",
+      "schedulePlaceholder": "选择预约时间",
+      "waitTitle": "等待执行",
+      "waitNote": "该阶段审批已通过。执行操作只属于流程冻结的执行人（{{names}}）；其他角色在此等待执行结果。"
     },
     "attemptState": {
       "created": "已创建",
@@ -713,10 +740,14 @@
         "number": "工单号",
         "title": "标题",
         "datasource": "数据源",
-        "pendingStep": "待审步",
-        "submittedAt": "提交时间"
+        "pendingStep": "待审核步骤",
+        "submittedAt": "提交时间",
+        "state": "工单状态",
+        "submitter": "提交人",
+        "reviewed": "是否已审批"
       },
-      "pendingStep": "阶段 {{stage}} · 步骤 {{step}} · {{reviewers}} 人",
+      "reviewedYes": "是",
+      "reviewedNo": "否",
       "open": "打开详情",
       "frozenNote": "审批复用提交时冻结的审核结果；本页与审批操作都不会重新运行AI审核。"
     },
@@ -782,7 +813,7 @@
       "description": "管理连接、三用途凭据与能力探测；数据源不绑定审核规则或流程。",
       "createTitle": "新建数据源",
       "editTitle": "编辑数据源",
-      "formDescription": "凭据按 Review/Query/Execution 三用途配置；Secret 只支持替换或显式复用，永不回显。",
+      "formDescription": "凭据按 审核/查询/执行 三个用途配置：审核与查询为只读账号，执行为读写账号；凭据只支持替换或显式复用，保存后永不回显。",
       "name": "名称",
       "engine": "引擎",
       "compatibilityMode": "兼容模式",
@@ -794,11 +825,11 @@
       "enabled": "启用",
       "disabled": "已禁用",
       "credentialsTitle": "用途凭据",
-      "credentialsHint": "Review（{{review}}）与 Query（{{query}}）应使用只读账号，Execution（{{execution}}）使用写账号；同一凭据跨用途复用会放大权限面。",
+      "credentialsHint": "审核与查询应使用只读账号，执行使用读写账号；同一凭据跨用途复用会放大权限面。",
       "purpose": {
-        "review": "Review",
-        "query": "Query",
-        "execution": "Execution"
+        "review": "审核（只读）",
+        "query": "查询（只读）",
+        "execution": "执行（读写）"
       },
       "credentialConfigured": "已配置",
       "username": "用户名",
@@ -816,6 +847,7 @@
       "deleteErrorHint": "引用清理完成前禁止物理删除；可将数据源设为禁用。",
       "testConnection": "测试连接",
       "testPurpose": "连接测试用途",
+      "testPurposeHint": "表格中的「测试连接」按此凭据类别探测：只读用审核（或查询）凭据，读写用执行凭据。",
       "testRunning": "连接测试进行中…",
       "testFailed": "连接测试失败，请检查凭据与网络。",
       "capabilitiesTitle": "能力矩阵",
@@ -845,25 +877,15 @@
       "tlsPairHint": "证书与私钥必须成对提交；提交时省略TLS将移除全部已存材料。",
       "tlsEmptyError": "启用TLS时至少需要提交一项材料。",
       "tlsPairError": "客户端证书与私钥必须成对提供。",
-      "formInvalidHint": "保存已禁用：请填写名称、主机与版本约束（编辑时版本约束不回显、需重新输入），端口需为 1–65535，并至少保留一个用途凭据；凭据行在替换模式下需用户名＋密码、复用模式下需选择来源并填用户名；TLS 材料需至少一项且证书与私钥成对。"
+      "formInvalidHint": "保存已禁用：请填写名称、主机与版本约束（编辑时版本约束不回显、需重新输入），端口需为 1–65535，并至少保留一个用途凭据；凭据行在替换模式下需用户名＋密码、复用模式下需选择来源并填用户名；TLS 材料需至少一项且证书与私钥成对。",
+      "credModeReadWrite": "读写",
+      "credModeReadOnly": "只读"
     },
     "reviewInput": {
       "knowledgeText": "规则知识正文",
       "knowledgeTextHint": "确定性注入模型上下文的强规则文本；不得要求输出凭据或系统提示词。",
-      "findingKey": "Finding Key",
-      "category": "类别",
-      "category_correctness": "正确性",
-      "category_performance": "性能",
-      "category_availability": "可用性",
-      "category_security": "安全",
-      "category_governance": "治理",
-      "category_compatibility": "兼容性",
-      "category_operability": "可运维性",
-      "title": "发现标题",
-      "message": "发现描述",
-      "suggestion": "修复建议",
-      "severityWhitelist": "严重级别白名单",
-      "severityWhitelistHint": "该输入允许产出的严重级别集合；模板级别必须落在白名单内，High/Critical 按统一 Gate 阻断。",
+      "severityWhitelist": "严重级别",
+      "severityWhitelistHint": "该规则产出的发现允许的最高严重级别（向下含低档）；High/Critical 按统一 Gate 阻断。",
       "severity_info": "提示",
       "severity_low": "低",
       "severity_medium": "中",
@@ -875,14 +897,12 @@
       "state_disabled": "停用",
       "name": "名称",
       "configHash": "配置 Hash",
-      "formDescription": "四字段定义（知识正文/Finding 模板/严重级别白名单/版本）；不存在可执行代码、HTTP 调用或写库入口。",
+      "formDescription": "定义 = 规则正文 + 最高严重级别 + 版本；Finding Key 由系统派生，发现文案由审核模型生成；不存在可执行代码、HTTP 调用或写库入口。",
       "outdatedNoteTitle": "配置 Hash 与 Review 失效影响",
       "outdatedNoteBody": "每次保存都会重算不可变 config_hash；变更使引用旧 Hash 的未提交预审立即失效（需重新预审），已提交工单继续使用冻结快照。",
       "deleteTitle": "删除条目",
       "deleteDescription": "确认删除 {{name}}？曾被 Review 引用过的条目禁止物理删除，只能停用。",
-      "deleteErrorHint": "条目已被 Review 或规则集引用，仅可停用。",
-      "templateSeverity": "模板严重级别（可选）",
-      "templateSeverityHint": "该定义产出的 Finding 的级别；留空表示由白名单语义裁定。后端仅在已设置时校验其落在白名单内。"
+      "deleteErrorHint": "条目已被 Review 或规则集引用，仅可停用。"
     },
     "skills": {
       "title": "审核技能（Prompt Tool）",
@@ -1032,7 +1052,8 @@
       "deleteTitle": "删除规则集",
       "deleteDescription": "确认删除规则集 {{name}}？被流程绑定的规则集不能删除。",
       "emptyTitle": "暂无规则集",
-      "emptyDescription": "创建第一个规则集以组合审核技能。"
+      "emptyDescription": "创建第一个规则集以组合审核技能。",
+      "createdAtColumn": "创建时间"
     }
   },
   "query": {
@@ -1246,7 +1267,19 @@
     "security": {
       "title": "账号与安全",
       "description": "账号身份与密码策略。",
-      "passwordNote": "契约未声明自助改密端点：Local账号密码由管理员管理；LDAP/OIDC账号由身份源管理。"
+      "oldPassword": "原密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "policyHint": "至少 12 个字符。",
+      "confirmMismatch": "两次输入的新密码不一致。",
+      "submit": "修改密码",
+      "submitting": "提交中…",
+      "changeFailed": "修改密码失败",
+      "wrongOldPassword": "原密码不正确。",
+      "changed": "密码已修改，请使用新密码重新登录。",
+      "identitySourceNote": "该账号绑定 {{provider}}，密码由身份源管理，不能在本系统修改。",
+      "provider.ldap": "LDAP",
+      "provider.oidc": "OIDC"
     },
     "appearance": {
       "title": "外观",
@@ -1297,8 +1330,16 @@
       "activeSessions": "进行中的查询会话",
       "snapshotsPreserved": "历史快照与业务事实将保留（P105）。",
       "blocked": "存在阻断项，不能删除",
-      "confirm": "确认删除"
-    }
+      "confirm": "确认删除",
+      "blocker": {
+        "builtin_admin_immutable": "内置管理员受保护，不可删除",
+        "active_orders": "仍是未终结工单的提交人",
+        "referenced_by_template": "流程模板Actor引用，删除会使流程节点无人"
+      }
+    },
+    "confirmPassword": "确认初始密码",
+    "confirmMismatch": "两次输入的密码不一致。",
+    "emailInvalid": "邮箱格式不正确。"
   },
   "adminGroups": {
     "title": "权限组",
@@ -1392,6 +1433,7 @@
     "addStep": "添加步骤",
     "stepTitle": "步骤 {{index}}",
     "executionActors": "执行人",
+    "selectAll": "全选",
     "actorHint": "Actor为具体用户UUID。",
     "queryDatasources": "数据源与能力",
     "queryDatasourcesHint": "为每个数据源分别授予查询与导出能力。",
@@ -1572,7 +1614,13 @@
       "weekdays": "星期（逗号分隔）",
       "addWindow": "添加窗口",
       "oscTool": "OSC工具",
-      "oscHint": "none或gh-ost。"
+      "oscHint": "none或gh-ost。",
+      "oscDefaultsHint": "gh-ost 默认参数（类型化键；留空使用工具默认值；执行人可在创建执行时逐次覆盖）。",
+      "oscMaxLoad": "最大负载阈值",
+      "oscCriticalLoad": "临界负载阈值",
+      "oscChunkSize": "拷贝批量行数（1–100000）",
+      "oscMaxLag": "最大复制延迟秒数（0–86400）",
+      "oscRetries": "重试次数（1–3）"
     },
     "branding": {
       "title": "品牌设置",
@@ -1581,8 +1629,6 @@
       "loginDescription": "登录页描述",
       "assetsNote": "Logo与Favicon资产经品牌资产管理，此处仅引用资产ID。"
     },
-    "form": "设置表单",
-    "formDescription": "按声明Schema编辑；高影响变更需先评估并携带一次性impact token。",
     "assessment": {
       "level": "影响级别：{{level}}",
       "expiresAt": "评估有效期至 {{time}}"

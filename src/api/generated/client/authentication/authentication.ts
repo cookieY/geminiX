@@ -8,6 +8,8 @@
  * OpenAPI spec version: 4.0.0-draft.1
  */
 import type {
+  ChangeMyPassword200,
+  ChangeMyPasswordRequest,
   FinishOidcLoginParams,
   GetCurrentUser200,
   ListAuthenticationProviders200,
@@ -320,6 +322,55 @@ export const getCurrentUser = async ( options?: Parameters<typeof customInstance
     method: 'GET'
 
 
+  }
+);}
+
+
+export type changeMyPasswordResponse200 = {
+  data: ChangeMyPassword200
+  status: 200
+}
+
+export type changeMyPasswordResponse401 = {
+  data: ProblemResponse
+  status: 401
+}
+
+export type changeMyPasswordResponseSuccess = (changeMyPasswordResponse200) & {
+  headers: Headers;
+};
+export type changeMyPasswordResponseError = (changeMyPasswordResponse401) & {
+  headers: Headers;
+};
+
+export type changeMyPasswordResponse = (changeMyPasswordResponseSuccess | changeMyPasswordResponseError)
+
+export const getChangeMyPasswordUrl = () => {
+
+
+
+
+  return `/users/me/password`
+}
+
+/**
+ * Verifies the old password, applies the 12-character minimum policy, stores a fresh Argon2id hash and revokes every session of the user (including the current one — the client must return to the login screen). Accounts bound to an external identity provider are rejected with PASSWORD_MANAGED_BY_IDENTITY_SOURCE. The builtin admin may change its own password here; the login lockout is only ever cleared by the CLI reset command, never by this endpoint.
+ * @summary Self-service local password change
+ */
+export const changeMyPassword = async (changeMyPasswordRequest: ChangeMyPasswordRequest, options?: Parameters<typeof customInstance>[1]): Promise<changeMyPasswordResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<changeMyPasswordResponse>(getChangeMyPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changeMyPasswordRequest)
   }
 );}
 

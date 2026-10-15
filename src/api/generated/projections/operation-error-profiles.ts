@@ -121,6 +121,16 @@ export const OPERATION_ERROR_PROFILES: {
       "register"
     ]
   },
+  "password_change": {
+    "err_codes": [
+      1001,
+      1101,
+      1109
+    ],
+    "operations": [
+      "changeMyPassword"
+    ]
+  },
   "admin_create": {
     "err_codes": [
       1001,

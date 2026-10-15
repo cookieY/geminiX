@@ -126,6 +126,8 @@ interface FixtureDraft {
   flow_id: string;
   title: string;
   description: string | null;
+  /** §18.56方案B：提交人期望执行时间（RFC3339或null）；提交时冻结到工单。 */
+  requested_scheduled_for: string | null;
   revision: number;
   state: "draft" | "reviewing" | "ready" | "blocked" | "partial" | "failed" | "outdated" | "submitted";
   has_sql: boolean;
@@ -201,6 +203,9 @@ export interface FixtureOrder {
     | "missed_schedule"
     | "invalid";
   current_stage_position: number | null;
+  /** §18.56方案B：提交时冻结的期望执行时间（RFC3339或null）；展示与
+   * 执行人预约预填用，不构成执行授权。 */
+  requested_scheduled_for: string | null;
   stages: Array<{
     id: string;
     position: number;
@@ -396,6 +401,16 @@ function now(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+/** §18.56方案B：期望执行时间校验（镜像后端ParseRequestedSchedule）——
+ * RFC3339且严格未来；非法/过去返回null由调用方回1001。
+ * 纯建议值：不校验执行窗口与5分钟~30天区间（预约时按既有3007核）。 */
+function parseRequestedSchedule(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return null;
+  return value;
+}
+
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return "00000000-0000-4000-8000-000000000000".replace(/0/g, () =>
@@ -517,6 +532,7 @@ function draftPublic(draft: FixtureDraft) {
     flow_id: draft.flow_id,
     title: draft.title,
     description: draft.description,
+    requested_scheduled_for: draft.requested_scheduled_for,
     revision: draft.revision,
     state: draft.state,
     has_sql: draft.has_sql,
@@ -576,13 +592,19 @@ function fixtureActor(userId: string) {
 }
 
 function orderPublic(order: FixtureOrder) {
+  // §18.58：提交人快照名派生（三身份世界 submitter 恒为已知身份；
+  // 未知id回退"henry"，与identityUsernameOf口径一致）。
+  const submitterName = identityUsernameOf(order.submitter_user_id);
   return {
     id: order.id,
     display_number: order.display_number,
     submitter_user_id: order.submitter_user_id,
+    submitter_username: submitterName,
+    submitter_display_name: submitterName,
     title: order.title,
     state: order.state,
     current_stage_position: order.current_stage_position,
+    requested_scheduled_for: order.requested_scheduled_for,
     stages: order.stages,
     has_sql: order.has_sql,
     sql_hash: order.sql_hash,
@@ -633,6 +655,7 @@ function seedPartialExecutionOrder(): void {
     id: "7e6f1a2b-0000-4000-8000-00000000f601",
     display_number: "7e6f1a2b-0000-4000-8000-00000000f601",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "跨阶段存量数据订正（场景）",
     state: "running",
     current_stage_position: 2,
@@ -811,6 +834,7 @@ function seedOrderGallery(): void {
       id,
       display_number: id,
       submitter_user_id: FIXTURE_OWNER_ID,
+      requested_scheduled_for: null,
       title: `演示工单 · ${state} · #${String(index + 1)}`,
       state,
       current_stage_position: 1,
@@ -893,6 +917,7 @@ function seedPendingApprovalOrders(): void {
       id,
       display_number: `YR-20260901-A${spec.suffix}`,
       submitter_user_id: FIXTURE_OWNER_ID,
+      requested_scheduled_for: null,
       title: spec.title,
       state: "stage_approval_active",
       current_stage_position: 1,
@@ -919,6 +944,58 @@ function seedPendingApprovalOrders(): void {
     world.orders.set(order.id, order);
     recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结", 1, "submitted");
   });
+}
+
+/** §18.56方案B演示种子：一张已过审批、等待执行且携带期望执行时间的
+ * 工单——executor-a 打开即见预约输入预填（browser-only，同上种子门控；
+ * 期望时间锚定“明晚八点”的确定性未来时刻，刷新后重新计算保持预填有效）。 */
+const PENDING_EXECUTION_DEMO_ID = "a0000000-0000-4000-8000-00000000e001";
+function seedPendingExecutionOrder(): void {
+  if (import.meta.env.MODE === "test") return;
+  if (world.orders.has(PENDING_EXECUTION_DEMO_ID)) return;
+  const requested = new Date(Date.now() + 26 * 3600 * 1000)
+    .toISOString().replace(/\.\d{3}Z$/, "Z");
+  const submittedAt = new Date(Date.parse("2026-09-01T08:00:00Z") - (GALLERY_TOTAL + 9) * 86_400_000)
+    .toISOString().slice(0, 19).concat("Z");
+  const order: FixtureOrder = {
+    id: PENDING_EXECUTION_DEMO_ID,
+    display_number: "YR-20260901-E01",
+    submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: requested,
+    title: "结算表分区切换（期望次日低峰执行）",
+    state: "stage_execution_pending",
+    current_stage_position: 1,
+    stages: [
+      {
+        id: `${PENDING_EXECUTION_DEMO_ID}-s1`,
+        position: 1,
+        datasource_name: "prod-mysql",
+        state: "execution_pending",
+        approval_steps: [
+          {
+            id: `${PENDING_EXECUTION_DEMO_ID}-a1`,
+            position: 1,
+            state: "approved",
+            decided_at: "2026-09-01T09:00:00Z",
+            actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
+          },
+        ],
+        execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
+      },
+    ],
+    has_sql: true,
+    sql_hash: "hash-pending-e01",
+    snapshot_hash: "snap-pending-e01",
+    manually_verified: false,
+    version: 3,
+    submitted_at: submittedAt,
+    terminal_at: null,
+    review_run_id: null,
+    sql_text: "ALTER TABLE settlement REORGANIZE PARTITION p_current;",
+  };
+  world.orders.set(order.id, order);
+  recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结", 1, "submitted");
+  recordOrderEvent(order, "approval.decided", "user", MOCK_IDENTITY_IDS.reviewer, "审批通过，等待执行", 1, "stage_execution_pending");
 }
 
 // ---- Execution domain (FE-F8) ---------------------------------------------
@@ -1230,6 +1307,7 @@ function seedExecutionScenarioOrder(): void {
     id: "7e6f1a2b-0000-4000-8000-00000000f801",
     display_number: "YR-20260830-000101",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "执行域场景工单",
     // schedule-missed arrives already terminal: the scheduler missed the due
     // claim and never catches up (E007); every other scenario waits for the
@@ -1709,6 +1787,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         flow_id: string;
         title: string;
         description?: string;
+        requested_scheduled_for?: unknown;
       };
       if (body.flow_id !== FIXTURE_FLOW_ID && !CATALOG_FLOW_IDS.has(body.flow_id)) {
         return businessError(2014, "flow not granted to the current user");
@@ -1716,12 +1795,20 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (body.title.trim() === "") {
         return businessError(1001, "title is required");
       }
+      let requested: string | null = null;
+      if (body.requested_scheduled_for !== undefined) {
+        requested = parseRequestedSchedule(body.requested_scheduled_for);
+        if (requested === null) {
+          return businessError(1001, "requested_scheduled_for must be a future RFC3339 time");
+        }
+      }
       const draft: FixtureDraft = {
         id: uuid(),
         owner_user_id: currentIdentityId(),
         flow_id: body.flow_id,
         title: body.title,
         description: body.description ?? null,
+        requested_scheduled_for: requested,
         revision: 1,
         state: "draft",
         has_sql: false,
@@ -1756,9 +1843,24 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.patch("*/change-drafts/:draftId", async ({ request, params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");
-      const body = (await request.json()) as { title?: string; description?: string };
+      const body = (await request.json()) as {
+        title?: string;
+        description?: string;
+        requested_scheduled_for?: unknown;
+      };
       if (typeof body.title === "string") draft.title = body.title;
       if (typeof body.description === "string") draft.description = body.description;
+      if (body.requested_scheduled_for !== undefined) {
+        if (body.requested_scheduled_for === null) {
+          draft.requested_scheduled_for = null;
+        } else {
+          const parsed = parseRequestedSchedule(body.requested_scheduled_for);
+          if (parsed === null) {
+            return businessError(1001, "requested_scheduled_for must be a future RFC3339 time");
+          }
+          draft.requested_scheduled_for = parsed;
+        }
+      }
       draft.version += 1;
       draft.updated_at = now();
       return HttpResponse.json(successEnvelope(draftPublic(draft)));
@@ -1966,6 +2068,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         title: draft.title,
         state: "stage_approval_active",
         current_stage_position: 1,
+        requested_scheduled_for: draft.requested_scheduled_for,
         stages: [
           {
             id: uuid(),
@@ -2045,6 +2148,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       seedExecutionScenarioOrder();
       seedOrderGallery();
       seedPendingApprovalOrders();
+      seedPendingExecutionOrder();
       const relatedTo = (order: FixtureOrder): boolean =>
         order.submitter_user_id === currentIdentityId() ||
         order.stages.some(
@@ -2084,6 +2188,9 @@ export function reviewFixtureHandlers(): HttpHandler[] {
 
     http.get("*/change-orders/:orderId", ({ params }) => {
       seedExecutionScenarioOrder();
+      seedOrderGallery();
+      seedPendingApprovalOrders();
+      seedPendingExecutionOrder();
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
       return HttpResponse.json(successEnvelope(orderPublic(order)));
@@ -2201,6 +2308,8 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         flow_id: body.target_flow_id,
         title: body.title,
         description: body.description ?? null,
+        // §18.56方案B：复制不携带期望执行时间（旧时间属历史工单）。
+        requested_scheduled_for: null,
         revision: 1,
         state: "draft",
         has_sql: false,

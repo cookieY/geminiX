@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { DateTimePicker } from "@/shared/components/ui/date-time-picker";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import type {
@@ -123,7 +124,31 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
   // The 5-minute / 30-day schedule window depends on wall-clock time, so it
   // is derived inside the change handler (impure work stays out of render).
   const [dueInRange, setDueInRange] = useState(false);
+  // §18.56方案B：提交人期望时间预填（一次，ref守卫；用户改动后touched
+  // 置位，预填提示消失且不再覆盖输入）。
+  const [prefilled, setPrefilled] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const prefillAppliedRef = useRef(false);
+  /* eslint-disable react-hooks/set-state-in-effect -- §18.56单次预填：ref守卫
+     保证每个order只执行一次，无反馈回路（react-compiler级联误报）。 */
+  useEffect(() => {
+    if (prefillAppliedRef.current || order.requested_scheduled_for == null) return;
+    prefillAppliedRef.current = true;
+    const requested = new Date(order.requested_scheduled_for);
+    const lead = requested.getTime() - Date.now();
+    if (Number.isNaN(requested.getTime()) || lead <= 5 * 60 * 1000 || lead >= 30 * 24 * 3600 * 1000) {
+      return;
+    }
+    const pad = (n: number): string => String(n).padStart(2, "0");
+    setScheduledFor(
+      `${String(requested.getFullYear())}-${pad(requested.getMonth() + 1)}-${pad(requested.getDate())}T${pad(requested.getHours())}:${pad(requested.getMinutes())}`,
+    );
+    setDueInRange(true);
+    setPrefilled(true);
+  }, [order.requested_scheduled_for]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const applyScheduledFor = (value: string): void => {
+    setTouched(true);
     setScheduledFor(value);
     setScheduleNote(null);
     if (value === "") {
@@ -212,13 +237,14 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
               {t("orders.execution.scheduleLabel")}
             </Label>
             <div className="flex items-center gap-2">
-              <Input
+              <DateTimePicker
                 id="execution-schedule-at"
-                type="datetime-local"
                 value={scheduledFor}
-                onChange={(event) => { applyScheduledFor(event.target.value); }}
-                data-testid="execution-schedule-input"
-                className="w-56"
+                onChange={applyScheduledFor}
+                enforceFuture
+                ariaLabel={t("orders.execution.scheduleLabel")}
+                placeholder={t("orders.execution.schedulePlaceholder")}
+                testId="execution-schedule-input"
               />
               <Button
                 variant="outline"
@@ -232,6 +258,11 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
             </div>
             {scheduleNote !== null && (
               <p className="text-xs text-muted-foreground" data-testid="execution-schedule-note">{scheduleNote}</p>
+            )}
+            {prefilled && !touched && scheduleNote === null && (
+              <p className="text-xs text-muted-foreground" data-testid="execution-schedule-prefilled">
+                {t("orders.execution.schedulePrefilled")}
+              </p>
             )}
           </div>
         </div>

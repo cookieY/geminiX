@@ -61,6 +61,7 @@ function queueOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
     id: "bq6f1a2b-0000-4000-8000-00000000f801",
     display_number: "YR-20260830-000081",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "审批队列夹具工单",
     state: "stage_approval_active",
     current_stage_position: 1,
@@ -117,22 +118,48 @@ function renderQueue() {
 }
 
 describe("ApprovalQueuePage", () => {
-  it("lists orders awaiting the session user's decision with stage context", async () => {
+  it("lists both pending and already-decided orders involving the user (§18.58)", async () => {
     seedFixtureOrder(queueOrder());
-    // A decided step of the same aggregate shape must NOT re-enter the
-    // queue: this order sits in execution-pending.
+    // §18.58 owner ruling: an order whose approval step (involving the
+    // session user) is already decided STAYS in the queue with its outcome —
+    // this order sits in execution-pending with my step approved.
     seedFixtureOrder(
       queueOrder({
         id: "bq6f1a2b-0000-4000-8000-00000000f802",
         display_number: "YR-20260830-000082",
         state: "stage_execution_pending",
+        stages: [
+          {
+            id: "bq6f1a2b-0000-4000-8000-00000000f812",
+            position: 1,
+            datasource_name: "prod-mysql",
+            state: "execution_pending",
+            approval_steps: [
+              {
+                id: "bq6f1a2b-0000-4000-8000-00000000f822",
+                position: 1,
+                state: "approved",
+                decided_at: "2026-08-30T13:00:00Z",
+                actors: [{ id: FIXTURE_OWNER_ID, username: "henry", display_name: "henry" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
       }),
     );
     renderQueue();
     const table = await screen.findByTestId("approval-queue-table");
     expect(table.textContent).toContain("YR-20260830-000081");
-    expect(table.textContent).not.toContain("YR-20260830-000082");
-    expect(table.textContent).toContain("prod-mysql");
+    // 已审工单保留 + 新列（工单状态/提交人/是否已审批）呈现。
+    expect(table.textContent).toContain("YR-20260830-000082");
+    expect(table.textContent).toContain("henry");
+    expect(table.textContent).toContain("是否已审批");
+    // §18.60：我的步骤已带上自己的决定（approved）→ 是；
+    // 仍在等待决定的 active 单 → 否。
+    expect(screen.getByTestId("approval-reviewed-bq6f1a2b-0000-4000-8000-00000000f802")).toHaveTextContent("是");
+    expect(screen.getByTestId("approval-reviewed-bq6f1a2b-0000-4000-8000-00000000f801")).toHaveTextContent("否");
+    expect(table.textContent).toContain("等待执行");
   });
 
   it("searches the queue by number, title and datasource (§18.39)", async () => {
@@ -165,10 +192,28 @@ describe("ApprovalQueuePage", () => {
     });
   });
 
-  it("renders the honest empty state when no decision is pending", async () => {
+  it("renders the honest empty state when the user is no frozen approver anywhere", async () => {
+    // §18.58：队列语义=涉及我的工单；该单的审批人不是当前用户 → 空态。
     seedFixtureOrder(
       queueOrder({
-        state: "stage_execution_pending",
+        stages: [
+          {
+            id: "bq6f1a2b-0000-4000-8000-00000000f811",
+            position: 1,
+            datasource_name: "prod-mysql",
+            state: "approval_active",
+            approval_steps: [
+              {
+                id: "bq6f1a2b-0000-4000-8000-00000000f821",
+                position: 1,
+                state: "active",
+                decided_at: null,
+                actors: [{ id: "1111d9cc-e65d-7b9d-a8aa-3c81945f9999", username: "other", display_name: "other" }],
+              },
+            ],
+            execution_actors: [],
+          },
+        ],
       }),
     );
     renderQueue();

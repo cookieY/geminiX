@@ -126,15 +126,16 @@ describe("gate: Secret永不回填", () => {
 });
 
 describe("gate: 无外部代码HTTP或写库Custom Tool UI", () => {
-  it("renders only the four-field definition editor — no executable affordances", async () => {
+  it("renders only the five-field definition editor — no executable affordances", async () => {
     renderPage(<AdminReviewSkillsPage />);
     await screen.findByTestId("review-input-create");
     await userEvent.click(screen.getByTestId("review-input-create"));
     await screen.findByTestId("review-input-knowledge-text");
-    // The definition fields exist…
-    expect(screen.getByTestId("review-input-finding-key")).toBeInTheDocument();
-    expect(screen.getByTestId("review-input-title")).toBeInTheDocument();
-    expect(screen.getByTestId("review-input-message")).toBeInTheDocument();
+    // §18.66：定义面只剩规则正文+最高严重级别；finding key/模板字段不再呈现。
+    expect(screen.getByTestId("review-input-max-severity")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-input-finding-key")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("review-input-title")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("review-input-message")).not.toBeInTheDocument();
     // …and every interactive affordance stays inside the governed surface:
     // no button or label offers code, HTTP or database writes.
     const buttons = screen.getAllByRole("button");
@@ -284,18 +285,14 @@ describe("admin page flows", () => {
 // ---- dialog flows: create/replace/delete on both registries ----
 
 describe("review-input dialog flows", () => {
-  it("creates an enabled skill through the four-field editor", async () => {
+  it("creates an enabled skill through the five-field editor", async () => {
     renderPage(<AdminReviewSkillsPage />);
     await userEvent.click(await screen.findByTestId("review-input-create"));
     await userEvent.type(screen.getByTestId("review-input-name"), "column-null-check");
     await userEvent.type(screen.getByTestId("review-input-knowledge-text"), "Columns must be NOT NULL unless justified.");
-    await userEvent.type(screen.getByTestId("review-input-finding-key"), "ddl.null.check");
-    await userEvent.type(screen.getByTestId("review-input-title"), "Nullable column");
-    await userEvent.type(screen.getByTestId("review-input-message"), "The column allows NULL.");
-    // severity chips toggle: turn high off, then on again (minItems guard keeps medium)
-    // severity chips toggle: turn medium off, then on again (minItems 1 guard)
-    await userEvent.click(screen.getByTestId("review-input-severity-medium"));
-    await userEvent.click(screen.getByTestId("review-input-severity-medium"));
+    // §18.66：单一最高档控件——切到 high 再切回 medium（默认档）。
+    await userEvent.click(screen.getByTestId("review-input-max-severity-high"));
+    await userEvent.click(screen.getByTestId("review-input-max-severity-medium"));
     await userEvent.click(screen.getByTestId("review-input-submit"));
     await waitFor(() => expect(screen.getByText("column-null-check")).toBeInTheDocument());
     expect(screen.getByTestId("review-input-outdated-note")).toBeInTheDocument();
@@ -368,6 +365,33 @@ describe("connection test flow", () => {
     await waitFor(() => expect(screen.getByTestId("ds-capability-execution")).toHaveTextContent("不可用"), { timeout: 4000 });
     expect(screen.getByText("部分能力不可用")).toBeInTheDocument();
   });
+
+  // §18.61：连接测试用途是数据源持久化属性——表格不出现用途选择器，
+  // 变更入口只在编辑弹窗（弹窗内切换与载荷断言见 admin-pages-popups）。
+  // §18.62：表单以只读/读写两态呈现（与表格凭据徽章同词汇）。
+  it("keeps the purpose select out of the table and prefills the credential class in the edit dialog", async () => {
+    renderPage(<AdminDatasourcesPage />);
+    const row = await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    expect(within(row).queryAllByTestId(/ds-test-purpose-/)).toHaveLength(0);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    // 预填=存储值（review）呈现为只读类别。
+    expect(await screen.findByTestId("ds-test-purpose")).toHaveTextContent("只读");
+    expect(screen.getByText(/只读用审核（或查询）凭据，读写用执行凭据/)).toBeInTheDocument();
+  });
+
+  // §18.62：只读在载荷不再保留审核凭据时回落查询凭据。
+  it("resolves a read-only test purpose onto query when the payload drops the review credential", async () => {
+    const captured = captureDatasourcePut();
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    await screen.findByTestId("credential-row-review");
+    await userEvent.click(screen.getByTestId("credential-include-review"));
+    await userEvent.type(screen.getByTestId("ds-version-constraint"), ">=8.0");
+    await userEvent.click(screen.getByTestId("ds-submit"));
+    await waitFor(() => { expect(captured.body).not.toBeNull(); });
+    expect(captured.body?.test_purpose).toBe("query");
+  });
 });
 
 // ---- dialog submit paths, edit prefill, eval fail, list states ----
@@ -432,7 +456,7 @@ describe("review-input dialog coverage", () => {
             privacy_ok: false,
             injection_ok: false,
             severity_ok: false,
-            findings: ["finding template must define finding_key, title and message"],
+            findings: ["definition must carry non-empty knowledge_text and a valid max_severity"],
             checked_at: "2026-08-31T00:00:00Z",
           },
           request_id: "eval-fail",
@@ -446,7 +470,7 @@ describe("review-input dialog coverage", () => {
     await userEvent.click(firstEval);
     const result = await screen.findByTestId("knowledge-eval-result");
     expect(within(result).getByText("未通过")).toBeInTheDocument();
-    expect(within(result).getByText(/finding template must define/)).toBeInTheDocument();
+    expect(within(result).getByText(/definition must carry non-empty knowledge_text/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(screen.queryByTestId("knowledge-eval-result")).not.toBeInTheDocument());
   });
@@ -498,6 +522,7 @@ function captureDatasourcePut(): { body: Record<string, unknown> | null } {
           port: 3306,
           database_name: null,
           enabled: true,
+          test_purpose: "review",
           credential_status: { review: true, query: true, execution: true },
           tls_verified: false,
           referenced_by_flow_count: 1,
@@ -534,9 +559,8 @@ describe("gate: 内置技能锁徽章与定义面锁定", () => {
     expect(screen.getByTestId("review-input-name")).toBeDisabled();
     expect(screen.getByTestId("review-input-engine")).toBeDisabled();
     expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
-    expect(screen.getByTestId("review-input-finding-key")).toBeDisabled();
-    expect(screen.getByTestId("review-input-title")).toBeDisabled();
-    expect(screen.getByTestId("review-input-severity-medium")).toBeDisabled();
+    expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
+    expect(screen.getByTestId("review-input-max-severity-high")).toBeDisabled();
     expect(screen.getByTestId("review-input-state-select")).toBeEnabled();
   });
 

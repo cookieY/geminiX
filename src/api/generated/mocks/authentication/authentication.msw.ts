@@ -21,6 +21,7 @@ import type {
 
 import type {
   BusinessErrorResponse,
+  ChangeMyPassword200,
   GetCurrentUser200,
   ListAuthenticationProviders200,
   Login200,
@@ -30,29 +31,33 @@ import type {
 } from '../../client/yearningV4HTTPAPI.schemas';
 
 
-export const getLoginResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getLoginResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getLoginResponseMock = (): Login200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: null, request_id: faker.string.uuid()},{...getLoginResponseBusinessErrorResponseMock()},]))
 
-export const getLogoutResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getLogoutResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getLogoutResponseMock = (): Logout200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: null, request_id: faker.string.uuid()},{...getLogoutResponseBusinessErrorResponseMock()},]))
 
-export const getRegisterResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getRegisterResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getRegisterResponseMock = (): Register200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {id: faker.string.uuid(), username: faker.string.alpha({length: {min: 10, max: 20}}), display_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), email: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.internet.email(), null]), undefined]), is_builtin_admin: faker.datatype.boolean(), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'}, request_id: faker.string.uuid()},{...getRegisterResponseBusinessErrorResponseMock()},]))
 
-export const getListAuthenticationProvidersResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getListAuthenticationProvidersResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getListAuthenticationProvidersResponseMock = (): ListAuthenticationProviders200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {local: faker.datatype.boolean(), ldap: faker.datatype.boolean(), oidc: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), start_url: faker.string.alpha({length: {min: 10, max: 20}})}))}, request_id: faker.string.uuid()},{...getListAuthenticationProvidersResponseBusinessErrorResponseMock()},]))
 
-export const getLoginWithLdapResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getLoginWithLdapResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getLoginWithLdapResponseMock = (): LoginWithLdap200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: null, request_id: faker.string.uuid()},{...getLoginWithLdapResponseBusinessErrorResponseMock()},]))
 
-export const getGetCurrentUserResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+export const getGetCurrentUserResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
-export const getGetCurrentUserResponseMock = (): GetCurrentUser200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {...{id: faker.string.uuid(), username: faker.string.alpha({length: {min: 10, max: 20}}), display_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), email: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.internet.email(), null]), undefined]), is_builtin_admin: faker.datatype.boolean(), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'},...{can_access_admin: faker.datatype.boolean()},}, request_id: faker.string.uuid()},{...getGetCurrentUserResponseBusinessErrorResponseMock()},]))
+export const getGetCurrentUserResponseMock = (): GetCurrentUser200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {...{id: faker.string.uuid(), username: faker.string.alpha({length: {min: 10, max: 20}}), display_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), email: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.internet.email(), null]), undefined]), is_builtin_admin: faker.datatype.boolean(), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'},...{can_access_admin: faker.datatype.boolean(), auth_provider: faker.helpers.arrayElement([faker.helpers.arrayElement(['local','ldap','oidc'] as const), undefined])},}, request_id: faker.string.uuid()},{...getGetCurrentUserResponseBusinessErrorResponseMock()},]))
+
+export const getChangeMyPasswordResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getChangeMyPasswordResponseMock = (): ChangeMyPassword200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: null, request_id: faker.string.uuid()},{...getChangeMyPasswordResponseBusinessErrorResponseMock()},]))
 
 
 export const getLoginMockHandler = (overrideResponse?: Login200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Login200> | Login200), options?: RequestHandlerOptions) => {
@@ -146,6 +151,18 @@ export const getGetCurrentUserMockHandler = (overrideResponse?: GetCurrentUser20
       })
   }, options)
 }
+
+export const getChangeMyPasswordMockHandler = (overrideResponse?: ChangeMyPassword200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ChangeMyPassword200> | ChangeMyPassword200), options?: RequestHandlerOptions) => {
+  return http.post('*/users/me/password', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getChangeMyPasswordResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getAuthenticationMock = () => [
   getLoginMockHandler(),
   getLogoutMockHandler(),
@@ -154,5 +171,6 @@ export const getAuthenticationMock = () => [
   getLoginWithLdapMockHandler(),
   getStartOidcLoginMockHandler(),
   getFinishOidcLoginMockHandler(),
-  getGetCurrentUserMockHandler()
+  getGetCurrentUserMockHandler(),
+  getChangeMyPasswordMockHandler()
 ]

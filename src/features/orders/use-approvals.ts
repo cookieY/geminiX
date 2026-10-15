@@ -43,28 +43,22 @@ export function useApprovalQueue(enabled: boolean) {
     // queryFn never runs with a half-initialized identity.
     queryKey: ["change-orders", "approval-queue", me],
     queryFn: async () => {
-      // Server-side narrowing via the declared `state` filter (OpenAPI
-      // listChangeOrders) keeps the relation page close to the pending set;
-      // the frozen-actor narrowing stays client-side (presentation only).
-      // Boundary: the 200-row newest-first cap is documented in the
-      // migration contract §14.3.
+      // §18.58 owner ruling: the queue lists EVERY order involving the user
+      // as a frozen approver — decided steps stay visible. No server-side
+      // `state` narrowing (the relation is about the user, not the order's
+      // lifecycle); the frozen-actor narrowing stays client-side
+      // (presentation only). Boundary: the 200-row newest-first cap is
+      // documented in the migration contract §14.3.
       const page = (await listChangeOrders({
         limit: 200,
-        state: "stage_approval_active",
       })) as unknown as {
         items: ChangeOrder[];
       };
       if (me === undefined) return [];
-      return page.items.filter(
-        (order) =>
-          order.stages.some(
-            (stage) =>
-              stage.state === "approval_active" &&
-              stageApprovalSteps(stage).some(
-                (step) =>
-                  step.state === "active" && step.actors.some((actor) => actor.id === me),
-              ),
-          ),
+      return page.items.filter((order) =>
+        order.stages.some((stage) =>
+          stageApprovalSteps(stage).some((step) => step.actors.some((actor) => actor.id === me)),
+        ),
       );
     },
     enabled: enabled && me !== undefined,

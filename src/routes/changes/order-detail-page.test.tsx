@@ -33,6 +33,7 @@ function seedOrder(overrides: Record<string, unknown> = {}): string {
     id,
     display_number: "YR-20260830-000021",
     submitter_user_id: FIXTURE_OWNER_ID,
+    requested_scheduled_for: null,
     title: "详情页夹具工单",
     state: "submitted",
     current_stage_position: 1,
@@ -224,5 +225,59 @@ describe("OrderDetailPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("order-detail-page").textContent).toContain("已作废");
     });
+  });
+});
+
+describe("execution wait note for non-executors (§18.57)", () => {
+  const OTHER_ID = "1111d9cc-e65d-7b9d-a8aa-3c81945f9999";
+
+  function executionPendingOrder(executorId: string): string {
+    return seedOrder({
+      state: "stage_execution_pending",
+      stages: [
+        {
+          id: "9c6f1a2b-0000-4000-8000-00000000ef11",
+          position: 1,
+          datasource_name: "orders-mysql",
+          state: "execution_pending",
+          approval_steps: [
+            {
+              id: "9c6f1a2b-0000-4000-8000-00000000ef21",
+              position: 1,
+              state: "approved",
+              decided_at: "2026-08-30T10:30:00Z",
+              actors: [{ id: "0198d9cc-e65d-7b9d-a8aa-3c81945fa001", username: "reviewer-a", display_name: "reviewer-a" }],
+            },
+          ],
+          execution_actors: [
+            {
+              id: executorId,
+              username: executorId === FIXTURE_OWNER_ID ? "henry" : "executor-a",
+              display_name: executorId === FIXTURE_OWNER_ID ? "henry" : "executor-a",
+              email: null,
+              is_builtin_admin: false,
+              version: 1,
+              created_at: "2026-08-01T00:00:00Z",
+              updated_at: "2026-08-01T00:00:00Z",
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("explains who may execute when the viewer is not the frozen executor", async () => {
+    const id = executionPendingOrder(OTHER_ID);
+    renderDetail(id);
+    const note = await screen.findByTestId("execution-wait-note");
+    expect(note.textContent).toContain("executor-a");
+    expect(note.textContent).toContain("等待执行");
+  });
+
+  it("shows no wait note for the frozen executor (the action card owns the view)", async () => {
+    const id = executionPendingOrder(FIXTURE_OWNER_ID);
+    renderDetail(id);
+    await screen.findByTestId("execution-action-card");
+    expect(screen.queryByTestId("execution-wait-note")).toBeNull();
   });
 });

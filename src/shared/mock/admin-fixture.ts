@@ -181,7 +181,23 @@ function validateDatasourceWrite(body: Record<string, unknown>): string | null {
   }
   const tlsError = validateTLSWrite("tls" in body ? body.tls : null);
   if (tlsError !== null) return tlsError;
+  // §18.61：连接测试用途可选，缺省回落review（全量替换语义：缺发送=重置）。
+  if (
+    body.test_purpose !== undefined &&
+    !PURPOSES.includes(body.test_purpose as (typeof PURPOSES)[number])
+  ) {
+    return "test_purpose is invalid";
+  }
   return null;
+}
+
+/** Resolves the stored connection-test purpose of a write body (§18.61):
+ * absent or invalid-enum values never reach here (validated earlier), absent
+ * = review per the DatasourceWrite default. */
+function testPurposeOfWrite(body: Record<string, unknown>): Datasource["test_purpose"] {
+  return PURPOSES.includes(body.test_purpose as (typeof PURPOSES)[number])
+    ? (body.test_purpose as Datasource["test_purpose"])
+    : "review";
 }
 
 /** replaceCredentials mirror (datasource/service.go replaceCredentials, B13
@@ -450,43 +466,19 @@ export function resetAdminFixture(): void {
 
 const PROD_WINDOW_DEFINITION: ReviewInputDefinition = {
   knowledge_text: "Production DDL is only allowed inside the announced maintenance window.",
-  finding_template: {
-    finding_key: "experience.window.violation",
-    category: "governance",
-    severity: "critical",
-    title: "Outside window",
-    message: "Schema change scheduled outside the maintenance window.",
-    suggestion: "Reschedule the change into the window.",
-  },
-  severity_whitelist: ["critical", "high"],
+  max_severity: "critical",
   version: 1,
 };
 
 const ORDERS_HUGE_DEFINITION: ReviewInputDefinition = {
   knowledge_text: "The orders table exceeds 500M rows; any unbounded scan is critical.",
-  finding_template: {
-    finding_key: "experience.orders.fullscan",
-    category: "performance",
-    severity: "critical",
-    title: "Full scan on orders",
-    message: "The statement scans the huge orders table without a bound.",
-    suggestion: "Filter on the shard key or a selective index.",
-  },
-  severity_whitelist: ["critical"],
+  max_severity: "critical",
   version: 1,
 };
 
 const CHARSET_DEFINITION: ReviewInputDefinition = {
   knowledge_text: "This datasource standardizes on UTF8; new columns must not introduce latin1.",
-  finding_template: {
-    finding_key: "experience.charset.drift",
-    category: "compatibility",
-    severity: "medium",
-    title: "Charset drift",
-    message: "A column uses a charset outside the datasource standard.",
-    suggestion: "Use the datasource default charset.",
-  },
-  severity_whitelist: ["medium", "low"],
+  max_severity: "medium",
   version: 1,
 };
 
@@ -503,6 +495,7 @@ export function seedAdminFixture(): void {
     port: 3306,
     database_name: null,
     enabled: true,
+    test_purpose: "review",
     credential_status: { review: true, query: true, execution: true },
     referenced_by_flow_count: 1,
     version: 3,
@@ -532,6 +525,7 @@ export function seedAdminFixture(): void {
     port: 5432,
     database_name: "analytics",
     enabled: true,
+    test_purpose: "review",
     credential_status: { review: true, query: true },
     referenced_by_flow_count: 0,
     version: 1,
@@ -572,6 +566,7 @@ export function seedAdminFixture(): void {
       port: entry.engine === "postgresql" ? 5432 : 3306,
       database_name: null,
       enabled: true,
+      test_purpose: "review",
       credential_status: { review: true, query: true, execution: true },
       referenced_by_flow_count: referenced,
       version: 1,
@@ -649,15 +644,7 @@ function seededSettingsFor(ns: string): SettingsValue {
     parameters: { max_full_scan_rows: 100000 },
     definition: {
       knowledge_text: "DML statements must carry a WHERE clause that bounds the affected rows.",
-      finding_template: {
-        finding_key: "dml.where.missing",
-        category: "correctness",
-        severity: "high",
-        title: "Unbounded DML",
-        message: "The statement changes rows without a WHERE bound.",
-        suggestion: "Add a WHERE clause on the primary key or another selective predicate.",
-      },
-      severity_whitelist: ["medium", "high"],
+      max_severity: "high",
       version: 1,
     },
     config_hash: configHash(
@@ -665,15 +652,7 @@ function seededSettingsFor(ns: string): SettingsValue {
       "all",
       JSON.stringify({
         knowledge_text: "DML statements must carry a WHERE clause that bounds the affected rows.",
-        finding_template: {
-          finding_key: "dml.where.missing",
-          category: "correctness",
-          severity: "high",
-          title: "Unbounded DML",
-          message: "The statement changes rows without a WHERE bound.",
-          suggestion: "Add a WHERE clause on the primary key or another selective predicate.",
-        },
-        severity_whitelist: ["medium", "high"],
+        max_severity: "high",
         version: 1,
       }),
       JSON.stringify({ max_full_scan_rows: 100000 }),
@@ -691,15 +670,7 @@ function seededSettingsFor(ns: string): SettingsValue {
     parameters: {},
     definition: {
       knowledge_text: "Every new table must declare a table comment and column comments.",
-      finding_template: {
-        finding_key: "ddl.comment.missing",
-        category: "operability",
-        severity: "low",
-        title: "Missing comment",
-        message: "The table lacks a comment.",
-        suggestion: "Add COMMENT '...' to the table definition.",
-      },
-      severity_whitelist: ["low", "info"],
+      max_severity: "low",
       version: 1,
     },
     config_hash: configHash(
@@ -707,15 +678,7 @@ function seededSettingsFor(ns: string): SettingsValue {
       "mysql",
       JSON.stringify({
         knowledge_text: "Every new table must declare a table comment and column comments.",
-        finding_template: {
-          finding_key: "ddl.comment.missing",
-          category: "operability",
-          severity: "low",
-          title: "Missing comment",
-          message: "The table lacks a comment.",
-          suggestion: "Add COMMENT '...' to the table definition.",
-        },
-        severity_whitelist: ["low", "info"],
+        max_severity: "low",
         version: 1,
       }),
       JSON.stringify({}),
@@ -731,15 +694,7 @@ function seededSettingsFor(ns: string): SettingsValue {
   const BUILTIN_LEXICAL_DEFINITION: ReviewInputDefinition = {
     knowledge_text:
       "Built-in lexical guards: unbounded DML without WHERE, TRUNCATE/DROP statements, and IN/batch/group-count/per-row size limits must be flagged deterministically.",
-    finding_template: {
-      finding_key: "builtin.lexical.guard",
-      category: "governance",
-      severity: "high",
-      title: "Lexical guard violation",
-      message: "The statement trips a built-in lexical guard.",
-      suggestion: "Bound the statement or move it into the announced flow.",
-    },
-    severity_whitelist: ["medium", "high", "critical"],
+    max_severity: "critical",
     version: 1,
   };
   const BUILTIN_LEXICAL_PARAMETERS = {
@@ -2289,19 +2244,14 @@ function runReviewInputEval(
   parameters: Record<string, unknown>,
 ): KnowledgeEntryEvaluation {
   const findings: string[] = [];
-  const template = definition.finding_template;
+  // §18.66：定义={knowledge_text,max_severity,version}——结构检查只剩正文
+  // 非空与档位枚举；finding key 系统派生，severity 白名单语义由档位闭包取代。
   const schemaSubsetOk =
-    typeof template.finding_key === "string" &&
-    template.finding_key !== "" &&
-    typeof template.title === "string" &&
-    typeof template.message === "string";
-  if (!schemaSubsetOk) findings.push("finding template must define finding_key, title and message");
-  // Backend RunPromptToolEval validates the template severity only when
-  // present (prompttools.go:236-242) — an absent severity is not a gate
-  // failure, the template may rely on the whitelist alone.
-  const severityOk =
-    typeof template.severity !== "string" || definition.severity_whitelist.includes(template.severity);
-  if (!severityOk) findings.push("template severity must be inside the tool severity whitelist");
+    definition.knowledge_text.trim() !== "" &&
+    ["info", "low", "medium", "high", "critical"].includes(definition.max_severity);
+  if (!schemaSubsetOk) findings.push("definition must carry non-empty knowledge_text and a valid max_severity");
+  const severityOk = ["info", "low", "medium", "high", "critical"].includes(definition.max_severity);
+  if (!severityOk) findings.push("max_severity must be one of info/low/medium/high/critical");
   const text = definition.knowledge_text.toLowerCase();
   const privacyOk = !/(password|api[_-]?key|secret)\s*[:=]/.test(text);
   if (!privacyOk) findings.push("knowledge text must not request credentials or secrets");
@@ -2510,8 +2460,8 @@ function validateReviewInputDefinition(definition: unknown): string | null {
   if (typeof def.knowledge_text !== "string" || def.knowledge_text.length === 0) {
     return "knowledge_text is required";
   }
-  if (!Array.isArray(def.severity_whitelist) || def.severity_whitelist.length === 0) {
-    return "severity_whitelist must not be empty";
+  if (typeof def.max_severity !== "string" || !["info", "low", "medium", "high", "critical"].includes(def.max_severity)) {
+    return "max_severity must be one of info/low/medium/high/critical";
   }
   if (typeof def.version !== "number" || def.version < 1) {
     return "definition.version must be a positive integer";
@@ -2557,6 +2507,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
         port: Number(body.port ?? 0),
         database_name: (body.database_name as string | null) ?? null,
         enabled: Boolean(body.enabled),
+        test_purpose: testPurposeOfWrite(body),
         credential_status: {},
         referenced_by_flow_count: 0,
         version: 1,
@@ -2604,6 +2555,8 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (typeof body.port === "number") ds.port = body.port;
       if (typeof body.enabled === "boolean") ds.enabled = body.enabled;
       if ("database_name" in body) ds.database_name = (body.database_name as string | null) ?? null;
+      // §18.61：全量替换语义——缺发送重置为review（与后端一致）。
+      ds.test_purpose = testPurposeOfWrite(body);
       ds.credentials = applied;
       ds.version += 1;
       ds.updated_at = now();
