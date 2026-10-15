@@ -132,7 +132,7 @@ describe("SubmissionWizard create mode", () => {
     fireEvent.change(screen.getByTestId("draft-title-input"), {
       target: { value: "定时工单" },
     });
-    // DateTimePicker（§18.56补记2 antd式）：输入框开面板→点ISO天→
+    // DateTimePicker（§18.56补记2 桌面选择器式）：输入框开面板→点ISO天→
     // 底部"时间"切换到时分列→选09/30→确定。
     fireEvent.click(screen.getByTestId("draft-requested-for"));
     const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);

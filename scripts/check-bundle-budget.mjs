@@ -95,7 +95,13 @@ if (monacoChunks.length < 2) {
 // is dead-code-eliminated from release builds). Substring matching is
 // intentionally fail-safe: a legitimate chunk named "…fixture…" fails the
 // gate rather than silently shipping mock code.
-const mockChunks = allAssets.filter(/mock|msw|fixture/i.test.bind(/mock|msw|fixture/i));
+// §18.66 push fix: match the stable chunk name only — the content-hash
+// segment is random and once collided with "msw" (Bvm8FmSW), a false
+// positive. The stable portion keeps the fail-safe semantics.
+const stableName = (asset) => asset.replace(/-[^-]*\.(js|css|woff2?)$/, "");
+const mockChunks = allAssets.filter((asset) =>
+  /mock|msw|fixture/i.test(stableName(asset)),
+);
 if (mockChunks.length > 0) {
   violations.push(`mock-world chunks shipped in release build: ${mockChunks.join(", ")}`);
 }

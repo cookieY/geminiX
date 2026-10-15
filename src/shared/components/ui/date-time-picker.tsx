@@ -17,7 +17,7 @@ import { cn } from "@/shared/lib/utils";
  * Ant-Design-style date-time picker (§18.56补记2, owner ruling 2026-10-15):
  * an input with calendar/clear suffixes anchors a dropdown panel — day grid
  * with super-prev/prev/next/super-next navigation and a zoomable month view,
- * an antd-like footer ("时间" toggles the hour/minute columns, 确定 commits).
+ * a desktop-picker-style footer ("时间" toggles the hour/minute columns, 确定 commits).
  * Everything renders from the local token system (primary fills, muted
  * disabled cells); the panel is a plain conditional layer (no Base UI popup
  * primitive) so jsdom tests can drive it.
@@ -220,7 +220,7 @@ export function DateTimePicker({
   );
 }
 
-/** antd日视图：‹‹ ‹ 2026年10月 › ›» + 星期行 + 6×7方格（今天蓝字浅底、选中主色填充）。 */
+/** 日视图：‹‹ ‹ 2026年10月 › ›» + 星期行 + 6×7方格（今天蓝字浅底、选中主色填充）。 */
 function DateGrid({
   cursor,
   onCursor,
@@ -248,7 +248,7 @@ function DateGrid({
     onCursor(cursor.month === 11 ? { year: cursor.year + 1, month: 0 } : { year: cursor.year, month: cursor.month + 1 });
   };
 
-  // antd zh_CN周一起始；en_US周日起始。
+  // zh_CN周一起始；en_US周日起始。
   const weekLabels = useMemo(() => buildWeekLabels(zh), [zh]);
   const cells = useMemo(
     () => buildMonthCells(cursor.year, cursor.month, zh),
