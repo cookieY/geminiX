@@ -14,7 +14,7 @@ import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * Ant-Design-style date-time picker (§18.56补记2, owner ruling 2026-10-15):
+ * Desktop-suite-style date-time picker (§18.56补记2, owner ruling 2026-10-15):
  * an input with calendar/clear suffixes anchors a dropdown panel — day grid
  * with super-prev/prev/next/super-next navigation and a zoomable month view,
  * a desktop-picker-style footer ("时间" toggles the hour/minute columns, 确定 commits).
@@ -316,7 +316,7 @@ function DateGrid({
   );
 }
 
-/** antd月视图：‹‹ 2026 › ›» + 3×4月份格（选中月主色填充）。 */
+/** 月视图：‹‹ 2026 › ›» + 3×4月份格（选中月主色填充）。 */
 function MonthGrid({
   year,
   zh,
@@ -373,7 +373,7 @@ function MonthGrid({
   );
 }
 
-/** antd时间列：时/分两列**各自独立滚动**（选中主色填充），打开时选中项滚入可视区。 */
+/** 时间列：时/分两列**各自独立滚动**（选中主色填充），打开时选中项滚入可视区。 */
 function TimeColumns({
   pickedTime,
   onPick,
@@ -446,7 +446,7 @@ function TimeColumns({
   );
 }
 
-/** 独立滚动列：固定高、自身overflow-y-auto；挂载时把选中项滚到可视区中部（antd惯例）。 */
+/** 独立滚动列：固定高、自身overflow-y-auto；挂载时把选中项滚到可视区中部（桌面组件惯例）。 */
 function ScrollColumn({ testId, selected, children }: {
   testId: string;
   selected: string;
