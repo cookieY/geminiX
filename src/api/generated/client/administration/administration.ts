@@ -64,6 +64,7 @@ import type {
   LegacyMigrationRunPageResultResponse,
   LegacyMigrationRunResultResponse,
   ListAiProviders200,
+  ListAiProvidersParams,
   ListAnnouncementRevisionsParams,
   ListAuditEvents200,
   ListAuditEventsParams,
@@ -1988,17 +1989,24 @@ export type listAiProvidersResponseSuccess = (listAiProvidersResponse200) & {
 
 export type listAiProvidersResponse = (listAiProvidersResponseSuccess)
 
-export const getListAiProvidersUrl = () => {
+export const getListAiProvidersUrl = (params?: ListAiProvidersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/admin/ai-providers`
+  return stringifiedParams.length > 0 ? `/admin/ai-providers?${stringifiedParams}` : `/admin/ai-providers`
 }
 
-export const listAiProviders = async ( options?: Parameters<typeof customInstance>[1]): Promise<listAiProvidersResponse> => {
+export const listAiProviders = async (params?: ListAiProvidersParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiProvidersResponse> => {
 
-  return customInstance<listAiProvidersResponse>(getListAiProvidersUrl(),
+  return customInstance<listAiProvidersResponse>(getListAiProvidersUrl(params),
   {
     ...options,
     method: 'GET'

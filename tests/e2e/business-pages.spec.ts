@@ -173,6 +173,9 @@ test("gate 5: the remaining core pages render real content", async ({ page }) =>
   await page.goto("/changes/mine");
   await page.getByTestId("tab-query-orders").click();
   await expect(page.getByTestId("orders-query-table")).toBeVisible();
+  // §18.73: the merged query-orders view paginates locally (20/page default).
+  await expect(page.getByTestId("orders-query-pagination")).toBeVisible();
+  await expect(page.getByTestId("orders-query-page")).toContainText("1");
   const row = page.locator("[data-testid^='orders-query-row-']").first();
   await row.click();
   await expect(page.getByTestId("orders-query-detail")).toBeVisible();

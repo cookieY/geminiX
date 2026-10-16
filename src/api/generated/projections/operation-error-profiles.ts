@@ -640,7 +640,8 @@ export const OPERATION_ERROR_PROFILES: {
       4006,
       4007,
       4008,
-      4009
+      4009,
+      4011
     ],
     "operations": [
       "executeSelect"

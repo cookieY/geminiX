@@ -54,7 +54,6 @@ export default function WorkspacePage() {
   const queryClient = useQueryClient();
   const reviewFlows = useCurrentUserFlows(FlowType.change_review);
   const queryFlows = useCurrentUserFlows(FlowType.query_access);
-  const isAdmin = user?.can_access_admin === true;
   const dashboardQuery = useMyDashboardQuery(user !== null);
   const announcementQuery = useCurrentAnnouncementQuery(user !== null);
   const releaseQuery = useLatestReleaseQuery(user !== null);
@@ -130,17 +129,18 @@ export default function WorkspacePage() {
           </EmptyHeader>
         </Empty>
       )}
-      {/* The admin section mounts immediately; the announcement slot renders
-              null until its query resolves so the rest of the home never waits
-              on it. The announcement itself stays full-width for non-admin
-              sessions. Owner ruling 2026-09-02: the home carries only the
-              reference blocks — release banner, order trend beside the
-              announcement, and the three stat cards; nothing below them. */}
+      {/* The statistics section mounts immediately for every authenticated
+              session (§18.71, owner ruling 2026-10-16: platform statistics are
+              visible to all logged-in users — /admin/dashboard/operations is an
+              authenticated-session read); the announcement slot renders null
+              until its query resolves so the rest of the home never waits on
+              it. Owner ruling 2026-09-02 keeps the reference blocks — release
+              banner, order trend beside the announcement, and the three stat
+              cards; nothing below them. */}
       <AdminDashboardSection
-        enabled={isAdmin}
+        enabled={user !== null}
         announcement={<AnnouncementCard publication={announcementQuery.data ?? null} />}
       />
-      {!isAdmin && <AnnouncementCard publication={announcementQuery.data ?? null} />}
     </div>
   );
 }

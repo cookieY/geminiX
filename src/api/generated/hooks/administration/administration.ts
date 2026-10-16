@@ -83,6 +83,7 @@ import type {
   LegacyMigrationRunPageResultResponse,
   LegacyMigrationRunResultResponse,
   ListAiProviders200,
+  ListAiProvidersParams,
   ListAnnouncementRevisionsParams,
   ListAuditEvents200,
   ListAuditEventsParams,
@@ -5271,17 +5272,24 @@ export type listAiProvidersResponseSuccess = (listAiProvidersResponse200) & {
 
 export type listAiProvidersResponse = (listAiProvidersResponseSuccess)
 
-export const getListAiProvidersUrl = () => {
+export const getListAiProvidersUrl = (params?: ListAiProvidersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/admin/ai-providers`
+  return stringifiedParams.length > 0 ? `/admin/ai-providers?${stringifiedParams}` : `/admin/ai-providers`
 }
 
-export const listAiProviders = async ( options?: Parameters<typeof customInstance>[1]): Promise<listAiProvidersResponse> => {
+export const listAiProviders = async (params?: ListAiProvidersParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiProvidersResponse> => {
 
-  return customInstance<listAiProvidersResponse>(getListAiProvidersUrl(),
+  return customInstance<listAiProvidersResponse>(getListAiProvidersUrl(params),
   {
     ...options,
     method: 'GET'
@@ -5297,8 +5305,8 @@ export const listAiProviders = async ( options?: Parameters<typeof customInstanc
 export const getListAiProvidersMutationKey = () => ['listAiProviders'] as const;
 
 export const getListAiProvidersMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,ListAiProvidersMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,ListAiProvidersMutationVariables, TContext> => {
 
 const mutationKey = getListAiProvidersMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -5310,10 +5318,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listAiProviders>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listAiProviders>>, ListAiProvidersMutationVariables> = (props) => {
+          const {params} = props ?? {};
 
-
-          return  listAiProviders(requestOptions)
+          return  listAiProviders(params,requestOptions)
         }
 
 
@@ -5326,14 +5334,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ListAiProvidersMutationResult = NonNullable<Awaited<ReturnType<typeof listAiProviders>>>
 
     export type ListAiProvidersMutationError = unknown
-
+    export type ListAiProvidersMutationVariables = {params?: ListAiProvidersParams}
 
     export const useListAiProviders = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviders>>, TError,ListAiProvidersMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof listAiProviders>>,
         TError,
-        void,
+        ListAiProvidersMutationVariables,
         TContext
       > => {
       return useMutation(getListAiProvidersMutationOptions(options), queryClient);

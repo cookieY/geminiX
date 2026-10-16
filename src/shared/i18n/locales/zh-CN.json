@@ -199,7 +199,8 @@
     "TEMPLATE_RENDER_FAILED": "通知模板渲染失败。",
     "SYSTEM_MAINTENANCE": "系统维护中，请稍后重试。",
     "MIGRATION_MODE_ACTIVE": "迁移模式生效中，仅允许迁移操作。",
-    "PASSWORD_MANAGED_BY_IDENTITY_SOURCE": "账号绑定LDAP/OIDC身份源，密码由身份源管理。"
+    "PASSWORD_MANAGED_BY_IDENTITY_SOURCE": "账号绑定LDAP/OIDC身份源，密码由身份源管理。",
+    "QUERY_STATEMENT_REJECTED": "查询语句被目标库拒绝（只读会话收到写入类语句等），请检查语句类型。"
   },
   "dateTimePicker": {
     "title": "选择时间",

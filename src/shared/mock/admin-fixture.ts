@@ -1374,7 +1374,10 @@ export function siteFixtureHandlers(): HttpHandler[] {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
-      const items = [...world.users.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const q = searchOf(url);
+      const items = [...world.users.values()]
+        .filter((user) => matchesQ([user.username, user.display_name, user.email], q))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(
         successEnvelope(pageOf(items.map(userView), url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
       );
@@ -1478,7 +1481,9 @@ export function siteFixtureHandlers(): HttpHandler[] {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
-      const items = [...world.groups.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const items = [...world.groups.values()]
+        .filter((group) => matchesQ([group.name], searchOf(url)))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(
         successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
       );
@@ -2154,6 +2159,18 @@ function problem(status: number, title: string, detail: string): HttpResponse<De
   );
 }
 
+/** §18.73 服务端q的mock镜像：不区分大小写子串匹配任一字段即命中。 */
+function searchOf(url: URL): string {
+  const q = url.searchParams.get("q");
+  return q === null ? "" : q.trim();
+}
+
+function matchesQ(fields: (string | null | undefined)[], q: string): boolean {
+  if (q === "") return true;
+  const needle = q.toLowerCase();
+  return fields.some((field) => (field ?? "").toLowerCase().includes(needle));
+}
+
 function pageOf<T extends { id: string }>(items: T[], limit: number | null, after: string | null) {
   const start =
     after === null
@@ -2478,7 +2495,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.datasources.values()].map(datasourceView);
+      const items = [...world.datasources.values()]
+        .filter((ds) => matchesQ([ds.name, ds.host], searchOf(url)))
+        .map(datasourceView);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
     http.post("*/admin/datasources", async ({ request }) => {
@@ -2622,16 +2641,24 @@ export function adminFixtureHandlers(): HttpHandler[] {
     }),
 
     // ---- ai providers ------------------------------------------------
-    http.get("*/admin/ai-providers", () => {
+    http.get("*/admin/ai-providers", ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
-      // Declared response is a bare array (ListAiProviders200), ordered by
-      // the selection chain rule: selection_priority ascending
+      // §18.73: standard paged envelope — mirrors the backend writePage
+      // ({items, page}); ordered by selection_priority ascending
       // (provider/chain.go:3) — index 0 is the primary provider.
-      const items = [...world.providers.values()]
+      const url = new URL(request.url);
+      const requested = Number(url.searchParams.get("limit"));
+      const limit = Number.isFinite(requested) && requested > 0 ? requested : 50;
+      const sorted = [...world.providers.values()]
+        .filter((provider) => matchesQ([provider.name, provider.base_url, provider.model_name], searchOf(url)))
         .sort((a, b) => a.selection_priority - b.selection_priority)
         .map(providerView);
-      return HttpResponse.json(successEnvelope(items));
+      const items = sorted.slice(0, limit);
+      return HttpResponse.json(successEnvelope({
+        items,
+        page: { next_cursor: null, has_more: sorted.length > items.length },
+      }));
     }),
     http.post("*/admin/ai-providers", async ({ request }) => {
       const guard = adminGuard();
@@ -2842,7 +2869,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.promptTools.values()].map(promptToolView);
+      const items = [...world.promptTools.values()]
+        .filter((tool) => matchesQ([tool.name], searchOf(url)))
+        .map(promptToolView);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
     http.post("*/admin/prompt-tools", async ({ request }) => {
@@ -2965,7 +2994,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.knowledgeEntries.values()].map(knowledgeEntryView);
+      const items = [...world.knowledgeEntries.values()]
+        .filter((entry) => matchesQ([entry.name], searchOf(url)))
+        .map(knowledgeEntryView);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
     http.post("*/admin/knowledge-entries", async ({ request }) => {
@@ -3102,7 +3133,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.ruleSets.values()].map(ruleSetView);
+      const items = [...world.ruleSets.values()]
+        .filter((rs) => matchesQ([rs.name], searchOf(url)))
+        .map(ruleSetView);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
     http.post("*/admin/rule-sets", async ({ request }) => {
@@ -3180,9 +3213,10 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
-      const items = [...world.flows.values()].sort((a, b) =>
-        a.created_at.localeCompare(b.created_at),
-      ).map(flowViewOf);
+      const items = [...world.flows.values()]
+        .filter((flow) => matchesQ([flow.name], searchOf(url)))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map(flowViewOf);
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
   ];

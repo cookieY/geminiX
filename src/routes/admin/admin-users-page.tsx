@@ -54,19 +54,15 @@ export default function AdminUsersPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after });
+  const [search, setSearch] = useState("");
+  const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  const [search, setSearch] = useState("");
-  const keyword = search.trim().toLowerCase();
-  const users = (usersQuery.data?.items ?? []).filter(
-    (user) =>
-      keyword === "" ||
-      user.username.toLowerCase().includes(keyword) ||
-      (user.display_name ?? "").toLowerCase().includes(keyword) ||
-      (user.email ?? "").toLowerCase().includes(keyword),
-  );
+  // §18.73：搜索走服务端q（用户名/显示名/邮箱子串）；keyword仅用于
+  // 空态文案区分。
+  const keyword = search.trim();
+  const users = usersQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-users-page">

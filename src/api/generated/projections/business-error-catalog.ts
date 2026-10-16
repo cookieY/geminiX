@@ -300,6 +300,11 @@ export const BUSINESS_ERROR_CATALOG: {
     "retryability": "never",
     "domain": "query"
   },
+  "4011": {
+    "name": "QUERY_STATEMENT_REJECTED",
+    "retryability": "never",
+    "domain": "query"
+  },
   "5001": {
     "name": "MIGRATION_ACTIVE_WORK_EXISTS",
     "retryability": "never",

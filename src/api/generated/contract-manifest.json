@@ -3,15 +3,15 @@
   "sources": {
     "openapi": {
       "path": "api/openapi/yearning-v4.yaml",
-      "sha256": "1b41eff065e0aa0f9931d992e7667d312ae88a323fe149215cd3f1a4ef59096f"
+      "sha256": "f0cc8fdd049e32b7a306279f7aa132ae150b3a66699a6123b90ba3f7dcf20404"
     },
     "error_codes": {
       "path": "api/contracts/error-codes.json",
-      "sha256": "b60523e530c3471864f231eb08d2c371989434a1c635616fcf2cb180af565223"
+      "sha256": "ed31d63f1335d696ebc7fdabdf21fa4cab75746765518021c7f36a3d251b1e1b"
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "ce3329b8b075ac7b32623cef3e768b0e425e4d9bdb2cc6de473b0e1fd836a778"
+      "sha256": "dfe602bcfd03f1f94ad1404545c84148c1c0f4943b818aa09ecc6800d76caf25"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
@@ -29,27 +29,27 @@
   "outputs": {
     "typescript_client": {
       "path": "src/api/generated/client",
-      "sha256": "defbec049f35c215024064f96b225b7d65d09509f3629d9eae1fc7115497b667"
+      "sha256": "e9c818d804327fc822157394089fc0179c305d8ecdf3579d06abc5190ac371bb"
     },
     "zod_runtime_schemas": {
       "path": "src/api/generated/zod",
-      "sha256": "8db1e3f5d63ce32876b7bd6ef97d85d7ba4d684b950b145d0ae5a598995ae5b5"
+      "sha256": "21c80c2e8bf7246b987911eddd3c1d0b3a23c5716d366999a90ad6fe08cfcf8b"
     },
     "tanstack_query_hooks": {
       "path": "src/api/generated/hooks",
-      "sha256": "a9561eb080a6153d7311703565cb294a6cfe3af6278d290666c5bc1ba50cfa10"
+      "sha256": "8b48ffa8c3ddc789a488225786316346d4205b37f95f088c68e8fd6274199b1e"
     },
     "msw_mock_handlers": {
       "path": "src/api/generated/mocks",
-      "sha256": "4f0fc5141f553b2d9150338dacdf5e6dbe7e5a4e6ae136b2001ca31d94b4ac24"
+      "sha256": "956a78e0cddd85c47d1428edfc83811dccd01affc0755108be6afb941a148c2d"
     },
     "business_error_catalog": {
       "path": "src/api/generated/projections/business-error-catalog.ts",
-      "sha256": "9e1d21591350e7156e65e0eeccdf22af1176af4fcd2c337a58a6a442cfdd4a7f"
+      "sha256": "beade85df610ddf71e9af0f01d7d55b278d24d9dfd6696b9a6deab78f3f6fd04"
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "d0b34b56777b09ac012e15e0a70eafde4a575c44c8608d58922c5c79fe720348"
+      "sha256": "c4a146bea117273fc1b84f42c757a0c7a84304e3d132a0999907e82dda8c9e64"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-10-16T01:59:51.522Z"
+  "generated_at": "2026-10-16T06:55:52.951Z"
 }

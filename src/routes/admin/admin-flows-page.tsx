@@ -83,15 +83,15 @@ export default function AdminFlowsPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after });
+  const [search, setSearch] = useState("");
+
+  const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);
 
-  const [search, setSearch] = useState("");
-  const keyword = search.trim().toLowerCase();
-  const flows = (flowsQuery.data?.items ?? []).filter(
-    (flow) => keyword === "" || flow.name.toLowerCase().includes(keyword),
-  );
+  // §18.73：搜索走服务端q；keyword仅用于空态文案区分。
+  const keyword = search.trim();
+  const flows = flowsQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   assessSettingsImpact,
   createAiProvider,
@@ -139,13 +139,14 @@ function ifMatch(version: number | undefined): Record<string, string> {
 
 // ---- datasources ---------------------------------------------------------
 
-export function useDatasources(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function useDatasources(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "datasources", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "datasources", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listDatasources({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listDatasources({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: Datasource[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -247,15 +248,19 @@ export function useAdminTask(taskId: string, enabled: boolean) {
 
 // ---- ai providers ---------------------------------------------------------
 
-export function useAiProviders(enabled: boolean) {
+export function useAiProviders(enabled: boolean, q?: string) {
   return useQuery({
-    queryKey: ["admin", "ai-providers"],
+    queryKey: ["admin", "ai-providers", q ?? ""],
     queryFn: async () => {
-      const response = await listAiProviders();
-      // Declared bare array, selection_priority ascending — index 0 is the
-      // primary provider (backend provider/chain.go:3).
-      return response as unknown as AiProvider[];
+      const response = (await listAiProviders({ q: q || undefined })) as unknown as {
+        items?: AiProvider[];
+      };
+      // §18.73: standard paged envelope ({items, page}) — the contract now
+      // matches the implementation; ordered by selection_priority ascending
+      // so index 0 is the primary provider (backend provider/chain.go:3).
+      return pageItems<AiProvider>(response);
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -383,13 +388,14 @@ export function useReplaceSettings() {
 
 // ---- prompt tools ----------------------------------------------------------
 
-export function usePromptTools(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function usePromptTools(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "prompt-tools", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "prompt-tools", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listPromptTools({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listPromptTools({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: PromptTool[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -435,13 +441,14 @@ export function useDeletePromptTool() {
 
 // ---- knowledge entries ------------------------------------------------------
 
-export function useKnowledgeEntries(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function useKnowledgeEntries(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "knowledge-entries", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "knowledge-entries", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listKnowledgeEntries({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listKnowledgeEntries({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: KnowledgeEntry[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -499,13 +506,14 @@ export function useEvaluateKnowledgeEntry() {
 
 // ---- rule sets ---------------------------------------------------------------
 
-export function useRuleSets(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function useRuleSets(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "rule-sets", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "rule-sets", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listRuleSets({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listRuleSets({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: RuleSet[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -580,13 +588,14 @@ export function useFlowsForRuleSetImpact(enabled: boolean) {
 
 // ---- users ---------------------------------------------------------------
 
-export function useUsers(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function useUsers(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "users", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "users", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listUsers({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listUsers({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: User[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -640,13 +649,14 @@ export function useDeletionImpact(userId: string, enabled: boolean) {
 
 // ---- permission groups ---------------------------------------------------
 
-export function usePermissionGroups(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function usePermissionGroups(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "permission-groups", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "permission-groups", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listPermissionGroups({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listPermissionGroups({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: PermissionGroup[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
@@ -690,13 +700,14 @@ export function useDeletePermissionGroup() {
 
 // ---- flows (full model + masking rules) -----------------------------------
 
-export function useFlows(enabled: boolean, paging?: { limit: number; after?: string }) {
+export function useFlows(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
   return useQuery({
-    queryKey: ["admin", "flows", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "flows", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
     queryFn: async () => {
-      const response = await listFlows({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined });
+      const response = await listFlows({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
       return response as unknown as { items: Flow[]; page: { has_more: boolean; next_cursor: string | null } };
     },
+    placeholderData: keepPreviousData,
     enabled,
   });
 }

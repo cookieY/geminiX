@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
  * 查询工单 Tab (UI spec §5.2 — the unified view inside 我的工单). Rows come
@@ -24,6 +25,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
  * grant state and — when revoked — the revocation reason. Operator and
  * time of revocation are NOT in the frozen read contract; the gap is
  * recorded in the migration contract §17 as RCP-pending.
+ *
+ * §18.73: the merged rows paginate locally (default 20/page, site-wide
+ * ruling) — the sources are three separate endpoints, so a single server
+ * cursor walk is not available without a unified contract surface; each
+ * source keeps its bounded first-page fetch (limit 100).
  */
 
 type QueryOrderRow =
@@ -43,6 +49,8 @@ export function QueryOrdersTab() {
   const grantsQuery = useMyGrants(authenticated);
   const sessionsQuery = useMySessions(authenticated);
   const [detail, setDetail] = useState<QueryOrderRow | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const requests = requestsQuery.data ?? [];
   const grants = grantsQuery.data ?? [];
@@ -60,6 +68,10 @@ export function QueryOrdersTab() {
   ].sort((a, b) => (a.kind === "request" ? a.request.created_at : a.session.created_at).localeCompare(
     b.kind === "request" ? b.request.created_at : b.session.created_at,
   ));
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const loadError = requestsQuery.error ?? grantsQuery.error ?? sessionsQuery.error;
 
@@ -100,7 +112,7 @@ export function QueryOrdersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
+              {pageRows.map((row) => (
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
@@ -141,6 +153,18 @@ export function QueryOrdersTab() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {loadError === null && !requestsQuery.isPending && rows.length > 0 && (
+          <TablePagination
+            page={safePage}
+            hasMore={safePage < totalPages}
+            isFirst={safePage === 1}
+            onPrev={() => { setPage(Math.max(1, safePage - 1)); }}
+            onNext={() => { setPage(Math.min(totalPages, safePage + 1)); }}
+            pageSize={pageSize}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            testIdPrefix="orders-query"
+          />
         )}
       </CardContent>
 

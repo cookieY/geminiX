@@ -285,12 +285,13 @@ export default function AdminRuleSetsPage() {
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const query = useRuleSets(enabled, { limit: pager.pageSize, after: pager.after });
+  const [search, setSearch] = useState("");
+  const query = useRuleSets(enabled, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
   const flowsQuery = useFlowsForRuleSetImpact(enabled);
   const [editing, setEditing] = useState<RuleSet | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const keyword = search.trim().toLowerCase();
+  // §18.73：搜索走服务端q；keyword仅用于空态文案区分。
+  const keyword = search.trim();
   const [deleting, setDeleting] = useState<RuleSet | null>(null);
   const deleteMutation = useDeleteRuleSet();
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
@@ -320,7 +321,7 @@ export default function AdminRuleSetsPage() {
             <LoadingState />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listRuleSets" onRetry={() => void query.refetch()} />
-          ) : query.data.items.filter((ruleSet: RuleSet) => keyword === "" || ruleSet.name.toLowerCase().includes(keyword)).length === 0 && keyword !== "" ? (
+          ) : query.data.items.length === 0 && keyword !== "" ? (
             <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-rule-sets-search-empty">
               {t("table.emptySearch")}
             </p>

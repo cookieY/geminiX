@@ -80,6 +80,7 @@ export const BusinessErrorCode = {
   NUMBER_4008: 4008,
   NUMBER_4009: 4009,
   NUMBER_4010: 4010,
+  NUMBER_4011: 4011,
   NUMBER_5001: 5001,
   NUMBER_5002: 5002,
   NUMBER_5003: 5003,
@@ -3013,6 +3014,10 @@ export type ChangeMyPassword200 = {
 
 export type ListUsersParams = {
 /**
+ * Case-insensitive substring matched against username, display_name or email (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
+/**
  * @minimum 1
  * @maximum 200
  */
@@ -3059,6 +3064,10 @@ export type GetUserDeletionImpact200 = {
 } | BusinessErrorResponse;
 
 export type ListFlowsParams = {
+/**
+ * Case-insensitive substring matched against the flow name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
 /**
  * @minimum 1
  * @maximum 200
@@ -3141,6 +3150,10 @@ after?: AfterParameter;
 
 export type ListDatasourcesParams = {
 /**
+ * Case-insensitive substring matched against the datasource name or host (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
+/**
  * @minimum 1
  * @maximum 200
  */
@@ -3215,6 +3228,10 @@ export type GetDatasourceCapabilities200 = {
 
 export type ListPermissionGroupsParams = {
 /**
+ * Case-insensitive substring matched against the group name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
+/**
  * @minimum 1
  * @maximum 200
  */
@@ -3261,6 +3278,10 @@ export type DeletePermissionGroup200 = {
 } | BusinessErrorResponse;
 
 export type ListRuleSetsParams = {
+/**
+ * Case-insensitive substring matched against the rule set name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
 /**
  * @minimum 1
  * @maximum 200
@@ -3309,6 +3330,10 @@ export type DeleteRuleSet200 = {
 
 export type ListPromptToolsParams = {
 /**
+ * Case-insensitive substring matched against the tool name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
+/**
  * @minimum 1
  * @maximum 200
  */
@@ -3355,6 +3380,10 @@ export type DeletePromptTool200 = {
 } | BusinessErrorResponse;
 
 export type ListKnowledgeEntriesParams = {
+/**
+ * Case-insensitive substring matched against the entry name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
 /**
  * @minimum 1
  * @maximum 200
@@ -3408,10 +3437,26 @@ export type EvaluateKnowledgeEntry200 = {
   request_id: Uuid;
 } | BusinessErrorResponse;
 
+export type ListAiProvidersParams = {
+/**
+ * Case-insensitive substring matched against the provider name, base URL or model name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
+ */
+q?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: LimitParameter;
+after?: AfterParameter;
+};
+
 export type ListAiProviders200 = {
   err_code: 0;
   message: 'ok';
-  data: AiProvider[];
+  data: {
+  items: AiProvider[];
+  page: PageInfo;
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 

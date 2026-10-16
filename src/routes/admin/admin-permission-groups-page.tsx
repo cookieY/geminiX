@@ -55,18 +55,17 @@ export default function AdminPermissionGroupsPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const groupsQuery = usePermissionGroups(isAdmin, { limit: pager.pageSize, after: pager.after });
+  const [groupSearch, setGroupSearch] = useState("");
+  const groupsQuery = usePermissionGroups(isAdmin, { limit: pager.pageSize, after: pager.after, q: groupSearch.trim() || undefined });
   const usersQuery = useUsers(isAdmin);
   const flowsQuery = useFlows(isAdmin);
   const [editing, setEditing] = useState<PermissionGroup | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [previewUser, setPreviewUser] = useState<string>("");
 
-  const [groupSearch, setGroupSearch] = useState("");
-  const groupKeyword = groupSearch.trim().toLowerCase();
-  const groups = (groupsQuery.data?.items ?? []).filter(
-    (group) => groupKeyword === "" || group.name.toLowerCase().includes(groupKeyword),
-  );
+  // §18.73：搜索走服务端q；groupKeyword仅用于空态文案区分。
+  const groupKeyword = groupSearch.trim();
+  const groups = groupsQuery.data?.items ?? [];
   const users = usersQuery.data?.items ?? [];
   const flows = flowsQuery.data?.items ?? [];
   const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);

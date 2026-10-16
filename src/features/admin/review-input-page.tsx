@@ -176,16 +176,17 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const toolsQuery = usePromptTools(enabled && kind === "skills");
-  const entriesQuery = useKnowledgeEntries(enabled && kind === "knowledge");
+  const [skillSearch, setSkillSearch] = useState("");
+  const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  // §18.73：技能/经验搜索走服务端q（名称子串）。
+  const toolsQuery = usePromptTools(enabled && kind === "skills", { q: skillSearch.trim() || undefined });
+  const entriesQuery = useKnowledgeEntries(enabled && kind === "knowledge", { q: knowledgeSearch.trim() || undefined });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PromptTool | KnowledgeEntry | null>(null);
   const [deleting, setDeleting] = useState<PromptTool | KnowledgeEntry | null>(null);
   const [evaluating, setEvaluating] = useState<KnowledgeEntry | null>(null);
   const [evalResult, setEvalResult] = useState<KnowledgeEntryEvaluation | null>(null);
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
-  const [knowledgeSearch, setKnowledgeSearch] = useState("");
-  const [skillSearch, setSkillSearch] = useState("");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [notesSheetOpen, setNotesSheetOpen] = useState(false);
   const [knowledgeTextDraft, setKnowledgeTextDraft] = useState<string | null>(null);
@@ -198,21 +199,17 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const refetch = kind === "skills" ? toolsQuery.refetch : entriesQuery.refetch;
 
   const isSkills = kind === "skills";
-  const skillKeyword = skillSearch.trim().toLowerCase();
-  const visibleSkillRows =
-    skillKeyword === ""
-      ? rows
-      : rows.filter((row) => row.name.toLowerCase().includes(skillKeyword));
+  // §18.73：服务端q过滤后直接渲染；空态区分直接读skillSearch。
+  const visibleSkillRows = rows;
 
   // 内部经验 renders as the Notes-app master-detail (owner ruling 2026-09-02,
   // frozen template apps/notes): entry cards on the left, the experience
   // detail on the right. Skills keep the table view. All CRUD/evaluate
   // machinery is shared with the table branch below.
   if (!isSkills) {
+    // §18.73：knowledgeSearch由服务端q消费，客户端不再过滤。
     const entries = entriesQuery.data?.items ?? [];
-    const filtered = entries.filter((entry) =>
-      entry.name.toLowerCase().includes(knowledgeSearch.toLowerCase()),
-    );
+    const filtered = entries;
     const selected =
       filtered.find((entry) => entry.id === selectedKnowledgeId) ?? filtered[0] ?? null;
     const formatDate = (value: string): string =>

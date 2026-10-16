@@ -313,14 +313,19 @@ describe("admin datasources", () => {
 // ---- ai providers -----------------------------------------------------------
 
 describe("admin ai providers", () => {
-  it("lists a bare array ordered by selection_priority with no key material", async () => {
+  it("lists the paged envelope ordered by selection_priority with no key material (§18.73)", async () => {
     setAuth("admin");
     const { body } = await jsonRequest("/admin/ai-providers");
-    const data = body.data as unknown as Array<Record<string, unknown>>;
-    expect(data.map((provider) => provider.selection_priority)).toEqual([1, 2]);
-    expect(data[0]?.id).toBe(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID);
-    expect(data[0]?.api_key_configured).toBe(true);
-    expect(JSON.stringify(data)).not.toContain("pkey-a1");
+    // §18.73：标准分页信封{items,page}——与后端writePage及契约声明对齐。
+    const page = body.data as unknown as {
+      items: Array<Record<string, unknown>>;
+      page: { next_cursor: string | null; has_more: boolean };
+    };
+    expect(page.items.map((provider) => provider.selection_priority)).toEqual([1, 2]);
+    expect(page.items[0]?.id).toBe(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID);
+    expect(page.items[0]?.api_key_configured).toBe(true);
+    expect(page.page.has_more).toBe(false);
+    expect(JSON.stringify(page.items)).not.toContain("pkey-a1");
   });
 
   it("requires the api key on create and rejects duplicates", async () => {

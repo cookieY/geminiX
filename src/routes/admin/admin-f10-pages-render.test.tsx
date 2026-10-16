@@ -208,14 +208,18 @@ describe("notification channels page", () => {
 });
 
 describe("workspace dashboard", () => {
-  it("renders the announcement without administration blocks for a granted user", async () => {
+  it("renders the announcement and platform statistics for a granted user (§18.71)", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderPage(<WorkspacePage />);
     expect(await screen.findByTestId("workspace-page")).toBeVisible();
     expect(await screen.findByTestId("workspace-announcement")).toHaveTextContent("季度维护窗口公告");
-    // Non-admin sessions never see the administration statistics block.
-    expect(screen.queryByTestId("workspace-admin-dashboards")).not.toBeInTheDocument();
+    // §18.71 (owner ruling 2026-10-16): platform statistics are an
+    // authenticated-session surface — non-admin sessions render the same
+    // operations trend + stat cards block the admin home shows.
+    expect(await screen.findByTestId("workspace-admin-dashboards")).toBeVisible();
+    expect(screen.getByTestId("admin-order-total")).toBeVisible();
+    expect(screen.getByTestId("admin-query-total")).toBeVisible();
   });
 
   it("renders the trend chart and stat cards for the admin session", async () => {

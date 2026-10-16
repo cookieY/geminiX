@@ -17,11 +17,12 @@ import AdminRuleSetsPage from "@/routes/admin/admin-rule-sets-page";
 import AdminUsersPage from "@/routes/admin/admin-users-page";
 
 /**
- * Table search gates (§18.37/§18.39 supplement): every admin table toolbar
- * filters its loaded rows by case-insensitive name substring and
- * distinguishes the search-empty state from the page's native empty state.
- * The filter is client-side over the current page (server-side q parameters
- * remain an RCP decision).
+ * Table search gates (§18.37 → §18.73): every admin table toolbar drives the
+ * server-side q parameter (case-insensitive substring over the domain's
+ * declared fields) and distinguishes the search-empty state from the page's
+ * native empty state. The mock mirrors the ILIKE semantics; assertions await
+ * the async round trip (keepPreviousData keeps the previous rows during the
+ * refetch).
  */
 
 vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({

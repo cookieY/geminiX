@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import { mockSession } from "./helpers/auth";
 
 // Owner layout-alignment ruling 2026-09-02 (reference image
-// app-shell-home-zh-cn-v1): the admin home renders the operations order trend
+// app-shell-home-zh-cn-v1): the home renders the operations order trend
 // chart plus the 查询次数/用户数/数据源 stat cards from
-// /admin/dashboard/operations, while the zero-permission home stays limited
-// to the personal workspace (dashboard PRD §9 — global statistics are
-// admin-only) and never even fetches the admin dashboard endpoints.
+// /admin/dashboard/operations. §18.71 (owner ruling 2026-10-16) widens that
+// surface to every authenticated session — the zero-permission home renders
+// the same platform statistics (dashboard PRD §9 superseded).
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -67,11 +67,11 @@ test("the window selector refetches operations with the requested window", async
   await expect(page.getByTestId("workspace-admin-operations")).toContainText("2026-08-26");
 });
 
-test("zero-permission home never fetches the admin dashboards", async ({ page }) => {
-  const adminCalls: string[] = [];
+test("zero-permission home renders the platform statistics (§18.71)", async ({ page }) => {
+  const operationsCalls: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/admin/dashboard/")) {
-      adminCalls.push(request.url());
+    if (request.url().includes("/admin/dashboard/operations")) {
+      operationsCalls.push(request.url());
     }
   });
   await mockSession(page, "default");
@@ -80,8 +80,12 @@ test("zero-permission home never fetches the admin dashboards", async ({ page })
   await expect(page.getByTestId("workspace-announcement")).toBeVisible();
   // The release banner is public repository metadata — every user sees it.
   await expect(page.getByTestId("workspace-release-banner")).toBeVisible();
-  await expect(page.getByTestId("workspace-admin-dashboards")).toHaveCount(0);
-  expect(adminCalls).toHaveLength(0);
+  // §18.71: platform statistics are an authenticated-session surface — the
+  // zero-permission home fetches operations and renders the same trend +
+  // stat cards the admin home shows.
+  await expect(page.getByTestId("workspace-admin-dashboards")).toBeVisible();
+  await expect(page.getByTestId("admin-order-total")).toHaveText("47");
+  expect(operationsCalls.length).toBeGreaterThan(0);
 });
 
 test("the manual refresh control refetches the personal dashboard", async ({ page }) => {

@@ -474,18 +474,14 @@ export default function AdminProvidersPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
-  const query = useAiProviders(enabled);
+  const [search, setSearch] = useState("");
+  const query = useAiProviders(enabled, search.trim() || undefined);
   const [editing, setEditing] = useState<AiProvider | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const keyword = search.trim().toLowerCase();
-  const providers = (query.data ?? []).filter(
-    (provider) =>
-      keyword === "" ||
-      provider.name.toLowerCase().includes(keyword) ||
-      provider.base_url.toLowerCase().includes(keyword) ||
-      provider.model_name.toLowerCase().includes(keyword),
-  );
+  // §18.73：搜索走服务端q（名称/BaseURL/模型名子串）；keyword仅用于
+  // 空态文案区分。
+  const keyword = search.trim();
+  const providers = query.data ?? [];
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (

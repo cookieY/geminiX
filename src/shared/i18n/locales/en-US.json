@@ -199,7 +199,8 @@
     "TEMPLATE_RENDER_FAILED": "The notification template failed to render.",
     "SYSTEM_MAINTENANCE": "The system is under maintenance. Try again later.",
     "MIGRATION_MODE_ACTIVE": "Migration mode is active; only migration actions are allowed.",
-    "PASSWORD_MANAGED_BY_IDENTITY_SOURCE": "The account is bound to an LDAP/OIDC identity source; its password is managed there."
+    "PASSWORD_MANAGED_BY_IDENTITY_SOURCE": "The account is bound to an LDAP/OIDC identity source; its password is managed there.",
+    "QUERY_STATEMENT_REJECTED": "The target database rejected the statement (e.g. a write statement on a read-only session); check the statement kind."
   },
   "dateTimePicker": {
     "title": "Pick a time",

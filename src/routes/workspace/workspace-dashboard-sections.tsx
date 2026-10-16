@@ -281,6 +281,8 @@ export function AdminDashboardSection({
 }) {
   const { t } = useTranslation();
   const [windowDays, setWindowDays] = useState(30);
+  // §18.71：平台运营统计对全部已登录会话渲染（enabled=user!==null）；
+  // 组件名保留AdminDashboardSection避免三处消费面testid漂移。
   const operations = useOperationsDashboardQuery(windowDays, enabled);
 
   if (!enabled) return null;

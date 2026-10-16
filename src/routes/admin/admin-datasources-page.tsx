@@ -1053,21 +1053,18 @@ export default function AdminDatasourcesPage() {
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const query = useDatasources(enabled, { limit: pager.pageSize, after: pager.after });
+  const [search, setSearch] = useState("");
+
+  const query = useDatasources(enabled, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Datasource | null>(null);
   const [deleting, setDeleting] = useState<Datasource | null>(null);
   // Expanded capability row: datasource id + the probe task id that keyed
   // the latest capabilities fetch (a re-test starts a fresh key).
   const [probe, setProbe] = useState<{ datasourceId: string; taskId: string } | null>(null);
-  const [search, setSearch] = useState("");
-  const keyword = search.trim().toLowerCase();
-  const datasources = query.data?.items.filter(
-    (datasource) =>
-      keyword === "" ||
-      datasource.name.toLowerCase().includes(keyword) ||
-      datasource.host.toLowerCase().includes(keyword),
-  ) ?? [];
+  // §18.73：搜索走服务端q（名称/主机子串）；keyword仅用于空态文案区分。
+  const keyword = search.trim();
+  const datasources = query.data?.items ?? [];
 
   return (
     <div className="flex flex-col gap-4">
