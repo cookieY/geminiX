@@ -970,8 +970,6 @@ export interface AiProviderWrite {
      * @maximum 100
      */
   selection_priority: number;
-  privacy_contract_hash: string;
-  output_schema_hash: string;
   api_key?: SecretInput;
   configuration?: AiProviderWriteConfiguration;
 }

@@ -37,6 +37,13 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import {
   Table,
@@ -61,10 +68,12 @@ import {
  * selection_priority ascending (backend provider/chain.go:3), index 0 is
  * the primary. The API key is write-only: create requires it once, replace
  * keeps the stored key unless a new one is typed, and every read face
- * exposes only api_key_configured. privacy_contract_hash and
- * output_schema_hash inputs carry the frozen contract hashes the runtime
- * verifies (R008/R005 boundary: no per-order budget here — that is the
- * ai-budget settings namespace).
+ * exposes only api_key_configured. The privacy/output contract hashes are
+ * NOT form fields: the platform derives both from code constants
+ * (provider contract_hash.go) and pins them per row at write time —
+ * identical fingerprints across providers are what authorizes fallback
+ * (chain.go gate) (R008/R005 boundary: no per-order budget here — that
+ * is the ai-budget settings namespace).
  */
 
 interface ProviderFormState {
@@ -75,8 +84,6 @@ interface ProviderFormState {
   enabled: boolean;
   selectionPriority: string;
   apiKey: string;
-  privacyContractHash: string;
-  outputSchemaHash: string;
 }
 
 function emptyProviderForm(): ProviderFormState {
@@ -88,8 +95,6 @@ function emptyProviderForm(): ProviderFormState {
     enabled: true,
     selectionPriority: "10",
     apiKey: "",
-    privacyContractHash: "",
-    outputSchemaHash: "",
   };
 }
 
@@ -104,8 +109,6 @@ function providerFormForEdit(provider: AiProvider): ProviderFormState {
     // Never prefilled: an empty key field on edit means "keep the stored
     // key" (gate: Secret永不回填).
     apiKey: "",
-    privacyContractHash: "",
-    outputSchemaHash: "",
   };
 }
 
@@ -147,8 +150,6 @@ function ProviderFormDialog({
         model_name: form.modelName,
         enabled: form.enabled,
         selection_priority: Number(form.selectionPriority),
-        privacy_contract_hash: form.privacyContractHash,
-        output_schema_hash: form.outputSchemaHash,
         api_key: apiKey,
       } as CreateAiProviderRequest;
       createMutation.mutate(write, {
@@ -167,8 +168,6 @@ function ProviderFormDialog({
         model_name: form.modelName,
         enabled: form.enabled,
         selection_priority: Number(form.selectionPriority),
-        privacy_contract_hash: form.privacyContractHash,
-        output_schema_hash: form.outputSchemaHash,
         ...(apiKey === undefined ? {} : { api_key: apiKey }),
       };
       replaceMutation.mutate(
@@ -205,13 +204,27 @@ function ProviderFormDialog({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor="provider-kind">{t("admin.providers.kind")}</Label>
-            <Input
-              id="provider-kind"
+            <Label>{t("admin.providers.kind")}</Label>
+            {/* §18.68：类型改为受控下拉——运行时Dial只有OpenAI Compatible
+                一种适配器（provider_kind零分支透传），选项集如实反映能力，
+                未来新增协议时在此追加。items做显示映射，SelectItem显式子项
+                （§18.48终稿模式；空SelectContent=弹层零选项）。 */}
+            <Select
               value={form.providerKind}
-              onChange={(event) => { setForm({ ...form, providerKind: event.target.value }); }}
-              data-testid="provider-kind"
-            />
+              onValueChange={(next) => {
+                if (next !== null) setForm({ ...form, providerKind: next });
+              }}
+              items={{ openai_compatible: t("admin.providers.kindOpenaiCompatible") }}
+            >
+              <SelectTrigger data-testid="provider-kind" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai_compatible">
+                  {t("admin.providers.kindOpenaiCompatible")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label htmlFor="provider-base-url">{t("admin.providers.baseUrl")}</Label>
@@ -269,24 +282,6 @@ function ProviderFormDialog({
                 })}
               </p>
             ) : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="provider-privacy-hash">{t("admin.providers.privacyHash")}</Label>
-            <Input
-              id="provider-privacy-hash"
-              value={form.privacyContractHash}
-              onChange={(event) => { setForm({ ...form, privacyContractHash: event.target.value }); }}
-              data-testid="provider-privacy-hash"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="provider-schema-hash">{t("admin.providers.schemaHash")}</Label>
-            <Input
-              id="provider-schema-hash"
-              value={form.outputSchemaHash}
-              onChange={(event) => { setForm({ ...form, outputSchemaHash: event.target.value }); }}
-              data-testid="provider-schema-hash"
-            />
           </div>
           <div className="flex items-center gap-2 md:col-span-2">
             <input

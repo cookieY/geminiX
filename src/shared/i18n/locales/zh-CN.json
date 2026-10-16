@@ -956,7 +956,7 @@
       "description": "主备 Provider 顺序按 selection_priority 升序生效；API Key 永不回显。",
       "createTitle": "新建 Provider",
       "editTitle": "编辑 Provider",
-      "formDescription": "OpenAI Compatible 端点与模型；隐私契约 Hash 与输出 Schema Hash 由运行时校验。",
+      "formDescription": "OpenAI Compatible 端点与模型；隐私契约与输出 Schema 指纹由系统自动派生并随配置钉存，无需填写。",
       "name": "名称",
       "kind": "类型",
       "baseUrl": "Base URL",
@@ -970,8 +970,6 @@
       "apiKeyConfigured": "API Key：{{state}}",
       "configured": "已配置",
       "notConfigured": "未配置",
-      "privacyHash": "隐私契约 Hash",
-      "schemaHash": "输出 Schema Hash",
       "primary": "主",
       "backup": "备",
       "testOk": "连接测试通过",
@@ -980,7 +978,8 @@
       "emptyDescription": "创建第一个 AI Provider 以启用审核运行时。",
       "deleteTitle": "删除 Provider",
       "deleteDescription": "确认删除 Provider {{name}}？删除后审核运行时将不再选择该 Provider。",
-      "deleteErrorHint": "Provider 仍被审核运行时引用，删除失败；可先停用。"
+      "deleteErrorHint": "Provider 仍被审核运行时引用，删除失败；可先停用。",
+      "kindOpenaiCompatible": "OpenAI Compatible"
     },
     "aiBudget": {
       "title": "AI 预算",
@@ -1251,7 +1250,6 @@
       "identity": "个人资料",
       "security": "账号与安全",
       "appearance": "外观",
-      "notifications": "通知",
       "display": "显示"
     },
     "identity": {
@@ -1285,11 +1283,6 @@
       "title": "外观",
       "description": "明暗主题切换。",
       "theme": "主题"
-    },
-    "notifications": {
-      "title": "通知",
-      "description": "通知渠道为服务端管理面配置。",
-      "readOnlyNote": "通知渠道由管理员在系统设置中配置；个人维度暂无可配置项（只读）。"
     },
     "display": {
       "title": "显示",

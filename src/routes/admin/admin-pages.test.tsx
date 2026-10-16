@@ -123,6 +123,24 @@ describe("gate: Secret永不回填", () => {
     expect(screen.getByText(/API Key：已配置/)).toBeInTheDocument();
     expect(screen.queryByText(/pkey-a1/)).not.toBeInTheDocument();
   });
+
+  it("offers no contract-hash inputs — both fingerprints are platform-derived", async () => {
+    renderPage(<AdminProvidersPage />);
+    await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
+    await screen.findByTestId("provider-api-key");
+    // §18.67：隐私契约/输出Schema指纹由系统派生（provider contract_hash.go），
+    // 不得以任何用户输入面回归。
+    expect(screen.queryByTestId("provider-privacy-hash")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("provider-schema-hash")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/隐私契约/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Schema Hash/)).not.toBeInTheDocument();
+    // §18.68：类型是受控下拉（唯一合法项 openai_compatible），不再是自由文本。
+    const kind = screen.getByTestId("provider-kind");
+    expect(kind).toHaveAttribute("role", "combobox");
+    expect(kind).toHaveTextContent(/OpenAI Compatible/);
+    expect(screen.queryAllByTestId("provider-kind").filter((el) => el.tagName === "INPUT")).toHaveLength(0);
+  });
 });
 
 describe("gate: 无外部代码HTTP或写库Custom Tool UI", () => {

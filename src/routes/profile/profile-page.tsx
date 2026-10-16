@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Bell, Languages, Palette, ShieldCheck, UserRound } from "lucide-react";
+import { Languages, Palette, ShieldCheck, UserRound } from "lucide-react";
 import { useSession } from "@/features/auth/session-provider";
 import { changeMyPassword } from "@/api/generated/client/authentication/authentication";
 import { SESSION_EXPIRED_EVENT } from "@/shared/api/mutator";
@@ -27,12 +27,11 @@ import { ThemeToggle } from "@/app/shell/theme-toggle";
 
 /**
  * 个人中心 (UI spec §5.1: 入口为右上角头像，不进侧边栏；模板Settings分栏).
- * Five sections exactly as constrained: 个人资料 (server facts, read-only —
- * UpdateUserRequest is an admin operation, no self-service surface),
- * 账号与安全 (self-service password change for local accounts, §18.52;
- * LDAP/OIDC accounts keep the identity-source note), 外观 (theme), 通知
- * (read-only — channels are server-side admin surface), 显示 (locale).
- * Avatar uses the initial-letter fallback only.
+ * Four sections: 个人资料 (server facts, read-only — UpdateUserRequest is
+ * an admin operation, no self-service surface), 账号与安全 (self-service
+ * password change for local accounts, §18.52; LDAP/OIDC accounts keep the
+ * identity-source note), 外观 (theme), 显示 (locale). 通知分栏已按owner
+ * 裁定移除（§18.69）：渠道是服务端管理面，个人维度零可配置项时不占位。
  */
 
 export default function ProfilePage() {
@@ -59,10 +58,6 @@ export default function ProfilePage() {
           <TabsTrigger value="appearance" data-testid="profile-tab-appearance">
             <Palette className="size-3.5" />
             {t("profile.tabs.appearance")}
-          </TabsTrigger>
-          <TabsTrigger value="notifications" data-testid="profile-tab-notifications">
-            <Bell className="size-3.5" />
-            {t("profile.tabs.notifications")}
           </TabsTrigger>
           <TabsTrigger value="display" data-testid="profile-tab-display">
             <Languages className="size-3.5" />
@@ -128,18 +123,6 @@ export default function ProfilePage() {
             <CardContent className="flex items-center justify-between gap-4">
               <span className="text-sm">{t("profile.appearance.theme")}</span>
               <ThemeToggle />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">{t("profile.notifications.title")}</CardTitle>
-              <CardDescription>{t("profile.notifications.description")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-xs">{t("profile.notifications.readOnlyNote")}</p>
             </CardContent>
           </Card>
         </TabsContent>

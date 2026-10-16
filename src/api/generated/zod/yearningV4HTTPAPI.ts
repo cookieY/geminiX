@@ -3638,8 +3638,6 @@ export const CreateAiProviderBody = zod.object({
   "model_name": zod.string().min(1),
   "enabled": zod.boolean(),
   "selection_priority": zod.int().min(1).max(createAiProviderBodyOneSelectionPriorityMax),
-  "privacy_contract_hash": zod.string(),
-  "output_schema_hash": zod.string(),
   "api_key": zod.object({
   "value": zod.string().min(1)
 }),
@@ -3742,8 +3740,6 @@ export const ReplaceAiProviderBody = zod.object({
   "model_name": zod.string().min(1),
   "enabled": zod.boolean(),
   "selection_priority": zod.int().min(1).max(replaceAiProviderBodySelectionPriorityMax),
-  "privacy_contract_hash": zod.string(),
-  "output_schema_hash": zod.string(),
   "api_key": zod.object({
   "value": zod.string().min(1)
 }).optional(),

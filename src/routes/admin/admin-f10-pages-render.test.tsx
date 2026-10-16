@@ -97,13 +97,14 @@ describe("audit records page", () => {
 });
 
 describe("profile page", () => {
-  it("renders all five constrained sections", async () => {
+  it("renders all four constrained sections", async () => {
     stubSession(false);
     renderPage(<ProfilePage />);
     expect(await screen.findByTestId("profile-tab-identity")).toBeVisible();
     expect(screen.getByTestId("profile-tab-security")).toBeVisible();
     expect(screen.getByTestId("profile-tab-appearance")).toBeVisible();
-    expect(screen.getByTestId("profile-tab-notifications")).toBeVisible();
+    // §18.69：通知分栏移除（个人维度零可配置项不占位）。
+    expect(screen.queryByTestId("profile-tab-notifications")).not.toBeInTheDocument();
     expect(screen.getByTestId("profile-tab-display")).toBeVisible();
     // §18.52: the security tab now renders the self-service password form
     // for local accounts (mock identities are always local).

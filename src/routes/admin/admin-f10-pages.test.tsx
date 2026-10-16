@@ -228,12 +228,20 @@ describe("gate: 流程双表单符合新模型（§3）", () => {
     }
     expect(within(dialog).getByTestId("flow-stage-0-step-0-select-all-count").textContent)
       .toBe(`${String(chips.length)}/${String(chips.length)}`);
+    // §18.70：全选态指示器携带data-checked（✓）。
+    const fullIndicator = stepAll.querySelector("[data-slot=checkbox-indicator]");
+    expect(fullIndicator?.hasAttribute("data-checked")).toBe(true);
 
     // Dropping one chip moves the master checkbox to the mixed state.
     const [firstChip] = chips;
     if (firstChip === undefined) throw new Error("expected at least one actor chip");
     await userEvent.click(firstChip);
     expect(stepAll.getAttribute("aria-checked")).toBe("mixed");
+    // §18.70：mixed态指示器携带data-indeterminate（减号图标经CSS显隐，
+    // jsdom无样式故断言状态属性而非图标DOM）。
+    const mixedIndicator = stepAll.querySelector("[data-slot=checkbox-indicator]");
+    expect(mixedIndicator?.hasAttribute("data-indeterminate")).toBe(true);
+    expect(mixedIndicator?.hasAttribute("data-checked")).toBe(false);
 
     const execAll = within(dialog).getByTestId("flow-stage-0-exec-select-all");
     await userEvent.click(execAll);

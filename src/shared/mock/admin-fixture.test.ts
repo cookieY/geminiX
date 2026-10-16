@@ -327,17 +327,17 @@ describe("admin ai providers", () => {
     setAuth("admin");
     const missing = await jsonRequest(
       "/admin/ai-providers",
-      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 5, privacy_contract_hash: "h1", output_schema_hash: "h2" }),
+      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 5, }),
     );
     expect(missing.body.err_code).toBe(1001);
     const created = await jsonRequest(
       "/admin/ai-providers",
-      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 5, privacy_contract_hash: "h1", output_schema_hash: "h2", api_key: { value: "key-1" } }),
+      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 5, api_key: { value: "key-1" } }),
     );
     expect(created.body.err_code).toBe(0);
     const duplicate = await jsonRequest(
       "/admin/ai-providers",
-      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 6, privacy_contract_hash: "h1", output_schema_hash: "h2", api_key: { value: "key-2" } }),
+      request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 6, api_key: { value: "key-2" } }),
     );
     expect(duplicate.body.err_code).toBe(1005);
   });
@@ -347,13 +347,13 @@ describe("admin ai providers", () => {
     const internals = adminFixtureInternals();
     const keep = await jsonRequest(
       `/admin/ai-providers/${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`,
-      request("PUT", { name: "primary-glm", provider_kind: "openai_compatible", base_url: "https://open.bigmodel.cn/api/paas/v4", model_name: "glm-4.6", enabled: true, selection_priority: 1, privacy_contract_hash: "h", output_schema_hash: "h" }, ifMatch(1)),
+      request("PUT", { name: "primary-glm", provider_kind: "openai_compatible", base_url: "https://open.bigmodel.cn/api/paas/v4", model_name: "glm-4.6", enabled: true, selection_priority: 1, }, ifMatch(1)),
     );
     expect(keep.body.err_code).toBe(0);
     expect(internals.providerApiKey(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe("pkey-a1");
     const replace = await jsonRequest(
       `/admin/ai-providers/${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`,
-      request("PUT", { name: "primary-glm", provider_kind: "openai_compatible", base_url: "https://open.bigmodel.cn/api/paas/v4", model_name: "glm-4.6", enabled: true, selection_priority: 1, privacy_contract_hash: "h", output_schema_hash: "h", api_key: { value: "rotated" } }, ifMatch(2)),
+      request("PUT", { name: "primary-glm", provider_kind: "openai_compatible", base_url: "https://open.bigmodel.cn/api/paas/v4", model_name: "glm-4.6", enabled: true, selection_priority: 1, api_key: { value: "rotated" } }, ifMatch(2)),
     );
     expect(replace.body.err_code).toBe(0);
     expect(internals.providerApiKey(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe("rotated");
@@ -1042,8 +1042,6 @@ describe("admin fixture malformed payloads", () => {
       selection_priority: "high",
       api_key: { value: { nested: true } },
       enabled: 1,
-      privacy_contract_hash: 1,
-      output_schema_hash: 2,
     }));
     expect(malformed.body.err_code).toBe(1001);
   });
@@ -1067,7 +1065,7 @@ describe("admin fixture malformed payloads", () => {
     setAuth("admin");
     const empty = await jsonRequest(
       `/admin/ai-providers/${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`,
-      request("PUT", { name: "primary-glm", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 1, privacy_contract_hash: "h", output_schema_hash: "h", api_key: { value: "" } }, ifMatch(1)),
+      request("PUT", { name: "primary-glm", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 1, api_key: { value: "" } }, ifMatch(1)),
     );
     expect(empty.body.err_code).toBe(1001);
   });

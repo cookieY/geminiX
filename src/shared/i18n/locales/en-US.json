@@ -956,7 +956,7 @@
       "description": "Primary/backup order follows selection_priority ascending; API keys are never echoed.",
       "createTitle": "New provider",
       "editTitle": "Edit provider",
-      "formDescription": "OpenAI Compatible endpoint and model; the privacy and output-schema hashes are verified by the runtime.",
+      "formDescription": "OpenAI Compatible endpoints and models; the privacy-contract and output-schema fingerprints are derived automatically by the platform — nothing to fill in.",
       "name": "Name",
       "kind": "Kind",
       "baseUrl": "Base URL",
@@ -970,8 +970,6 @@
       "apiKeyConfigured": "API key: {{state}}",
       "configured": "Configured",
       "notConfigured": "Not configured",
-      "privacyHash": "Privacy contract hash",
-      "schemaHash": "Output schema hash",
       "primary": "Primary",
       "backup": "Backup",
       "testOk": "Connection test passed",
@@ -980,7 +978,8 @@
       "emptyDescription": "Create the first AI provider to enable the review runtime.",
       "deleteTitle": "Delete provider",
       "deleteDescription": "Delete provider {{name}}? The review runtime will no longer select it.",
-      "deleteErrorHint": "The provider is still referenced by the review runtime; disable it instead."
+      "deleteErrorHint": "The provider is still referenced by the review runtime; disable it instead.",
+      "kindOpenaiCompatible": "OpenAI Compatible"
     },
     "aiBudget": {
       "title": "AI budget",
@@ -1251,7 +1250,6 @@
       "identity": "Profile",
       "security": "Security",
       "appearance": "Appearance",
-      "notifications": "Notifications",
       "display": "Display"
     },
     "identity": {
@@ -1285,11 +1283,6 @@
       "title": "Appearance",
       "description": "Light/dark theme.",
       "theme": "Theme"
-    },
-    "notifications": {
-      "title": "Notifications",
-      "description": "Notification channels are a server-side admin surface.",
-      "readOnlyNote": "Channels are configured by administrators in system settings; no per-user options exist (read-only)."
     },
     "display": {
       "title": "Display",
