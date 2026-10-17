@@ -504,15 +504,16 @@ export const ListFlowsResponse = zod.union([zod.object({
 })).min(1).max(listFlowsResponseOneDataTwoItemsItemApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional(),
+}).describe('Read projection of a flow\'s query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.')).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
   "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'))
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).'))
 })),
   "request_id": zod.uuid()
 }),zod.object({
@@ -641,15 +642,16 @@ export const CreateFlowResponse = zod.union([zod.object({
 })).min(1).max(createFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional(),
+}).describe('Read projection of a flow\'s query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.')).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
   "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -724,15 +726,16 @@ export const GetFlowResponse = zod.union([zod.object({
 })).min(1).max(getFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional(),
+}).describe('Read projection of a flow\'s query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.')).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
   "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -871,15 +874,16 @@ export const ReplaceFlowResponse = zod.union([zod.object({
 })).min(1).max(replaceFlowResponseOneDataApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional(),
+}).describe('Read projection of a flow\'s query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.')).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
   "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'),
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).'),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -2229,7 +2233,7 @@ export const CreateDatasourceBody = zod.object({
   "client_key_pem": zod.union([zod.object({
   "value": zod.string().min(1)
 }),zod.null()]).optional().describe('PEM-encoded client private key for mutual TLS; must be supplied together with client_cert_pem.')
-}).nullish().describe('Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
+}).nullish().describe('Optional TLS material block with three-state semantics on the replace path (RCP-20261016-DATASOURCE-TLS-KEEP): omitting tls keeps the stored TLS material and tls_verified unchanged (the material content is re-sealed per the payload\'s credential purposes so every enabled purpose retains verified TLS); tls:null explicitly removes all stored material and the datasource connects in plaintext; a tls object fully replaces the material and must carry a non-null ca_pem (an all-null material object is rejected). On the create path omitting and null are equivalent (no existing material to keep). When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
 })
 
 export const createDatasourceResponseOneDataTestPurposeDefault = `review`;
@@ -2371,7 +2375,7 @@ export const ReplaceDatasourceBody = zod.object({
   "client_key_pem": zod.union([zod.object({
   "value": zod.string().min(1)
 }),zod.null()]).optional().describe('PEM-encoded client private key for mutual TLS; must be supplied together with client_cert_pem.')
-}).nullish().describe('Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
+}).nullish().describe('Optional TLS material block with three-state semantics on the replace path (RCP-20261016-DATASOURCE-TLS-KEEP): omitting tls keeps the stored TLS material and tls_verified unchanged (the material content is re-sealed per the payload\'s credential purposes so every enabled purpose retains verified TLS); tls:null explicitly removes all stored material and the datasource connects in plaintext; a tls object fully replaces the material and must carry a non-null ca_pem (an all-null material object is rejected). On the create path omitting and null are equivalent (no existing material to keep). When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.')
 })
 
 export const replaceDatasourceResponseOneDataTestPurposeDefault = `review`;
@@ -3832,38 +3836,11 @@ export const TestAiProviderConnectionParams = zod.object({
   "provider_id": zod.uuid()
 })
 
-export const testAiProviderConnectionResponseOneDataProgressCompletedMin = 0;
-
-export const testAiProviderConnectionResponseOneDataProgressTotalMin = 0;
-
-export const testAiProviderConnectionResponseOneDataErrorOneStatusMin = 400;
-export const testAiProviderConnectionResponseOneDataErrorOneStatusMax = 599;
-
-
-
 export const TestAiProviderConnectionResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "id": zod.uuid(),
-  "kind": zod.enum(['sql_grouping', 'ai_review', 'migration_dry_run', 'admin_connection_test', 'ai_provider_connection_test', 'identity_provider_connection_test', 'notification_test_delivery']),
-  "state": zod.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
-  "progress": zod.object({
-  "completed": zod.int().min(testAiProviderConnectionResponseOneDataProgressCompletedMin),
-  "total": zod.int().min(testAiProviderConnectionResponseOneDataProgressTotalMin),
-  "unit": zod.string()
-}),
-  "result_ref": zod.string().nullish(),
-  "error": zod.union([zod.object({
-  "type": zod.url(),
-  "title": zod.string(),
-  "status": zod.int().min(testAiProviderConnectionResponseOneDataErrorOneStatusMin).max(testAiProviderConnectionResponseOneDataErrorOneStatusMax),
-  "detail": zod.string(),
-  "instance": zod.string().optional(),
-  "request_id": zod.uuid()
-}),zod.null()]).optional(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
+  "ok": zod.boolean()
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -4674,38 +4651,12 @@ export const CreateNotificationTestDeliveryBody = zod.object({
   "locale": zod.enum(['zh-CN', 'en-US']).default(createNotificationTestDeliveryBodyLocaleDefault)
 })
 
-export const createNotificationTestDeliveryResponseOneDataProgressCompletedMin = 0;
-
-export const createNotificationTestDeliveryResponseOneDataProgressTotalMin = 0;
-
-export const createNotificationTestDeliveryResponseOneDataErrorOneStatusMin = 400;
-export const createNotificationTestDeliveryResponseOneDataErrorOneStatusMax = 599;
-
-
-
 export const CreateNotificationTestDeliveryResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "id": zod.uuid(),
-  "kind": zod.enum(['sql_grouping', 'ai_review', 'migration_dry_run', 'admin_connection_test', 'ai_provider_connection_test', 'identity_provider_connection_test', 'notification_test_delivery']),
-  "state": zod.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
-  "progress": zod.object({
-  "completed": zod.int().min(createNotificationTestDeliveryResponseOneDataProgressCompletedMin),
-  "total": zod.int().min(createNotificationTestDeliveryResponseOneDataProgressTotalMin),
-  "unit": zod.string()
-}),
-  "result_ref": zod.string().nullish(),
-  "error": zod.union([zod.object({
-  "type": zod.url(),
-  "title": zod.string(),
-  "status": zod.int().min(createNotificationTestDeliveryResponseOneDataErrorOneStatusMin).max(createNotificationTestDeliveryResponseOneDataErrorOneStatusMax),
-  "detail": zod.string(),
-  "instance": zod.string().optional(),
-  "request_id": zod.uuid()
-}),zod.null()]).optional(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
+  "task_id": zod.uuid(),
+  "channel_id": zod.uuid()
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -4771,11 +4722,22 @@ export const ListNotificationDeliveriesResponse = zod.union([zod.object({
 export const listAuditEventsQueryLimitDefault = 50;
 export const listAuditEventsQueryLimitMax = 200;
 
+export const listAuditEventsQueryActionMax = 128;
+
+export const listAuditEventsQueryResourceTypeMax = 128;
+
 
 
 export const ListAuditEventsQueryParams = zod.object({
   "limit": zod.int().min(1).max(listAuditEventsQueryLimitMax).default(listAuditEventsQueryLimitDefault),
-  "after": zod.string().optional()
+  "after": zod.string().optional(),
+  "actor_id": zod.uuid().optional().describe('Exact actor_id filter (server-side narrowing of the admin audit scope, RCP-20260901-AUDIT-LIST-FILTERS).'),
+  "action": zod.string().min(1).max(listAuditEventsQueryActionMax).optional().describe('Exact action filter (e.g. revoke, export_read).'),
+  "resource_type": zod.string().min(1).max(listAuditEventsQueryResourceTypeMax).optional().describe('Exact resource_type filter (e.g. query_grants).'),
+  "outcome": zod.enum(['succeeded', 'denied', 'failed']).optional().describe('Exact outcome filter.'),
+  "request_id": zod.uuid().optional().describe('Exact request_id filter.'),
+  "occurred_from": zod.iso.date().optional().describe('UTC date lower bound (inclusive; whole-day closed interval together with occurred_to).'),
+  "occurred_to": zod.iso.date().optional().describe('UTC date upper bound (inclusive; whole-day closed interval together with occurred_from).')
 })
 
 export const ListAuditEventsResponse = zod.union([zod.object({
@@ -4887,15 +4849,16 @@ export const ListCurrentUserFlowsResponse = zod.union([zod.object({
 })).min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemApprovalStepsMax).optional(),
   "query_capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
   "can_query": zod.literal(true),
   "can_export": zod.boolean()
-})).min(1).optional(),
+}).describe('Read projection of a flow\'s query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.')).min(1).optional(),
   "id": zod.uuid(),
   "version": zod.int().min(1),
   "status": zod.enum(['enabled', 'disabled', 'invalid']),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
-}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).'))
+}).describe('Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).'))
 })),
   "request_id": zod.uuid()
 }),zod.object({
@@ -4916,9 +4879,11 @@ export const ListMyFlowDatasourceSchemasParams = zod.object({
 export const ListMyFlowDatasourceSchemasResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "name": zod.string()
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -4946,11 +4911,13 @@ export const ListMyFlowDatasourceTablesQueryParams = zod.object({
 export const ListMyFlowDatasourceTablesResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "schema_name": zod.string(),
   "table_name": zod.string(),
   "relation_kind": zod.enum(['table', 'view', 'materialized_view'])
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -4984,7 +4951,8 @@ export const ListMyFlowDatasourceColumnsQueryParams = zod.object({
 export const ListMyFlowDatasourceColumnsResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "schema_name": zod.string(),
   "table_name": zod.string(),
   "column_name": zod.string(),
@@ -4996,7 +4964,8 @@ export const ListMyFlowDatasourceColumnsResponse = zod.union([zod.object({
   "column_default": zod.string().optional().describe('列默认值表达式；空串表示无默认值。'),
   "extra": zod.string().optional().describe('额外信息（MySQL auto_increment等；PostgreSQL按identity\/generated映射）。空串表示无。'),
   "comment": zod.string().optional().describe('列注释；空串表示无注释。')
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -5579,7 +5548,7 @@ export const ListReviewRunFindingsResponse = zod.union([zod.object({
   "stage_position": zod.int().min(1),
   "fingerprint_group_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "category": zod.string(),
-  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']),
   "title": zod.string(),
   "message": zod.string(),
   "suggestion": zod.string().nullish(),
@@ -5837,7 +5806,7 @@ export const ListOrderReviewFindingsResponse = zod.union([zod.object({
   "stage_position": zod.int().min(1),
   "fingerprint_group_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "category": zod.string(),
-  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']),
   "title": zod.string(),
   "message": zod.string(),
   "suggestion": zod.string().nullish(),
@@ -6810,7 +6779,10 @@ export const ListQueryAccessRequestsResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }))
 })),
   "request_id": zod.uuid()
@@ -6859,7 +6831,10 @@ export const CreateQueryAccessRequestResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6889,7 +6864,10 @@ export const GetQueryAccessRequestResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6940,7 +6918,10 @@ export const DecideQueryAccessResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6990,7 +6971,10 @@ export const WithdrawQueryAccessRequestResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -7031,6 +7015,8 @@ export const ListQueryGrantsResponse = zod.union([zod.object({
   "requester_user_id": zod.uuid(),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
+  "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
+  "revoked_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "expires_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true})
@@ -7062,6 +7048,8 @@ export const GetQueryGrantResponse = zod.union([zod.object({
   "requester_user_id": zod.uuid(),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
+  "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
+  "revoked_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "expires_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true})
@@ -7112,6 +7100,8 @@ export const RevokeQueryGrantResponse = zod.union([zod.object({
   "requester_user_id": zod.uuid(),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
+  "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
+  "revoked_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "expires_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true})
@@ -7162,6 +7152,8 @@ export const RelinquishQueryGrantResponse = zod.union([zod.object({
   "requester_user_id": zod.uuid(),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
+  "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
+  "revoked_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "expires_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true})
@@ -7213,7 +7205,10 @@ export const CreateQueryGrantRenewalRequestResponse = zod.union([zod.object({
   "datasource_ids": zod.array(zod.uuid()),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true})
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -7250,6 +7245,7 @@ export const ListQuerySessionsResponse = zod.union([zod.object({
   "id": zod.uuid(),
   "user_id": zod.uuid(),
   "state": zod.enum(['active', 'closed', 'revoked', 'expired', 'user_deleted']),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow\'s query approval mode is off (direct-connection sessions carry no grant).'),
   "capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string(),
@@ -7287,6 +7283,7 @@ export const CreateQuerySessionResponse = zod.union([zod.object({
   "id": zod.uuid(),
   "user_id": zod.uuid(),
   "state": zod.enum(['active', 'closed', 'revoked', 'expired', 'user_deleted']),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow\'s query approval mode is off (direct-connection sessions carry no grant).'),
   "capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string(),
@@ -7318,6 +7315,7 @@ export const GetQuerySessionResponse = zod.union([zod.object({
   "id": zod.uuid(),
   "user_id": zod.uuid(),
   "state": zod.enum(['active', 'closed', 'revoked', 'expired', 'user_deleted']),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow\'s query approval mode is off (direct-connection sessions carry no grant).'),
   "capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string(),
@@ -7367,6 +7365,7 @@ export const CloseQuerySessionResponse = zod.union([zod.object({
   "id": zod.uuid(),
   "user_id": zod.uuid(),
   "state": zod.enum(['active', 'closed', 'revoked', 'expired', 'user_deleted']),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow\'s query approval mode is off (direct-connection sessions carry no grant).'),
   "capabilities": zod.array(zod.object({
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string(),
@@ -7398,9 +7397,11 @@ export const ListQuerySessionSchemasQueryParams = zod.object({
 export const ListQuerySessionSchemasResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "name": zod.string()
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -7428,11 +7429,13 @@ export const ListQuerySessionTablesQueryParams = zod.object({
 export const ListQuerySessionTablesResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "schema_name": zod.string(),
   "table_name": zod.string(),
   "relation_kind": zod.enum(['table', 'view', 'materialized_view'])
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -7466,7 +7469,8 @@ export const ListQuerySessionColumnsQueryParams = zod.object({
 export const ListQuerySessionColumnsResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
-  "data": zod.array(zod.object({
+  "data": zod.object({
+  "items": zod.array(zod.object({
   "schema_name": zod.string(),
   "table_name": zod.string(),
   "column_name": zod.string(),
@@ -7478,7 +7482,8 @@ export const ListQuerySessionColumnsResponse = zod.union([zod.object({
   "column_default": zod.string().optional().describe('列默认值表达式；空串表示无默认值。'),
   "extra": zod.string().optional().describe('额外信息（MySQL auto_increment等；PostgreSQL按identity\/generated映射）。空串表示无。'),
   "comment": zod.string().optional().describe('列注释；空串表示无注释。')
-})),
+}))
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -7548,9 +7553,14 @@ export const FetchQueryResultPageParams = zod.object({
   "execution_id": zod.uuid()
 })
 
+export const fetchQueryResultPageQueryPageSizeMax = 5000;
+
+
+
 export const FetchQueryResultPageQueryParams = zod.object({
   "cursor": zod.string(),
-  "purpose": zod.enum(['display', 'export']).describe('Display pagination or an explicitly audited browser-side export read. Export requires frozen can_export capability on every page.')
+  "purpose": zod.enum(['display', 'export']).describe('Display pagination or an explicitly audited browser-side export read. Export requires frozen can_export capability on every page.'),
+  "page_size": zod.int().min(1).max(fetchQueryResultPageQueryPageSizeMax).optional().describe('Overrides the page size the cursor was opened with for this and subsequent fetches; omit to keep the opened value. The 1..5000 cap and the purpose=export per-page re-authorization semantics are unchanged (RCP-20260901-QUERY-PAGE-SIZE-PARAM).')
 })
 
 export const fetchQueryResultPageResponseOneDataElapsedMsMin = 0;

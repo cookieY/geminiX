@@ -150,7 +150,7 @@ describe("settings bridge (§18.47)", () => {
   });
 
   it("the execution window restriction rejects begins with 3008 and reopens inside a window", async () => {
-    const orderA = executionPendingOrder("9b7f1a2b-0000-4000-8000-00000000w001", "w1");
+    const orderA = executionPendingOrder("9b7f1a2b-0000-4000-8000-000000007001", "w1");
     seedFixtureOrder(orderA);
     setMockIdentity("executor-a");
 
@@ -172,7 +172,7 @@ describe("settings bridge (§18.47)", () => {
   });
 
   it("schedules outside the window are rejected with 3008 (checkExecutionWindowAt)", async () => {
-    const orderB = executionPendingOrder("9b7f1a2b-0000-4000-8000-00000000w002", "w2");
+    const orderB = executionPendingOrder("9b7f1a2b-0000-4000-8000-000000007002", "w2");
     seedFixtureOrder(orderB);
     setMockIdentity("executor-a");
 

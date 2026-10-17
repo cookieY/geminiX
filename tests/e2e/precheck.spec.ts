@@ -128,9 +128,11 @@ test("Ready draft submits through the confirmation and lands on the order detail
   await expect(page.getByTestId("submit-confirm-gate")).toContainText("全部阶段审核通过");
   await page.getByTestId("submit-confirm-accept").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible({ timeout: 8_000 });
-  // The order number is a UUID (legacy GenWorkId parity).
+  // The order number follows the contract display_number pattern
+  // YR-YYYYMMDD-NNNNNN (OpenAPI ChangeOrder.display_number; the mock was
+  // normalized to it in FE-F12 batch 2 — the real backend emits the same).
   await expect(page.getByTestId("order-detail-page")).toContainText(
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
+    /YR-\d{8}-\d{6}/,
   );
   await expect(page.getByTestId("order-timeline")).toBeVisible();
 });

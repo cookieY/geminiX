@@ -194,7 +194,7 @@ export const getListUsersUrl = (params?: ListUsersParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/users?${stringifiedParams}` : `/admin/users`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/users?${stringifiedParams}` : `/api/v4/admin/users`
 }
 
 export const listUsers = async (params?: ListUsersParams, options?: Parameters<typeof customInstance>[1]): Promise<listUsersResponse> => {
@@ -280,7 +280,7 @@ export const getCreateUserUrl = () => {
 
 
 
-  return `/admin/users`
+  return `/api/v4/admin/users`
 }
 
 export const createUser = async (createUserRequest: CreateUserRequest, options?: Parameters<typeof customInstance>[1]): Promise<createUserResponse> => {
@@ -306,7 +306,7 @@ return customInstance<createUserResponse>(getCreateUserUrl(),
 
 export const getCreateUserQueryKey = (createUserRequest?: CreateUserRequest,) => {
     return [
-    'POST', `/admin/users`, createUserRequest
+    'POST', `/api/v4/admin/users`, createUserRequest
     ] as const;
     }
 
@@ -392,7 +392,7 @@ export const getUpdateUserUrl = (userId: string,) => {
 
 
 
-  return `/admin/users/${userId}`
+  return `/api/v4/admin/users/${userId}`
 }
 
 export const updateUser = async (userId: string,
@@ -420,7 +420,7 @@ return customInstance<updateUserResponse>(getUpdateUserUrl(userId),
 export const getUpdateUserQueryKey = (userId: string,
     updateUserRequest?: UpdateUserRequest,) => {
     return [
-    'PATCH', `/admin/users/${userId}`, updateUserRequest
+    'PATCH', `/api/v4/admin/users/${userId}`, updateUserRequest
     ] as const;
     }
 
@@ -511,7 +511,7 @@ export const getDeleteUserUrl = (userId: string,) => {
 
 
 
-  return `/admin/users/${userId}`
+  return `/api/v4/admin/users/${userId}`
 }
 
 export const deleteUser = async (userId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteUserResponse> => {
@@ -531,7 +531,7 @@ export const deleteUser = async (userId: string, options?: Parameters<typeof cus
 
 export const getDeleteUserQueryKey = (userId: string,) => {
     return [
-    'DELETE', `/admin/users/${userId}`
+    'DELETE', `/api/v4/admin/users/${userId}`
     ] as const;
     }
 
@@ -617,7 +617,7 @@ export const getGetUserDeletionImpactUrl = (userId: string,) => {
 
 
 
-  return `/admin/users/${userId}/deletion-impact`
+  return `/api/v4/admin/users/${userId}/deletion-impact`
 }
 
 export const getUserDeletionImpact = async (userId: string, options?: Parameters<typeof customInstance>[1]): Promise<getUserDeletionImpactResponse> => {
@@ -703,7 +703,7 @@ export const getListFlowsUrl = (params?: ListFlowsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/flows?${stringifiedParams}` : `/admin/flows`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/flows?${stringifiedParams}` : `/api/v4/admin/flows`
 }
 
 export const listFlows = async (params?: ListFlowsParams, options?: Parameters<typeof customInstance>[1]): Promise<listFlowsResponse> => {
@@ -782,7 +782,7 @@ export const getCreateFlowUrl = () => {
 
 
 
-  return `/admin/flows`
+  return `/api/v4/admin/flows`
 }
 
 export const createFlow = async (flowWrite: FlowWrite, options?: Parameters<typeof customInstance>[1]): Promise<createFlowResponse> => {
@@ -808,7 +808,7 @@ return customInstance<createFlowResponse>(getCreateFlowUrl(),
 
 export const getCreateFlowQueryKey = (flowWrite?: FlowWrite,) => {
     return [
-    'POST', `/admin/flows`, flowWrite
+    'POST', `/api/v4/admin/flows`, flowWrite
     ] as const;
     }
 
@@ -894,7 +894,7 @@ export const getGetFlowUrl = (flowId: string,) => {
 
 
 
-  return `/admin/flows/${flowId}`
+  return `/api/v4/admin/flows/${flowId}`
 }
 
 export const getFlow = async (flowId: string, options?: Parameters<typeof customInstance>[1]): Promise<getFlowResponse> => {
@@ -973,7 +973,7 @@ export const getReplaceFlowUrl = (flowId: string,) => {
 
 
 
-  return `/admin/flows/${flowId}`
+  return `/api/v4/admin/flows/${flowId}`
 }
 
 export const replaceFlow = async (flowId: string,
@@ -1001,7 +1001,7 @@ return customInstance<replaceFlowResponse>(getReplaceFlowUrl(flowId),
 export const getReplaceFlowQueryKey = (flowId: string,
     flowWrite?: FlowWrite,) => {
     return [
-    'PUT', `/admin/flows/${flowId}`, flowWrite
+    'PUT', `/api/v4/admin/flows/${flowId}`, flowWrite
     ] as const;
     }
 
@@ -1092,7 +1092,7 @@ export const getDeleteFlowUrl = (flowId: string,) => {
 
 
 
-  return `/admin/flows/${flowId}`
+  return `/api/v4/admin/flows/${flowId}`
 }
 
 export const deleteFlow = async (flowId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteFlowResponse> => {
@@ -1112,7 +1112,7 @@ export const deleteFlow = async (flowId: string, options?: Parameters<typeof cus
 
 export const getDeleteFlowQueryKey = (flowId: string,) => {
     return [
-    'DELETE', `/admin/flows/${flowId}`
+    'DELETE', `/api/v4/admin/flows/${flowId}`
     ] as const;
     }
 
@@ -1205,7 +1205,7 @@ export const getListFlowMaskingRulesUrl = (flowId: string,) => {
 
 
 
-  return `/admin/flows/${flowId}/masking-rules`
+  return `/api/v4/admin/flows/${flowId}/masking-rules`
 }
 
 export const listFlowMaskingRules = async (flowId: string, options?: Parameters<typeof customInstance>[1]): Promise<listFlowMaskingRulesResponse> => {
@@ -1292,7 +1292,7 @@ export const getReplaceFlowMaskingRuleUrl = (flowId: string,
 
 
 
-  return `/admin/flows/${flowId}/datasources/${datasourceId}/masking-rules`
+  return `/api/v4/admin/flows/${flowId}/datasources/${datasourceId}/masking-rules`
 }
 
 export const replaceFlowMaskingRule = async (flowId: string,
@@ -1322,7 +1322,7 @@ export const getReplaceFlowMaskingRuleQueryKey = (flowId: string,
     datasourceId: string,
     flowMaskingRuleWrite?: FlowMaskingRuleWrite,) => {
     return [
-    'PUT', `/admin/flows/${flowId}/datasources/${datasourceId}/masking-rules`, flowMaskingRuleWrite
+    'PUT', `/api/v4/admin/flows/${flowId}/datasources/${datasourceId}/masking-rules`, flowMaskingRuleWrite
     ] as const;
     }
 
@@ -1425,7 +1425,7 @@ export const getListLegacyMigrationRunsUrl = (params?: ListLegacyMigrationRunsPa
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/migrations?${stringifiedParams}` : `/admin/migrations`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/migrations?${stringifiedParams}` : `/api/v4/admin/migrations`
 }
 
 /**
@@ -1507,7 +1507,7 @@ export const getGetLegacyMigrationRunUrl = (migrationRunId: string,) => {
 
 
 
-  return `/admin/migrations/${migrationRunId}`
+  return `/api/v4/admin/migrations/${migrationRunId}`
 }
 
 /**
@@ -1590,7 +1590,7 @@ export const getConfirmLegacyMigrationCandidateUrl = (migrationRunId: string,
 
 
 
-  return `/admin/migrations/${migrationRunId}/candidate-mappings/${candidateId}/confirmation`
+  return `/api/v4/admin/migrations/${migrationRunId}/candidate-mappings/${candidateId}/confirmation`
 }
 
 export const confirmLegacyMigrationCandidate = async (migrationRunId: string,
@@ -1620,7 +1620,7 @@ export const getConfirmLegacyMigrationCandidateQueryKey = (migrationRunId: strin
     candidateId: string,
     confirmLegacyMigrationCandidateRequest?: ConfirmLegacyMigrationCandidateRequest,) => {
     return [
-    'PUT', `/admin/migrations/${migrationRunId}/candidate-mappings/${candidateId}/confirmation`, confirmLegacyMigrationCandidateRequest
+    'PUT', `/api/v4/admin/migrations/${migrationRunId}/candidate-mappings/${candidateId}/confirmation`, confirmLegacyMigrationCandidateRequest
     ] as const;
     }
 
@@ -1716,7 +1716,7 @@ export const getApproveLegacyMigrationRunUrl = (migrationRunId: string,) => {
 
 
 
-  return `/admin/migrations/${migrationRunId}/approval`
+  return `/api/v4/admin/migrations/${migrationRunId}/approval`
 }
 
 /**
@@ -1747,7 +1747,7 @@ return customInstance<approveLegacyMigrationRunResponse>(getApproveLegacyMigrati
 export const getApproveLegacyMigrationRunQueryKey = (migrationRunId: string,
     approveLegacyMigrationRunRequest?: ApproveLegacyMigrationRunRequest,) => {
     return [
-    'POST', `/admin/migrations/${migrationRunId}/approval`, approveLegacyMigrationRunRequest
+    'POST', `/api/v4/admin/migrations/${migrationRunId}/approval`, approveLegacyMigrationRunRequest
     ] as const;
     }
 
@@ -1845,7 +1845,7 @@ export const getListIdentityProvidersUrl = (params?: ListIdentityProvidersParams
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/identity-providers?${stringifiedParams}` : `/admin/identity-providers`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/identity-providers?${stringifiedParams}` : `/api/v4/admin/identity-providers`
 }
 
 export const listIdentityProviders = async (params?: ListIdentityProvidersParams, options?: Parameters<typeof customInstance>[1]): Promise<listIdentityProvidersResponse> => {
@@ -1924,7 +1924,7 @@ export const getCreateIdentityProviderUrl = () => {
 
 
 
-  return `/admin/identity-providers`
+  return `/api/v4/admin/identity-providers`
 }
 
 export const createIdentityProvider = async (createIdentityProviderRequest: CreateIdentityProviderRequest, options?: Parameters<typeof customInstance>[1]): Promise<createIdentityProviderResponse> => {
@@ -1950,7 +1950,7 @@ return customInstance<createIdentityProviderResponse>(getCreateIdentityProviderU
 
 export const getCreateIdentityProviderQueryKey = (createIdentityProviderRequest?: CreateIdentityProviderRequest,) => {
     return [
-    'POST', `/admin/identity-providers`, createIdentityProviderRequest
+    'POST', `/api/v4/admin/identity-providers`, createIdentityProviderRequest
     ] as const;
     }
 
@@ -2036,7 +2036,7 @@ export const getGetIdentityProviderUrl = (identityProviderId: string,) => {
 
 
 
-  return `/admin/identity-providers/${identityProviderId}`
+  return `/api/v4/admin/identity-providers/${identityProviderId}`
 }
 
 export const getIdentityProvider = async (identityProviderId: string, options?: Parameters<typeof customInstance>[1]): Promise<getIdentityProviderResponse> => {
@@ -2115,7 +2115,7 @@ export const getReplaceIdentityProviderUrl = (identityProviderId: string,) => {
 
 
 
-  return `/admin/identity-providers/${identityProviderId}`
+  return `/api/v4/admin/identity-providers/${identityProviderId}`
 }
 
 export const replaceIdentityProvider = async (identityProviderId: string,
@@ -2143,7 +2143,7 @@ return customInstance<replaceIdentityProviderResponse>(getReplaceIdentityProvide
 export const getReplaceIdentityProviderQueryKey = (identityProviderId: string,
     replaceIdentityProviderRequest?: ReplaceIdentityProviderRequest,) => {
     return [
-    'PUT', `/admin/identity-providers/${identityProviderId}`, replaceIdentityProviderRequest
+    'PUT', `/api/v4/admin/identity-providers/${identityProviderId}`, replaceIdentityProviderRequest
     ] as const;
     }
 
@@ -2234,7 +2234,7 @@ export const getDeleteIdentityProviderUrl = (identityProviderId: string,) => {
 
 
 
-  return `/admin/identity-providers/${identityProviderId}`
+  return `/api/v4/admin/identity-providers/${identityProviderId}`
 }
 
 export const deleteIdentityProvider = async (identityProviderId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteIdentityProviderResponse> => {
@@ -2254,7 +2254,7 @@ export const deleteIdentityProvider = async (identityProviderId: string, options
 
 export const getDeleteIdentityProviderQueryKey = (identityProviderId: string,) => {
     return [
-    'DELETE', `/admin/identity-providers/${identityProviderId}`
+    'DELETE', `/api/v4/admin/identity-providers/${identityProviderId}`
     ] as const;
     }
 
@@ -2347,7 +2347,7 @@ export const getTestIdentityProviderConnectionUrl = (identityProviderId: string,
 
 
 
-  return `/admin/identity-providers/${identityProviderId}/connection-tests`
+  return `/api/v4/admin/identity-providers/${identityProviderId}/connection-tests`
 }
 
 /**
@@ -2370,7 +2370,7 @@ export const testIdentityProviderConnection = async (identityProviderId: string,
 
 export const getTestIdentityProviderConnectionQueryKey = (identityProviderId: string,) => {
     return [
-    'POST', `/admin/identity-providers/${identityProviderId}/connection-tests`
+    'POST', `/api/v4/admin/identity-providers/${identityProviderId}/connection-tests`
     ] as const;
     }
 
@@ -2463,7 +2463,7 @@ export const getListDatasourcesUrl = (params?: ListDatasourcesParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/datasources?${stringifiedParams}` : `/admin/datasources`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/datasources?${stringifiedParams}` : `/api/v4/admin/datasources`
 }
 
 export const listDatasources = async (params?: ListDatasourcesParams, options?: Parameters<typeof customInstance>[1]): Promise<listDatasourcesResponse> => {
@@ -2542,7 +2542,7 @@ export const getCreateDatasourceUrl = () => {
 
 
 
-  return `/admin/datasources`
+  return `/api/v4/admin/datasources`
 }
 
 export const createDatasource = async (datasourceWrite: DatasourceWrite, options?: Parameters<typeof customInstance>[1]): Promise<createDatasourceResponse> => {
@@ -2568,7 +2568,7 @@ return customInstance<createDatasourceResponse>(getCreateDatasourceUrl(),
 
 export const getCreateDatasourceQueryKey = (datasourceWrite?: DatasourceWrite,) => {
     return [
-    'POST', `/admin/datasources`, datasourceWrite
+    'POST', `/api/v4/admin/datasources`, datasourceWrite
     ] as const;
     }
 
@@ -2654,7 +2654,7 @@ export const getGetDatasourceUrl = (datasourceId: string,) => {
 
 
 
-  return `/admin/datasources/${datasourceId}`
+  return `/api/v4/admin/datasources/${datasourceId}`
 }
 
 export const getDatasource = async (datasourceId: string, options?: Parameters<typeof customInstance>[1]): Promise<getDatasourceResponse> => {
@@ -2733,7 +2733,7 @@ export const getReplaceDatasourceUrl = (datasourceId: string,) => {
 
 
 
-  return `/admin/datasources/${datasourceId}`
+  return `/api/v4/admin/datasources/${datasourceId}`
 }
 
 export const replaceDatasource = async (datasourceId: string,
@@ -2761,7 +2761,7 @@ return customInstance<replaceDatasourceResponse>(getReplaceDatasourceUrl(datasou
 export const getReplaceDatasourceQueryKey = (datasourceId: string,
     datasourceWrite?: DatasourceWrite,) => {
     return [
-    'PUT', `/admin/datasources/${datasourceId}`, datasourceWrite
+    'PUT', `/api/v4/admin/datasources/${datasourceId}`, datasourceWrite
     ] as const;
     }
 
@@ -2852,7 +2852,7 @@ export const getDeleteDatasourceUrl = (datasourceId: string,) => {
 
 
 
-  return `/admin/datasources/${datasourceId}`
+  return `/api/v4/admin/datasources/${datasourceId}`
 }
 
 export const deleteDatasource = async (datasourceId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteDatasourceResponse> => {
@@ -2872,7 +2872,7 @@ export const deleteDatasource = async (datasourceId: string, options?: Parameter
 
 export const getDeleteDatasourceQueryKey = (datasourceId: string,) => {
     return [
-    'DELETE', `/admin/datasources/${datasourceId}`
+    'DELETE', `/api/v4/admin/datasources/${datasourceId}`
     ] as const;
     }
 
@@ -2965,7 +2965,7 @@ export const getTestDatasourceConnectionUrl = (datasourceId: string,) => {
 
 
 
-  return `/admin/datasources/${datasourceId}/connection-tests`
+  return `/api/v4/admin/datasources/${datasourceId}/connection-tests`
 }
 
 export const testDatasourceConnection = async (datasourceId: string,
@@ -2993,7 +2993,7 @@ return customInstance<testDatasourceConnectionResponse>(getTestDatasourceConnect
 export const getTestDatasourceConnectionQueryKey = (datasourceId: string,
     testDatasourceConnectionBody?: TestDatasourceConnectionBody,) => {
     return [
-    'POST', `/admin/datasources/${datasourceId}/connection-tests`, testDatasourceConnectionBody
+    'POST', `/api/v4/admin/datasources/${datasourceId}/connection-tests`, testDatasourceConnectionBody
     ] as const;
     }
 
@@ -3084,7 +3084,7 @@ export const getGetDatasourceCapabilitiesUrl = (datasourceId: string,) => {
 
 
 
-  return `/admin/datasources/${datasourceId}/capabilities`
+  return `/api/v4/admin/datasources/${datasourceId}/capabilities`
 }
 
 export const getDatasourceCapabilities = async (datasourceId: string, options?: Parameters<typeof customInstance>[1]): Promise<getDatasourceCapabilitiesResponse> => {
@@ -3170,7 +3170,7 @@ export const getListPermissionGroupsUrl = (params?: ListPermissionGroupsParams,)
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/permission-groups?${stringifiedParams}` : `/admin/permission-groups`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/permission-groups?${stringifiedParams}` : `/api/v4/admin/permission-groups`
 }
 
 export const listPermissionGroups = async (params?: ListPermissionGroupsParams, options?: Parameters<typeof customInstance>[1]): Promise<listPermissionGroupsResponse> => {
@@ -3249,7 +3249,7 @@ export const getCreatePermissionGroupUrl = () => {
 
 
 
-  return `/admin/permission-groups`
+  return `/api/v4/admin/permission-groups`
 }
 
 export const createPermissionGroup = async (permissionGroupWrite: PermissionGroupWrite, options?: Parameters<typeof customInstance>[1]): Promise<createPermissionGroupResponse> => {
@@ -3275,7 +3275,7 @@ return customInstance<createPermissionGroupResponse>(getCreatePermissionGroupUrl
 
 export const getCreatePermissionGroupQueryKey = (permissionGroupWrite?: PermissionGroupWrite,) => {
     return [
-    'POST', `/admin/permission-groups`, permissionGroupWrite
+    'POST', `/api/v4/admin/permission-groups`, permissionGroupWrite
     ] as const;
     }
 
@@ -3361,7 +3361,7 @@ export const getGetPermissionGroupUrl = (groupId: string,) => {
 
 
 
-  return `/admin/permission-groups/${groupId}`
+  return `/api/v4/admin/permission-groups/${groupId}`
 }
 
 export const getPermissionGroup = async (groupId: string, options?: Parameters<typeof customInstance>[1]): Promise<getPermissionGroupResponse> => {
@@ -3440,7 +3440,7 @@ export const getReplacePermissionGroupUrl = (groupId: string,) => {
 
 
 
-  return `/admin/permission-groups/${groupId}`
+  return `/api/v4/admin/permission-groups/${groupId}`
 }
 
 export const replacePermissionGroup = async (groupId: string,
@@ -3468,7 +3468,7 @@ return customInstance<replacePermissionGroupResponse>(getReplacePermissionGroupU
 export const getReplacePermissionGroupQueryKey = (groupId: string,
     permissionGroupWrite?: PermissionGroupWrite,) => {
     return [
-    'PUT', `/admin/permission-groups/${groupId}`, permissionGroupWrite
+    'PUT', `/api/v4/admin/permission-groups/${groupId}`, permissionGroupWrite
     ] as const;
     }
 
@@ -3559,7 +3559,7 @@ export const getDeletePermissionGroupUrl = (groupId: string,) => {
 
 
 
-  return `/admin/permission-groups/${groupId}`
+  return `/api/v4/admin/permission-groups/${groupId}`
 }
 
 export const deletePermissionGroup = async (groupId: string, options?: Parameters<typeof customInstance>[1]): Promise<deletePermissionGroupResponse> => {
@@ -3579,7 +3579,7 @@ export const deletePermissionGroup = async (groupId: string, options?: Parameter
 
 export const getDeletePermissionGroupQueryKey = (groupId: string,) => {
     return [
-    'DELETE', `/admin/permission-groups/${groupId}`
+    'DELETE', `/api/v4/admin/permission-groups/${groupId}`
     ] as const;
     }
 
@@ -3672,7 +3672,7 @@ export const getListRuleSetsUrl = (params?: ListRuleSetsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/rule-sets?${stringifiedParams}` : `/admin/rule-sets`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/rule-sets?${stringifiedParams}` : `/api/v4/admin/rule-sets`
 }
 
 export const listRuleSets = async (params?: ListRuleSetsParams, options?: Parameters<typeof customInstance>[1]): Promise<listRuleSetsResponse> => {
@@ -3751,7 +3751,7 @@ export const getCreateRuleSetUrl = () => {
 
 
 
-  return `/admin/rule-sets`
+  return `/api/v4/admin/rule-sets`
 }
 
 export const createRuleSet = async (ruleSetWrite: RuleSetWrite, options?: Parameters<typeof customInstance>[1]): Promise<createRuleSetResponse> => {
@@ -3777,7 +3777,7 @@ return customInstance<createRuleSetResponse>(getCreateRuleSetUrl(),
 
 export const getCreateRuleSetQueryKey = (ruleSetWrite?: RuleSetWrite,) => {
     return [
-    'POST', `/admin/rule-sets`, ruleSetWrite
+    'POST', `/api/v4/admin/rule-sets`, ruleSetWrite
     ] as const;
     }
 
@@ -3863,7 +3863,7 @@ export const getGetRuleSetUrl = (ruleSetId: string,) => {
 
 
 
-  return `/admin/rule-sets/${ruleSetId}`
+  return `/api/v4/admin/rule-sets/${ruleSetId}`
 }
 
 export const getRuleSet = async (ruleSetId: string, options?: Parameters<typeof customInstance>[1]): Promise<getRuleSetResponse> => {
@@ -3942,7 +3942,7 @@ export const getReplaceRuleSetUrl = (ruleSetId: string,) => {
 
 
 
-  return `/admin/rule-sets/${ruleSetId}`
+  return `/api/v4/admin/rule-sets/${ruleSetId}`
 }
 
 export const replaceRuleSet = async (ruleSetId: string,
@@ -3970,7 +3970,7 @@ return customInstance<replaceRuleSetResponse>(getReplaceRuleSetUrl(ruleSetId),
 export const getReplaceRuleSetQueryKey = (ruleSetId: string,
     ruleSetWrite?: RuleSetWrite,) => {
     return [
-    'PUT', `/admin/rule-sets/${ruleSetId}`, ruleSetWrite
+    'PUT', `/api/v4/admin/rule-sets/${ruleSetId}`, ruleSetWrite
     ] as const;
     }
 
@@ -4061,7 +4061,7 @@ export const getDeleteRuleSetUrl = (ruleSetId: string,) => {
 
 
 
-  return `/admin/rule-sets/${ruleSetId}`
+  return `/api/v4/admin/rule-sets/${ruleSetId}`
 }
 
 export const deleteRuleSet = async (ruleSetId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteRuleSetResponse> => {
@@ -4081,7 +4081,7 @@ export const deleteRuleSet = async (ruleSetId: string, options?: Parameters<type
 
 export const getDeleteRuleSetQueryKey = (ruleSetId: string,) => {
     return [
-    'DELETE', `/admin/rule-sets/${ruleSetId}`
+    'DELETE', `/api/v4/admin/rule-sets/${ruleSetId}`
     ] as const;
     }
 
@@ -4174,7 +4174,7 @@ export const getListPromptToolsUrl = (params?: ListPromptToolsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/prompt-tools?${stringifiedParams}` : `/admin/prompt-tools`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/prompt-tools?${stringifiedParams}` : `/api/v4/admin/prompt-tools`
 }
 
 export const listPromptTools = async (params?: ListPromptToolsParams, options?: Parameters<typeof customInstance>[1]): Promise<listPromptToolsResponse> => {
@@ -4253,7 +4253,7 @@ export const getCreatePromptToolUrl = () => {
 
 
 
-  return `/admin/prompt-tools`
+  return `/api/v4/admin/prompt-tools`
 }
 
 export const createPromptTool = async (promptToolWrite: PromptToolWrite, options?: Parameters<typeof customInstance>[1]): Promise<createPromptToolResponse> => {
@@ -4279,7 +4279,7 @@ return customInstance<createPromptToolResponse>(getCreatePromptToolUrl(),
 
 export const getCreatePromptToolQueryKey = (promptToolWrite?: PromptToolWrite,) => {
     return [
-    'POST', `/admin/prompt-tools`, promptToolWrite
+    'POST', `/api/v4/admin/prompt-tools`, promptToolWrite
     ] as const;
     }
 
@@ -4365,7 +4365,7 @@ export const getGetPromptToolUrl = (promptToolId: string,) => {
 
 
 
-  return `/admin/prompt-tools/${promptToolId}`
+  return `/api/v4/admin/prompt-tools/${promptToolId}`
 }
 
 export const getPromptTool = async (promptToolId: string, options?: Parameters<typeof customInstance>[1]): Promise<getPromptToolResponse> => {
@@ -4444,7 +4444,7 @@ export const getReplacePromptToolUrl = (promptToolId: string,) => {
 
 
 
-  return `/admin/prompt-tools/${promptToolId}`
+  return `/api/v4/admin/prompt-tools/${promptToolId}`
 }
 
 export const replacePromptTool = async (promptToolId: string,
@@ -4472,7 +4472,7 @@ return customInstance<replacePromptToolResponse>(getReplacePromptToolUrl(promptT
 export const getReplacePromptToolQueryKey = (promptToolId: string,
     promptToolWrite?: PromptToolWrite,) => {
     return [
-    'PUT', `/admin/prompt-tools/${promptToolId}`, promptToolWrite
+    'PUT', `/api/v4/admin/prompt-tools/${promptToolId}`, promptToolWrite
     ] as const;
     }
 
@@ -4563,7 +4563,7 @@ export const getDeletePromptToolUrl = (promptToolId: string,) => {
 
 
 
-  return `/admin/prompt-tools/${promptToolId}`
+  return `/api/v4/admin/prompt-tools/${promptToolId}`
 }
 
 export const deletePromptTool = async (promptToolId: string, options?: Parameters<typeof customInstance>[1]): Promise<deletePromptToolResponse> => {
@@ -4583,7 +4583,7 @@ export const deletePromptTool = async (promptToolId: string, options?: Parameter
 
 export const getDeletePromptToolQueryKey = (promptToolId: string,) => {
     return [
-    'DELETE', `/admin/prompt-tools/${promptToolId}`
+    'DELETE', `/api/v4/admin/prompt-tools/${promptToolId}`
     ] as const;
     }
 
@@ -4676,7 +4676,7 @@ export const getListKnowledgeEntriesUrl = (params?: ListKnowledgeEntriesParams,)
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/knowledge-entries?${stringifiedParams}` : `/admin/knowledge-entries`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/knowledge-entries?${stringifiedParams}` : `/api/v4/admin/knowledge-entries`
 }
 
 export const listKnowledgeEntries = async (params?: ListKnowledgeEntriesParams, options?: Parameters<typeof customInstance>[1]): Promise<listKnowledgeEntriesResponse> => {
@@ -4755,7 +4755,7 @@ export const getCreateKnowledgeEntryUrl = () => {
 
 
 
-  return `/admin/knowledge-entries`
+  return `/api/v4/admin/knowledge-entries`
 }
 
 export const createKnowledgeEntry = async (knowledgeEntryWrite: KnowledgeEntryWrite, options?: Parameters<typeof customInstance>[1]): Promise<createKnowledgeEntryResponse> => {
@@ -4781,7 +4781,7 @@ return customInstance<createKnowledgeEntryResponse>(getCreateKnowledgeEntryUrl()
 
 export const getCreateKnowledgeEntryQueryKey = (knowledgeEntryWrite?: KnowledgeEntryWrite,) => {
     return [
-    'POST', `/admin/knowledge-entries`, knowledgeEntryWrite
+    'POST', `/api/v4/admin/knowledge-entries`, knowledgeEntryWrite
     ] as const;
     }
 
@@ -4867,7 +4867,7 @@ export const getGetKnowledgeEntryUrl = (knowledgeEntryId: string,) => {
 
 
 
-  return `/admin/knowledge-entries/${knowledgeEntryId}`
+  return `/api/v4/admin/knowledge-entries/${knowledgeEntryId}`
 }
 
 export const getKnowledgeEntry = async (knowledgeEntryId: string, options?: Parameters<typeof customInstance>[1]): Promise<getKnowledgeEntryResponse> => {
@@ -4946,7 +4946,7 @@ export const getReplaceKnowledgeEntryUrl = (knowledgeEntryId: string,) => {
 
 
 
-  return `/admin/knowledge-entries/${knowledgeEntryId}`
+  return `/api/v4/admin/knowledge-entries/${knowledgeEntryId}`
 }
 
 export const replaceKnowledgeEntry = async (knowledgeEntryId: string,
@@ -4974,7 +4974,7 @@ return customInstance<replaceKnowledgeEntryResponse>(getReplaceKnowledgeEntryUrl
 export const getReplaceKnowledgeEntryQueryKey = (knowledgeEntryId: string,
     knowledgeEntryWrite?: KnowledgeEntryWrite,) => {
     return [
-    'PUT', `/admin/knowledge-entries/${knowledgeEntryId}`, knowledgeEntryWrite
+    'PUT', `/api/v4/admin/knowledge-entries/${knowledgeEntryId}`, knowledgeEntryWrite
     ] as const;
     }
 
@@ -5065,7 +5065,7 @@ export const getDeleteKnowledgeEntryUrl = (knowledgeEntryId: string,) => {
 
 
 
-  return `/admin/knowledge-entries/${knowledgeEntryId}`
+  return `/api/v4/admin/knowledge-entries/${knowledgeEntryId}`
 }
 
 export const deleteKnowledgeEntry = async (knowledgeEntryId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteKnowledgeEntryResponse> => {
@@ -5085,7 +5085,7 @@ export const deleteKnowledgeEntry = async (knowledgeEntryId: string, options?: P
 
 export const getDeleteKnowledgeEntryQueryKey = (knowledgeEntryId: string,) => {
     return [
-    'DELETE', `/admin/knowledge-entries/${knowledgeEntryId}`
+    'DELETE', `/api/v4/admin/knowledge-entries/${knowledgeEntryId}`
     ] as const;
     }
 
@@ -5171,7 +5171,7 @@ export const getEvaluateKnowledgeEntryUrl = (knowledgeEntryId: string,) => {
 
 
 
-  return `/admin/knowledge-entries/${knowledgeEntryId}/evaluations`
+  return `/api/v4/admin/knowledge-entries/${knowledgeEntryId}/evaluations`
 }
 
 export const evaluateKnowledgeEntry = async (knowledgeEntryId: string, options?: Parameters<typeof customInstance>[1]): Promise<evaluateKnowledgeEntryResponse> => {
@@ -5191,7 +5191,7 @@ export const evaluateKnowledgeEntry = async (knowledgeEntryId: string, options?:
 
 export const getEvaluateKnowledgeEntryQueryKey = (knowledgeEntryId: string,) => {
     return [
-    'POST', `/admin/knowledge-entries/${knowledgeEntryId}/evaluations`
+    'POST', `/api/v4/admin/knowledge-entries/${knowledgeEntryId}/evaluations`
     ] as const;
     }
 
@@ -5284,7 +5284,7 @@ export const getListAiProvidersUrl = (params?: ListAiProvidersParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/ai-providers?${stringifiedParams}` : `/admin/ai-providers`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/ai-providers?${stringifiedParams}` : `/api/v4/admin/ai-providers`
 }
 
 export const listAiProviders = async (params?: ListAiProvidersParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiProvidersResponse> => {
@@ -5363,7 +5363,7 @@ export const getCreateAiProviderUrl = () => {
 
 
 
-  return `/admin/ai-providers`
+  return `/api/v4/admin/ai-providers`
 }
 
 export const createAiProvider = async (createAiProviderRequest: CreateAiProviderRequest, options?: Parameters<typeof customInstance>[1]): Promise<createAiProviderResponse> => {
@@ -5389,7 +5389,7 @@ return customInstance<createAiProviderResponse>(getCreateAiProviderUrl(),
 
 export const getCreateAiProviderQueryKey = (createAiProviderRequest?: CreateAiProviderRequest,) => {
     return [
-    'POST', `/admin/ai-providers`, createAiProviderRequest
+    'POST', `/api/v4/admin/ai-providers`, createAiProviderRequest
     ] as const;
     }
 
@@ -5475,7 +5475,7 @@ export const getGetAiProviderUrl = (providerId: string,) => {
 
 
 
-  return `/admin/ai-providers/${providerId}`
+  return `/api/v4/admin/ai-providers/${providerId}`
 }
 
 export const getAiProvider = async (providerId: string, options?: Parameters<typeof customInstance>[1]): Promise<getAiProviderResponse> => {
@@ -5554,7 +5554,7 @@ export const getReplaceAiProviderUrl = (providerId: string,) => {
 
 
 
-  return `/admin/ai-providers/${providerId}`
+  return `/api/v4/admin/ai-providers/${providerId}`
 }
 
 export const replaceAiProvider = async (providerId: string,
@@ -5582,7 +5582,7 @@ return customInstance<replaceAiProviderResponse>(getReplaceAiProviderUrl(provide
 export const getReplaceAiProviderQueryKey = (providerId: string,
     aiProviderWrite?: AiProviderWrite,) => {
     return [
-    'PUT', `/admin/ai-providers/${providerId}`, aiProviderWrite
+    'PUT', `/api/v4/admin/ai-providers/${providerId}`, aiProviderWrite
     ] as const;
     }
 
@@ -5673,7 +5673,7 @@ export const getDeleteAiProviderUrl = (providerId: string,) => {
 
 
 
-  return `/admin/ai-providers/${providerId}`
+  return `/api/v4/admin/ai-providers/${providerId}`
 }
 
 export const deleteAiProvider = async (providerId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteAiProviderResponse> => {
@@ -5693,7 +5693,7 @@ export const deleteAiProvider = async (providerId: string, options?: Parameters<
 
 export const getDeleteAiProviderQueryKey = (providerId: string,) => {
     return [
-    'DELETE', `/admin/ai-providers/${providerId}`
+    'DELETE', `/api/v4/admin/ai-providers/${providerId}`
     ] as const;
     }
 
@@ -5786,7 +5786,7 @@ export const getTestAiProviderConnectionUrl = (providerId: string,) => {
 
 
 
-  return `/admin/ai-providers/${providerId}/connection-tests`
+  return `/api/v4/admin/ai-providers/${providerId}/connection-tests`
 }
 
 export const testAiProviderConnection = async (providerId: string, options?: Parameters<typeof customInstance>[1]): Promise<testAiProviderConnectionResponse> => {
@@ -5806,7 +5806,7 @@ export const testAiProviderConnection = async (providerId: string, options?: Par
 
 export const getTestAiProviderConnectionQueryKey = (providerId: string,) => {
     return [
-    'POST', `/admin/ai-providers/${providerId}/connection-tests`
+    'POST', `/api/v4/admin/ai-providers/${providerId}/connection-tests`
     ] as const;
     }
 
@@ -5892,7 +5892,7 @@ export const getGetSettingsNamespaceUrl = (namespace: 'general' | 'query' | 'exe
 
 
 
-  return `/admin/settings/${namespace}`
+  return `/api/v4/admin/settings/${namespace}`
 }
 
 export const getSettingsNamespace = async (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding', options?: Parameters<typeof customInstance>[1]): Promise<getSettingsNamespaceResponse> => {
@@ -5971,7 +5971,7 @@ export const getReplaceSettingsNamespaceUrl = (namespace: 'general' | 'query' | 
 
 
 
-  return `/admin/settings/${namespace}`
+  return `/api/v4/admin/settings/${namespace}`
 }
 
 export const replaceSettingsNamespace = async (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding',
@@ -5999,7 +5999,7 @@ return customInstance<replaceSettingsNamespaceResponse>(getReplaceSettingsNamesp
 export const getReplaceSettingsNamespaceQueryKey = (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding',
     replaceSettingsNamespaceRequest?: ReplaceSettingsNamespaceRequest,) => {
     return [
-    'PUT', `/admin/settings/${namespace}`, replaceSettingsNamespaceRequest
+    'PUT', `/api/v4/admin/settings/${namespace}`, replaceSettingsNamespaceRequest
     ] as const;
     }
 
@@ -6090,7 +6090,7 @@ export const getAssessSettingsImpactUrl = (namespace: 'general' | 'query' | 'exe
 
 
 
-  return `/admin/settings/${namespace}/impact-assessments`
+  return `/api/v4/admin/settings/${namespace}/impact-assessments`
 }
 
 /**
@@ -6121,7 +6121,7 @@ return customInstance<assessSettingsImpactResponse>(getAssessSettingsImpactUrl(n
 export const getAssessSettingsImpactQueryKey = (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding',
     assessSettingsImpactRequest?: AssessSettingsImpactRequest,) => {
     return [
-    'POST', `/admin/settings/${namespace}/impact-assessments`, assessSettingsImpactRequest
+    'POST', `/api/v4/admin/settings/${namespace}/impact-assessments`, assessSettingsImpactRequest
     ] as const;
     }
 
@@ -6212,7 +6212,7 @@ export const getGetSettingsSchemaUrl = (namespace: 'general' | 'query' | 'execut
 
 
 
-  return `/admin/settings/${namespace}/schema`
+  return `/api/v4/admin/settings/${namespace}/schema`
 }
 
 export const getSettingsSchema = async (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding', options?: Parameters<typeof customInstance>[1]): Promise<getSettingsSchemaResponse> => {
@@ -6299,7 +6299,7 @@ export const getListSettingsRevisionsUrl = (namespace: 'general' | 'query' | 'ex
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/settings/${namespace}/revisions?${stringifiedParams}` : `/admin/settings/${namespace}/revisions`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/settings/${namespace}/revisions?${stringifiedParams}` : `/api/v4/admin/settings/${namespace}/revisions`
 }
 
 export const listSettingsRevisions = async (namespace: 'general' | 'query' | 'execution' | 'ai-budget' | 'branding',
@@ -6386,7 +6386,7 @@ export const getListNotificationChannelsUrl = (params?: ListNotificationChannels
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/notification-channels?${stringifiedParams}` : `/admin/notification-channels`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/notification-channels?${stringifiedParams}` : `/api/v4/admin/notification-channels`
 }
 
 export const listNotificationChannels = async (params?: ListNotificationChannelsParams, options?: Parameters<typeof customInstance>[1]): Promise<listNotificationChannelsResponse> => {
@@ -6465,7 +6465,7 @@ export const getCreateNotificationChannelUrl = () => {
 
 
 
-  return `/admin/notification-channels`
+  return `/api/v4/admin/notification-channels`
 }
 
 export const createNotificationChannel = async (createNotificationChannelRequest: CreateNotificationChannelRequest, options?: Parameters<typeof customInstance>[1]): Promise<createNotificationChannelResponse> => {
@@ -6491,7 +6491,7 @@ return customInstance<createNotificationChannelResponse>(getCreateNotificationCh
 
 export const getCreateNotificationChannelQueryKey = (createNotificationChannelRequest?: CreateNotificationChannelRequest,) => {
     return [
-    'POST', `/admin/notification-channels`, createNotificationChannelRequest
+    'POST', `/api/v4/admin/notification-channels`, createNotificationChannelRequest
     ] as const;
     }
 
@@ -6577,7 +6577,7 @@ export const getGetNotificationChannelUrl = (channelId: string,) => {
 
 
 
-  return `/admin/notification-channels/${channelId}`
+  return `/api/v4/admin/notification-channels/${channelId}`
 }
 
 export const getNotificationChannel = async (channelId: string, options?: Parameters<typeof customInstance>[1]): Promise<getNotificationChannelResponse> => {
@@ -6656,7 +6656,7 @@ export const getReplaceNotificationChannelUrl = (channelId: string,) => {
 
 
 
-  return `/admin/notification-channels/${channelId}`
+  return `/api/v4/admin/notification-channels/${channelId}`
 }
 
 export const replaceNotificationChannel = async (channelId: string,
@@ -6684,7 +6684,7 @@ return customInstance<replaceNotificationChannelResponse>(getReplaceNotification
 export const getReplaceNotificationChannelQueryKey = (channelId: string,
     notificationChannelWrite?: NotificationChannelWrite,) => {
     return [
-    'PUT', `/admin/notification-channels/${channelId}`, notificationChannelWrite
+    'PUT', `/api/v4/admin/notification-channels/${channelId}`, notificationChannelWrite
     ] as const;
     }
 
@@ -6775,7 +6775,7 @@ export const getDeleteNotificationChannelUrl = (channelId: string,) => {
 
 
 
-  return `/admin/notification-channels/${channelId}`
+  return `/api/v4/admin/notification-channels/${channelId}`
 }
 
 export const deleteNotificationChannel = async (channelId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteNotificationChannelResponse> => {
@@ -6795,7 +6795,7 @@ export const deleteNotificationChannel = async (channelId: string, options?: Par
 
 export const getDeleteNotificationChannelQueryKey = (channelId: string,) => {
     return [
-    'DELETE', `/admin/notification-channels/${channelId}`
+    'DELETE', `/api/v4/admin/notification-channels/${channelId}`
     ] as const;
     }
 
@@ -6888,7 +6888,7 @@ export const getCreateNotificationTestDeliveryUrl = (channelId: string,) => {
 
 
 
-  return `/admin/notification-channels/${channelId}/test-deliveries`
+  return `/api/v4/admin/notification-channels/${channelId}/test-deliveries`
 }
 
 export const createNotificationTestDelivery = async (channelId: string,
@@ -6916,7 +6916,7 @@ return customInstance<createNotificationTestDeliveryResponse>(getCreateNotificat
 export const getCreateNotificationTestDeliveryQueryKey = (channelId: string,
     notificationTestRequest?: NotificationTestRequest,) => {
     return [
-    'POST', `/admin/notification-channels/${channelId}/test-deliveries`, notificationTestRequest
+    'POST', `/api/v4/admin/notification-channels/${channelId}/test-deliveries`, notificationTestRequest
     ] as const;
     }
 
@@ -7014,7 +7014,7 @@ export const getListNotificationDeliveriesUrl = (params?: ListNotificationDelive
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/notification-deliveries?${stringifiedParams}` : `/admin/notification-deliveries`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/notification-deliveries?${stringifiedParams}` : `/api/v4/admin/notification-deliveries`
 }
 
 export const listNotificationDeliveries = async (params?: ListNotificationDeliveriesParams, options?: Parameters<typeof customInstance>[1]): Promise<listNotificationDeliveriesResponse> => {
@@ -7100,7 +7100,7 @@ export const getListAuditEventsUrl = (params?: ListAuditEventsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/audit-events?${stringifiedParams}` : `/admin/audit-events`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/audit-events?${stringifiedParams}` : `/api/v4/admin/audit-events`
 }
 
 export const listAuditEvents = async (params?: ListAuditEventsParams, options?: Parameters<typeof customInstance>[1]): Promise<listAuditEventsResponse> => {
@@ -7193,7 +7193,7 @@ export const getGetOperationsDashboardUrl = (params?: GetOperationsDashboardPara
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/dashboard/operations?${stringifiedParams}` : `/admin/dashboard/operations`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/dashboard/operations?${stringifiedParams}` : `/api/v4/admin/dashboard/operations`
 }
 
 export const getOperationsDashboard = async (params?: GetOperationsDashboardParams, options?: Parameters<typeof customInstance>[1]): Promise<getOperationsDashboardResponse> => {
@@ -7286,7 +7286,7 @@ export const getGetReviewQualityDashboardUrl = (params?: GetReviewQualityDashboa
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/dashboard/review-quality?${stringifiedParams}` : `/admin/dashboard/review-quality`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/dashboard/review-quality?${stringifiedParams}` : `/api/v4/admin/dashboard/review-quality`
 }
 
 export const getReviewQualityDashboard = async (params?: GetReviewQualityDashboardParams, options?: Parameters<typeof customInstance>[1]): Promise<getReviewQualityDashboardResponse> => {
@@ -7372,7 +7372,7 @@ export const getGetSystemHealthDashboardUrl = () => {
 
 
 
-  return `/admin/dashboard/system-health`
+  return `/api/v4/admin/dashboard/system-health`
 }
 
 export const getSystemHealthDashboard = async ( options?: Parameters<typeof customInstance>[1]): Promise<getSystemHealthDashboardResponse> => {
@@ -7465,7 +7465,7 @@ export const getListAnnouncementRevisionsUrl = (params?: ListAnnouncementRevisio
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/admin/announcement-revisions?${stringifiedParams}` : `/admin/announcement-revisions`
+  return stringifiedParams.length > 0 ? `/api/v4/admin/announcement-revisions?${stringifiedParams}` : `/api/v4/admin/announcement-revisions`
 }
 
 export const listAnnouncementRevisions = async (params?: ListAnnouncementRevisionsParams, options?: Parameters<typeof customInstance>[1]): Promise<listAnnouncementRevisionsResponse> => {
@@ -7551,7 +7551,7 @@ export const getCreateAnnouncementRevisionUrl = () => {
 
 
 
-  return `/admin/announcement-revisions`
+  return `/api/v4/admin/announcement-revisions`
 }
 
 export const createAnnouncementRevision = async (createAnnouncementRevisionRequest: CreateAnnouncementRevisionRequest, options?: Parameters<typeof customInstance>[1]): Promise<createAnnouncementRevisionResponse> => {
@@ -7577,7 +7577,7 @@ return customInstance<createAnnouncementRevisionResponse>(getCreateAnnouncementR
 
 export const getCreateAnnouncementRevisionQueryKey = (createAnnouncementRevisionRequest?: CreateAnnouncementRevisionRequest,) => {
     return [
-    'POST', `/admin/announcement-revisions`, createAnnouncementRevisionRequest
+    'POST', `/api/v4/admin/announcement-revisions`, createAnnouncementRevisionRequest
     ] as const;
     }
 
@@ -7670,7 +7670,7 @@ export const getPublishAnnouncementRevisionUrl = () => {
 
 
 
-  return `/admin/announcement-publication`
+  return `/api/v4/admin/announcement-publication`
 }
 
 export const publishAnnouncementRevision = async (publishAnnouncementRequest: PublishAnnouncementRequest, options?: Parameters<typeof customInstance>[1]): Promise<publishAnnouncementRevisionResponse> => {
@@ -7696,7 +7696,7 @@ return customInstance<publishAnnouncementRevisionResponse>(getPublishAnnouncemen
 
 export const getPublishAnnouncementRevisionQueryKey = (publishAnnouncementRequest?: PublishAnnouncementRequest,) => {
     return [
-    'PUT', `/admin/announcement-publication`, publishAnnouncementRequest
+    'PUT', `/api/v4/admin/announcement-publication`, publishAnnouncementRequest
     ] as const;
     }
 

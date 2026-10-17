@@ -364,14 +364,14 @@ describe("admin ai providers", () => {
     expect(internals.providerApiKey(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe("rotated");
   });
 
-  it("starts a connection test task", async () => {
+  it("answers a synchronous connection probe (RCP-20261017 #019)", async () => {
     setAuth("admin");
     const { body } = await jsonRequest(
       `/admin/ai-providers/${ADMIN_FIXTURE_PROVIDER_BACKUP_ID}/connection-tests`,
       request("POST"),
     );
     expect(body.err_code).toBe(0);
-    expect((body.data).kind).toBe("ai_provider_connection_test");
+    expect((body.data).ok).toBe(true);
   });
 });
 

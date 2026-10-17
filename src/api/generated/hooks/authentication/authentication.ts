@@ -80,7 +80,7 @@ export const getLoginUrl = () => {
 
 
 
-  return `/auth/login`
+  return `/api/v4/auth/login`
 }
 
 export const login = async (loginRequest: LoginRequest, options?: Parameters<typeof customInstance>[1]): Promise<loginResponse> => {
@@ -106,7 +106,7 @@ return customInstance<loginResponse>(getLoginUrl(),
 
 export const getLoginQueryKey = (loginRequest?: LoginRequest,) => {
     return [
-    'POST', `/auth/login`, loginRequest
+    'POST', `/api/v4/auth/login`, loginRequest
     ] as const;
     }
 
@@ -192,7 +192,7 @@ export const getLogoutUrl = () => {
 
 
 
-  return `/auth/logout`
+  return `/api/v4/auth/logout`
 }
 
 export const logout = async ( options?: Parameters<typeof customInstance>[1]): Promise<logoutResponse> => {
@@ -212,7 +212,7 @@ export const logout = async ( options?: Parameters<typeof customInstance>[1]): P
 
 export const getLogoutQueryKey = () => {
     return [
-    'POST', `/auth/logout`
+    'POST', `/api/v4/auth/logout`
     ] as const;
     }
 
@@ -305,7 +305,7 @@ export const getRegisterUrl = () => {
 
 
 
-  return `/auth/register`
+  return `/api/v4/auth/register`
 }
 
 export const register = async (registerRequest: RegisterRequest, options?: Parameters<typeof customInstance>[1]): Promise<registerResponse> => {
@@ -331,7 +331,7 @@ return customInstance<registerResponse>(getRegisterUrl(),
 
 export const getRegisterQueryKey = (registerRequest?: RegisterRequest,) => {
     return [
-    'POST', `/auth/register`, registerRequest
+    'POST', `/api/v4/auth/register`, registerRequest
     ] as const;
     }
 
@@ -417,7 +417,7 @@ export const getListAuthenticationProvidersUrl = () => {
 
 
 
-  return `/auth/providers`
+  return `/api/v4/auth/providers`
 }
 
 export const listAuthenticationProviders = async ( options?: Parameters<typeof customInstance>[1]): Promise<listAuthenticationProvidersResponse> => {
@@ -496,7 +496,7 @@ export const getLoginWithLdapUrl = () => {
 
 
 
-  return `/auth/ldap/login`
+  return `/api/v4/auth/ldap/login`
 }
 
 export const loginWithLdap = async (loginRequest: LoginRequest, options?: Parameters<typeof customInstance>[1]): Promise<loginWithLdapResponse> => {
@@ -522,7 +522,7 @@ return customInstance<loginWithLdapResponse>(getLoginWithLdapUrl(),
 
 export const getLoginWithLdapQueryKey = (loginRequest?: LoginRequest,) => {
     return [
-    'POST', `/auth/ldap/login`, loginRequest
+    'POST', `/api/v4/auth/ldap/login`, loginRequest
     ] as const;
     }
 
@@ -608,7 +608,7 @@ export const getStartOidcLoginUrl = (providerKey: string,) => {
 
 
 
-  return `/auth/oidc/${providerKey}/start`
+  return `/api/v4/auth/oidc/${providerKey}/start`
 }
 
 export const startOidcLogin = async (providerKey: string, options?: Parameters<typeof customInstance>[1]): Promise<startOidcLoginResponse> => {
@@ -700,7 +700,7 @@ export const getFinishOidcLoginUrl = (providerKey: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/auth/oidc/${providerKey}/callback?${stringifiedParams}` : `/auth/oidc/${providerKey}/callback`
+  return stringifiedParams.length > 0 ? `/api/v4/auth/oidc/${providerKey}/callback?${stringifiedParams}` : `/api/v4/auth/oidc/${providerKey}/callback`
 }
 
 export const finishOidcLogin = async (providerKey: string,
@@ -787,7 +787,7 @@ export const getGetCurrentUserUrl = () => {
 
 
 
-  return `/users/me`
+  return `/api/v4/users/me`
 }
 
 export const getCurrentUser = async ( options?: Parameters<typeof customInstance>[1]): Promise<getCurrentUserResponse> => {
@@ -873,7 +873,7 @@ export const getChangeMyPasswordUrl = () => {
 
 
 
-  return `/users/me/password`
+  return `/api/v4/users/me/password`
 }
 
 /**
@@ -903,7 +903,7 @@ return customInstance<changeMyPasswordResponse>(getChangeMyPasswordUrl(),
 
 export const getChangeMyPasswordQueryKey = (changeMyPasswordRequest?: ChangeMyPasswordRequest,) => {
     return [
-    'POST', `/users/me/password`, changeMyPasswordRequest
+    'POST', `/api/v4/users/me/password`, changeMyPasswordRequest
     ] as const;
     }
 

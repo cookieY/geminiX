@@ -28,7 +28,9 @@
     "api:manifest": "node scripts/generate-contract-manifest.mjs",
     "api:breaking": "node scripts/api-breaking.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
-    "check:storage": "node scripts/scan-browser-storage.mjs"
+    "check:storage": "node scripts/scan-browser-storage.mjs",
+    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "contract:diff": "node scripts/contract-diff.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

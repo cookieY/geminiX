@@ -209,7 +209,7 @@ describe("user happy writes", () => {
 
 describe("migration confirmation flow", () => {
   it("confirms, unconfirms and re-confirms candidates before approving", async () => {
-    const runId = "7a1a3c4d-7777-4777-8777-00000000m001";
+    const runId = "7a1a3c4d-7777-4777-8777-000000004101";
     type RunShape = { version: number; manifest_hash: string | null; candidates: { candidate_id: string; target_definition_hash: string }[] };
     const loadRun = (): Promise<Envelope<RunShape>> => call<RunShape>("GET", `/admin/migrations/${runId}`);
     const withRun = async (action: (run: RunShape) => Promise<void>): Promise<void> => {

@@ -54,7 +54,7 @@ export const getListQuerySessionsUrl = (params?: ListQuerySessionsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-sessions?${stringifiedParams}` : `/query-sessions`
+  return stringifiedParams.length > 0 ? `/api/v4/query-sessions?${stringifiedParams}` : `/api/v4/query-sessions`
 }
 
 export const listQuerySessions = async (params?: ListQuerySessionsParams, options?: Parameters<typeof customInstance>[1]): Promise<listQuerySessionsResponse> => {
@@ -93,7 +93,7 @@ export const getCreateQuerySessionUrl = () => {
 
 
 
-  return `/query-sessions`
+  return `/api/v4/query-sessions`
 }
 
 export const createQuerySession = async (createQuerySessionBody: CreateQuerySession, options?: Parameters<typeof customInstance>[1]): Promise<createQuerySessionResponse> => {
@@ -131,7 +131,7 @@ export const getGetQuerySessionUrl = (sessionId: string,) => {
 
 
 
-  return `/query-sessions/${sessionId}`
+  return `/api/v4/query-sessions/${sessionId}`
 }
 
 export const getQuerySession = async (sessionId: string, options?: Parameters<typeof customInstance>[1]): Promise<getQuerySessionResponse> => {
@@ -163,7 +163,7 @@ export const getCloseQuerySessionUrl = (sessionId: string,) => {
 
 
 
-  return `/query-sessions/${sessionId}/closure`
+  return `/api/v4/query-sessions/${sessionId}/closure`
 }
 
 export const closeQuerySession = async (sessionId: string,
@@ -217,7 +217,7 @@ export const getListQuerySessionSchemasUrl = (sessionId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-sessions/${sessionId}/metadata/schemas?${stringifiedParams}` : `/query-sessions/${sessionId}/metadata/schemas`
+  return stringifiedParams.length > 0 ? `/api/v4/query-sessions/${sessionId}/metadata/schemas?${stringifiedParams}` : `/api/v4/query-sessions/${sessionId}/metadata/schemas`
 }
 
 export const listQuerySessionSchemas = async (sessionId: string,
@@ -265,7 +265,7 @@ export const getListQuerySessionTablesUrl = (sessionId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-sessions/${sessionId}/metadata/tables?${stringifiedParams}` : `/query-sessions/${sessionId}/metadata/tables`
+  return stringifiedParams.length > 0 ? `/api/v4/query-sessions/${sessionId}/metadata/tables?${stringifiedParams}` : `/api/v4/query-sessions/${sessionId}/metadata/tables`
 }
 
 export const listQuerySessionTables = async (sessionId: string,
@@ -313,7 +313,7 @@ export const getListQuerySessionColumnsUrl = (sessionId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-sessions/${sessionId}/metadata/columns?${stringifiedParams}` : `/query-sessions/${sessionId}/metadata/columns`
+  return stringifiedParams.length > 0 ? `/api/v4/query-sessions/${sessionId}/metadata/columns?${stringifiedParams}` : `/api/v4/query-sessions/${sessionId}/metadata/columns`
 }
 
 export const listQuerySessionColumns = async (sessionId: string,
@@ -353,7 +353,7 @@ export const getExecuteSelectUrl = (sessionId: string,) => {
 
 
 
-  return `/query-sessions/${sessionId}/executions`
+  return `/api/v4/query-sessions/${sessionId}/executions`
 }
 
 export const executeSelect = async (sessionId: string,
@@ -400,7 +400,7 @@ export const getFetchQueryResultPageUrl = (executionId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-executions/${executionId}/pages?${stringifiedParams}` : `/query-executions/${executionId}/pages`
+  return stringifiedParams.length > 0 ? `/api/v4/query-executions/${executionId}/pages?${stringifiedParams}` : `/api/v4/query-executions/${executionId}/pages`
 }
 
 export const fetchQueryResultPage = async (executionId: string,

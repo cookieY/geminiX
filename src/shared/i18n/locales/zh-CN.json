@@ -339,6 +339,7 @@
       "failed": "失败"
     },
     "severity": {
+      "info": "信息",
       "low": "低",
       "medium": "中",
       "high": "高",

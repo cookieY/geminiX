@@ -155,3 +155,5 @@ pnpm-lock.yaml
 !pnpm-lock.yaml
 # FE-F11 perf gate evidence JSONs are rewritten on every run; captured in YX gates.txt
 tests/performance/
+tests/e2e-real/.auth/
+tests/contract/.reports/

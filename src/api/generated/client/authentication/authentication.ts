@@ -41,7 +41,7 @@ export const getLoginUrl = () => {
 
 
 
-  return `/auth/login`
+  return `/api/v4/auth/login`
 }
 
 export const login = async (loginRequest: LoginRequest, options?: Parameters<typeof customInstance>[1]): Promise<loginResponse> => {
@@ -79,7 +79,7 @@ export const getLogoutUrl = () => {
 
 
 
-  return `/auth/logout`
+  return `/api/v4/auth/logout`
 }
 
 export const logout = async ( options?: Parameters<typeof customInstance>[1]): Promise<logoutResponse> => {
@@ -118,7 +118,7 @@ export const getRegisterUrl = () => {
 
 
 
-  return `/auth/register`
+  return `/api/v4/auth/register`
 }
 
 export const register = async (registerRequest: RegisterRequest, options?: Parameters<typeof customInstance>[1]): Promise<registerResponse> => {
@@ -156,7 +156,7 @@ export const getListAuthenticationProvidersUrl = () => {
 
 
 
-  return `/auth/providers`
+  return `/api/v4/auth/providers`
 }
 
 export const listAuthenticationProviders = async ( options?: Parameters<typeof customInstance>[1]): Promise<listAuthenticationProvidersResponse> => {
@@ -188,7 +188,7 @@ export const getLoginWithLdapUrl = () => {
 
 
 
-  return `/auth/ldap/login`
+  return `/api/v4/auth/ldap/login`
 }
 
 export const loginWithLdap = async (loginRequest: LoginRequest, options?: Parameters<typeof customInstance>[1]): Promise<loginWithLdapResponse> => {
@@ -226,7 +226,7 @@ export const getStartOidcLoginUrl = (providerKey: string,) => {
 
 
 
-  return `/auth/oidc/${providerKey}/start`
+  return `/api/v4/auth/oidc/${providerKey}/start`
 }
 
 export const startOidcLogin = async (providerKey: string, options?: Parameters<typeof customInstance>[1]): Promise<startOidcLoginResponse> => {
@@ -271,7 +271,7 @@ export const getFinishOidcLoginUrl = (providerKey: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/auth/oidc/${providerKey}/callback?${stringifiedParams}` : `/auth/oidc/${providerKey}/callback`
+  return stringifiedParams.length > 0 ? `/api/v4/auth/oidc/${providerKey}/callback?${stringifiedParams}` : `/api/v4/auth/oidc/${providerKey}/callback`
 }
 
 export const finishOidcLogin = async (providerKey: string,
@@ -311,7 +311,7 @@ export const getGetCurrentUserUrl = () => {
 
 
 
-  return `/users/me`
+  return `/api/v4/users/me`
 }
 
 export const getCurrentUser = async ( options?: Parameters<typeof customInstance>[1]): Promise<getCurrentUserResponse> => {
@@ -350,7 +350,7 @@ export const getChangeMyPasswordUrl = () => {
 
 
 
-  return `/users/me/password`
+  return `/api/v4/users/me/password`
 }
 
 /**

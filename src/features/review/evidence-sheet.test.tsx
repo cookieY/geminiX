@@ -17,7 +17,7 @@ import { EvidenceSheet } from "./evidence-sheet";
  */
 
 const EVIDENCE_ID = "4f6f1a2b-0000-4000-8000-00000000be01";
-const FINDING_ID = "4f6f1a2b-0000-4000-8000-00000000fi01";
+const FINDING_ID = "4f6f1a2b-0000-4000-8000-00000000f101";
 
 function finding(): ReviewFinding {
   return {
@@ -99,7 +99,7 @@ describe("EvidenceSheet", () => {
       http.post("*/review-evidence/:evidenceId/raw-reveals", () =>
         HttpResponse.json(
           envelope({
-            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9r01".replace("r", "9"),
+            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9e01".replace("r", "9"),
             content_type: "application/json",
             raw_payload: { tool: "table_stats", note: "raw-marker" },
             watermark: "henry · 2026-08-30T10:00:00Z · evidence:1",

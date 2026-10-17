@@ -46,7 +46,7 @@ const EXECUTOR = MOCK_IDENTITIES["executor-a"];
 
 function approvalActiveOrder(): FixtureOrder {
   return {
-    id: "8a6f1a2b-0000-4000-8000-00000000id01",
+    id: "8a6f1a2b-0000-4000-8000-000000001d01",
     display_number: "YR-20261013-000001",
     submitter_user_id: FIXTURE_OWNER_ID,
     requested_scheduled_for: null,
@@ -55,13 +55,13 @@ function approvalActiveOrder(): FixtureOrder {
     current_stage_position: 1,
     stages: [
       {
-        id: "8a6f1a2b-0000-4000-8000-00000000id11",
+        id: "8a6f1a2b-0000-4000-8000-000000001d11",
         position: 1,
         datasource_name: "orders-mysql",
         state: "approval_active",
         approval_steps: [
           {
-            id: "8a6f1a2b-0000-4000-8000-00000000id21",
+            id: "8a6f1a2b-0000-4000-8000-000000001d21",
             position: 1,
             state: "active",
             decided_at: null,
@@ -100,17 +100,17 @@ function executionPendingOrder(): FixtureOrder {
   if (stage === undefined) throw new Error("approvalActiveOrder must seed a stage");
   return {
     ...approved,
-    id: "8a6f1a2b-0000-4000-8000-00000000id02",
+    id: "8a6f1a2b-0000-4000-8000-000000001d02",
     display_number: "YR-20261013-000002",
     state: "stage_execution_pending",
     stages: [
       {
         ...stage,
-        id: "8a6f1a2b-0000-4000-8000-00000000id12",
+        id: "8a6f1a2b-0000-4000-8000-000000001d12",
         state: "execution_pending",
         approval_steps: [
           {
-            id: "8a6f1a2b-0000-4000-8000-00000000id22",
+            id: "8a6f1a2b-0000-4000-8000-000000001d22",
             position: 1,
             state: "approved",
             decided_at: "2026-10-13T07:40:00Z",
@@ -141,7 +141,7 @@ describe("identity role separation (§18.44)", () => {
   it("the submitter cannot decide the order: 3001 for a non-frozen actor", async () => {
     seedFixtureOrder(approvalActiveOrder());
     const refused = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/approval-decisions",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/approval-decisions",
       post({ decision: "approve" }, { "If-Match": '"1"' }),
     );
     expect(refused.body.err_code).toBe(3001);
@@ -151,7 +151,7 @@ describe("identity role separation (§18.44)", () => {
     seedFixtureOrder(approvalActiveOrder());
     setMockIdentity("reviewer-a");
     const decided = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/approval-decisions",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/approval-decisions",
       post({ decision: "approve" }, { "If-Match": '"1"' }),
     );
     expect(decided.body.err_code).toBe(0);
@@ -164,7 +164,7 @@ describe("identity role separation (§18.44)", () => {
         actor_display_name: string | null;
         summary: string;
       }>;
-    }>("/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/timeline");
+    }>("/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/timeline");
     const decisionEntry = timeline.body.data.items.find((entry) =>
       entry.event_type.includes("approval_decided"),
     );
@@ -180,20 +180,20 @@ describe("identity role separation (§18.44)", () => {
     seedFixtureOrder(approvalActiveOrder());
     setMockIdentity("reviewer-a");
     const withdrawRefused = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/withdrawal",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/withdrawal",
       post({ reason: "越权撤回" }, { "If-Match": '"1"' }),
     );
     expect(withdrawRefused.body.err_code).toBe(1002);
 
     const voidRefused = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/voidance",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/voidance",
       post({ reason: "越权作废" }, { "If-Match": '"1"' }),
     );
     expect(voidRefused.body.err_code).toBe(1002);
 
     setMockIdentity("henry");
     const withdrawn = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id01/withdrawal",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d01/withdrawal",
       post({ reason: "提交人撤回" }, { "If-Match": '"1"' }),
     );
     expect(withdrawn.body.err_code).toBe(0);
@@ -203,14 +203,14 @@ describe("identity role separation (§18.44)", () => {
   it("the submitter cannot start execution: only the frozen executor may begin", async () => {
     seedFixtureOrder(executionPendingOrder());
     const refused = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id02/execution-attempts",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d02/execution-attempts",
       post({}, { "If-Match": '"1"' }),
     );
     expect(refused.body.err_code).toBe(3001);
 
     setMockIdentity("executor-a");
     const begun = await call(
-      "/change-orders/8a6f1a2b-0000-4000-8000-00000000id02/execution-attempts",
+      "/change-orders/8a6f1a2b-0000-4000-8000-000000001d02/execution-attempts",
       post({}, { "If-Match": '"1"' }),
     );
     expect(begun.body.err_code).toBe(0);
@@ -220,13 +220,13 @@ describe("identity role separation (§18.44)", () => {
     seedFixtureOrder(approvalActiveOrder());
     const asSubmitter = await call<{ items: Array<{ id: string }> }>("/change-orders");
     expect(asSubmitter.body.data.items.map((row) => row.id)).toContain(
-      "8a6f1a2b-0000-4000-8000-00000000id01",
+      "8a6f1a2b-0000-4000-8000-000000001d01",
     );
 
     setMockIdentity("reviewer-a");
     const asReviewer = await call<{ items: Array<{ id: string }> }>("/change-orders");
     expect(asReviewer.body.data.items.map((row) => row.id)).toContain(
-      "8a6f1a2b-0000-4000-8000-00000000id01",
+      "8a6f1a2b-0000-4000-8000-000000001d01",
     );
   });
 

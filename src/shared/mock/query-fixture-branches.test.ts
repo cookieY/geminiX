@@ -75,7 +75,7 @@ describe("access request write guards", () => {
   it("refuses datasources outside the flow and duplicate open requests", async () => {
     const outside = await call("POST", "/query-access-requests", {
       flow_id: QUERY_FIXTURE_FLOW_ID,
-      datasource_ids: ["00000000-0000-4000-8000-00000000000x"],
+      datasource_ids: ["00000000-0000-4000-8000-00000000000c"],
       requested_until: new Date(Date.now() + 86400000).toISOString(),
       reason: "outside",
     });
@@ -180,7 +180,7 @@ describe("session and execution guards", () => {
     expect(malformed.err_code).toBe(1001);
     const foreignGrant = await call("POST", "/query-sessions", {
       flow_id: QUERY_FIXTURE_FLOW_ID,
-      grant_id: "00000000-0000-4000-8000-00000000000y",
+      grant_id: "00000000-0000-4000-8000-00000000000d",
       datasource_ids: [QUERY_FIXTURE_DS_MYSQL_ID],
     });
     expect(foreignGrant.err_code).toBe(4001);
@@ -260,7 +260,7 @@ describe("direct-entry branches (approval disabled)", () => {
     const created = await call("POST", "/query-sessions", {
       flow_id: QUERY_FIXTURE_FLOW_ID,
       grant_id: null,
-      datasource_ids: [QUERY_FIXTURE_DS_PG_ID, "00000000-0000-4000-8000-00000000000z"],
+      datasource_ids: [QUERY_FIXTURE_DS_PG_ID, "00000000-0000-4000-8000-00000000000e"],
     });
     // PG is in the flow; the unknown id is filtered out and PG remains,
     // so this succeeds — the guard case is a fully-unknown selection:
@@ -268,7 +268,7 @@ describe("direct-entry branches (approval disabled)", () => {
     const unknownOnly = await call("POST", "/query-sessions", {
       flow_id: QUERY_FIXTURE_FLOW_ID,
       grant_id: null,
-      datasource_ids: ["00000000-0000-4000-8000-00000000000z"],
+      datasource_ids: ["00000000-0000-4000-8000-00000000000e"],
     });
     expect(unknownOnly.err_code).toBe(4002);
   });
@@ -390,18 +390,19 @@ describe("fixture data-model branches", () => {
   });
 
   it("serves table and column metadata for the whole frozen scope", async () => {
-    const tables = await call<{ table_name: string }[]>(
+    // F12 RCP-20261017方向A（#010族）：元数据读面为{items}信封。
+    const tables = await call<{ items: { table_name: string }[] }>(
       "GET",
       `/query-sessions/qs-fixture-active/metadata/tables?datasource_id=${QUERY_FIXTURE_DS_MYSQL_ID}&schema_name=stats`,
     );
     expect(tables.err_code).toBe(0);
-    expect(tables.data.map((table) => table.table_name)).toContain("daily_counts");
-    const columns = await call<{ column_name: string }[]>(
+    expect(tables.data.items.map((table) => table.table_name)).toContain("daily_counts");
+    const columns = await call<{ items: { column_name: string }[] }>(
       "GET",
       `/query-sessions/qs-fixture-active/metadata/columns?datasource_id=${QUERY_FIXTURE_DS_MYSQL_ID}&schema_name=stats&table_name=daily_counts`,
     );
     expect(columns.err_code).toBe(0);
-    expect(columns.data.map((column) => column.column_name)).toContain("gmv");
+    expect(columns.data.items.map((column) => column.column_name)).toContain("gmv");
     const unknownSchema = await call(
       "GET",
       `/query-sessions/qs-fixture-active/metadata/tables?datasource_id=${QUERY_FIXTURE_DS_MYSQL_ID}&schema_name=missing`,

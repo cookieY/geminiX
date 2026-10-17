@@ -226,10 +226,15 @@ function pageOf<T>(items: T[], limit: number | null, after: string | null) {
   }
   const page = rows.slice(0, size);
   const last = page[page.length - 1] as { id?: string } | undefined;
+  // Contract pagination envelope: {items, page:{next_cursor, has_more}}.
+  // The flat {items, next_cursor, has_more} shape mirrored the backend's
+  // deviation (F12 divergence #005) — the mock must mirror the contract.
   return {
     items: page,
-    next_cursor: rows.length > size && last?.id ? last.id : null,
-    has_more: rows.length > size,
+    page: {
+      next_cursor: rows.length > size && last?.id ? last.id : null,
+      has_more: rows.length > size,
+    },
   };
 }
 
@@ -1343,7 +1348,8 @@ export function queryFixtureHandlers(): HttpHandler[] {
       const datasourceId = new URL(request.url).searchParams.get("datasource_id");
       const ds = world.datasources.get(datasourceId ?? "");
       if (ds === undefined) return HttpResponse.json(businessError(4002, "datasource not granted"));
-      return HttpResponse.json(successEnvelope(ds.schemas.map((schema) => ({ name: schema.name }))));
+      // F12 RCP-20261017方向A（#010族）：{items}信封（与真实后端一致）。
+      return HttpResponse.json(successEnvelope({ items: ds.schemas.map((schema) => ({ name: schema.name })) }));
     }),
 
     http.get("*/query-sessions/:sessionId/metadata/tables", ({ request, params }) => {
@@ -1363,11 +1369,12 @@ export function queryFixtureHandlers(): HttpHandler[] {
       }
       return HttpResponse.json(
         successEnvelope(
-          schema.tables.map((table) => ({
+          // F12 RCP-20261017方向A（#010族）：{items}信封。
+          { items: schema.tables.map((table) => ({
             schema_name: schema.name,
             table_name: table.table_name,
             relation_kind: table.relation_kind,
-          })),
+          })) },
         ),
       );
     }),
@@ -1392,7 +1399,8 @@ export function queryFixtureHandlers(): HttpHandler[] {
       const vocabulary = vocabularyFor(session.flow_id, ds.id);
       return HttpResponse.json(
         successEnvelope(
-          table.columns.map((column) => ({
+          // F12 RCP-20261017方向A（#010族）：{items}信封。
+          { items: table.columns.map((column) => ({
             schema_name: schemaName,
             table_name: table.table_name,
             column_name: column.column_name,
@@ -1404,7 +1412,7 @@ export function queryFixtureHandlers(): HttpHandler[] {
             column_default: column.column_default ?? "",
             extra: column.extra ?? "",
             comment: column.comment ?? "",
-          })),
+          })) },
         ),
       );
     }),

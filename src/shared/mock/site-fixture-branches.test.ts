@@ -494,7 +494,7 @@ describe("user update arms", () => {
   it("validates display-name edits and reads the deletion impact of the blocked user", async () => {
     const emptyName = await call(
       "PATCH",
-      "/admin/users/7a1a3c4d-1111-4111-8111-00000000u001",
+      "/admin/users/7a1a3c4d-1111-4111-8111-00000000e101",
       { display_name: "  " },
       { "If-Match": '"1"' },
     );
@@ -506,10 +506,10 @@ describe("user update arms", () => {
     // The blocked user's impact also carries the template-reference arm.
     const impact = await call<{ blockers: { code: string }[] }>(
       "GET",
-      "/admin/users/7a1a3c4d-1111-4111-8111-00000000u002/deletion-impact",
+      "/admin/users/7a1a3c4d-1111-4111-8111-00000000e102/deletion-impact",
     );
     expect(impact.data.blockers.map((blocker) => blocker.code)).toContain("referenced_by_template");
-    const blockedDelete = await call("DELETE", "/admin/users/7a1a3c4d-1111-4111-8111-00000000u002", undefined, {
+    const blockedDelete = await call("DELETE", "/admin/users/7a1a3c4d-1111-4111-8111-00000000e102", undefined, {
       "If-Match": '"1"',
     });
     // The active-orders arm fires first (mirror check order); the

@@ -21,6 +21,8 @@ import { useSeverityFilter } from "./use-draft-workspace";
  */
 
 const SEVERITY_BADGE: Record<ReviewFinding["severity"], { key: string; className: string }> = {
+  // F12 #009：info为不拦门的信息级（与low同视觉档，不抬升最高级）。
+  info: { key: "precheck.severity.info", className: "text-muted-foreground" },
   low: { key: "precheck.severity.low", className: "text-muted-foreground" },
   medium: { key: "precheck.severity.medium", className: "text-[var(--risk-warning)]" },
   high: { key: "precheck.severity.high", className: "text-[var(--risk-high)]" },

@@ -310,7 +310,7 @@ describe("frozen review and comments on the order detail page", () => {
   it("reads an empty frozen snapshot as the honest empty state", async () => {
     seedFixtureOrder(
       approvalOrder({
-        review_run_id: "cd6f1a2b-0000-4000-8000-00000000re01",
+        review_run_id: "cd6f1a2b-0000-4000-8000-000000003e01",
       }),
     );
     renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");

@@ -162,11 +162,10 @@ describe("review fixture draft and run lifecycle", () => {
     const body = (await response.json()) as {
       data: { display_number: string; state: string; snapshot_hash: string } | null;
     };
-    // Legacy work_id parity (GenWorkId = uuid.NewString): the order number
-    // is a UUID.
-    expect(body.data?.display_number).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    );
+    // Contract ChangeOrder.display_number: YR-YYYYMMDD-NNNNNN (the real
+    // backend emits this; the old UUID-as-number shape failed the generated
+    // zod pattern — F12 batch 2).
+    expect(body.data?.display_number).toMatch(/^YR-[0-9]{8}-[0-9]{6}$/);
     // Submission freezes the order directly in stage_approval_active with
     // the first approval step active (backend submit.go semantics) — the
     // approval queue fills the moment an order is submitted (FE-F7).

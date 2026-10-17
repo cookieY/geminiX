@@ -526,24 +526,31 @@ function revisionConflict(request: Request, draft: FixtureDraft): boolean {
 }
 
 function draftPublic(draft: FixtureDraft) {
-  return {
+  // Contract optionals (description, sql_size_bytes) are non-null types:
+  // the fixture world stores null when absent — omit the keys instead of
+  // serializing null (F12 divergence #008 family).
+  const out: Record<string, unknown> = {
     id: draft.id,
     owner_user_id: draft.owner_user_id,
     flow_id: draft.flow_id,
     title: draft.title,
-    description: draft.description,
     requested_scheduled_for: draft.requested_scheduled_for,
     revision: draft.revision,
     state: draft.state,
     has_sql: draft.has_sql,
-    sql_size_bytes: draft.sql_size_bytes,
-    statement_count: draft.statement_count,
+    // statement_count omitted when null (contract: non-null number; F12 #008)
+    ...((draft.statement_count === null || draft.statement_count === undefined) ? {} : { statement_count: draft.statement_count }),
     review_run_id: draft.review_run_id,
     version: draft.version,
     created_at: draft.created_at,
     updated_at: draft.updated_at,
   };
+  if (draft.description !== null) out.description = draft.description;
+  if (draft.sql_size_bytes !== null) out.sql_size_bytes = draft.sql_size_bytes;
+  if (draft.statement_count !== null) out.statement_count = draft.statement_count;
+  return out;
 }
+
 
 function runPublic(run: FixtureRun) {
   return {
@@ -653,7 +660,7 @@ function seedPartialExecutionOrder(): void {
   const submittedAt = now();
   const order: FixtureOrder = {
     id: "7e6f1a2b-0000-4000-8000-00000000f601",
-    display_number: "7e6f1a2b-0000-4000-8000-00000000f601",
+    display_number: "YR-20260901-000601",
     submitter_user_id: FIXTURE_OWNER_ID,
     requested_scheduled_for: null,
     title: "跨阶段存量数据订正（场景）",
@@ -832,7 +839,7 @@ function seedOrderGallery(): void {
     const datasource = GALLERY_DATASOURCES[index % GALLERY_DATASOURCES.length] ?? "staging-mysql";
     const order: FixtureOrder = {
       id,
-      display_number: id,
+      display_number: `YR-20260901-${String(300000 + index).padStart(6, "0")}`,
       submitter_user_id: FIXTURE_OWNER_ID,
       requested_scheduled_for: null,
       title: `演示工单 · ${state} · #${String(index + 1)}`,
@@ -915,7 +922,7 @@ function seedPendingApprovalOrders(): void {
     }));
     const order: FixtureOrder = {
       id,
-      display_number: `YR-20260901-A${spec.suffix}`,
+      display_number: `YR-20260901-0002${spec.suffix}`,
       submitter_user_id: FIXTURE_OWNER_ID,
       requested_scheduled_for: null,
       title: spec.title,
@@ -959,7 +966,7 @@ function seedPendingExecutionOrder(): void {
     .toISOString().slice(0, 19).concat("Z");
   const order: FixtureOrder = {
     id: PENDING_EXECUTION_DEMO_ID,
-    display_number: "YR-20260901-E01",
+    display_number: "YR-20260901-000010",
     submitter_user_id: FIXTURE_OWNER_ID,
     requested_scheduled_for: requested,
     title: "结算表分区切换（期望次日低峰执行）",
@@ -1374,9 +1381,10 @@ function liveScheduleFor(orderId: string): FixtureSchedule | undefined {
 function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
   const collectedAt = now();
   const expiry = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const evidenceId = `${run.id.slice(0, 30)}e1`;
-  const findingId = `${run.id.slice(0, 30)}f1`;
-  const criticalFindingId = `${run.id.slice(0, 30)}f2`;
+  const evidenceId = `${run.id.slice(0, 24)}00000000e001`;
+  // Contract: finding ids are Uuids; derive deterministically from the run.
+  const findingId = `${run.id.slice(0, 24)}00000000f001`;
+  const criticalFindingId = `${run.id.slice(0, 24)}00000000f003`;
   world.evidence.set(evidenceId, {
     id: evidenceId,
     source_kind: "tool_call",
@@ -1430,7 +1438,7 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
   };
 
   const highFinding: FixtureFinding = {
-    id: `${findingId}h`,
+    id: `${findingId.slice(0, 24)}00000000f002`,
     stage_position: 1,
     fingerprint_group_id: null,
     category: "security",
@@ -2063,7 +2071,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         id: orderId,
         // Legacy work_id parity (GenWorkId = uuid.NewString): the UUID is the
         // user-facing order number.
-        display_number: orderId,
+        display_number: `YR-${submittedAt.slice(0, 10).replace(/-/g, "")}-${String(world.orderSequence).padStart(6, "0")}`,
         submitter_user_id: draft.owner_user_id,
         title: draft.title,
         state: "stage_approval_active",

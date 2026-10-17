@@ -167,6 +167,56 @@ export function authMockHandlers(): HttpHandler[] {
       HttpResponse.json(successEnvelope(null), { headers: clearedSessionCookieHeaders() }),
     ),
 
+    // Open registration. The mock answers with the contract's success face
+    // (an active user with zero workflow permissions); the real serve stack
+    // currently disables registration with 403 — a recorded Mock/Real
+    // divergence of the FE-F12 contract suite, not a mock defect.
+    http.post("*/auth/register", async ({ request }) => {
+      const body = (await request.json().catch(() => null)) as {
+        username?: unknown; display_name?: unknown; email?: unknown; password?: unknown;
+      } | null;
+      if (
+        body === null || typeof body.username !== "string" || body.username === "" ||
+        typeof body.display_name !== "string" || body.display_name === "" ||
+        typeof body.password !== "string" || body.password.length < 12
+      ) {
+        return HttpResponse.json(businessError(1001, "validation failed"));
+      }
+      const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+      return HttpResponse.json(successEnvelope({
+        id: crypto.randomUUID(), username: body.username, display_name: body.display_name,
+        email: typeof body.email === "string" ? body.email : null,
+        is_builtin_admin: false, version: 1, created_at: now, updated_at: now,
+      }));
+    }),
+
+    // OIDC start/finish. The mock cannot redirect to a real IdP; an unknown
+    // provider key answers with the same problem face the serve stack shows
+    // (401 problem — the route mounts behind the session middleware with no
+    // provider registered), so both modes record the problem shape.
+    http.get("*/auth/oidc/:providerKey/start", ({ params }) => {
+      if (String(params.providerKey) !== "corp-oidc") {
+        return HttpResponse.json(
+          { type: "about:blank", title: "Unauthorized", status: 401, detail: "no oidc provider", request_id: MOCK_REQUEST_ID },
+          { status: 401 },
+        );
+      }
+      return new HttpResponse(null, {
+        status: 302,
+        headers: { Location: "/mock/oidc/corp-oidc/start" },
+      });
+    }),
+
+    http.get("*/auth/oidc/:providerKey/callback", ({ params }) => {
+      if (String(params.providerKey) !== "corp-oidc") {
+        return HttpResponse.json(
+          { type: "about:blank", title: "Unauthorized", status: 401, detail: "no oidc provider", request_id: MOCK_REQUEST_ID },
+          { status: 401 },
+        );
+      }
+      return HttpResponse.json(successEnvelope(null), { headers: sessionCookieHeaders() });
+    }),
+
     // §18.52 自助改密。Demo语义：mock没有真实密码存储（登录接受任意凭据，
     // 由auth-behavior维度控制），故只按契约做入参校验——old_password非空、
     // new_password≥12否则1001；成功时清空会话Cookie，镜像后端

@@ -53,7 +53,7 @@ export const getListQueryAccessRequestsUrl = (params?: ListQueryAccessRequestsPa
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-access-requests?${stringifiedParams}` : `/query-access-requests`
+  return stringifiedParams.length > 0 ? `/api/v4/query-access-requests?${stringifiedParams}` : `/api/v4/query-access-requests`
 }
 
 export const listQueryAccessRequests = async (params?: ListQueryAccessRequestsParams, options?: Parameters<typeof customInstance>[1]): Promise<listQueryAccessRequestsResponse> => {
@@ -92,7 +92,7 @@ export const getCreateQueryAccessRequestUrl = () => {
 
 
 
-  return `/query-access-requests`
+  return `/api/v4/query-access-requests`
 }
 
 export const createQueryAccessRequest = async (createQueryAccessRequestBody: CreateQueryAccessRequest, options?: Parameters<typeof customInstance>[1]): Promise<createQueryAccessRequestResponse> => {
@@ -130,7 +130,7 @@ export const getGetQueryAccessRequestUrl = (requestId: string,) => {
 
 
 
-  return `/query-access-requests/${requestId}`
+  return `/api/v4/query-access-requests/${requestId}`
 }
 
 export const getQueryAccessRequest = async (requestId: string, options?: Parameters<typeof customInstance>[1]): Promise<getQueryAccessRequestResponse> => {
@@ -162,7 +162,7 @@ export const getDecideQueryAccessUrl = (requestId: string,) => {
 
 
 
-  return `/query-access-requests/${requestId}/decisions`
+  return `/api/v4/query-access-requests/${requestId}/decisions`
 }
 
 export const decideQueryAccess = async (requestId: string,
@@ -201,7 +201,7 @@ export const getWithdrawQueryAccessRequestUrl = (requestId: string,) => {
 
 
 
-  return `/query-access-requests/${requestId}/withdrawal`
+  return `/api/v4/query-access-requests/${requestId}/withdrawal`
 }
 
 export const withdrawQueryAccessRequest = async (requestId: string,
@@ -247,7 +247,7 @@ export const getListQueryGrantsUrl = (params?: ListQueryGrantsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/query-grants?${stringifiedParams}` : `/query-grants`
+  return stringifiedParams.length > 0 ? `/api/v4/query-grants?${stringifiedParams}` : `/api/v4/query-grants`
 }
 
 export const listQueryGrants = async (params?: ListQueryGrantsParams, options?: Parameters<typeof customInstance>[1]): Promise<listQueryGrantsResponse> => {
@@ -279,7 +279,7 @@ export const getGetQueryGrantUrl = (grantId: string,) => {
 
 
 
-  return `/query-grants/${grantId}`
+  return `/api/v4/query-grants/${grantId}`
 }
 
 export const getQueryGrant = async (grantId: string, options?: Parameters<typeof customInstance>[1]): Promise<getQueryGrantResponse> => {
@@ -318,7 +318,7 @@ export const getRevokeQueryGrantUrl = (grantId: string,) => {
 
 
 
-  return `/query-grants/${grantId}/revocations`
+  return `/api/v4/query-grants/${grantId}/revocations`
 }
 
 export const revokeQueryGrant = async (grantId: string,
@@ -357,7 +357,7 @@ export const getRelinquishQueryGrantUrl = (grantId: string,) => {
 
 
 
-  return `/query-grants/${grantId}/relinquishment`
+  return `/api/v4/query-grants/${grantId}/relinquishment`
 }
 
 export const relinquishQueryGrant = async (grantId: string,
@@ -396,7 +396,7 @@ export const getCreateQueryGrantRenewalRequestUrl = (grantId: string,) => {
 
 
 
-  return `/query-grants/${grantId}/renewal-requests`
+  return `/api/v4/query-grants/${grantId}/renewal-requests`
 }
 
 export const createQueryGrantRenewalRequest = async (grantId: string,

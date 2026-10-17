@@ -693,7 +693,7 @@ export const DatasourceWriteTestPurpose = {
 } as const;
 
 /**
- * Optional TLS material block. Full-replacement semantics like the rest of DatasourceWrite: omitting tls (or null) removes all stored TLS material and the datasource connects in plaintext. When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.
+ * Optional TLS material block with three-state semantics on the replace path (RCP-20261016-DATASOURCE-TLS-KEEP): omitting tls keeps the stored TLS material and tls_verified unchanged (the material content is re-sealed per the payload's credential purposes so every enabled purpose retains verified TLS); tls:null explicitly removes all stored material and the datasource connects in plaintext; a tls object fully replaces the material and must carry a non-null ca_pem (an all-null material object is rejected). On the create path omitting and null are equivalent (no existing material to keep). When material is present the adapter enforces verified TLS (full chain plus hostname verification); there is no skip-verification path. Materials are write-only and never echoed; reads only expose tls_verified on the datasource view.
  * @nullable
  */
 export type DatasourceTLSWrite = {
@@ -1569,6 +1569,16 @@ export interface QueryCapabilityWrite {
   can_export: boolean;
 }
 
+/**
+ * Read projection of a flow's query capability with the resolved datasource name (server-side join against the datasource catalog; no staleness snapshot — renames and deletions propagate naturally, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES). Write shapes keep QueryCapabilityWrite.
+ */
+export interface QueryCapabilityView {
+  datasource_id: Uuid;
+  datasource_name: string;
+  can_query: true;
+  can_export: boolean;
+}
+
 export interface FlowWrite {
   /**
      * @minLength 1
@@ -1599,7 +1609,7 @@ export const FlowStatus = {
 } as const;
 
 /**
- * Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME).
+ * Flow read view. Read and write shapes are split: the read face re-declares stages as FlowStageView (each stage carries the resolved datasource_name) and query_capabilities as QueryCapabilityView (each capability carries the resolved datasource_name) while FlowWrite keeps FlowStageWrite and QueryCapabilityWrite for writes (RCP-20260904-FLOW-STAGE-DATASOURCE-NAME, RCP-20260901-FLOW-CATALOG-DATASOURCE-NAMES).
  */
 export interface Flow {
   /**
@@ -1618,7 +1628,7 @@ export interface Flow {
      */
   approval_steps?: ApprovalStepWrite[];
   /** @minItems 1 */
-  query_capabilities?: QueryCapabilityWrite[];
+  query_capabilities?: QueryCapabilityView[];
   id: Uuid;
   /** @minimum 1 */
   version: number;
@@ -1905,6 +1915,7 @@ export type ReviewFindingSeverity = typeof ReviewFindingSeverity[keyof typeof Re
 
 
 export const ReviewFindingSeverity = {
+  info: 'info',
   low: 'low',
   medium: 'medium',
   high: 'high',
@@ -2286,6 +2297,14 @@ export interface QueryAccessRequest {
   /** @minimum 1 */
   version: number;
   created_at: Timestamp;
+  /**
+     * Application reason submitted by the requester (snapshot of the original request payload).
+     * @nullable
+     */
+  reason?: string | null;
+  requested_until?: Timestamp | null;
+  /** Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant. */
+  terminal_at?: Timestamp | null;
 }
 
 export type QueryGrantState = typeof QueryGrantState[keyof typeof QueryGrantState];
@@ -2304,6 +2323,12 @@ export interface QueryGrant {
   state: QueryGrantState;
   /** @nullable */
   revoked_reason?: string | null;
+  /**
+     * Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).
+     * @nullable
+     */
+  revoked_by_username?: string | null;
+  revoked_at?: Timestamp | null;
   expires_at?: Timestamp | null;
   /** @minimum 1 */
   version: number;
@@ -2349,6 +2374,8 @@ export interface QuerySession {
   id: Uuid;
   user_id: Uuid;
   state: QuerySessionState;
+  /** Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow's query approval mode is off (direct-connection sessions carry no grant). */
+  grant_id?: Uuid | null;
   capabilities: QuerySessionCapability[];
   created_at: Timestamp;
 }
@@ -3492,7 +3519,9 @@ export type DeleteAiProvider200 = {
 export type TestAiProviderConnection200 = {
   err_code: 0;
   message: 'ok';
-  data: Task;
+  data: {
+  ok: boolean;
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -3592,7 +3621,10 @@ export type DeleteNotificationChannel200 = {
 export type CreateNotificationTestDelivery200 = {
   err_code: 0;
   message: 'ok';
-  data: Task;
+  data: {
+  task_id: Uuid;
+  channel_id: Uuid;
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -3622,7 +3654,48 @@ export type ListAuditEventsParams = {
  */
 limit?: LimitParameter;
 after?: AfterParameter;
+/**
+ * Exact actor_id filter (server-side narrowing of the admin audit scope, RCP-20260901-AUDIT-LIST-FILTERS).
+ */
+actor_id?: Uuid;
+/**
+ * Exact action filter (e.g. revoke, export_read).
+ * @minLength 1
+ * @maxLength 128
+ */
+action?: string;
+/**
+ * Exact resource_type filter (e.g. query_grants).
+ * @minLength 1
+ * @maxLength 128
+ */
+resource_type?: string;
+/**
+ * Exact outcome filter.
+ */
+outcome?: ListAuditEventsOutcome;
+/**
+ * Exact request_id filter.
+ */
+request_id?: Uuid;
+/**
+ * UTC date lower bound (inclusive; whole-day closed interval together with occurred_to).
+ */
+occurred_from?: string;
+/**
+ * UTC date upper bound (inclusive; whole-day closed interval together with occurred_from).
+ */
+occurred_to?: string;
 };
+
+export type ListAuditEventsOutcome = typeof ListAuditEventsOutcome[keyof typeof ListAuditEventsOutcome];
+
+
+export const ListAuditEventsOutcome = {
+  succeeded: 'succeeded',
+  denied: 'denied',
+  failed: 'failed',
+} as const;
 
 export type ListAuditEvents200 = {
   err_code: 0;
@@ -3649,7 +3722,9 @@ export type ListCurrentUserFlows200 = {
 export type ListMyFlowDatasourceSchemas200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceSchema[];
+  data: {
+  items: DatasourceSchema[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -3664,7 +3739,9 @@ schema_name: SchemaNameQueryParameter;
 export type ListMyFlowDatasourceTables200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceTable[];
+  data: {
+  items: DatasourceTable[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -3684,7 +3761,9 @@ table_name: TableNameQueryParameter;
 export type ListMyFlowDatasourceColumns200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceColumn[];
+  data: {
+  items: DatasourceColumn[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -4160,7 +4239,9 @@ datasource_id: DatasourceIdQueryParameter;
 export type ListQuerySessionSchemas200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceSchema[];
+  data: {
+  items: DatasourceSchema[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -4176,7 +4257,9 @@ schema_name: SchemaNameQueryParameter;
 export type ListQuerySessionTables200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceTable[];
+  data: {
+  items: DatasourceTable[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -4197,7 +4280,9 @@ table_name: TableNameQueryParameter;
 export type ListQuerySessionColumns200 = {
   err_code: 0;
   message: 'ok';
-  data: DatasourceColumn[];
+  data: {
+  items: DatasourceColumn[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -4214,6 +4299,12 @@ cursor: string;
  * Display pagination or an explicitly audited browser-side export read. Export requires frozen can_export capability on every page.
  */
 purpose: QueryPagePurposeParameter;
+/**
+ * Overrides the page size the cursor was opened with for this and subsequent fetches; omit to keep the opened value. The 1..5000 cap and the purpose=export per-page re-authorization semantics are unchanged (RCP-20260901-QUERY-PAGE-SIZE-PARAM).
+ * @minimum 1
+ * @maximum 5000
+ */
+page_size?: number;
 };
 
 export type FetchQueryResultPage200 = {

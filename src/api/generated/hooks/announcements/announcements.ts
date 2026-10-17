@@ -45,7 +45,7 @@ export const getGetCurrentAnnouncementUrl = () => {
 
 
 
-  return `/announcements/current`
+  return `/api/v4/announcements/current`
 }
 
 export const getCurrentAnnouncement = async ( options?: Parameters<typeof customInstance>[1]): Promise<getCurrentAnnouncementResponse> => {

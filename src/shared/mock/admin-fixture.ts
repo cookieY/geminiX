@@ -343,7 +343,7 @@ interface FixtureFlow {
   rule_set_id: string | null;
   stages: FixtureFlowStage[] | null;
   approval_steps: { position: number; actors: { user_id: string }[] }[] | null;
-  query_capabilities: { datasource_id: string; can_query: true; can_export: boolean }[] | null;
+  query_capabilities: { datasource_id: string; datasource_name: string; can_query: true; can_export: boolean }[] | null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -863,14 +863,14 @@ function seededSettingsFor(ns: string): SettingsValue {
 // adminGuard while /announcements/current answers any authenticated session.
 // ===========================================================================
 
-export const ADMIN_FIXTURE_USER_MEMBER_ID = "7a1a3c4d-1111-4111-8111-00000000u001";
-export const ADMIN_FIXTURE_USER_BLOCKED_ID = "7a1a3c4d-1111-4111-8111-00000000u002";
-export const ADMIN_FIXTURE_GROUP_ID = "7a1a3c4d-2222-4222-8222-00000000g001";
+export const ADMIN_FIXTURE_USER_MEMBER_ID = "7a1a3c4d-1111-4111-8111-00000000e101";
+export const ADMIN_FIXTURE_USER_BLOCKED_ID = "7a1a3c4d-1111-4111-8111-00000000e102";
+export const ADMIN_FIXTURE_GROUP_ID = "7a1a3c4d-2222-4222-8222-00000000b101";
 export const ADMIN_FIXTURE_FLOW_QUERY_ID = "7a1a3c4d-3333-4333-8333-00000000f002";
-export const ADMIN_FIXTURE_REVISION_PUBLISHED_ID = "7a1a3c4d-4444-4444-8444-00000000r001";
-export const ADMIN_FIXTURE_LDAP_ID = "7a1a3c4d-5555-4555-8555-00000000i001";
-export const ADMIN_FIXTURE_CHANNEL_EMAIL_ID = "7a1a3c4d-6666-4666-8666-00000000n001";
-export const ADMIN_FIXTURE_MIGRATION_RUN_ID = "7a1a3c4d-7777-4777-8777-00000000m001";
+export const ADMIN_FIXTURE_REVISION_PUBLISHED_ID = "7a1a3c4d-4444-4444-8444-00000000c101";
+export const ADMIN_FIXTURE_LDAP_ID = "7a1a3c4d-5555-4555-8555-00000000d101";
+export const ADMIN_FIXTURE_CHANNEL_EMAIL_ID = "7a1a3c4d-6666-4666-8666-000000003101";
+export const ADMIN_FIXTURE_MIGRATION_RUN_ID = "7a1a3c4d-7777-4777-8777-000000004101";
 
 interface FixtureUser extends User {
   /** Fixture-internal: deletion blockers derived from seeded relations. */
@@ -1015,8 +1015,8 @@ function seedSiteFixture(): void {
     stages: null,
     approval_steps: [{ position: 1, actors: [{ user_id: SEED_ADMIN_ID }] }],
     query_capabilities: [
-      { datasource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, can_query: true, can_export: true },
-      { datasource_id: ADMIN_FIXTURE_DATASOURCE_PG_ID, can_query: true, can_export: false },
+      { datasource_id: ADMIN_FIXTURE_DATASOURCE_MYSQL_ID, datasource_name: "prod-order-mysql", can_query: true, can_export: true },
+      { datasource_id: ADMIN_FIXTURE_DATASOURCE_PG_ID, datasource_name: "analytics-pg", can_query: true, can_export: false },
     ],
     version: 1,
     created_at: ts,
@@ -1050,7 +1050,7 @@ function seedSiteFixture(): void {
   const auditBase = (index: number): string => new Date(Date.parse(ts) - index * 3600 * 1000).toISOString();
   world.auditEvents = [
     {
-      id: `ae-0001-${indexMarker()}`,
+      id: "ab6f1a2b-0000-4000-8000-000000000001",
       event_type: "auth.login",
       actor_kind: "user",
       actor_id: SEED_ADMIN_ID,
@@ -1065,7 +1065,7 @@ function seedSiteFixture(): void {
       expires_at: new Date(Date.parse(auditBase(0)) + 90 * 24 * 3600 * 1000).toISOString(),
     },
     {
-      id: `ae-0002-${indexMarker()}`,
+      id: "ab6f1a2b-0000-4000-8000-000000000002",
       event_type: "datasource.updated",
       actor_kind: "user",
       actor_id: SEED_ADMIN_ID,
@@ -1080,13 +1080,13 @@ function seedSiteFixture(): void {
       expires_at: new Date(Date.parse(auditBase(3)) + 90 * 24 * 3600 * 1000).toISOString(),
     },
     {
-      id: `ae-0003-${indexMarker()}`,
+      id: "ab6f1a2b-0000-4000-8000-000000000003",
       event_type: "order.sql_revealed",
       actor_kind: "user",
       actor_id: ADMIN_FIXTURE_USER_MEMBER_ID,
       actor_username_snapshot: "dba-anne",
       resource_type: "change_order",
-      resource_id: "co-fixture-audit",
+      resource_id: "7c6f1a2b-0000-4000-8000-00000000c0a1",
       action: "reveal_sql",
       outcome: "succeeded",
       request_id: null,
@@ -1144,8 +1144,8 @@ function seedSiteFixture(): void {
   });
   world.notificationDeliveries = [
     {
-      id: `nd-0001-${indexMarker()}`,
-      domain_event_id: `de-0001-${indexMarker()}`,
+      id: "9d6f1a2b-0000-4000-8000-000000000001",
+      domain_event_id: "5e6f1a2b-0000-4000-8000-000000000001",
       notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
       recipient_user_id: SEED_ADMIN_ID,
       state: "succeeded",
@@ -1156,8 +1156,8 @@ function seedSiteFixture(): void {
       updated_at: tsLater,
     },
     {
-      id: `nd-0002-${indexMarker()}`,
-      domain_event_id: `de-0002-${indexMarker()}`,
+      id: "9d6f1a2b-0000-4000-8000-000000000002",
+      domain_event_id: "5e6f1a2b-0000-4000-8000-000000000002",
       notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
       recipient_user_id: ADMIN_FIXTURE_USER_MEMBER_ID,
       state: "sending",
@@ -1207,7 +1207,7 @@ function seedSiteFixture(): void {
     ],
     candidates: [
       {
-        candidate_id: `mc-0001-${indexMarker()}`,
+        candidate_id: "6c6f1a2b-0000-4000-8000-000000000001",
         kind: "permission_group_flow_grant",
         source_refs: ["core_group.permissions → group_a"],
         target_definition_hash: `sha256:${sha256Hex("candidate-1")}`,
@@ -1219,7 +1219,7 @@ function seedSiteFixture(): void {
         confirmed_at: null,
       },
       {
-        candidate_id: `mc-0002-${indexMarker()}`,
+        candidate_id: "6c6f1a2b-0000-4000-8000-000000000002",
         kind: "multi_stage_flow",
         source_refs: ["core_flow.tpl → multi-stage-legacy"],
         target_definition_hash: `sha256:${sha256Hex("candidate-2")}`,
@@ -1235,10 +1235,6 @@ function seedSiteFixture(): void {
     started_at: ts,
     updated_at: ts,
   };
-}
-
-function indexMarker(): string {
-  return "fx01";
 }
 
 function userView(user: FixtureUser): User {
@@ -2035,7 +2031,11 @@ export function siteFixtureHandlers(): HttpHandler[] {
         }
         delivery.updated_at = now();
       }, TASK_RUNNING_TO_DONE_MS);
-      return HttpResponse.json(successEnvelope(delivery));
+      // F12 RCP-20261017方向A（#015）：受理回执（task_id + channel_id），
+      // 投递结果经 listNotificationDeliveries 观测。
+      return HttpResponse.json(successEnvelope({
+        task_id: delivery.id, channel_id: channel.id,
+      }));
     }),
 
     http.get("*/admin/notification-deliveries", ({ request }) => {
@@ -2097,12 +2097,9 @@ export function siteFixtureHandlers(): HttpHandler[] {
       candidate.confirmed_at = body.confirmed ? now() : null;
       run.version += 1;
       run.updated_at = now();
-      return HttpResponse.json(
-        successEnvelope({
-          ...candidate,
-          comment: body.comment ?? null,
-        }),
-      );
+      // The contract's 200 is the migration run view (LegacyMigrationRunResult)
+      // — not the candidate row (F12 R1 review finding, mock-side fix).
+      return HttpResponse.json(successEnvelope(migrationRunView(run)));
     }),
 
     http.post("*/admin/migrations/:runId/approval", async ({ request, params }) => {
@@ -2336,11 +2333,23 @@ function tlsFromWrite(body: Record<string, unknown>): FixtureDatasource["tls"] {
 }
 
 function knowledgeEntryView(entry: FixtureKnowledgeEntry): KnowledgeEntry {
-  const { evaluation: _evaluation, ...view } = entry;
+  const {
+    evaluation: _evaluation, datasource_id: ds, database_name: db, table_name: tbl,
+    source_finding_id: sfid, purpose, ...rest
+  } = entry;
   void _evaluation;
-  // The write-side optionals (purpose/database_name/table_name) carry null
-  // in the fixture world; the declared view shapes them as absent.
-  return { ...view } as KnowledgeEntry;
+  // The contract types the optionals as Uuid/minLength-1 strings — never
+  // null. The fixture world stores null for a global-scope entry; the view
+  // omits those keys instead of serializing null (F12 divergence #008). The
+  // optional purpose follows the same rule: zod allows string|undefined, not
+  // null (F12 batch-3 mock fix).
+  const out: Record<string, unknown> = { ...rest };
+  if (sfid !== null) out.source_finding_id = sfid;
+  if (ds !== null) out.datasource_id = ds;
+  if (db !== null) out.database_name = db;
+  if (tbl !== null) out.table_name = tbl;
+  if (purpose !== null) out.purpose = purpose;
+  return out as unknown as KnowledgeEntry;
 }
 
 function ruleSetView(ruleSet: FixtureRuleSet): RuleSet {
@@ -2433,7 +2442,9 @@ function assessImpact(
   const expiresAt = new Date(Date.now() + 300_000).toISOString();
   // PRD 10 §4.2: the token is bound to namespace + current version +
   // canonical settings hash + admin session, single-use, 300s window.
-  const token = `${impactTokenBinding(namespace, sha, currentVersion)}|${String(Date.now() + 300_000)}`;
+  // F12 #014：契约impact_token要求>=32字符——双轮绑定摘要（16+16）+
+  // "|" + 时间戳，verify按"|"拆分并重算两段。
+  const token = `${impactTokenBinding(namespace, sha, currentVersion)}${configHash(namespace, sha, String(currentVersion), "admin-session", "impact-token-round-2")}|${String(Date.now() + 300_000)}`;
   world.impactTokens.set(token, sha);
   return {
     namespace: namespace as SettingsImpactAssessment["namespace"],
@@ -2467,7 +2478,8 @@ function verifyImpactToken(
   // First real execution consumes the token; a replay hits the same guard.
   world.impactTokens.delete(token);
   const proposedSha = proposedSha256(proposed);
-  const expected = impactTokenBinding(namespace, proposedSha, currentVersion);
+  const expected = impactTokenBinding(namespace, proposedSha, currentVersion)
+    + configHash(namespace, proposedSha, String(currentVersion), "admin-session", "impact-token-round-2");
   return boundSha === proposedSha && binding === expected;
 }
 
@@ -2739,7 +2751,11 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (guard !== null) return guard;
       const provider = world.providers.get(String(params.providerId));
       if (provider === undefined) return businessError(1002, "provider not found");
-      return taskResponse("ai_provider_connection_test", `/admin/ai-providers/${provider.id}`, () => {});
+      // F12 RCP-20261017方向A（#019）：同步探测结果 {ok}（后端真实实现
+      // 即时探测返回{ok:true}，失败走业务错误成员——与Task形状的旧契约
+      // 已按裁定改形）。
+      if (!provider.enabled) return businessError(5003, "provider disabled");
+      return HttpResponse.json(successEnvelope({ ok: true }));
     }),
 
     // ---- settings ----------------------------------------------------

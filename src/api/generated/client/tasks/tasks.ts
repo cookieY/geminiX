@@ -30,7 +30,7 @@ export const getGetTaskUrl = (taskId: string,) => {
 
 
 
-  return `/tasks/${taskId}`
+  return `/api/v4/tasks/${taskId}`
 }
 
 export const getTask = async (taskId: string, options?: Parameters<typeof customInstance>[1]): Promise<getTaskResponse> => {

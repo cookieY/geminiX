@@ -181,18 +181,22 @@ describe("site fixture announcements", () => {
 
 describe("site fixture notification channels", () => {
   it("drives a test delivery through the Outbox state machine", async () => {
-    const delivery = await call<{ state: string }>(
+    // F12 RCP-20261017方向A（#015）：测试投递返回受理回执
+    // （task_id+channel_id）；投递状态机经 deliveries 列表观测。
+    const receipt = await call<{ task_id: string; channel_id: string }>(
       "POST",
       `/admin/notification-channels/${ADMIN_FIXTURE_CHANNEL_EMAIL_ID}/test-deliveries`,
       {},
     );
-    expect(delivery.err_code).toBe(0);
-    expect(["queued", "succeeded"]).toContain(delivery.data.state);
+    expect(receipt.err_code).toBe(0);
+    expect(receipt.data.task_id).toBeTruthy();
+    expect(receipt.data.channel_id).toBe(ADMIN_FIXTURE_CHANNEL_EMAIL_ID);
     // The Outbox retry ceiling is five attempts (S003).
-    const listed = await call<{ items: { delivery_attempt_count: number }[] }>(
+    const listed = await call<{ items: { state: string; delivery_attempt_count: number }[] }>(
       "GET",
       "/admin/notification-deliveries",
     );
+    expect(listed.data.items.length).toBeGreaterThan(0);
     expect(listed.data.items.every((row) => row.delivery_attempt_count <= 5)).toBe(true);
   });
 

@@ -30,7 +30,7 @@ export const getGetMyDashboardUrl = () => {
 
 
 
-  return `/dashboard/me`
+  return `/api/v4/dashboard/me`
 }
 
 export const getMyDashboard = async ( options?: Parameters<typeof customInstance>[1]): Promise<getMyDashboardResponse> => {

@@ -100,7 +100,7 @@ export const getListCurrentUserFlowsUrl = (params: ListCurrentUserFlowsParams,) 
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/users/me/flows?${stringifiedParams}` : `/users/me/flows`
+  return stringifiedParams.length > 0 ? `/api/v4/users/me/flows?${stringifiedParams}` : `/api/v4/users/me/flows`
 }
 
 export const listCurrentUserFlows = async (params: ListCurrentUserFlowsParams, options?: Parameters<typeof customInstance>[1]): Promise<listCurrentUserFlowsResponse> => {
@@ -187,7 +187,7 @@ export const getListMyFlowDatasourceSchemasUrl = (flowId: string,
 
 
 
-  return `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/schemas`
+  return `/api/v4/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/schemas`
 }
 
 export const listMyFlowDatasourceSchemas = async (flowId: string,
@@ -283,7 +283,7 @@ export const getListMyFlowDatasourceTablesUrl = (flowId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables`
+  return stringifiedParams.length > 0 ? `/api/v4/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables?${stringifiedParams}` : `/api/v4/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/tables`
 }
 
 export const listMyFlowDatasourceTables = async (flowId: string,
@@ -380,7 +380,7 @@ export const getListMyFlowDatasourceColumnsUrl = (flowId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns?${stringifiedParams}` : `/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns`
+  return stringifiedParams.length > 0 ? `/api/v4/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns?${stringifiedParams}` : `/api/v4/users/me/flows/${flowId}/datasources/${datasourceId}/metadata/columns`
 }
 
 export const listMyFlowDatasourceColumns = async (flowId: string,
@@ -468,7 +468,7 @@ export const getListChangeDraftsUrl = (params?: ListChangeDraftsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/change-drafts?${stringifiedParams}` : `/change-drafts`
+  return stringifiedParams.length > 0 ? `/api/v4/change-drafts?${stringifiedParams}` : `/api/v4/change-drafts`
 }
 
 export const listChangeDrafts = async (params?: ListChangeDraftsParams, options?: Parameters<typeof customInstance>[1]): Promise<listChangeDraftsResponse> => {
@@ -554,7 +554,7 @@ export const getCreateChangeDraftUrl = () => {
 
 
 
-  return `/change-drafts`
+  return `/api/v4/change-drafts`
 }
 
 export const createChangeDraft = async (createChangeDraftRequest: CreateChangeDraftRequest, options?: Parameters<typeof customInstance>[1]): Promise<createChangeDraftResponse> => {
@@ -580,7 +580,7 @@ return customInstance<createChangeDraftResponse>(getCreateChangeDraftUrl(),
 
 export const getCreateChangeDraftQueryKey = (createChangeDraftRequest?: CreateChangeDraftRequest,) => {
     return [
-    'POST', `/change-drafts`, createChangeDraftRequest
+    'POST', `/api/v4/change-drafts`, createChangeDraftRequest
     ] as const;
     }
 
@@ -666,7 +666,7 @@ export const getGetChangeDraftUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}`
+  return `/api/v4/change-drafts/${draftId}`
 }
 
 export const getChangeDraft = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<getChangeDraftResponse> => {
@@ -745,7 +745,7 @@ export const getUpdateChangeDraftUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}`
+  return `/api/v4/change-drafts/${draftId}`
 }
 
 export const updateChangeDraft = async (draftId: string,
@@ -773,7 +773,7 @@ return customInstance<updateChangeDraftResponse>(getUpdateChangeDraftUrl(draftId
 export const getUpdateChangeDraftQueryKey = (draftId: string,
     updateChangeDraftRequest?: UpdateChangeDraftRequest,) => {
     return [
-    'PATCH', `/change-drafts/${draftId}`, updateChangeDraftRequest
+    'PATCH', `/api/v4/change-drafts/${draftId}`, updateChangeDraftRequest
     ] as const;
     }
 
@@ -864,7 +864,7 @@ export const getDeleteChangeDraftUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}`
+  return `/api/v4/change-drafts/${draftId}`
 }
 
 export const deleteChangeDraft = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteChangeDraftResponse> => {
@@ -884,7 +884,7 @@ export const deleteChangeDraft = async (draftId: string, options?: Parameters<ty
 
 export const getDeleteChangeDraftQueryKey = (draftId: string,) => {
     return [
-    'DELETE', `/change-drafts/${draftId}`
+    'DELETE', `/api/v4/change-drafts/${draftId}`
     ] as const;
     }
 
@@ -970,7 +970,7 @@ export const getReplaceDraftSqlUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}/sql`
+  return `/api/v4/change-drafts/${draftId}/sql`
 }
 
 export const replaceDraftSql = async (draftId: string,
@@ -998,7 +998,7 @@ return customInstance<replaceDraftSqlResponse>(getReplaceDraftSqlUrl(draftId),
 export const getReplaceDraftSqlQueryKey = (draftId: string,
     replaceDraftSqlBody?: ReplaceDraftSqlBody,) => {
     return [
-    'PUT', `/change-drafts/${draftId}/sql`, replaceDraftSqlBody
+    'PUT', `/api/v4/change-drafts/${draftId}/sql`, replaceDraftSqlBody
     ] as const;
     }
 
@@ -1096,7 +1096,7 @@ export const getRevealDraftSqlUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}/sql-reveals`
+  return `/api/v4/change-drafts/${draftId}/sql-reveals`
 }
 
 export const revealDraftSql = async (draftId: string,
@@ -1124,7 +1124,7 @@ return customInstance<revealDraftSqlResponse>(getRevealDraftSqlUrl(draftId),
 export const getRevealDraftSqlQueryKey = (draftId: string,
     revealRequest?: RevealRequest,) => {
     return [
-    'POST', `/change-drafts/${draftId}/sql-reveals`, revealRequest
+    'POST', `/api/v4/change-drafts/${draftId}/sql-reveals`, revealRequest
     ] as const;
     }
 
@@ -1222,7 +1222,7 @@ export const getRunDraftReviewUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}/review-runs`
+  return `/api/v4/change-drafts/${draftId}/review-runs`
 }
 
 export const runDraftReview = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<runDraftReviewResponse> => {
@@ -1242,7 +1242,7 @@ export const runDraftReview = async (draftId: string, options?: Parameters<typeo
 
 export const getRunDraftReviewQueryKey = (draftId: string,) => {
     return [
-    'POST', `/change-drafts/${draftId}/review-runs`
+    'POST', `/api/v4/change-drafts/${draftId}/review-runs`
     ] as const;
     }
 
@@ -1328,7 +1328,7 @@ export const getSubmitChangeDraftUrl = (draftId: string,) => {
 
 
 
-  return `/change-drafts/${draftId}/submission`
+  return `/api/v4/change-drafts/${draftId}/submission`
 }
 
 export const submitChangeDraft = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<submitChangeDraftResponse> => {
@@ -1348,7 +1348,7 @@ export const submitChangeDraft = async (draftId: string, options?: Parameters<ty
 
 export const getSubmitChangeDraftQueryKey = (draftId: string,) => {
     return [
-    'POST', `/change-drafts/${draftId}/submission`
+    'POST', `/api/v4/change-drafts/${draftId}/submission`
     ] as const;
     }
 
@@ -1434,7 +1434,7 @@ export const getGetReviewRunUrl = (reviewRunId: string,) => {
 
 
 
-  return `/review-runs/${reviewRunId}`
+  return `/api/v4/review-runs/${reviewRunId}`
 }
 
 export const getReviewRun = async (reviewRunId: string, options?: Parameters<typeof customInstance>[1]): Promise<getReviewRunResponse> => {
@@ -1521,7 +1521,7 @@ export const getListReviewRunFindingsUrl = (reviewRunId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/review-runs/${reviewRunId}/findings?${stringifiedParams}` : `/review-runs/${reviewRunId}/findings`
+  return stringifiedParams.length > 0 ? `/api/v4/review-runs/${reviewRunId}/findings?${stringifiedParams}` : `/api/v4/review-runs/${reviewRunId}/findings`
 }
 
 export const listReviewRunFindings = async (reviewRunId: string,

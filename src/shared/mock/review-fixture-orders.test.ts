@@ -579,7 +579,7 @@ describe("approval decision fixture contract (FE-F7)", () => {
   });
 
   it("serves the frozen submission findings as a pure read", async () => {
-    seedFixtureOrder(decisionOrder({ review_run_id: "8a6f1a2b-0000-4000-8000-00000000ru01" }));
+    seedFixtureOrder(decisionOrder({ review_run_id: "8a6f1a2b-0000-4000-8000-000000002e01" }));
     const listed = await jsonRequest("/change-orders/8a6f1a2b-0000-4000-8000-00000000de01/review-findings");
     expect(listed.body.err_code).toBe(0);
     expect(listed.body.data.items).toEqual([]);

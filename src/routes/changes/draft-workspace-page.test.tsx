@@ -274,7 +274,7 @@ describe("DraftWorkspacePage", () => {
           err_code: 0,
           message: "ok",
           data: {
-            id: "4f6f1a2b-0000-4000-8000-00000000stale",
+            id: "4f6f1a2b-0000-4000-8000-0000000057a1",
             draft_id: draft.id,
             draft_revision: draft.revision,
             state: "running",

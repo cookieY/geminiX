@@ -72,7 +72,7 @@ export const getListChangeOrdersUrl = (params?: ListChangeOrdersParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/change-orders?${stringifiedParams}` : `/change-orders`
+  return stringifiedParams.length > 0 ? `/api/v4/change-orders?${stringifiedParams}` : `/api/v4/change-orders`
 }
 
 export const listChangeOrders = async (params?: ListChangeOrdersParams, options?: Parameters<typeof customInstance>[1]): Promise<listChangeOrdersResponse> => {
@@ -104,7 +104,7 @@ export const getGetChangeOrderUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}`
+  return `/api/v4/change-orders/${orderId}`
 }
 
 export const getChangeOrder = async (orderId: string, options?: Parameters<typeof customInstance>[1]): Promise<getChangeOrderResponse> => {
@@ -143,7 +143,7 @@ export const getRevealOrderSqlUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/sql-reveals`
+  return `/api/v4/change-orders/${orderId}/sql-reveals`
 }
 
 export const revealOrderSql = async (orderId: string,
@@ -189,7 +189,7 @@ export const getRecordOrderSqlCopyUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/sql-copy-events`
+  return `/api/v4/change-orders/${orderId}/sql-copy-events`
 }
 
 export const recordOrderSqlCopy = async (orderId: string,
@@ -243,7 +243,7 @@ export const getListOrderReviewFindingsUrl = (orderId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/change-orders/${orderId}/review-findings?${stringifiedParams}` : `/change-orders/${orderId}/review-findings`
+  return stringifiedParams.length > 0 ? `/api/v4/change-orders/${orderId}/review-findings?${stringifiedParams}` : `/api/v4/change-orders/${orderId}/review-findings`
 }
 
 export const listOrderReviewFindings = async (orderId: string,
@@ -283,7 +283,7 @@ export const getListReviewFindingEvidenceUrl = (findingId: string,) => {
 
 
 
-  return `/review-findings/${findingId}/evidence`
+  return `/api/v4/review-findings/${findingId}/evidence`
 }
 
 export const listReviewFindingEvidence = async (findingId: string, options?: Parameters<typeof customInstance>[1]): Promise<listReviewFindingEvidenceResponse> => {
@@ -322,7 +322,7 @@ export const getRevealRawReviewEvidenceUrl = (evidenceId: string,) => {
 
 
 
-  return `/review-evidence/${evidenceId}/raw-reveals`
+  return `/api/v4/review-evidence/${evidenceId}/raw-reveals`
 }
 
 export const revealRawReviewEvidence = async (evidenceId: string,
@@ -368,7 +368,7 @@ export const getRecordRawReviewEvidenceCopyUrl = (evidenceId: string,) => {
 
 
 
-  return `/review-evidence/${evidenceId}/raw-copy-events`
+  return `/api/v4/review-evidence/${evidenceId}/raw-copy-events`
 }
 
 export const recordRawReviewEvidenceCopy = async (evidenceId: string,
@@ -414,7 +414,7 @@ export const getCopyChangeOrderToDraftUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/draft-copies`
+  return `/api/v4/change-orders/${orderId}/draft-copies`
 }
 
 export const copyChangeOrderToDraft = async (orderId: string,
@@ -461,7 +461,7 @@ export const getListChangeOrderCommentsUrl = (orderId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/change-orders/${orderId}/comments?${stringifiedParams}` : `/change-orders/${orderId}/comments`
+  return stringifiedParams.length > 0 ? `/api/v4/change-orders/${orderId}/comments?${stringifiedParams}` : `/api/v4/change-orders/${orderId}/comments`
 }
 
 export const listChangeOrderComments = async (orderId: string,
@@ -501,7 +501,7 @@ export const getCreateChangeOrderCommentUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/comments`
+  return `/api/v4/change-orders/${orderId}/comments`
 }
 
 export const createChangeOrderComment = async (orderId: string,
@@ -548,7 +548,7 @@ export const getListChangeOrderTimelineUrl = (orderId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/change-orders/${orderId}/timeline?${stringifiedParams}` : `/change-orders/${orderId}/timeline`
+  return stringifiedParams.length > 0 ? `/api/v4/change-orders/${orderId}/timeline?${stringifiedParams}` : `/api/v4/change-orders/${orderId}/timeline`
 }
 
 export const listChangeOrderTimeline = async (orderId: string,
@@ -588,7 +588,7 @@ export const getDecideChangeOrderUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/approval-decisions`
+  return `/api/v4/change-orders/${orderId}/approval-decisions`
 }
 
 export const decideChangeOrder = async (orderId: string,
@@ -634,7 +634,7 @@ export const getCreateExecutionAttemptUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/execution-attempts`
+  return `/api/v4/change-orders/${orderId}/execution-attempts`
 }
 
 export const createExecutionAttempt = async (orderId: string,
@@ -673,7 +673,7 @@ export const getCreateExecutionScheduleUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/execution-schedules`
+  return `/api/v4/change-orders/${orderId}/execution-schedules`
 }
 
 export const createExecutionSchedule = async (orderId: string,
@@ -719,7 +719,7 @@ export const getGetExecutionAttemptUrl = (attemptId: string,) => {
 
 
 
-  return `/execution-attempts/${attemptId}`
+  return `/api/v4/execution-attempts/${attemptId}`
 }
 
 export const getExecutionAttempt = async (attemptId: string, options?: Parameters<typeof customInstance>[1]): Promise<getExecutionAttemptResponse> => {
@@ -766,7 +766,7 @@ export const getListExecutionAttemptStatementsUrl = (attemptId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/execution-attempts/${attemptId}/statements?${stringifiedParams}` : `/execution-attempts/${attemptId}/statements`
+  return stringifiedParams.length > 0 ? `/api/v4/execution-attempts/${attemptId}/statements?${stringifiedParams}` : `/api/v4/execution-attempts/${attemptId}/statements`
 }
 
 export const listExecutionAttemptStatements = async (attemptId: string,
@@ -799,7 +799,7 @@ export const getCancelExecutionAttemptUrl = (attemptId: string,) => {
 
 
 
-  return `/execution-attempts/${attemptId}/cancellation`
+  return `/api/v4/execution-attempts/${attemptId}/cancellation`
 }
 
 export const cancelExecutionAttempt = async (attemptId: string,
@@ -838,7 +838,7 @@ export const getCreateExecutionVerificationUrl = (attemptId: string,) => {
 
 
 
-  return `/execution-attempts/${attemptId}/verifications`
+  return `/api/v4/execution-attempts/${attemptId}/verifications`
 }
 
 export const createExecutionVerification = async (attemptId: string,
@@ -884,7 +884,7 @@ export const getWithdrawChangeOrderUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/withdrawal`
+  return `/api/v4/change-orders/${orderId}/withdrawal`
 }
 
 export const withdrawChangeOrder = async (orderId: string,
@@ -930,7 +930,7 @@ export const getVoidChangeOrderUrl = (orderId: string,) => {
 
 
 
-  return `/change-orders/${orderId}/voidance`
+  return `/api/v4/change-orders/${orderId}/voidance`
 }
 
 export const voidChangeOrder = async (orderId: string,

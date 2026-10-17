@@ -261,10 +261,11 @@ export function useSessionSchemas(sessionId: string, datasourceId: string, enabl
   return useQuery({
     queryKey: ["query", "session", sessionId, "schemas", datasourceId],
     queryFn: async () => {
+      // F12 RCP-20261017方向A（#010族）：元数据读面为{items}信封。
       const response = (await listQuerySessionSchemas(sessionId, {
         datasource_id: datasourceId,
-      })) as unknown as DatasourceSchema[];
-      return response;
+      })) as unknown as { items: DatasourceSchema[] };
+      return response.items;
     },
     enabled: enabled && sessionId !== "" && datasourceId !== "",
     staleTime: 60_000,
@@ -280,11 +281,12 @@ export function useSessionTables(
   return useQuery({
     queryKey: ["query", "session", sessionId, "tables", datasourceId, schemaName],
     queryFn: async () => {
+      // F12 RCP-20261017方向A（#010族）：元数据读面为{items}信封。
       const response = (await listQuerySessionTables(sessionId, {
         datasource_id: datasourceId,
         schema_name: schemaName,
-      })) as unknown as DatasourceTable[];
-      return response;
+      })) as unknown as { items: DatasourceTable[] };
+      return response.items;
     },
     enabled: enabled && sessionId !== "" && datasourceId !== "" && schemaName !== "",
     staleTime: 60_000,
@@ -301,12 +303,13 @@ export function useSessionColumns(
   return useQuery({
     queryKey: ["query", "session", sessionId, "columns", datasourceId, schemaName, tableName],
     queryFn: async () => {
+      // F12 RCP-20261017方向A（#010族）：元数据读面为{items}信封。
       const response = (await listQuerySessionColumns(sessionId, {
         datasource_id: datasourceId,
         schema_name: schemaName,
         table_name: tableName,
-      })) as unknown as DatasourceColumn[];
-      return response;
+      })) as unknown as { items: DatasourceColumn[] };
+      return response.items;
     },
     enabled:
       enabled && sessionId !== "" && datasourceId !== "" && schemaName !== "" && tableName !== "",

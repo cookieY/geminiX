@@ -339,6 +339,7 @@
       "failed": "Failed"
     },
     "severity": {
+      "info": "Info",
       "low": "Low",
       "medium": "Medium",
       "high": "High",

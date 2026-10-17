@@ -32,6 +32,11 @@ export default defineConfig({
       mode: "tags-split",
       client: "fetch",
       clean: true,
+      // The contract's servers block (/api/v4) is part of every generated
+      // URL; VITE_API_BASE_URL then only carries a deployment host/prefix.
+      // Discovered by FE-F12: without it the MSW wildcard handlers matched
+      // but every real-backend request 404ed (divergence #002).
+      baseUrl: { getBaseUrlFromSpecification: true },
       mock: {
         path: "./src/api/generated/mocks",
         generators: [{ type: "msw", delay: false }],
@@ -57,6 +62,7 @@ export default defineConfig({
       mode: "tags-split",
       client: "react-query",
       clean: true,
+      baseUrl: { getBaseUrlFromSpecification: true },
       override: {
         mutator,
         query: {

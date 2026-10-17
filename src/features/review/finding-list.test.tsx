@@ -16,7 +16,7 @@ const EVIDENCE_ID = "4f6f1a2b-0000-4000-8000-00000000be01";
 
 function finding(overrides: Partial<ReviewFinding> = {}): ReviewFinding {
   return {
-    id: "4f6f1a2b-0000-4000-8000-00000000fi01",
+    id: "4f6f1a2b-0000-4000-8000-00000000f101",
     stage_position: 1,
     fingerprint_group_id: null,
     category: "performance",
@@ -33,7 +33,7 @@ function finding(overrides: Partial<ReviewFinding> = {}): ReviewFinding {
 const FINDINGS = [
   finding(),
   finding({
-    id: "4f6f1a2b-0000-4000-8000-00000000fi02",
+    id: "4f6f1a2b-0000-4000-8000-00000000f102",
     severity: "critical",
     category: "safety",
     title: "DROP TABLE",
@@ -82,7 +82,7 @@ describe("FindingList", () => {
     expect(locateButtons).toHaveLength(1);
     locateButtons[0]?.click();
     expect(onLocate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "4f6f1a2b-0000-4000-8000-00000000fi01" }),
+      expect.objectContaining({ id: "4f6f1a2b-0000-4000-8000-00000000f101" }),
     );
   });
 

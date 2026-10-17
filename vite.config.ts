@@ -48,4 +48,18 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  // FE-F12 real-backend e2e: `vite preview` proxies /api to the local serve
+  // stack when VITE_E2E_API_PROXY is set (playwright.real.config.ts). The
+  // default config — mock e2e, dev, release — never sets the variable and
+  // keeps no proxy.
+  preview: process.env.VITE_E2E_API_PROXY
+    ? {
+        proxy: {
+          "/api": {
+            target: process.env.VITE_E2E_API_PROXY,
+            changeOrigin: true,
+          },
+        },
+      }
+    : undefined,
 });
