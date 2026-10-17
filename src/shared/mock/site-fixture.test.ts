@@ -181,7 +181,7 @@ describe("site fixture announcements", () => {
 
 describe("site fixture notification channels", () => {
   it("drives a test delivery through the Outbox state machine", async () => {
-    // F12 RCP-20261017方向A（#015）：测试投递返回受理回执
+    // F12 RCP-20261017方向A（No.015）：测试投递返回受理回执
     // （task_id+channel_id）；投递状态机经 deliveries 列表观测。
     const receipt = await call<{ task_id: string; channel_id: string }>(
       "POST",

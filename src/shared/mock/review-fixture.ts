@@ -528,7 +528,7 @@ function revisionConflict(request: Request, draft: FixtureDraft): boolean {
 function draftPublic(draft: FixtureDraft) {
   // Contract optionals (description, sql_size_bytes) are non-null types:
   // the fixture world stores null when absent — omit the keys instead of
-  // serializing null (F12 divergence #008 family).
+  // serializing null (F12 divergence No.008 family).
   const out: Record<string, unknown> = {
     id: draft.id,
     owner_user_id: draft.owner_user_id,
@@ -538,7 +538,7 @@ function draftPublic(draft: FixtureDraft) {
     revision: draft.revision,
     state: draft.state,
     has_sql: draft.has_sql,
-    // statement_count omitted when unset (contract: non-null number; F12 #008)
+    // statement_count omitted when unset (contract: non-null number; F12 No.008)
     ...(draft.statement_count === null ? {} : { statement_count: draft.statement_count }),
     review_run_id: draft.review_run_id,
     version: draft.version,

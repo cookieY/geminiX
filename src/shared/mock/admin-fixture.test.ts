@@ -364,7 +364,7 @@ describe("admin ai providers", () => {
     expect(internals.providerApiKey(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe("rotated");
   });
 
-  it("answers a synchronous connection probe (RCP-20261017 #019)", async () => {
+  it("answers a synchronous connection probe (RCP-20261017 No.019)", async () => {
     setAuth("admin");
     const { body } = await jsonRequest(
       `/admin/ai-providers/${ADMIN_FIXTURE_PROVIDER_BACKUP_ID}/connection-tests`,

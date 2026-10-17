@@ -390,7 +390,7 @@ describe("fixture data-model branches", () => {
   });
 
   it("serves table and column metadata for the whole frozen scope", async () => {
-    // F12 RCP-20261017方向A（#010族）：元数据读面为{items}信封。
+    // F12 RCP-20261017方向A（No.010族）：元数据读面为{items}信封。
     const tables = await call<{ items: { table_name: string }[] }>(
       "GET",
       `/query-sessions/qs-fixture-active/metadata/tables?datasource_id=${QUERY_FIXTURE_DS_MYSQL_ID}&schema_name=stats`,

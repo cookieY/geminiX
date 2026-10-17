@@ -2031,7 +2031,7 @@ export function siteFixtureHandlers(): HttpHandler[] {
         }
         delivery.updated_at = now();
       }, TASK_RUNNING_TO_DONE_MS);
-      // F12 RCP-20261017方向A（#015）：受理回执（task_id + channel_id），
+      // F12 RCP-20261017方向A（No.015）：受理回执（task_id + channel_id），
       // 投递结果经 listNotificationDeliveries 观测。
       return HttpResponse.json(successEnvelope({
         task_id: delivery.id, channel_id: channel.id,
@@ -2340,7 +2340,7 @@ function knowledgeEntryView(entry: FixtureKnowledgeEntry): KnowledgeEntry {
   void _evaluation;
   // The contract types the optionals as Uuid/minLength-1 strings — never
   // null. The fixture world stores null for a global-scope entry; the view
-  // omits those keys instead of serializing null (F12 divergence #008). The
+  // omits those keys instead of serializing null (F12 divergence No.008). The
   // optional purpose follows the same rule: zod allows string|undefined, not
   // null (F12 batch-3 mock fix).
   const out: Record<string, unknown> = { ...rest };
@@ -2442,7 +2442,7 @@ function assessImpact(
   const expiresAt = new Date(Date.now() + 300_000).toISOString();
   // PRD 10 §4.2: the token is bound to namespace + current version +
   // canonical settings hash + admin session, single-use, 300s window.
-  // F12 #014：契约impact_token要求>=32字符——双轮绑定摘要（16+16）+
+  // F12 No.014：契约impact_token要求>=32字符——双轮绑定摘要（16+16）+
   // "|" + 时间戳，verify按"|"拆分并重算两段。
   const token = `${impactTokenBinding(namespace, sha, currentVersion)}${configHash(namespace, sha, String(currentVersion), "admin-session", "impact-token-round-2")}|${String(Date.now() + 300_000)}`;
   world.impactTokens.set(token, sha);
@@ -2751,7 +2751,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (guard !== null) return guard;
       const provider = world.providers.get(String(params.providerId));
       if (provider === undefined) return businessError(1002, "provider not found");
-      // F12 RCP-20261017方向A（#019）：同步探测结果 {ok}（后端真实实现
+      // F12 RCP-20261017方向A（No.019）：同步探测结果 {ok}（后端真实实现
       // 即时探测返回{ok:true}，失败走业务错误成员——与Task形状的旧契约
       // 已按裁定改形）。
       if (!provider.enabled) return businessError(5003, "provider disabled");

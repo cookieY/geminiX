@@ -228,7 +228,7 @@ function pageOf<T>(items: T[], limit: number | null, after: string | null) {
   const last = page[page.length - 1] as { id?: string } | undefined;
   // Contract pagination envelope: {items, page:{next_cursor, has_more}}.
   // The flat {items, next_cursor, has_more} shape mirrored the backend's
-  // deviation (F12 divergence #005) — the mock must mirror the contract.
+  // deviation (F12 divergence No.005) — the mock must mirror the contract.
   return {
     items: page,
     page: {
@@ -1348,7 +1348,7 @@ export function queryFixtureHandlers(): HttpHandler[] {
       const datasourceId = new URL(request.url).searchParams.get("datasource_id");
       const ds = world.datasources.get(datasourceId ?? "");
       if (ds === undefined) return HttpResponse.json(businessError(4002, "datasource not granted"));
-      // F12 RCP-20261017方向A（#010族）：{items}信封（与真实后端一致）。
+      // F12 RCP-20261017方向A（No.010族）：{items}信封（与真实后端一致）。
       return HttpResponse.json(successEnvelope({ items: ds.schemas.map((schema) => ({ name: schema.name })) }));
     }),
 
@@ -1369,7 +1369,7 @@ export function queryFixtureHandlers(): HttpHandler[] {
       }
       return HttpResponse.json(
         successEnvelope(
-          // F12 RCP-20261017方向A（#010族）：{items}信封。
+          // F12 RCP-20261017方向A（No.010族）：{items}信封。
           { items: schema.tables.map((table) => ({
             schema_name: schema.name,
             table_name: table.table_name,
@@ -1399,7 +1399,7 @@ export function queryFixtureHandlers(): HttpHandler[] {
       const vocabulary = vocabularyFor(session.flow_id, ds.id);
       return HttpResponse.json(
         successEnvelope(
-          // F12 RCP-20261017方向A（#010族）：{items}信封。
+          // F12 RCP-20261017方向A（No.010族）：{items}信封。
           { items: table.columns.map((column) => ({
             schema_name: schemaName,
             table_name: table.table_name,
