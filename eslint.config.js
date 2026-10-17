@@ -55,8 +55,24 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
   },
   {
-    files: ["tests/e2e/**/*.ts"],
+    files: ["tests/e2e/**/*.ts", "tests/e2e-real/**/*.ts"],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.browser },
+  },
+  {
+    // FE-F12 contract suite与构建脚本配置：非产品代码，关闭类型感知规则
+    //（契约测试刻意使用as-unknown形状断言镜像use-admin.ts的生成客户端
+    // 联合类型拆包）。
+    files: [
+      "tests/contract/**/*.ts",
+      "vitest.contract.config.ts",
+      "playwright.real.config.ts",
+    ],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    rules: {
+      // 轮询循环里TypeScript无法跨闭包保持判空收窄（currentTask! 模式）。
+      "@typescript-eslint/no-non-null-assertion": "off",
+    },
   }
 );

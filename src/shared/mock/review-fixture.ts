@@ -538,8 +538,8 @@ function draftPublic(draft: FixtureDraft) {
     revision: draft.revision,
     state: draft.state,
     has_sql: draft.has_sql,
-    // statement_count omitted when null (contract: non-null number; F12 #008)
-    ...((draft.statement_count === null || draft.statement_count === undefined) ? {} : { statement_count: draft.statement_count }),
+    // statement_count omitted when unset (contract: non-null number; F12 #008)
+    ...(draft.statement_count === null ? {} : { statement_count: draft.statement_count }),
     review_run_id: draft.review_run_id,
     version: draft.version,
     created_at: draft.created_at,
