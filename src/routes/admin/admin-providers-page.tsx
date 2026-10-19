@@ -128,12 +128,14 @@ function ProviderFormDialog({
   const replaceMutation = useReplaceAiProvider();
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const mutation = editing === null ? createMutation : replaceMutation;
 
   const submit = () => {
     setErrorKey(null);
     setErrorRequestId(null);
+    setErrorDetail(null);
     const apiKey =
       form.apiKey === ""
         ? undefined
@@ -158,6 +160,7 @@ function ProviderFormDialog({
           const display = describeError(error, "createAiProvider");
           setErrorKey(display.messageKey);
           setErrorRequestId(display.requestId);
+          setErrorDetail(display.detail);
         },
       });
     } else {
@@ -178,6 +181,7 @@ function ProviderFormDialog({
             const display = describeError(error, "replaceAiProvider");
             setErrorKey(display.messageKey);
             setErrorRequestId(display.requestId);
+            setErrorDetail(display.detail);
           },
         },
       );
@@ -301,6 +305,14 @@ function ProviderFormDialog({
           <Alert variant="destructive" data-testid="provider-form-error">
             <AlertTitle>{t(errorKey)}</AlertTitle>
             <AlertDescription>
+              {/* §18.75-A：上游拒因快照逐字显示（meta.detail，服务端限长
+                  300字符），操作者一眼分清"URL错/key无效/模型不支持"——
+                  不再只给笼统的不可用提示。 */}
+              {errorDetail !== null ? (
+                <p className="mb-2 break-all font-mono" data-testid="provider-form-error-detail">
+                  {errorDetail}
+                </p>
+              ) : null}
               {errorRequestId !== null ? `request_id: ${errorRequestId}` : null}
             </AlertDescription>
           </Alert>

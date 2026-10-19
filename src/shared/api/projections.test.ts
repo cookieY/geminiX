@@ -45,3 +45,17 @@ describe("generated contract projections", () => {
     }
   });
 });
+
+// §18.75：Provider写面（create/replace/connection-test）必须声明探针失败
+// (2011)与唯一冲突(1005)——此前2011落在共享admin_create之外，探针失败被
+// 前端按契约违例兜底遮脸；唯一冲突曾裸漏500。
+describe("provider error profiles (§18.75)", () => {
+  it("declares ai provider write surfaces with 1005 and 2011", () => {
+    const { profiles } = OPERATION_ERROR_PROFILES;
+    const codes = (profile: string): number[] => profiles[profile]?.err_codes ?? [];
+    expect(codes("ai_provider_create")).toEqual(expect.arrayContaining([1001, 1005, 2011]));
+    expect(codes("ai_provider_replace")).toEqual(expect.arrayContaining([1002, 1003, 1004, 1005, 2011]));
+    expect(codes("ai_provider_connection_test")).toEqual(expect.arrayContaining([1002, 2011]));
+    expect(profiles.admin_create?.err_codes ?? []).not.toContain(2011);
+  });
+});

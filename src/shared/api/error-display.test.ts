@@ -104,3 +104,58 @@ describe("catalog helpers", () => {
     expect(businessErrCodeByName("NOT_A_REAL_ERROR")).toBeNull();
   });
 });
+
+// §18.75：探针失败(2011)与唯一冲突(1005)在Provider写面上必须显示具体
+// 文案而非safe-generic兜底——真实联调中DeepSeek探针被遮脸的复盘锁。
+describe("provider surfaces show specific messages (§18.75)", () => {
+  it("maps 2011 on createAiProvider to the AI provider failure key", () => {
+    const display = describeBusinessError(
+      new BusinessError({ err_code: 2011, message: "AI_PROVIDER_FAILED", request_id: "r", retryable: true }),
+      "createAiProvider",
+    );
+    expect(display.contractViolation).toBe(false);
+    expect(display.messageKey).toBe("errors.AI_PROVIDER_FAILED");
+  });
+
+  it("maps 1005 on replaceAiProvider to the already-exists key", () => {
+    const display = describeBusinessError(
+      new BusinessError({ err_code: 1005, message: "RESOURCE_ALREADY_EXISTS", request_id: "r", retryable: false }),
+      "replaceAiProvider",
+    );
+    expect(display.contractViolation).toBe(false);
+    expect(display.messageKey).toBe("errors.RESOURCE_ALREADY_EXISTS");
+  });
+});
+
+// §18.75-A追加（owner裁定：错误提示必须具体）：meta.detail上游拒因
+// 透传到ErrorDisplay.detail，非字符串值忽略。
+describe("provider detail passthrough (§18.75-A)", () => {
+  it("surfaces meta.detail on a declared 2011", () => {
+    const display = describeBusinessError(
+      new BusinessError({
+        err_code: 2011,
+        message: "AI_PROVIDER_FAILED",
+        request_id: "r",
+        retryable: true,
+        meta: { detail: "provider: status 400: Model Not Exist" },
+      }),
+      "createAiProvider",
+    );
+    expect(display.detail).toBe("provider: status 400: Model Not Exist");
+  });
+
+  it("ignores non-string detail and stays null without meta", () => {
+    const plain = describeBusinessError(
+      new BusinessError({ err_code: 2011, message: "x", request_id: "r", retryable: true }),
+      "createAiProvider",
+    );
+    expect(plain.detail).toBeNull();
+    const weird = describeBusinessError(
+      new BusinessError({
+        err_code: 2011, message: "x", request_id: "r", retryable: true, meta: { detail: 42 },
+      }),
+      "createAiProvider",
+    );
+    expect(weird.detail).toBeNull();
+  });
+});

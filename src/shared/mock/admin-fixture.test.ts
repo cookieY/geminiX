@@ -1353,3 +1353,35 @@ describe("admin B13 builtin skill guards", () => {
     expect(body.err_code).toBe(0);
   });
 });
+
+// §18.75 parity：优先级与名称同为全局唯一——镜像后端唯一索引。
+describe("admin ai provider uniqueness (§18.75)", () => {
+  it("rejects a duplicate selection_priority with 1005 on create and replace", async () => {
+    setAuth("admin");
+    const mk = (name: string, selection_priority: number) => ({
+      name, provider_kind: "openai_compatible", base_url: "https://u.example.com",
+      model_name: "m", enabled: false, selection_priority, api_key: { value: "k" },
+    });
+    const init = (method: string, body: unknown, ifMatch?: number): RequestInit => ({
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(ifMatch === undefined ? {} : { "If-Match": `"${String(ifMatch)}"` }),
+      },
+      body: JSON.stringify(body),
+    });
+    const first = await jsonRequest("/admin/ai-providers", init("POST", mk("prio-a", 187)));
+    expect(first.body.err_code).toBe(0);
+    const dupPrio = await jsonRequest("/admin/ai-providers", init("POST", mk("prio-b", 187)));
+    expect(dupPrio.body.err_code).toBe(1005);
+
+    const second = await jsonRequest("/admin/ai-providers", init("POST", mk("prio-c", 188)));
+    expect(second.body.err_code).toBe(0);
+    const data = second.body.data as { id: string; version: number };
+    const replace = await jsonRequest(
+      `/admin/ai-providers/${data.id}`,
+      init("PUT", mk("prio-c2", 187), data.version),
+    );
+    expect(replace.body.err_code).toBe(1005);
+  });
+});

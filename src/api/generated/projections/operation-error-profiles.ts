@@ -143,7 +143,6 @@ export const OPERATION_ERROR_PROFILES: {
       "createPermissionGroup",
       "createRuleSet",
       "createPromptTool",
-      "createAiProvider",
       "createNotificationChannel",
       "createAnnouncementRevision",
       "createKnowledgeEntry"
@@ -164,7 +163,6 @@ export const OPERATION_ERROR_PROFILES: {
       "replacePermissionGroup",
       "replaceRuleSet",
       "replacePromptTool",
-      "replaceAiProvider",
       "replaceNotificationChannel",
       "replaceKnowledgeEntry",
       "replaceFlowMaskingRule"
@@ -245,7 +243,6 @@ export const OPERATION_ERROR_PROFILES: {
     "operations": [
       "testIdentityProviderConnection",
       "testDatasourceConnection",
-      "testAiProviderConnection",
       "createNotificationTestDelivery",
       "evaluateKnowledgeEntry"
     ]
@@ -694,6 +691,38 @@ export const OPERATION_ERROR_PROFILES: {
       "listMyFlowDatasourceSchemas",
       "listMyFlowDatasourceTables",
       "listMyFlowDatasourceColumns"
+    ]
+  },
+  "ai_provider_create": {
+    "err_codes": [
+      1001,
+      1005,
+      2011
+    ],
+    "operations": [
+      "createAiProvider"
+    ]
+  },
+  "ai_provider_replace": {
+    "err_codes": [
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      2011
+    ],
+    "operations": [
+      "replaceAiProvider"
+    ]
+  },
+  "ai_provider_connection_test": {
+    "err_codes": [
+      1002,
+      2011
+    ],
+    "operations": [
+      "testAiProviderConnection"
     ]
   }
 },

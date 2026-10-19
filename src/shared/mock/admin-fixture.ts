@@ -2681,6 +2681,11 @@ export function adminFixtureHandlers(): HttpHandler[] {
       }
       const duplicate = [...world.providers.values()].some((p) => p.name === body.name);
       if (duplicate) return businessError(1005, "provider name already exists");
+      // §18.75 parity：selection_priority全局唯一（镜像后端唯一索引）。
+      const createPrio = Number(body.selection_priority ?? 100);
+      if ([...world.providers.values()].some((p) => p.selection_priority === createPrio)) {
+        return businessError(1005, "selection_priority already in use");
+      }
       // Create requires an api key (CreateAiProviderRequest Pick<api_key>);
       // the plaintext never reaches any read face.
       const apiKey = body.api_key as { value?: string } | undefined;
@@ -2720,6 +2725,15 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (versionMismatch(request, provider.version)) return businessError(1004, "version mismatch");
       const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
       if (body === null) return businessError(1001, "body is required");
+      // §18.75 parity：改名/改优先级撞其他Provider的唯一值→1005。
+      if (typeof body.name === "string" && body.name !== "" &&
+        [...world.providers.values()].some((p) => p.id !== provider.id && p.name === body.name)) {
+        return businessError(1005, "provider name already exists");
+      }
+      if (typeof body.selection_priority === "number" &&
+        [...world.providers.values()].some((p) => p.id !== provider.id && p.selection_priority === body.selection_priority)) {
+        return businessError(1005, "selection_priority already in use");
+      }
       if (typeof body.name === "string" && body.name !== "") provider.name = body.name;
       if (typeof body.base_url === "string") provider.base_url = body.base_url;
       if (typeof body.model_name === "string") provider.model_name = body.model_name;
