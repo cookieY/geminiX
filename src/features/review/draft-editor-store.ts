@@ -15,39 +15,52 @@ interface DraftEditorState {
   draftId: string | null;
   /** Mirror of the server-side draft state from the latest query/mutation. */
   serverState: DraftState | null;
-  /** Last revision acknowledged by PUT /sql or the draft query. */
-  savedRevision: number | null;
-  /** Editor text as of that revision (memory only). */
+  /** Last draft row version acknowledged by a mutation or the draft query.
+   * This is the If-Match target for every draft mutation (sql replace,
+   * metadata update, review run, submission) — §18.74: the backend compares
+   * the row `version`, never the SQL content `revision` (those diverge once
+   * a review run completes, which bumps version only). */
+  savedVersion: number | null;
+  /** Editor text as of that version (memory only). */
   savedSql: string | null;
   /** Current editor text (memory only). */
   sql: string;
-  attach: (draft: { id: string; state: DraftState; revision: number; sql?: string | null }) => void;
+  attach: (draft: { id: string; state: DraftState; version: number; sql?: string | null }) => void;
   setSql: (sql: string) => void;
-  markSaved: (revision: number, state: DraftState, sql: string) => void;
+  markSaved: (version: number, state: DraftState, sql: string) => void;
   markServerState: (state: DraftState) => void;
+  /** Monotonic version sync from query refreshes: a completed review run
+   * bumps the row version server-side (§18.74), so any refetch carrying a
+   * higher version must lift the store — never regress it (in-flight PUT
+   * responses remain authoritative via markSaved). */
+  markVersioned: (version: number, state: DraftState) => void;
   reset: () => void;
 }
 
 const initial = {
   draftId: null,
   serverState: null,
-  savedRevision: null,
+  savedVersion: null,
   savedSql: null,
   sql: "",
 } as const;
 
 export const useDraftEditorStore = create<DraftEditorState>((set) => ({
   ...initial,
-  attach: ({ id, state, revision, sql }) => { set({
+  attach: ({ id, state, version, sql }) => { set({
       draftId: id,
       serverState: state,
-      savedRevision: revision,
+      savedVersion: version,
       savedSql: typeof sql === "string" ? sql : null,
       sql: typeof sql === "string" ? sql : "",
     }); },
   setSql: (sql) => { set({ sql }); },
-  markSaved: (revision, state, sql) => { set({ savedRevision: revision, serverState: state, savedSql: sql, sql }); },
+  markSaved: (version, state, sql) => { set({ savedVersion: version, serverState: state, savedSql: sql, sql }); },
   markServerState: (state) => { set({ serverState: state }); },
+  markVersioned: (version, state) => { set((current) =>
+    current.savedVersion !== null && version <= current.savedVersion
+      ? current
+      : { savedVersion: version, serverState: state }); },
   reset: () => { set({ ...initial }); },
 }));
 

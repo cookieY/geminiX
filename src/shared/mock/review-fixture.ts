@@ -515,14 +515,19 @@ function emit(
   });
 }
 
-/** Optimistic concurrency: the client must echo the revision it knows via
- * If-Match ("N"). The code a mismatch answers is decided per operation's
- * error profile, not here: draft_update and draft_review declare both codes
- * and answer 1003, draft_submit is C1004-only and answers 1004. */
+/** Optimistic concurrency: the client must echo the draft ROW VERSION it
+ * knows via If-Match ("N") — §18.74: the backend compares the row version on
+ * every draft mutation (sql replace, metadata update, review run, submission);
+ * the SQL content revision diverges from it once a review run completes
+ * (review bumps version only), so it must never be the If-Match target. The
+ * code a mismatch answers is decided per operation's error profile, not
+ * here: draft_update and draft_review declare both codes and answer 1003,
+ * draft_submit is C1004-only and answers 1004. A missing header is lenient
+ * here (strict on the backend) so headerless legacy callers keep working. */
 function revisionConflict(request: Request, draft: FixtureDraft): boolean {
   const ifMatch = request.headers.get("If-Match");
   if (ifMatch === null) return false;
-  return ifMatch !== `"${String(draft.revision)}"`;
+  return ifMatch !== `"${String(draft.version)}"`;
 }
 
 function draftPublic(draft: FixtureDraft) {
@@ -1851,6 +1856,11 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.patch("*/change-drafts/:draftId", async ({ request, params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");
+      // §18.74：后端PATCH元数据强制If-Match（比行version）；mock按同目标
+      // 校验（缺头保持宽容，见revisionConflict注释）。
+      if (revisionConflict(request, draft)) {
+        return businessError(1003, "draft revision changed elsewhere");
+      }
       const body = (await request.json()) as {
         title?: string;
         description?: string;

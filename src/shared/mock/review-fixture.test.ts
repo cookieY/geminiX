@@ -25,6 +25,7 @@ afterEach(() => {
 interface FixtureDraftView {
   id: string;
   revision: number;
+  version: number;
   state: string;
   has_sql: boolean;
 }
@@ -198,6 +199,26 @@ describe("review fixture draft and run lifecycle", () => {
     // CONCURRENT_MODIFICATION, not 1003 (SQL PUT above keeps 1003 —
     // draft_update declares both codes).
     expect(((await submit.json()) as { err_code: number }).err_code).toBe(1004);
+  });
+
+  it("enforces If-Match on metadata PATCH against the draft row version (§18.74)", async () => {
+    const draft = await createDraft();
+    // After create, revision and version coincide; the row version is the
+    // only If-Match target once a review run has bumped version alone.
+    const stale = await fetch(`https://yearning.test/change-drafts/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "If-Match": '"99"' },
+      body: JSON.stringify({ title: "改不动的标题" }),
+    });
+    expect(((await stale.json()) as { err_code: number }).err_code).toBe(1003);
+
+    const live = await fetch(`https://yearning.test/change-drafts/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "If-Match": `"${String(draft.version)}"` },
+      body: JSON.stringify({ title: "改得动的标题" }),
+    });
+    const body = (await live.json()) as { data: { title?: string } | null };
+    expect(body.data?.title).toBe("改得动的标题");
   });
 
   it("rejects a review run started from a ready draft (run_review illegal from ready)", async () => {

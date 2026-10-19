@@ -30,9 +30,10 @@ import { loginAs } from "./roles";
 
 interface IdVersion { id: string; version?: number; revision?: number }
 
-/** Draft If-Match: the mock pins the SQL revision, the backend the row version. */
-const draftETag = (v: IdVersion | undefined): number =>
-  (mode === "mock" ? v?.revision ?? v?.version : v?.version) ?? 1;
+/** Draft If-Match pins the draft ROW VERSION on every mutation (§18.74):
+ * mock and backend share the semantics — the SQL revision is only the
+ * review-binding content number and diverges from version after a run. */
+const draftETag = (v: IdVersion | undefined): number => v?.version ?? 1;
 interface TaskView { id: string; state?: string; result_ref?: string | null }
 
 const asView = <T>(value: unknown): T => value as T;

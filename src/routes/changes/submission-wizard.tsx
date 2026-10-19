@@ -13,6 +13,7 @@ import {
   listMyFlowDatasourceSchemas,
   listMyFlowDatasourceTables,
   createChangeDraft,
+  getChangeDraft,
   replaceDraftSql,
   revealDraftSql,
   runDraftReview,
@@ -105,15 +106,18 @@ function idempotencyKey(): string {
   return `draft-${crypto.randomUUID()}`;
 }
 
-function ifMatch(revision: number | null): Record<string, string> {
-  return { "If-Match": `"${String(revision ?? 1)}"` };
+// §18.74：草稿所有变更端点（sql/元数据/审核/提交）的If-Match都比对
+// 草稿行version（后端updateDraftVersioned/Submit均比version）；SQL内容
+// revision只是审核绑定的内容号，审核完成后两数分叉，绝不能作If-Match。
+function ifMatch(version: number | null): Record<string, string> {
+  return { "If-Match": `"${String(version ?? 1)}"` };
 }
 
 /** Optimistic-concurrency header built from the live store state: inside a
  * save→run chain the zustand update from the PUT response has already landed
  * here even though React has not re-rendered yet. */
 function liveIfMatch(): Record<string, string> {
-  return ifMatch(useDraftEditorStore.getState().savedRevision);
+  return ifMatch(useDraftEditorStore.getState().savedVersion);
 }
 
 const STEP_META = [
@@ -386,7 +390,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   useEffect(() => {
     if (draft === null || attachedDraftId.current === draft.id) return;
     attachedDraftId.current = draft.id;
-    store.attach({ id: draft.id, state: draft.state, revision: draft.revision, sql: null });
+    store.attach({ id: draft.id, state: draft.state, version: draft.version, sql: null });
     // Step 1 metadata starts from the persisted draft (async load lands here).
     setMetaTitle(draft.title ?? "");
     setMetaDescription(draft.description ?? "");
@@ -459,6 +463,25 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     await queryClient.invalidateQueries({ queryKey: ["review-run"] });
   }, [queryClient, draftId]);
 
+  // §18.74：查询刷新带回更高行version时单调同步进store——审核run终态在
+  // 服务端异步推进version，不同步则后续If-Match全部过期。
+  useEffect(() => {
+    if (draft === null) return;
+    const saved = useDraftEditorStore.getState().savedVersion;
+    if (saved !== null && draft.version > saved) {
+      store.markVersioned(draft.version, draft.state);
+    }
+  }, [draft, store]);
+
+  // Run终态（ready/outdated落定）=服务端已完成version推进；重读草稿把
+  // savedVersion抬到终值，提交确认弹窗与If-Match都用真值。
+  const terminalRunId = isTerminalPhase(phase) ? run?.id ?? null : null;
+  useEffect(() => {
+    if (terminalRunId === null) return;
+    void invalidateAll();
+    // 依赖收敛为终态run id：同run终态只失效一次，run对象轮询刷新不重触发。
+  }, [terminalRunId, invalidateAll]);
+
   const showActionError = (error: unknown, operationId: string) => {
     const display = describeError(error, operationId);
     const requestId = display.requestId !== null ? ` (${display.requestId})` : "";
@@ -470,7 +493,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       replaceDraftSql(draftId as string, { sql }, { headers: liveIfMatch() }),
     onSuccess: (saved) => {
       const savedDraft = saved as unknown as ChangeDraft;
-      store.markSaved(savedDraft.revision, savedDraft.state, store.sql);
+      store.markSaved(savedDraft.version, savedDraft.state, store.sql);
       setActionError(null);
       void invalidateAll();
     },
@@ -494,7 +517,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       store.attach({
         id: draft.id,
         state: draft.state,
-        revision: draft.revision,
+        version: draft.version,
         sql: payload.sql,
       });
       setLoadValue({ text: payload.sql, nonce: Date.now() });
@@ -519,13 +542,18 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   });
 
   const submitMutation = useMutation({
-    mutationFn: () =>
-      submitChangeDraft(draftId as string, {
+    mutationFn: async () => {
+      // §18.74：run完成在服务端异步推进行version——提交前强制重读草稿，
+      // If-Match用服务端真值（种子链同款姿势），消除终态竞态。
+      const fresh = (await getChangeDraft(draftId as string)) as unknown as ChangeDraft;
+      store.markVersioned(fresh.version, fresh.state);
+      return submitChangeDraft(draftId as string, {
         headers: {
-          ...liveIfMatch(),
+          ...ifMatch(fresh.version),
           "Idempotency-Key": idempotencyKey(),
         },
-      }),
+      });
+    },
     onSuccess: (order) => {
       const created = order as unknown as { id: string; display_number: string };
       store.markServerState("submitted");
@@ -565,7 +593,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         description: metaDescription === "" ? undefined : metaDescription,
         // §18.56方案B：显式null清除（is-null语义）；值=设置。
         requested_scheduled_for: requestedForToIso(metaRequestedFor),
-      }),
+      }, { headers: liveIfMatch() }),
     onSuccess: () => {
       setActionError(null);
       void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });

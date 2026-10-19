@@ -12,7 +12,7 @@ describe("draft editor store", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
       state: "draft",
-      revision: 1,
+      version: 1,
       sql: null,
     });
     const state = useDraftEditorStore.getState();
@@ -24,7 +24,7 @@ describe("draft editor store", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
       state: "ready",
-      revision: 3,
+      version: 3,
       sql: "SELECT 1",
     });
     expect(selectDirty(useDraftEditorStore.getState())).toBe(false);
@@ -32,18 +32,18 @@ describe("draft editor store", () => {
     expect(selectDirty(useDraftEditorStore.getState())).toBe(true);
   });
 
-  it("saving realigns the delta and records the new revision", () => {
+  it("saving realigns the delta and records the new row version", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
       state: "draft",
-      revision: 1,
+      version: 1,
       sql: null,
     });
     useDraftEditorStore.getState().setSql("UPDATE t SET a = 1");
     expect(selectDirty(useDraftEditorStore.getState())).toBe(true);
     useDraftEditorStore.getState().markSaved(2, "outdated", "UPDATE t SET a = 1");
     const state = useDraftEditorStore.getState();
-    expect(state.savedRevision).toBe(2);
+    expect(state.savedVersion).toBe(2);
     expect(state.serverState).toBe("outdated");
     expect(selectDirty(state)).toBe(false);
   });
@@ -52,7 +52,7 @@ describe("draft editor store", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
       state: "reviewing",
-      revision: 2,
+      version: 2,
       sql: "SELECT 1",
     });
     useDraftEditorStore.getState().markServerState("ready");
@@ -66,7 +66,7 @@ describe("draft editor store", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
       state: "draft",
-      revision: 1,
+      version: 1,
       sql: "SELECT secret",
     });
     useDraftEditorStore.getState().reset();
