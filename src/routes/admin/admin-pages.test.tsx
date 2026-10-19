@@ -165,13 +165,19 @@ describe("gate: 无外部代码HTTP或写库Custom Tool UI", () => {
   });
 });
 
-describe("gate: 配置Hash与Review失效影响明确", () => {
-  it("shows config hashes and the outdated-impact note on both registries", async () => {
+describe("gate: 配置Hash与Review失效影响明确（owner裁定：列表不展示，挪入编辑对话框）", () => {
+  it("keeps hashes and the outdated-impact note out of the list and inside the edit dialog", async () => {
     renderPage(<AdminReviewSkillsPage />);
-    await screen.findByTestId("review-input-outdated-note");
-    const hashes = await screen.findAllByTestId("review-input-hash");
-    expect(hashes.length).toBeGreaterThan(0);
-    for (const hash of hashes) expect(hash.textContent).toMatch(/^[0-9a-f]{16}$/);
+    const rows = await screen.findAllByTestId(/review-input-row-/);
+    // 列表零hash、零常驻说明（owner：对用户没有意义）。
+    expect(screen.queryByTestId("review-input-hash")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("review-input-outdated-note")).not.toBeInTheDocument();
+    // 编辑对话框承载两者：说明常驻、hash仅编辑态（存量行必有值）。
+    const row = rows[0];
+    if (row === undefined) throw new Error("expected a seeded skill row");
+    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    expect(await screen.findByTestId("review-input-outdated-note")).toBeInTheDocument();
+    expect(screen.getByTestId("review-input-hash").textContent).toMatch(/^[0-9a-f]{16}$/);
   });
 
   it("previews rule-set impact: bound flows and the hash-change warning", async () => {
@@ -313,7 +319,9 @@ describe("review-input dialog flows", () => {
     await userEvent.click(screen.getByTestId("review-input-max-severity-medium"));
     await userEvent.click(screen.getByTestId("review-input-submit"));
     await waitFor(() => expect(screen.getByText("column-null-check")).toBeInTheDocument());
-    expect(screen.getByTestId("review-input-outdated-note")).toBeInTheDocument();
+    // owner裁定：说明挪入编辑对话框，列表页不再有常驻Alert。
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("review-input-outdated-note")).not.toBeInTheDocument();
   });
 
   it("replaces an existing skill and bumps its version", async () => {
@@ -562,11 +570,9 @@ describe("gate: 内置技能锁徽章与定义面锁定", () => {
     expect(within(row).getByTestId(`review-input-builtin-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`)).toHaveTextContent(
       "内置",
     );
-    // The row itself explains the lock — a tooltip is never the only carrier.
-    expect(within(row).getByText(/仅状态可切换/)).toBeInTheDocument();
+    // 行内不再有说明文字（挪入编辑对话框的builtin notice承担解释）。
+    expect(within(row).queryByText(/仅状态可切换/)).not.toBeInTheDocument();
     expect(within(row).getByTestId(/review-input-delete-/)).toBeDisabled();
-    // Hash column stays (builtin rows are ordinary registry rows otherwise).
-    expect(within(row).getByTestId("review-input-hash")).toBeInTheDocument();
   });
 
   it("locks the definition face in the editor and keeps the state select active", async () => {
@@ -746,4 +752,166 @@ describe("gate: Eval门禁措辞与就地渲染", () => {
   // The inline failure rendering (enabled save blocked with the business
   // error inside the dialog) is exercised in admin-pages-popups.test.tsx —
   // it needs the state select popup.
+});
+
+describe("gate: §18.76-B 模型目录联想", () => {
+  it("orders API key above the model field and fills the model from catalog suggestions", async () => {
+    renderPage(<AdminProvidersPage />);
+    await userEvent.click(await screen.findByTestId("provider-create"));
+    await screen.findByTestId("provider-api-key");
+    await screen.findByTestId("provider-model");
+    // owner裁定②：API Key在模型上方（DOM序断言，jsdom无几何）。
+    const apiKey = screen.getByTestId("provider-api-key");
+    const model = screen.getByTestId("provider-model");
+    expect(apiKey.compareDocumentPosition(model) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.type(screen.getByTestId("provider-base-url"), "https://api.deepseek.test");
+    await userEvent.type(apiKey, "sk-catalog");
+    // 面板跟输入框focus开合：点进模型输入框后目录项到达即弹出。
+    await userEvent.click(screen.getByTestId("provider-model"));
+    const panel = await screen.findByTestId("provider-model-options", {}, { timeout: 2500 });
+    await userEvent.click(within(panel).getByTestId("provider-model-option-mock-chat-pro"));
+    expect(screen.getByTestId("provider-model")).toHaveValue("mock-chat-pro");
+    // 真机修正：选中后面板收起（不残留）。
+    expect(screen.queryByTestId("provider-model-options")).not.toBeInTheDocument();
+  });
+
+  it("keeps manual entry and shows the failure hint when the catalog fetch is rejected", async () => {
+    renderPage(<AdminProvidersPage />);
+    await userEvent.click(await screen.findByTestId("provider-create"));
+    await userEvent.type(screen.getByTestId("provider-base-url"), "https://api.deepseek.test");
+    await userEvent.type(screen.getByTestId("provider-api-key"), "mock-invalid-key");
+    expect(await screen.findByTestId("provider-model-catalog-failed", {}, { timeout: 2500 })).toBeInTheDocument();
+    expect(screen.queryByTestId("provider-model-options")).not.toBeInTheDocument();
+    // 手填不受影响。
+    await userEvent.type(screen.getByTestId("provider-model"), "deepseek-chat");
+    expect(screen.getByTestId("provider-model")).toHaveValue("deepseek-chat");
+  });
+
+  it("reuses the stored credential via provider_id when editing without retyping the key", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    server.use(
+      http.post("*/admin/ai-providers/models", async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({
+          err_code: 0, message: "ok", data: { items: ["spy-model-a"] }, request_id: "spy",
+        });
+      }),
+    );
+    renderPage(<AdminProvidersPage />);
+    await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
+    await screen.findByTestId("provider-model");
+    await waitFor(() => {
+      expect(bodies.length).toBeGreaterThan(0);
+    }, { timeout: 2500 });
+    const lastBody = bodies.at(-1);
+    expect(lastBody?.provider_id).toBe(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID);
+    expect(lastBody?.api_key).toBeUndefined();
+  });
+});
+
+describe("gate: 连接测试同步结果反馈（RCP-20261017 #019对齐）", () => {
+  it("shows the ok line after a synchronous successful connection test", async () => {
+    renderPage(<AdminProvidersPage />);
+    await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await userEvent.click(screen.getByTestId(`provider-test-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
+    expect(await screen.findByTestId(`provider-test-ok-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`)).toBeInTheDocument();
+  });
+
+  it("surfaces the upstream reason when the connection test fails", async () => {
+    server.use(
+      http.post("*/admin/ai-providers/:providerId/connection-tests", () =>
+        HttpResponse.json({
+          err_code: 2011,
+          message: "provider failed",
+          data: null,
+          request_id: "conn-detail-req",
+          retryable: false,
+          meta: { detail: 'provider: request rejected: status 401: {"error":{"message":"Authentication Fails"}}' },
+        }),
+      ),
+    );
+    renderPage(<AdminProvidersPage />);
+    await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await userEvent.click(screen.getByTestId(`provider-test-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
+    expect(
+      await screen.findByTestId(`provider-test-error-detail-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`),
+    ).toHaveTextContent(/Authentication Fails/);
+  });
+});
+
+describe("gate: 数据源连接测试拒因透出（§18.76补）", () => {
+  it("surfaces the upstream reason when the connection test fails", async () => {
+    server.use(
+      http.post("*/admin/datasources/:dsId/connection-tests", () =>
+        HttpResponse.json({
+          err_code: 3010,
+          message: "数据源连接测试失败",
+          data: null,
+          request_id: "ds-detail-req",
+          retryable: false,
+          meta: {
+            detail: "datasource: connection failed: database: mysql dial failed: dial tcp 127.0.0.1:54334: connect: connection refused",
+          },
+        }),
+      ),
+    );
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    expect(
+      await screen.findByTestId(`ds-test-error-detail-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),
+    ).toHaveTextContent(/connection refused/);
+  });
+});
+
+describe("gate: 数据源连接测试成功反馈", () => {
+  it("shows the ok line when the connection test task succeeds", async () => {
+    server.use(
+      http.post("*/admin/datasources/:dsId/connection-tests", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: "0198d9cc-0000-7000-8000-000000000001",
+            kind: "admin_connection_test",
+            state: "succeeded",
+            progress: { completed: 1, total: 1, unit: "steps" },
+            result_ref: null,
+            error: null,
+            created_at: "2026-10-19T00:00:00Z",
+            updated_at: "2026-10-19T00:00:00Z",
+          },
+          request_id: "ds-ok-req",
+        }),
+      ),
+    );
+    // 轮询GET也钉在同一succeeded任务上（真夹具无此任务）。
+    server.use(
+      http.get("*/tasks/:taskId", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: "0198d9cc-0000-7000-8000-000000000001",
+            kind: "admin_connection_test",
+            state: "succeeded",
+            progress: { completed: 1, total: 1, unit: "steps" },
+            result_ref: null,
+            error: null,
+            created_at: "2026-10-19T00:00:00Z",
+            updated_at: "2026-10-19T00:00:00Z",
+          },
+          request_id: "ds-ok-req",
+        }),
+      ),
+    );
+    renderPage(<AdminDatasourcesPage />);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
+    expect(
+      await screen.findByTestId(`ds-test-ok-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),
+    ).toBeInTheDocument();
+  });
 });

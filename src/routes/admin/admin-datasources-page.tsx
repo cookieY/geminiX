@@ -854,9 +854,13 @@ function ConnectionTestControls({
   const testMutation = useTestDatasourceConnection();
   const taskQuery = useAdminTask(taskId ?? "", taskId !== null);
   const [testErrorKey, setTestErrorKey] = useState<string | null>(null);
+  // §18.76补（owner裁定沿Provider拒因透出路径）：同步拒因走meta.detail；
+  // 异步Task失败走task.error.detail（Probe真实失败原因，非笼统文案）。
+  const [testErrorDetail, setTestErrorDetail] = useState<string | null>(null);
 
   const runTest = () => {
     setTestErrorKey(null);
+    setTestErrorDetail(null);
     // §18.61：探测用途取数据源持久化的test_purpose（编辑表单变更），
     // 表格不再出现用途选择器。
     testMutation.mutate(
@@ -869,6 +873,7 @@ function ConnectionTestControls({
         onError: (error) => {
           const display = describeError(error, "testDatasourceConnection");
           setTestErrorKey(display.messageKey);
+          setTestErrorDetail(display.detail);
         },
       },
     );
@@ -890,10 +895,42 @@ function ConnectionTestControls({
       {taskQuery.data?.state === "queued" || taskQuery.data?.state === "running" ? (
         <p className="text-muted-foreground text-xs">{t("admin.datasources.testRunning")}</p>
       ) : null}
-      {taskQuery.data?.state === "failed" ? (
-        <p className="text-xs text-destructive">{t("admin.datasources.testFailed")}</p>
+      {/* owner真机：测试成功此前零反馈（旧代码只画运行中/失败两态）——
+          补成功行，与新拒因渲染对称。 */}
+      {taskQuery.data?.state === "succeeded" ? (
+        <p
+          className="text-right text-xs text-[var(--risk-safe)]"
+          data-testid={`ds-test-ok-${datasource.id}`}
+        >
+          {t("admin.datasources.testOk")}
+        </p>
       ) : null}
-      {testErrorKey !== null ? <p className="text-xs text-destructive">{t(testErrorKey)}</p> : null}
+      {taskQuery.data?.state === "failed" ? (
+        <div className="flex flex-col items-end text-right">
+          <p className="text-xs text-destructive">{t("admin.datasources.testFailed")}</p>
+          {taskQuery.data.error?.detail ? (
+            <p
+              className="break-all font-mono text-xs text-destructive"
+              data-testid={`ds-test-error-detail-${datasource.id}`}
+            >
+              {taskQuery.data.error.detail}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {testErrorKey !== null ? (
+        <div className="flex flex-col items-end text-right">
+          <p className="text-xs text-destructive">{t(testErrorKey)}</p>
+          {testErrorDetail !== null ? (
+            <p
+              className="break-all font-mono text-xs text-destructive"
+              data-testid={`ds-test-error-detail-${datasource.id}`}
+            >
+              {testErrorDetail}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

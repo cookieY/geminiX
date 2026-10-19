@@ -82,6 +82,8 @@ import type {
   KnowledgeEntryWrite,
   LegacyMigrationRunPageResultResponse,
   LegacyMigrationRunResultResponse,
+  ListAiProviderModels200,
+  ListAiProviderModelsRequest,
   ListAiProviders200,
   ListAiProvidersParams,
   ListAnnouncementRevisionsParams,
@@ -5864,6 +5866,128 @@ export function useTestAiProviderConnection<TData = Awaited<ReturnType<typeof te
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getTestAiProviderConnectionQueryOptions(providerId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type listAiProviderModelsResponse200 = {
+  data: ListAiProviderModels200
+  status: 200
+}
+
+export type listAiProviderModelsResponse429 = {
+  data: ProblemResponse
+  status: 429
+}
+
+export type listAiProviderModelsResponseSuccess = (listAiProviderModelsResponse200) & {
+  headers: Headers;
+};
+export type listAiProviderModelsResponseError = (listAiProviderModelsResponse429) & {
+  headers: Headers;
+};
+
+export type listAiProviderModelsResponse = (listAiProviderModelsResponseSuccess | listAiProviderModelsResponseError)
+
+export const getListAiProviderModelsUrl = () => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/models`
+}
+
+/**
+ * Fetch the upstream OpenAI-compatible model catalog for form suggestions. POST (not GET) because api_key rides the body and must never enter URLs or access logs; the upstream failure reason is surfaced via the business-error member detail.
+ */
+export const listAiProviderModels = async (listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: Parameters<typeof customInstance>[1]): Promise<listAiProviderModelsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<listAiProviderModelsResponse>(getListAiProviderModelsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(listAiProviderModelsRequest)
+  }
+);}
+
+
+
+
+
+export const getListAiProviderModelsQueryKey = (listAiProviderModelsRequest?: ListAiProviderModelsRequest,) => {
+    return [
+    'POST', `/api/v4/admin/ai-providers/models`, listAiProviderModelsRequest
+    ] as const;
+    }
+
+
+export const getListAiProviderModelsQueryOptions = <TData = Awaited<ReturnType<typeof listAiProviderModels>>, TError = ProblemResponse>(listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAiProviderModelsQueryKey(listAiProviderModelsRequest);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAiProviderModels>>> = ({ signal }) => listAiProviderModels(listAiProviderModelsRequest, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAiProviderModelsQueryResult = NonNullable<Awaited<ReturnType<typeof listAiProviderModels>>>
+export type ListAiProviderModelsQueryError = ProblemResponse
+
+
+export function useListAiProviderModels<TData = Awaited<ReturnType<typeof listAiProviderModels>>, TError = ProblemResponse>(
+ listAiProviderModelsRequest: ListAiProviderModelsRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAiProviderModels>>,
+          TError,
+          Awaited<ReturnType<typeof listAiProviderModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAiProviderModels<TData = Awaited<ReturnType<typeof listAiProviderModels>>, TError = ProblemResponse>(
+ listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAiProviderModels>>,
+          TError,
+          Awaited<ReturnType<typeof listAiProviderModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAiProviderModels<TData = Awaited<ReturnType<typeof listAiProviderModels>>, TError = ProblemResponse>(
+ listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListAiProviderModels<TData = Awaited<ReturnType<typeof listAiProviderModels>>, TError = ProblemResponse>(
+ listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAiProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAiProviderModelsQueryOptions(listAiProviderModelsRequest,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

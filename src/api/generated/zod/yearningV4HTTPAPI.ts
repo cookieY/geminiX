@@ -3853,6 +3853,32 @@ export const TestAiProviderConnectionResponse = zod.union([zod.object({
 })])
 
 
+/**
+ * Fetch the upstream OpenAI-compatible model catalog for form suggestions. POST (not GET) because api_key rides the body and must never enter URLs or access logs; the upstream failure reason is surfaced via the business-error member detail.
+ */
+export const ListAiProviderModelsBody = zod.object({
+  "base_url": zod.url(),
+  "api_key": zod.string().optional().describe('Plaintext upstream credential; omit together with provider_id when reusing the stored credential of an existing provider (edit form never echoes keys).'),
+  "provider_id": zod.uuid().optional()
+})
+
+export const ListAiProviderModelsResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "items": zod.array(zod.string())
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
 export const GetSettingsNamespaceParams = zod.object({
   "namespace": zod.enum(['general', 'query', 'execution', 'ai-budget', 'branding'])
 })

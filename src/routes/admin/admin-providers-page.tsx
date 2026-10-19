@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 import type {
@@ -6,8 +6,8 @@ import type {
   AiProviderWrite,
   CreateAiProviderRequest,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import { listAiProviderModels } from "@/api/generated/client/administration/administration";
 import {
-  useAdminTask,
   useAiProviders,
   useCreateAiProvider,
   useDeleteAiProvider,
@@ -130,6 +130,52 @@ function ProviderFormDialog({
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
+  // §18.76-B：模型目录联想。base_url+api_key齐备（或编辑态复用存储
+  // 密钥）即自动拉取；400ms去抖+序号防陈旧回写。目录仅是联想建议，
+  // 输入框始终保留手填；拉取失败静默降级为手填（保存时探针仍会
+  // 给出真因）。结果按键缓存，loading由"键不匹配"派生——effect内
+  // 不做同步setState（react-hooks/set-state-in-effect）。
+  const catalogKey = `${form.baseUrl.trim()}\u0000${form.apiKey.trim()}\u0000${editing?.id ?? ""}`;
+  const canFetchCatalog = form.baseUrl.trim() !== "" && (form.apiKey.trim() !== "" || editing !== null);
+  const [catalog, setCatalog] = useState<{
+    key: string;
+    state: "done" | "failed";
+    items: string[];
+  } | null>(null);
+  const catalogSeq = useRef(0);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  useEffect(() => {
+    if (!canFetchCatalog) return;
+    const seq = ++catalogSeq.current;
+    const timer = setTimeout(() => {
+      listAiProviderModels({
+        base_url: form.baseUrl.trim(),
+        ...(form.apiKey.trim() !== "" ? { api_key: form.apiKey.trim() } : {}),
+        ...(form.apiKey.trim() === "" && editing !== null ? { provider_id: editing.id } : {}),
+      })
+        .then((res) => {
+          if (catalogSeq.current !== seq) return;
+          setCatalog({ key: catalogKey, state: "done", items: (res as unknown as { items: string[] }).items });
+        })
+        .catch(() => {
+          if (catalogSeq.current !== seq) return;
+          setCatalog({ key: catalogKey, state: "failed", items: [] });
+        });
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      catalogSeq.current += 1;
+    };
+  }, [catalogKey, canFetchCatalog, editing, form.baseUrl, form.apiKey]);
+  const catalogResult = catalog !== null && catalog.key === catalogKey ? catalog : null;
+  const catalogView = !canFetchCatalog
+    ? "idle"
+    : catalogResult === null
+      ? "loading"
+      : catalogResult.state;
+  // tsc不跨JSX子句收窄，先物化条目数组。
+  const catalogItems = catalogView === "done" ? catalogResult?.items ?? [] : [];
+
   const mutation = editing === null ? createMutation : replaceMutation;
 
   const submit = () => {
@@ -240,28 +286,8 @@ function ProviderFormDialog({
               data-testid="provider-base-url"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="provider-model">{t("admin.providers.model")}</Label>
-            <Input
-              id="provider-model"
-              value={form.modelName}
-              onChange={(event) => { setForm({ ...form, modelName: event.target.value }); }}
-              data-testid="provider-model"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="provider-priority">{t("admin.providers.priority")}</Label>
-            <Input
-              id="provider-priority"
-              type="number"
-              min={1}
-              max={100}
-              value={form.selectionPriority}
-              onChange={(event) => { setForm({ ...form, selectionPriority: event.target.value }); }}
-              data-testid="provider-priority"
-            />
-            <p className="text-muted-foreground text-xs">{t("admin.providers.priorityHint")}</p>
-          </div>
+          {/* §18.76-B：API Key移到模型上方——目录联想依赖两者齐备，
+              视觉顺序即填写顺序。 */}
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label htmlFor="provider-api-key">{t("admin.providers.apiKey")}</Label>
             <Input
@@ -286,6 +312,68 @@ function ProviderFormDialog({
                 })}
               </p>
             ) : null}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="provider-model">{t("admin.providers.model")}</Label>
+            {/* §18.76-B真机修正：relative只包输入框（面板top-full正挂输入框
+                下方，不随提示行漂移）；开合跟input focus/blur，选项用
+                onMouseDown选取（preventDefault防blur先吞点击），选中即收起。 */}
+            <div className="relative">
+              <Input
+                id="provider-model"
+                value={form.modelName}
+                onChange={(event) => { setForm({ ...form, modelName: event.target.value }); }}
+                onFocus={() => { setSuggestOpen(true); }}
+                onBlur={() => { setSuggestOpen(false); }}
+                data-testid="provider-model"
+              />
+              {suggestOpen && catalogItems.length > 0 ? (
+                <div
+                  className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md"
+                  data-testid="provider-model-options"
+                >
+                  {catalogItems.map((model) => (
+                    <button
+                      key={model}
+                      type="button"
+                      className="w-full px-2.5 py-1.5 text-left text-xs hover:bg-accent"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setForm((prev) => ({ ...prev, modelName: model }));
+                        setSuggestOpen(false);
+                      }}
+                      data-testid={`provider-model-option-${model}`}
+                    >
+                      {model}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <p className="text-muted-foreground text-xs">{t("admin.providers.modelCatalogHint")}</p>
+            {catalogView === "loading" ? (
+              <p className="text-muted-foreground text-xs" data-testid="provider-model-catalog-loading">
+                {t("admin.providers.modelCatalogLoading")}
+              </p>
+            ) : null}
+            {catalogView === "failed" ? (
+              <p className="text-muted-foreground text-xs" data-testid="provider-model-catalog-failed">
+                {t("admin.providers.modelCatalogFailed")}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="provider-priority">{t("admin.providers.priority")}</Label>
+            <Input
+              id="provider-priority"
+              type="number"
+              min={1}
+              max={100}
+              value={form.selectionPriority}
+              onChange={(event) => { setForm({ ...form, selectionPriority: event.target.value }); }}
+              data-testid="provider-priority"
+            />
+            <p className="text-muted-foreground text-xs">{t("admin.providers.priorityHint")}</p>
           </div>
           <div className="flex items-center gap-2 md:col-span-2">
             <input
@@ -343,11 +431,13 @@ function ProviderRow({
 }) {
   const { t } = useTranslation();
   const testMutation = useTestAiProviderConnection();
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const taskQuery = useAdminTask(taskId ?? "", taskId !== null);
+  // RCP-20261017 #019：连接测试是同步{ok}结果——pending/成功/失败三态
+  // 直接渲染；失败带request_id与上游拒因（§18.75-A同通道），不再有
+  // 任何Task轮询路径（旧Task形状会让成功静默、失败无细节）。
+  const [testOk, setTestOk] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  // The latest task stays rendered (terminal states stop polling); a new
-  // test replaces it from the click handler.
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
 
   return (
     <TableRow data-testid={`provider-row-${provider.id}`}>
@@ -388,17 +478,24 @@ function ProviderRow({
             variant="ghost"
             size="sm"
             disabled={testMutation.isPending}
-            onClick={() => { testMutation.mutate(
+            onClick={() => {
+              setTestOk(false);
+              setErrorKey(null);
+              setErrorDetail(null);
+              setErrorRequestId(null);
+              testMutation.mutate(
                 { id: provider.id },
                 {
-                  onSuccess: (task) => { setTaskId(task.id); },
+                  onSuccess: () => { setTestOk(true); },
                   onError: (error) => {
                     const display = describeError(error, "testAiProviderConnection");
                     setErrorKey(display.messageKey);
+                    setErrorDetail(display.detail);
+                    setErrorRequestId(display.requestId);
                   },
                 },
-              ); }
-            }
+              );
+            }}
             data-testid={`provider-test-${provider.id}`}
           >
             {t("admin.datasources.testConnection")}
@@ -410,16 +507,29 @@ function ProviderRow({
             <Trash2 /> {t("common.delete")}
           </Button>
         </div>
-        {taskQuery.data?.state === "queued" || taskQuery.data?.state === "running" ? (
-          <p className="text-muted-foreground mt-1 text-right text-xs">{t("admin.datasources.testRunning")}</p>
+        {testMutation.isPending ? (
+          <p className="text-muted-foreground mt-1 text-right text-xs" data-testid={`provider-test-running-${provider.id}`}>
+            {t("admin.datasources.testRunning")}
+          </p>
         ) : null}
-        {taskQuery.data?.state === "succeeded" ? (
-          <p className="mt-1 text-right text-xs text-[var(--risk-safe)]">{t("admin.providers.testOk")}</p>
+        {testOk && !testMutation.isPending ? (
+          <p className="mt-1 text-right text-xs text-[var(--risk-safe)]" data-testid={`provider-test-ok-${provider.id}`}>
+            {t("admin.providers.testOk")}
+          </p>
         ) : null}
-        {taskQuery.data?.state === "failed" ? (
-          <p className="mt-1 text-right text-xs text-destructive">{t("admin.providers.testFailed")}</p>
+        {errorKey !== null ? (
+          <div className="mt-1 text-right">
+            <p className="text-xs text-destructive">{t(errorKey)}</p>
+            {errorDetail !== null ? (
+              <p className="break-all font-mono text-xs text-destructive" data-testid={`provider-test-error-detail-${provider.id}`}>
+                {errorDetail}
+              </p>
+            ) : null}
+            {errorRequestId !== null ? (
+              <p className="text-muted-foreground text-xs">request_id: {errorRequestId}</p>
+            ) : null}
+          </div>
         ) : null}
-        {errorKey !== null ? <p className="mt-1 text-right text-xs text-destructive">{t(errorKey)}</p> : null}
       </TableCell>
     </TableRow>
   );

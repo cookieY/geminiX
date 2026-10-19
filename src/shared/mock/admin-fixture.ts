@@ -2139,13 +2139,14 @@ function successEnvelope(data: DefaultBodyType) {
   return { err_code: 0, message: "ok", data, request_id: ADMIN_REQUEST_ID };
 }
 
-function businessError(errCode: number, message: string) {
+function businessError(errCode: number, message: string, meta?: Record<string, unknown>) {
   return HttpResponse.json({
     err_code: errCode,
     message,
     data: null,
     request_id: ADMIN_REQUEST_ID,
     retryable: false,
+    ...(meta === undefined ? {} : { meta }),
   });
 }
 
@@ -2770,6 +2771,31 @@ export function adminFixtureHandlers(): HttpHandler[] {
       // 已按裁定改形）。
       if (!provider.enabled) return businessError(5003, "provider disabled");
       return HttpResponse.json(successEnvelope({ ok: true }));
+    }),
+    // §18.76-B parity：模型目录联想。POST携带base_url/api_key（明文凭据
+    // 不进URL）；api_key省略时必须给出provider_id（编辑态复用存储密钥）。
+    // "mock-invalid-key"模拟上游401拒因（detail透出断言用）。
+    http.post("*/admin/ai-providers/models", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null || typeof body.base_url !== "string" || body.base_url === "") {
+        return businessError(1001, "base_url is required");
+      }
+      const apiKey = typeof body.api_key === "string" ? body.api_key : "";
+      const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+      if (apiKey === "" && providerId === "") return businessError(1001, "api_key or provider_id is required");
+      if (apiKey === "" && providerId !== "" && !world.providers.has(providerId)) {
+        return businessError(1002, "provider not found");
+      }
+      if (apiKey === "mock-invalid-key") {
+        return businessError(2011, "upstream rejected", {
+          detail: 'provider: request rejected: status 401: {"error":{"message":"Authentication Fails, Your api key: ****mock is invalid"}}',
+        });
+      }
+      return HttpResponse.json(successEnvelope({
+        items: ["mock-chat-lite", "mock-chat-pro", "mock-reasoner"],
+      }));
     }),
 
     // ---- settings ----------------------------------------------------

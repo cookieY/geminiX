@@ -307,7 +307,9 @@ export function useTestAiProviderConnection() {
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       const response = await testAiProviderConnection(id);
-      return response as unknown as Task;
+      // RCP-20261017 #019：同步探测结果{ok}——不再是Task，无轮询；
+      // 失败走业务错误成员（2011+上游拒因detail）。
+      return response as unknown as { ok: boolean };
     },
   });
 }

@@ -39,6 +39,11 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    // 共享dist保护（2026-10-19联调事故）：e2e webServer此前把共享dist/
+    // 重建成mock版，实时覆盖手动preview（4273）正在服务的产物——操作者
+    // 刷新即落入MSW假世界。e2e构建一律走独立目录，dist/只属于显式构建。
+    outDir: process.env.VITE_BUILD_OUT_DIR ?? "dist",
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: undefined,

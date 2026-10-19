@@ -375,10 +375,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                     <AlertTitle>{t(evalErrorKey)}</AlertTitle>
                   </Alert>
                 ) : null}
-                <Alert className="border-[var(--risk-warning)]/40" data-testid="review-input-outdated-note">
-                  <AlertTitle>{t("admin.reviewInput.outdatedNoteTitle")}</AlertTitle>
-                  <AlertDescription>{t("admin.reviewInput.outdatedNoteBody")}</AlertDescription>
-                </Alert>
                 {loading ? (
                   <LoadingState />
                 ) : errored ? (
@@ -614,10 +610,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               <AlertTitle>{t(evalErrorKey)}</AlertTitle>
             </Alert>
           ) : null}
-          <Alert className="border-[var(--risk-warning)]/40" data-testid="review-input-outdated-note">
-            <AlertTitle>{t("admin.reviewInput.outdatedNoteTitle")}</AlertTitle>
-            <AlertDescription>{t("admin.reviewInput.outdatedNoteBody")}</AlertDescription>
-          </Alert>
           {loading ? (
             <LoadingState />
           ) : errored ? (
@@ -647,7 +639,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   <TableHead>{t("admin.reviewInput.name")}</TableHead>
                   
                   <TableHead>{t("admin.reviewInput.state")}</TableHead>
-                  <TableHead>{t("admin.reviewInput.configHash")}</TableHead>
                   
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
@@ -657,7 +648,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const id = row.id;
                   const name = row.name;
                   const state = row.state;
-                  const configHash = row.config_hash;
                   
                   const builtin = (row as PromptTool).is_builtin;
                   return (
@@ -671,15 +661,9 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                             </Badge>
                           ) : null}
                         </span>
-                        {builtin ? (
-                          <div className="text-muted-foreground text-xs">{t("admin.skills.builtinHint")}</div>
-                        ) : null}
                       </TableCell>
                       <TableCell>
                         <StateBadge state={state} />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs" data-testid="review-input-hash">
-                        {configHash}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
@@ -887,6 +871,20 @@ function ReviewInputDialog({
           <DialogDescription>{t("admin.reviewInput.formDescription")}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
+          {/* owner裁定：hash与失效影响说明属于编辑语境——从列表页整体
+              移入对话框；hash仅编辑态可见（创建时尚未生成）。 */}
+          <Alert className="border-[var(--risk-warning)]/40" data-testid="review-input-outdated-note">
+            <AlertTitle>{t("admin.reviewInput.outdatedNoteTitle")}</AlertTitle>
+            <AlertDescription>{t("admin.reviewInput.outdatedNoteBody")}</AlertDescription>
+          </Alert>
+          {editing !== null && editing.config_hash !== "" ? (
+            <div className="flex flex-col gap-1">
+              <Label>{t("admin.reviewInput.configHash")}</Label>
+              <p className="break-all font-mono text-xs" data-testid="review-input-hash">
+                {editing.config_hash}
+              </p>
+            </div>
+          ) : null}
           {editingBuiltin ? (
             <Alert data-testid="review-input-builtin-notice">
               <AlertTitle>{t("admin.skills.builtinDialogTitle")}</AlertTitle>

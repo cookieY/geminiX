@@ -23,8 +23,8 @@ export default defineConfig({
     // MSW worker, so the banner deterministically hides and no test leaves
     // localhost.
     command:
-      "VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && " +
-      "VITE_E2E_API_PROXY=http://127.0.0.1:18080 pnpm preview --port 4273 --strictPort",
+      "VITE_BUILD_OUT_DIR=dist-real VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && " +
+      "VITE_BUILD_OUT_DIR=dist-real VITE_E2E_API_PROXY=http://127.0.0.1:18080 pnpm preview --port 4273 --strictPort",
     url: "http://localhost:4273",
     reuseExistingServer: false,
     timeout: 180_000,

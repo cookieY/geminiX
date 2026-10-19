@@ -80,6 +80,7 @@ import type {
   LegacyMigrationRunPageSuccess,
   LegacyMigrationRunResultResponse,
   LegacyMigrationRunSuccess,
+  ListAiProviderModels200,
   ListAiProviders200,
   ListAuditEvents200,
   ListDatasources200,
@@ -403,6 +404,10 @@ export const getDeleteAiProviderResponseMock = (): DeleteAiProvider200 => (faker
 export const getTestAiProviderConnectionResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getTestAiProviderConnectionResponseMock = (): TestAiProviderConnection200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {ok: faker.datatype.boolean()}, request_id: faker.string.uuid()},{...getTestAiProviderConnectionResponseBusinessErrorResponseMock()},]))
+
+export const getListAiProviderModelsResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getListAiProviderModelsResponseMock = (): ListAiProviderModels200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, request_id: faker.string.uuid()},{...getListAiProviderModelsResponseBusinessErrorResponseMock()},]))
 
 export const getGetSettingsNamespaceResponseGeneralSettingsMock = (overrideResponse: Partial<GeneralSettings> = {}): GeneralSettings => ({...{registration_enabled: faker.datatype.boolean(), system_timezone: faker.string.alpha({length: {min: 1, max: 255}}), default_locale: faker.helpers.arrayElement(['zh-CN','en-US'] as const)}, ...overrideResponse});
 
@@ -1201,6 +1206,18 @@ export const getTestAiProviderConnectionMockHandler = (overrideResponse?: TestAi
   }, options)
 }
 
+export const getListAiProviderModelsMockHandler = (overrideResponse?: ListAiProviderModels200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ListAiProviderModels200> | ListAiProviderModels200), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/ai-providers/models', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListAiProviderModelsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetSettingsNamespaceMockHandler = (overrideResponse?: GetSettingsNamespace200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<GetSettingsNamespace200> | GetSettingsNamespace200), options?: RequestHandlerOptions) => {
   return http.get('*/admin/settings/:namespace', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
@@ -1485,6 +1502,7 @@ export const getAdministrationMock = () => [
   getReplaceAiProviderMockHandler(),
   getDeleteAiProviderMockHandler(),
   getTestAiProviderConnectionMockHandler(),
+  getListAiProviderModelsMockHandler(),
   getGetSettingsNamespaceMockHandler(),
   getReplaceSettingsNamespaceMockHandler(),
   getAssessSettingsImpactMockHandler(),

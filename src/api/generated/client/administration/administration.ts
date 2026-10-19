@@ -63,6 +63,8 @@ import type {
   KnowledgeEntryWrite,
   LegacyMigrationRunPageResultResponse,
   LegacyMigrationRunResultResponse,
+  ListAiProviderModels200,
+  ListAiProviderModelsRequest,
   ListAiProviders200,
   ListAiProvidersParams,
   ListAnnouncementRevisionsParams,
@@ -2192,6 +2194,54 @@ export const testAiProviderConnection = async (providerId: string, options?: Par
     method: 'POST'
 
 
+  }
+);}
+
+
+export type listAiProviderModelsResponse200 = {
+  data: ListAiProviderModels200
+  status: 200
+}
+
+export type listAiProviderModelsResponse429 = {
+  data: ProblemResponse
+  status: 429
+}
+
+export type listAiProviderModelsResponseSuccess = (listAiProviderModelsResponse200) & {
+  headers: Headers;
+};
+export type listAiProviderModelsResponseError = (listAiProviderModelsResponse429) & {
+  headers: Headers;
+};
+
+export type listAiProviderModelsResponse = (listAiProviderModelsResponseSuccess | listAiProviderModelsResponseError)
+
+export const getListAiProviderModelsUrl = () => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/models`
+}
+
+/**
+ * Fetch the upstream OpenAI-compatible model catalog for form suggestions. POST (not GET) because api_key rides the body and must never enter URLs or access logs; the upstream failure reason is surfaced via the business-error member detail.
+ */
+export const listAiProviderModels = async (listAiProviderModelsRequest: ListAiProviderModelsRequest, options?: Parameters<typeof customInstance>[1]): Promise<listAiProviderModelsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<listAiProviderModelsResponse>(getListAiProviderModelsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(listAiProviderModelsRequest)
   }
 );}
 

@@ -23,7 +23,8 @@ export default defineConfig({
     // cookieY/Yearning releases API): tests never leave localhost and the
     // banner stays deterministic.
     command:
-      "VITE_ENABLE_MOCK=true VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && pnpm preview --port 4173 --strictPort",
+      "VITE_BUILD_OUT_DIR=dist-e2e VITE_ENABLE_MOCK=true VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && "
+      + "VITE_BUILD_OUT_DIR=dist-e2e pnpm preview --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

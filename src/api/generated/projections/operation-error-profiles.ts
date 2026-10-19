@@ -238,6 +238,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1001,
       1002,
+      3010,
       1012
     ],
     "operations": [
@@ -681,18 +682,6 @@ export const OPERATION_ERROR_PROFILES: {
       "copyChangeOrderToDraft"
     ]
   },
-  "submitter_metadata": {
-    "err_codes": [
-      1001,
-      1002,
-      2014
-    ],
-    "operations": [
-      "listMyFlowDatasourceSchemas",
-      "listMyFlowDatasourceTables",
-      "listMyFlowDatasourceColumns"
-    ]
-  },
   "ai_provider_create": {
     "err_codes": [
       1001,
@@ -723,6 +712,28 @@ export const OPERATION_ERROR_PROFILES: {
     ],
     "operations": [
       "testAiProviderConnection"
+    ]
+  },
+  "ai_provider_model_catalog": {
+    "err_codes": [
+      1001,
+      1002,
+      2011
+    ],
+    "operations": [
+      "listAiProviderModels"
+    ]
+  },
+  "submitter_metadata": {
+    "err_codes": [
+      1001,
+      1002,
+      2014
+    ],
+    "operations": [
+      "listMyFlowDatasourceSchemas",
+      "listMyFlowDatasourceTables",
+      "listMyFlowDatasourceColumns"
     ]
   }
 },

@@ -75,12 +75,17 @@ test("review-input editor offers no executable-code, HTTP or database-write surf
   }
 });
 
-test("config hashes and review-invalidation impact are visible", async ({ page }) => {
+test("config hashes and review-invalidation impact live in the edit dialog (owner ruling)", async ({ page }) => {
   await page.goto("/admin/review-engine/skills");
+  // owner裁定：列表不展示hash与常驻说明——两者在编辑对话框内。
+  await expect(page.getByTestId("review-input-outdated-note")).toHaveCount(0);
+  await expect(page.getByTestId("review-input-hash")).toHaveCount(0);
+  await page.getByTestId(/review-input-edit-/).first().click();
   await expect(page.getByTestId("review-input-outdated-note")).toContainText(
     "引用旧 Hash 的未提交预审立即失效",
   );
-  await expect(page.getByTestId("review-input-hash").first()).toBeVisible();
+  await expect(page.getByTestId("review-input-hash")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.goto("/admin/rule-sets");
   await expect(page.getByTestId("rule-set-hash").first()).toBeVisible();
@@ -147,7 +152,8 @@ test("builtin skill renders the lock badge and only the state stays toggleable",
   await page.goto("/admin/review-engine/skills");
   const builtinRow = page.locator("tr", { hasText: "builtin-lexical-guards" });
   await expect(builtinRow.getByTestId(/review-input-builtin-/)).toContainText("内置");
-  await expect(builtinRow.getByText(/仅状态可切换/)).toBeVisible();
+  // owner裁定：行内解释文字挪入编辑对话框的builtin notice。
+  await expect(builtinRow.getByText(/仅状态可切换/)).toHaveCount(0);
   await expect(builtinRow.getByTestId(/review-input-delete-/)).toBeDisabled();
 
   await builtinRow.getByTestId(/review-input-edit-/).click();

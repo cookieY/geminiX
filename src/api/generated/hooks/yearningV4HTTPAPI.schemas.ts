@@ -992,6 +992,13 @@ export interface AiProvider {
   updated_at: Timestamp;
 }
 
+export interface ListAiProviderModelsRequest {
+  base_url: string;
+  /** Plaintext upstream credential; omit together with provider_id when reusing the stored credential of an existing provider (edit form never echoes keys). */
+  api_key?: string;
+  provider_id?: Uuid;
+}
+
 export type KnowledgeEntryWriteState = typeof KnowledgeEntryWriteState[keyof typeof KnowledgeEntryWriteState];
 
 
@@ -3521,6 +3528,15 @@ export type TestAiProviderConnection200 = {
   message: 'ok';
   data: {
   ok: boolean;
+};
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListAiProviderModels200 = {
+  err_code: 0;
+  message: 'ok';
+  data: {
+  items: string[];
 };
   request_id: Uuid;
 } | BusinessErrorResponse;
