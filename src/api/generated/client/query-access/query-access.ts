@@ -20,6 +20,8 @@ import type {
   ListQueryAccessRequestsParams,
   ListQueryGrants200,
   ListQueryGrantsParams,
+  ListQueryOrders200,
+  ListQueryOrdersParams,
   ProblemResponse,
   ReasonRequest,
   RelinquishQueryGrant200,
@@ -414,6 +416,55 @@ return customInstance<createQueryGrantRenewalRequestResponse>(getCreateQueryGran
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(createQueryGrantRenewalRequestBody)
+  }
+);}
+
+
+export type listQueryOrdersResponse200 = {
+  data: ListQueryOrders200
+  status: 200
+}
+
+export type listQueryOrdersResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listQueryOrdersResponseSuccess = (listQueryOrdersResponse200) & {
+  headers: Headers;
+};
+export type listQueryOrdersResponseError = (listQueryOrdersResponse403) & {
+  headers: Headers;
+};
+
+export type listQueryOrdersResponse = (listQueryOrdersResponseSuccess | listQueryOrdersResponseError)
+
+export const getListQueryOrdersUrl = (params?: ListQueryOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/query/orders?${stringifiedParams}` : `/api/v4/query/orders`
+}
+
+/**
+ * 本人查询工单组合视图（RCP-20261021）——access_requests 与 query_sessions 两源合并、统一按 created_at 倒序键集分页；request 与 session 按 kind 二选一出现。
+ */
+export const listQueryOrders = async (params?: ListQueryOrdersParams, options?: Parameters<typeof customInstance>[1]): Promise<listQueryOrdersResponse> => {
+
+  return customInstance<listQueryOrdersResponse>(getListQueryOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
   }
 );}
 

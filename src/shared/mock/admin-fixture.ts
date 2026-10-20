@@ -300,6 +300,7 @@ interface FixtureReviewInput {
 }
 
 interface FixturePromptTool extends FixtureReviewInput {
+  description: string;
   engine: "all" | "mysql" | "postgresql";
   parameters: Record<string, number | string | boolean | string[]>;
   is_builtin: boolean;
@@ -639,6 +640,7 @@ function seededSettingsFor(ns: string): SettingsValue {
   world.promptTools.set(ADMIN_FIXTURE_TOOL_ENABLED_ID, {
     id: ADMIN_FIXTURE_TOOL_ENABLED_ID,
     name: "dml-where-guard",
+    description: "DML statements must carry a WHERE clause that bounds the affected rows.",
     state: "enabled",
     engine: "all",
     parameters: { max_full_scan_rows: 100000 },
@@ -665,6 +667,7 @@ function seededSettingsFor(ns: string): SettingsValue {
   world.promptTools.set(ADMIN_FIXTURE_TOOL_DRAFT_ID, {
     id: ADMIN_FIXTURE_TOOL_DRAFT_ID,
     name: "table-comment-check",
+    description: "Every new table must declare a table comment and column comments.",
     state: "draft",
     engine: "mysql",
     parameters: {},
@@ -705,6 +708,8 @@ function seededSettingsFor(ns: string): SettingsValue {
   world.promptTools.set(ADMIN_FIXTURE_TOOL_BUILTIN_ID, {
     id: ADMIN_FIXTURE_TOOL_BUILTIN_ID,
     name: "builtin-lexical-guards",
+    description:
+      "内置词法守卫：无界DML必须携带WHERE，TRUNCATE/DROP阻断，IN列表/批量行数/语句尺寸超限判定。",
     state: "enabled",
     engine: "all",
     parameters: BUILTIN_LEXICAL_PARAMETERS,
@@ -2941,6 +2946,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (duplicate) return businessError(1005, "prompt tool name already exists");
       const definitionError = validateReviewInputDefinition(body.definition);
       if (definitionError !== null) return businessError(1001, definitionError);
+      const description = typeof body.description === "string" ? body.description : "";
+      // §18.80 mirror: display metadata capped at 100 runes, never hashed.
+      if (Array.from(description).length > 100) return businessError(1001, "description is too long");
       const engine = (body.engine as string | undefined) ?? "all";
       if (!["all", "mysql", "postgresql"].includes(engine)) return businessError(1001, "engine is invalid");
       const state = (body.state as string | undefined) ?? "draft";
@@ -2957,6 +2965,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const tool: FixturePromptTool = {
         id: uuid(),
         name: body.name,
+        description,
         state: state as FixturePromptTool["state"],
         engine: engine as FixturePromptTool["engine"],
         parameters,
@@ -2996,6 +3005,10 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const definition = body.definition as FixtureReviewInput["definition"];
       const engine = ((body.engine as string | undefined) ?? tool.engine) as FixturePromptTool["engine"];
       const name = (body.name as string | undefined) ?? tool.name;
+      const description =
+        typeof body.description === "string" && Array.from(body.description).length <= 100
+          ? body.description
+          : tool.description;
       // B8 ruling (governance tri-split): a built-in row's definition face
       // (name/engine/definition) is frozen — the payload must hash exactly
       // like the stored row — and parameters may only change values, never
@@ -3018,6 +3031,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
         const evaluation = runReviewInputEval(definition, parameters);
         if (!evaluation.pass) return businessError(1001, "eval gate failed");
       }
+      // §18.80 mirror: a built-in row's description is system-seeded — the
+      // payload value is ignored exactly like the definition face.
+      tool.description = tool.is_builtin ? tool.description : description;
       tool.name = name;
       tool.state = state as FixturePromptTool["state"];
       tool.engine = engine;

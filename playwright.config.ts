@@ -18,12 +18,11 @@ export default defineConfig({
     // the build inlines VITE_ENABLE_MOCK=true so the shared MSW worker backs
     // the session, flows and dashboard endpoints exactly as in vitest. Release
     // builds keep the flag off — mock code is a dynamic import and never part
-    // of the default bundle. The GitHub-release banner is pointed at the
-    // same-origin MSW fixture here (dev and production fetch the real
-    // cookieY/Yearning releases API): tests never leave localhost and the
-    // banner stays deterministic.
+    // of the default bundle. The release banner reads the backend snapshot
+    // endpoint (RCP-20261020), backed by the MSW fixture below — tests never
+    // leave localhost and the banner stays deterministic.
     command:
-      "VITE_BUILD_OUT_DIR=dist-e2e VITE_ENABLE_MOCK=true VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && "
+      "VITE_BUILD_OUT_DIR=dist-e2e VITE_ENABLE_MOCK=true pnpm build && "
       + "VITE_BUILD_OUT_DIR=dist-e2e pnpm preview --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,

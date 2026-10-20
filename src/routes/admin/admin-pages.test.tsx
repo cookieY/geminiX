@@ -21,6 +21,7 @@ import AdminAiBudgetPage from "@/routes/admin/admin-ai-budget-page";
 import AdminRuleSetsPage from "@/routes/admin/admin-rule-sets-page";
 import AdminReviewSkillsPage from "@/routes/admin/admin-review-skills-page";
 import AdminReviewKnowledgePage from "@/routes/admin/admin-review-knowledge-page";
+import { renderSkillDescription } from "@/features/admin/skill-description";
 
 /**
  * FE-F9-REVIEW-ADMIN acceptance-gate component tests. The five package
@@ -303,6 +304,75 @@ describe("admin page flows", () => {
     await userEvent.click(await screen.findByTestId(/rule-set-edit-/));
     await screen.findByTestId("rule-set-tools");
     expect(screen.getByText("Draft 不可绑定")).toBeInTheDocument();
+  });
+
+  it("composes skills by description with search and select-all (§18.80)", async () => {
+    renderPage(<AdminRuleSetsPage />);
+    await userEvent.click(await screen.findByTestId(/rule-set-edit-/));
+    await screen.findByTestId("rule-set-tools");
+    // hash展示换成技能说明：对话框内不再渲染64位hash，改渲染说明文案。
+    expect(screen.getByText(/内置词法守卫/)).toBeInTheDocument();
+    expect(screen.queryByText(/^[0-9a-f]{64}$/)).not.toBeInTheDocument();
+    // 全选：可绑定2个、已选1个（半选），点一次全选后2/2。
+    expect(screen.getByTestId("rule-set-tools-select-all-count")).toHaveTextContent("1/2");
+    expect(screen.getByTestId("rule-set-tools-select-all")).not.toBeChecked();
+    await userEvent.click(screen.getByTestId("rule-set-tools-select-all"));
+    expect(screen.getByTestId("rule-set-tools-select-all-count")).toHaveTextContent("2/2");
+    expect(screen.getByTestId("rule-set-tools-select-all")).toBeChecked();
+    // 搜索过滤到唯一草稿行：无可绑定项时全选禁用（Base UI走aria-disabled），count归零。
+    await userEvent.type(screen.getByTestId("rule-set-tools-search"), "table-comment");
+    expect(screen.getByTestId("rule-set-tools-select-all")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("rule-set-tools-select-all-count")).toHaveTextContent("0/0");
+    expect(screen.getByTestId(/rule-set-tool-option-/)).toBeInTheDocument();
+    // 清空搜索恢复全表。
+    await userEvent.click(screen.getByTestId("rule-set-tools-search-clear"));
+    expect(screen.getByTestId("rule-set-tools-select-all-count")).toHaveTextContent("2/2");
+  });
+
+  it("shows the skill description under the table name (§18.80)", async () => {
+    renderPage(<AdminReviewSkillsPage />);
+    const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    expect(
+      within(row).getByTestId(`review-input-description-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`),
+    ).toHaveTextContent("内置词法守卫");
+  });
+
+  it("tunes builtin parameter values without touching the system-owned rule text (§18.81)", async () => {
+    renderPage(<AdminReviewSkillsPage />);
+    const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
+    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    const section = await screen.findByTestId("review-input-params");
+    // 规则正文锁定不动（owner裁定：提示词不可改），参数控件可用。
+    const ruleText = screen.getByTestId("review-input-knowledge-text");
+    expect(ruleText).toBeDisabled();
+    expect(section).toHaveTextContent("max_in_items");
+    const valueInput = within(section).getByTestId("review-input-param-max_in_items");
+    // 非法值（清空）：就地拦截，不发请求，弹窗不关。
+    await userEvent.clear(valueInput);
+    await userEvent.click(screen.getByTestId("review-input-submit"));
+    expect(screen.getByTestId("review-input-param-error")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // 合法值：1000 → 2000，保存成功弹窗关闭。
+    await userEvent.type(valueInput, "2000");
+    await userEvent.click(screen.getByTestId("review-input-submit"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // 重开回显新值；规则正文仍是系统原文。
+    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    const reopened = await screen.findByTestId("review-input-params");
+    expect(within(reopened).getByTestId("review-input-param-max_in_items")).toHaveValue(2000);
+    expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
+  });
+
+  it("renders skill-description placeholders with current parameter values (§18.80补记1)", () => {
+    expect(
+      renderSkillDescription("行数不得超过{{max_affect_rows}}", { max_affect_rows: 100000 }),
+    ).toBe("行数不得超过100000");
+    // 缺失参数保留占位原样（用户自写说明引用不存在键的兜底）。
+    expect(renderSkillDescription("不得超过{{missing_key}}", {})).toBe("不得超过{{missing_key}}");
+    expect(renderSkillDescription("纯文本说明", {})).toBe("纯文本说明");
+    expect(
+      renderSkillDescription("禁用引擎：{{forbidden_engines}}", { forbidden_engines: ["myisam", "memory"] }),
+    ).toBe("禁用引擎：myisam, memory");
   });
 });
 

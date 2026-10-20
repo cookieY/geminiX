@@ -174,7 +174,7 @@ export default function AuditRecordsPage() {
                 </TableBody>
               </Table>
             )}
-            {auditItems.length > 0 && (
+            {(
               <TablePagination
                 page={pager.pageNo}
                 hasMore={auditHasMore}

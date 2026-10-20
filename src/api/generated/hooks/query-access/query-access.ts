@@ -39,6 +39,8 @@ import type {
   ListQueryAccessRequestsParams,
   ListQueryGrants200,
   ListQueryGrantsParams,
+  ListQueryOrders200,
+  ListQueryOrdersParams,
   ProblemResponse,
   ReasonRequest,
   RelinquishQueryGrant200,
@@ -1119,3 +1121,99 @@ export function useCreateQueryGrantRenewalRequest<TData = Awaited<ReturnType<typ
 
 
 
+export type listQueryOrdersResponse200 = {
+  data: ListQueryOrders200
+  status: 200
+}
+
+export type listQueryOrdersResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type listQueryOrdersResponseSuccess = (listQueryOrdersResponse200) & {
+  headers: Headers;
+};
+export type listQueryOrdersResponseError = (listQueryOrdersResponse403) & {
+  headers: Headers;
+};
+
+export type listQueryOrdersResponse = (listQueryOrdersResponseSuccess | listQueryOrdersResponseError)
+
+export const getListQueryOrdersUrl = (params?: ListQueryOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/query/orders?${stringifiedParams}` : `/api/v4/query/orders`
+}
+
+/**
+ * 本人查询工单组合视图（RCP-20261021）——access_requests 与 query_sessions 两源合并、统一按 created_at 倒序键集分页；request 与 session 按 kind 二选一出现。
+ */
+export const listQueryOrders = async (params?: ListQueryOrdersParams, options?: Parameters<typeof customInstance>[1]): Promise<listQueryOrdersResponse> => {
+
+  return customInstance<listQueryOrdersResponse>(getListQueryOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQueryOrdersMutationKey = () => ['listQueryOrders'] as const;
+
+export const getListQueryOrdersMutationOptions = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listQueryOrders>>, TError,ListQueryOrdersMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listQueryOrders>>, TError,ListQueryOrdersMutationVariables, TContext> => {
+
+const mutationKey = getListQueryOrdersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listQueryOrders>>, ListQueryOrdersMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  listQueryOrders(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListQueryOrdersMutationResult = NonNullable<Awaited<ReturnType<typeof listQueryOrders>>>
+
+    export type ListQueryOrdersMutationError = ProblemResponse
+    export type ListQueryOrdersMutationVariables = {params?: ListQueryOrdersParams}
+
+    export const useListQueryOrders = <TError = ProblemResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listQueryOrders>>, TError,ListQueryOrdersMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listQueryOrders>>,
+        TError,
+        ListQueryOrdersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListQueryOrdersMutationOptions(options), queryClient);
+    }

@@ -56,6 +56,8 @@ export default function AdminUsersPage() {
   const pager = useCursorPage(20);
   const [search, setSearch] = useState("");
   const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const usersLoaded = !usersQuery.isPending && !usersQuery.isError;
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
@@ -114,20 +116,22 @@ export default function AdminUsersPage() {
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={usersQuery.data.page.has_more}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(usersQuery.data.page.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="users"
-              />
               </>
             )}
+      {usersLoaded ? (
+        <TablePagination
+              page={pager.pageNo}
+              hasMore={usersQuery.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => {
+                pager.pushCursor(usersQuery.data.page.next_cursor);
+              }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="users"
+        />
+      ) : null}
           </CardContent>
         </Card>
       )}

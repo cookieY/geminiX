@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { ShieldCheck, Terminal } from "lucide-react";
 import type { QueryAccessRequest, QueryGrant, QuerySession } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
-import { useMyAccessRequests, useMyGrants, useMySessions } from "@/features/query/use-query-domain";
+import { useMyGrants, useQueryOrders } from "@/features/query/use-query-domain";
+import { useCursorPage } from "@/shared/lib/cursor-page";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -26,10 +27,10 @@ import { TablePagination } from "@/shared/components/ui/table-pagination";
  * time of revocation are NOT in the frozen read contract; the gap is
  * recorded in the migration contract §17 as RCP-pending.
  *
- * §18.73: the merged rows paginate locally (default 20/page, site-wide
- * ruling) — the sources are three separate endpoints, so a single server
- * cursor walk is not available without a unified contract surface; each
- * source keeps its bounded first-page fetch (limit 100).
+ * §18.73 → RCP-20261021: the merged view moved server-side —
+ * GET /query/orders unions access requests and sessions with a unified
+ * (created_at, id) keyset cursor; the tab consumes one server page
+ * (default 20/page) instead of merging two bounded fetches locally.
  */
 
 type QueryOrderRow =
@@ -45,35 +46,36 @@ export function QueryOrdersTab() {
   const { t } = useTranslation();
   const session = useSession();
   const authenticated = session.status === "authenticated";
-  const requestsQuery = useMyAccessRequests(authenticated);
+  // RCP-20261021：组合端点服务端分页（合并与排序均在 GET /query/orders）。
+  const pager = useCursorPage(20);
+  const ordersQuery = useQueryOrders(authenticated, {
+    limit: pager.pageSize,
+    after: pager.after,
+  });
   const grantsQuery = useMyGrants(authenticated);
-  const sessionsQuery = useMySessions(authenticated);
   const [detail, setDetail] = useState<QueryOrderRow | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
 
-  const requests = requestsQuery.data ?? [];
+  const entries = ordersQuery.data.items;
   const grants = grantsQuery.data ?? [];
-  const sessions = sessionsQuery.data ?? [];
   const grantById = new Map(grants.map((grant) => [grant.id, grant]));
 
-  const rows: QueryOrderRow[] = [
-    ...requests.map((request): QueryOrderRow => ({
-      kind: "request",
-      id: request.id,
-      request,
-      grant: request.grant_id === null || request.grant_id === undefined ? null : grantById.get(request.grant_id) ?? null,
-    })),
-    ...sessions.map((row): QueryOrderRow => ({ kind: "session", id: row.id, session: row })),
-  ].sort((a, b) => (a.kind === "request" ? a.request.created_at : a.session.created_at).localeCompare(
-    b.kind === "request" ? b.request.created_at : b.session.created_at,
-  ));
+  const rows: QueryOrderRow[] = entries.flatMap((entry): QueryOrderRow[] => {
+    if (entry.kind === "access_request" && entry.request !== undefined) {
+      const request = entry.request;
+      return [{
+        kind: "request" as const,
+        id: entry.id,
+        request,
+        grant: request.grant_id === null || request.grant_id === undefined ? null : grantById.get(request.grant_id) ?? null,
+      }];
+    }
+    if (entry.kind === "session" && entry.session !== undefined) {
+      return [{ kind: "session" as const, id: entry.id, session: entry.session }];
+    }
+    return [];
+  });
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
-
-  const loadError = requestsQuery.error ?? grantsQuery.error ?? sessionsQuery.error;
+  const loadError = ordersQuery.error ?? grantsQuery.error;
 
   return (
     <Card>
@@ -85,22 +87,22 @@ export function QueryOrdersTab() {
         {loadError !== null && (
           <ErrorState
             error={loadError}
-            operationId="listQueryAccessRequests"
+            operationId="listQueryOrders"
             onRetry={() => {
-              void requestsQuery.refetch();
-              void sessionsQuery.refetch();
+              void ordersQuery.refetch();
+              void grantsQuery.refetch();
             }}
           />
         )}
-        {loadError === null && requestsQuery.isPending && (
+        {loadError === null && ordersQuery.isPending && (
           <p className="text-muted-foreground py-6 text-center text-sm">{t("common.loading")}</p>
         )}
-        {loadError === null && !requestsQuery.isPending && rows.length === 0 && (
+        {loadError === null && !ordersQuery.isPending && rows.length === 0 && (
           <p className="text-muted-foreground py-6 text-center text-sm" data-testid="orders-query-empty">
             {t("orders.query.empty")}
           </p>
         )}
-        {loadError === null && !requestsQuery.isPending && rows.length > 0 && (
+        {loadError === null && !ordersQuery.isPending && rows.length > 0 && (
           <Table data-testid="orders-query-table">
             <TableHeader>
               <TableRow>
@@ -112,7 +114,7 @@ export function QueryOrdersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageRows.map((row) => (
+              {rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
@@ -154,15 +156,15 @@ export function QueryOrdersTab() {
             </TableBody>
           </Table>
         )}
-        {loadError === null && !requestsQuery.isPending && rows.length > 0 && (
+        {loadError === null && !ordersQuery.isPending && (
           <TablePagination
-            page={safePage}
-            hasMore={safePage < totalPages}
-            isFirst={safePage === 1}
-            onPrev={() => { setPage(Math.max(1, safePage - 1)); }}
-            onNext={() => { setPage(Math.min(totalPages, safePage + 1)); }}
-            pageSize={pageSize}
-            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            page={pager.pageNo}
+            hasMore={ordersQuery.data.page.has_more}
+            isFirst={pager.isFirst}
+            onPrev={pager.goPrev}
+            onNext={() => { pager.pushCursor(ordersQuery.data.page.next_cursor); }}
+            pageSize={pager.pageSize}
+            onPageSizeChange={pager.setPageSize}
             testIdPrefix="orders-query"
           />
         )}

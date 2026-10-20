@@ -19,11 +19,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    // The release banner points at a same-origin path that 404s without the
-    // MSW worker, so the banner deterministically hides and no test leaves
-    // localhost.
+    // The release banner reads the backend's /releases/latest snapshot
+    // (RCP-20261020): against the real stack it renders either the live
+    // snapshot or the minimum-height placeholder — visible either way, so
+    // visibility assertions stay deterministic without leaving localhost.
     command:
-      "VITE_BUILD_OUT_DIR=dist-real VITE_RELEASE_LATEST_URL=/mock/github-releases/latest pnpm build && " +
+      "VITE_BUILD_OUT_DIR=dist-real pnpm build && " +
       "VITE_BUILD_OUT_DIR=dist-real VITE_E2E_API_PROXY=http://127.0.0.1:18080 pnpm preview --port 4273 --strictPort",
     url: "http://localhost:4273",
     reuseExistingServer: false,

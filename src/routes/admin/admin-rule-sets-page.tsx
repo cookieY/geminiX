@@ -13,6 +13,7 @@ import {
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
+import { renderSkillDescription } from "@/features/admin/skill-description";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -95,8 +96,44 @@ function RuleSetFormDialog({
       ? { name: "", enabled: true, toolIds: [] }
       : { name: editing.name, enabled: editing.enabled, toolIds: [...editing.prompt_tool_ids] },
   );
+  // §18.80：组合列表加客户端搜索（名称+说明子串）与全选，长技能清单
+  // 下高效勾选目标技能。
+  const [toolSearch, setToolSearch] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
+
+  const keyword = toolSearch.trim().toLowerCase();
+  const allTools = toolsQuery.data?.items ?? [];
+  // §18.80补记1：搜索与展示同源——匹配动态渲染后的说明文本。
+  const renderedDescription = (tool: (typeof allTools)[number]): string =>
+    renderSkillDescription(tool.description, tool.parameters ?? {});
+  const visibleTools = keyword === ""
+    ? allTools
+    : allTools.filter((tool) =>
+        tool.name.toLowerCase().includes(keyword) ||
+        renderedDescription(tool).toLowerCase().includes(keyword),
+      );
+  const bindableVisibleIds = visibleTools
+    .filter((tool) => tool.state !== "draft")
+    .map((tool) => tool.id);
+  const selectedVisibleCount = bindableVisibleIds.filter((id) => form.toolIds.includes(id)).length;
+  const allVisibleSelected = bindableVisibleIds.length > 0 && selectedVisibleCount === bindableVisibleIds.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && selectedVisibleCount < bindableVisibleIds.length;
+
+  const toggleAllVisible = () => {
+    setForm((current) => {
+      if (allVisibleSelected) {
+        return {
+          ...current,
+          toolIds: current.toolIds.filter((id) => !bindableVisibleIds.includes(id)),
+        };
+      }
+      return {
+        ...current,
+        toolIds: [...new Set([...current.toolIds, ...bindableVisibleIds])],
+      };
+    });
+  };
 
   const bindingFlows = useMemo(
     () =>
@@ -158,7 +195,9 @@ function RuleSetFormDialog({
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+      {/* §18.80：宽度自适应——全屏下 xl 过窄看不全组合信息，升到
+          3xl/4xl 两档。 */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {editing === null ? t("admin.ruleSets.createTitle") : t("admin.ruleSets.editTitle")}
@@ -193,41 +232,79 @@ function RuleSetFormDialog({
             {toolsQuery.isPending ? (
               <LoadingState />
             ) : (
-              <div className="flex flex-col gap-1.5" data-testid="rule-set-tools">
-                {(toolsQuery.data?.items ?? []).map((tool) => {
-                  const bindable = tool.state === "enabled" || tool.state === "disabled";
-                  const selected = form.toolIds.includes(tool.id);
-                  return (
-                    <label
-                      key={tool.id}
-                      className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${
-                        bindable ? "cursor-pointer" : "cursor-not-allowed opacity-60"
-                      }`}
-                      data-testid={`rule-set-tool-option-${tool.id}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selected}
-                          onCheckedChange={() => { if (bindable) toggleTool(tool.id); }}
-                          disabled={!bindable}
-                        />
-                        <span className="text-sm font-medium">{tool.name}</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          {tool.config_hash}
-                        </Badge>
-                        <Badge variant={tool.state === "enabled" ? "default" : "secondary"}>
-                          {t(`admin.reviewInput.state_${tool.state}`)}
-                        </Badge>
-                        {bindable ? null : (
-                          <Badge variant="destructive">{t("admin.ruleSets.draftNotBindable")}</Badge>
-                        )}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+              <>
+                {/* §18.80：全选（半选态沿用§18.70渲染）+客户端搜索；
+                    全选仅作用于当前过滤结果中的可绑定技能。 */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" data-testid="rule-set-tools-select-all-row">
+                    <Checkbox
+                      checked={allVisibleSelected}
+                      indeterminate={someVisibleSelected}
+                      onCheckedChange={toggleAllVisible}
+                      disabled={bindableVisibleIds.length === 0}
+                      data-testid="rule-set-tools-select-all"
+                    />
+                    {t("admin.ruleSets.selectAll")}
+                    <span className="text-muted-foreground text-xs" data-testid="rule-set-tools-select-all-count">
+                      {selectedVisibleCount}/{bindableVisibleIds.length}
+                    </span>
+                  </label>
+                  <TableSearchInput
+                    value={toolSearch}
+                    onChange={setToolSearch}
+                    placeholder={t("admin.ruleSets.toolsSearchPlaceholder")}
+                    testId="rule-set-tools-search"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5" data-testid="rule-set-tools">
+                  {visibleTools.length === 0 ? (
+                    <p className="text-muted-foreground py-2 text-center text-sm" data-testid="rule-set-tools-search-empty">
+                      {t("table.emptySearch")}
+                    </p>
+                  ) : (
+                    visibleTools.map((tool) => {
+                      const bindable = tool.state === "enabled" || tool.state === "disabled";
+                      const selected = form.toolIds.includes(tool.id);
+                      return (
+                        <label
+                          key={tool.id}
+                          className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${
+                            bindable ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                          }`}
+                          data-testid={`rule-set-tool-option-${tool.id}`}
+                        >
+                          <span className="flex min-w-0 flex-col gap-0.5">
+                            <span className="flex items-center gap-2">
+                              <Checkbox
+                                checked={selected}
+                                onCheckedChange={() => { if (bindable) toggleTool(tool.id); }}
+                                disabled={!bindable}
+                              />
+                              <span className="text-sm font-medium">{tool.name}</span>
+                            </span>
+                            {/* §18.80 owner裁定：hash展示换成技能说明——
+                                编辑时先读懂技能用途再勾选；{{参数}}占位
+                                按行内当前值动态渲染（补记1）。 */}
+                            {tool.description ? (
+                              <span className="text-muted-foreground truncate pl-6 text-xs">
+                                {renderedDescription(tool)}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            <Badge variant={tool.state === "enabled" ? "default" : "secondary"}>
+                              {t(`admin.reviewInput.state_${tool.state}`)}
+                            </Badge>
+                            {bindable ? null : (
+                              <Badge variant="destructive">{t("admin.ruleSets.draftNotBindable")}</Badge>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </>
             )}
           </div>
           {editing !== null ? (
@@ -424,6 +501,9 @@ export default function AdminRuleSetsPage() {
                 })}
               </TableBody>
             </Table>
+            </>
+          )}
+          {!query.isPending && !query.isError ? (
             <TablePagination
               page={pager.pageNo}
               hasMore={query.data.page.has_more}
@@ -436,8 +516,7 @@ export default function AdminRuleSetsPage() {
               onPageSizeChange={pager.setPageSize}
               testIdPrefix="rulesets"
             />
-            </>
-          )}
+          ) : null}
         </CardContent>
       </Card>
       {dialogOpen ? (

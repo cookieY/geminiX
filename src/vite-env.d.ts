@@ -7,12 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_MOCK?: string;
 }
 
-/** GitHub releases/latest endpoint, inlined by the vite.config.ts define.
- * Dev/production hit the real cookieY/Yearning releases API; the e2e web
- * server overrides it with a same-origin MSW fixture path so tests never
- * leave localhost. */
-declare const __RELEASE_LATEST_URL__: string;
-
 /** Owner-mandated footer links, inlined by the vite.config.ts define. */
 declare const __SPONSOR_URL__: string;
 declare const __DOCS_URL__: string;

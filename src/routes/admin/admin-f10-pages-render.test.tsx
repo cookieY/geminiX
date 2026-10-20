@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -213,7 +213,18 @@ describe("workspace dashboard", () => {
     stubSession(false);
     renderPage(<WorkspacePage />);
     expect(await screen.findByTestId("workspace-page")).toBeVisible();
-    expect(await screen.findByTestId("workspace-announcement")).toHaveTextContent("季度维护窗口公告");
+    // RCP-20261020: the announcement card mounts immediately as a
+    // minimum-height placeholder, so the content itself needs a wait.
+    await screen.findByText("季度维护窗口公告");
+    expect(screen.getByTestId("workspace-announcement")).toHaveTextContent("季度维护窗口公告");
+    // The release banner reads the backend snapshot endpoint (mock base
+    // fixture): tag and excerpt render, details link points at the
+    // same-origin fixture path. Default world is up-to-date (current ==
+    // latest) — no "update now" tag. (The sidebar badge lives in the app
+    // shell, outside this page-level mount — shell.spec covers it.)
+    const banner = await screen.findByTestId("workspace-release-banner");
+    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("v4.1.0");
+    expect(within(banner).queryByTestId("release-update-now")).toBeNull();
     // §18.71 (owner ruling 2026-10-16): platform statistics are an
     // authenticated-session surface — non-admin sessions render the same
     // operations trend + stat cards block the admin home shows.
@@ -233,6 +244,69 @@ describe("workspace dashboard", () => {
     expect(screen.queryByTestId("dashboard-draft-count")).not.toBeInTheDocument();
     expect(screen.queryByTestId("workspace-admin-quality")).not.toBeInTheDocument();
     expect(screen.queryByTestId("workspace-admin-health")).not.toBeInTheDocument();
+  });
+
+  it("renders minimum-height placeholders for the release banner and announcement without data (RCP-20261020)", async () => {
+    seedQueryScenario("query-flow");
+    stubSession(false);
+    server.use(
+      http.get("*/releases/latest", () =>
+        HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: "req-release-null" }),
+      ),
+      http.get("*/announcements/current", () =>
+        HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: "req-release-null" }),
+      ),
+    );
+    renderPage(<WorkspacePage />);
+    expect(await screen.findByTestId("workspace-page")).toBeVisible();
+    // Owner ruling 2026-10-20: no snapshot still renders the slots — the
+    // banner shows the label row with an em-dash and the unavailable hint,
+    // the announcement card keeps its frame with an empty hint.
+    const banner = screen.getByTestId("workspace-release-banner");
+    expect(banner).toBeVisible();
+    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("—");
+    expect(within(banner).getByTestId("release-notes-excerpt")).toHaveTextContent("暂无版本信息");
+    expect(within(banner).queryByRole("link", { name: "更新内容详情" })).toBeNull();
+    // The card lives inside the dashboard section, which mounts once the
+    // session resolves — wait for the placeholder to appear.
+    const announcement = await screen.findByTestId("workspace-announcement");
+    expect(announcement).toBeVisible();
+    expect(await screen.findByTestId("workspace-announcement-empty")).toHaveTextContent("暂无公告");
+  });
+
+  it("renders the green update-now tag when the installed reference differs from upstream latest (owner ruling 2026-10-20)", async () => {
+    seedQueryScenario("query-flow");
+    stubSession(false);
+    server.use(
+      http.get("*/releases/latest", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            tag_name: "v4.2.0",
+            name: "Yearning v4.2.0",
+            html_url: "/mock/github-releases/latest/v4.2.0",
+            body: " newer release notes",
+            published_at: "2026-10-19T08:00:00Z",
+            fetched_at: "2026-10-20T00:00:00Z",
+            current_version: "v4.0.0",
+          },
+          request_id: "req-release-mismatch",
+        }),
+      ),
+    );
+    renderPage(<WorkspacePage />);
+    const banner = await screen.findByTestId("workspace-release-banner");
+    // The card mounts instantly as the placeholder and release-tag exists
+    // in that state too — wait for the snapshot CONTENT to arrive.
+    const updateNow = await within(banner).findByTestId("release-update-now");
+    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("v4.2.0");
+    // Green tag beside the latest tag; links to the release page in a new
+    // tab. First install (current_version null) renders none — covered by
+    // the placeholder test above (data:null → no banner content at all).
+    expect(updateNow).toHaveTextContent("立即更新");
+    expect(updateNow).toHaveAttribute("href", "/mock/github-releases/latest/v4.2.0");
+    expect(updateNow).toHaveAttribute("target", "_blank");
   });
 });
 

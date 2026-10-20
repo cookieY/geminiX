@@ -16,6 +16,8 @@ import { Label } from "@/shared/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
   TableBody,
@@ -60,7 +62,14 @@ export default function QueryAccessApprovalsPage() {
   const navigate = useNavigate();
   const session = useSession();
   const authenticated = session.status === "authenticated";
-  const requestsQuery = useMyAccessRequests(authenticated);
+  // RCP-20261021：pending 视图走服务端 state 过滤 + 后端游标分页
+  // （此前客户端过滤在总量超过 limit 时会静默隐藏待审项）。
+  const pager = useCursorPage(20);
+  const requestsQuery = useMyAccessRequests(authenticated, {
+    limit: pager.pageSize,
+    after: pager.after,
+    state: "access_pending",
+  });
   const grantsQuery = useMyGrants(authenticated);
   const decide = useDecideAccessRequest();
 
@@ -69,8 +78,7 @@ export default function QueryAccessApprovalsPage() {
   const [comment, setComment] = useState("");
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const requests = requestsQuery.data ?? [];
-  const pending = requests.filter((row) => row.state === "access_pending");
+  const pending = requestsQuery.data.items;
   const grants = grantsQuery.data ?? [];
   const activeGrants = grants.filter((row) => row.state === "active");
 
@@ -197,7 +205,19 @@ export default function QueryAccessApprovalsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                                {!requestsQuery.isPending && !requestsQuery.isError ? (
+                                <TablePagination
+                                  page={pager.pageNo}
+                                  hasMore={requestsQuery.data.page.has_more}
+                                  isFirst={pager.isFirst}
+                                  onPrev={pager.goPrev}
+                                  onNext={() => { pager.pushCursor(requestsQuery.data.page.next_cursor); }}
+                                  pageSize={pager.pageSize}
+                                  onPageSizeChange={pager.setPageSize}
+                                  testIdPrefix="query-access-approvals"
+                                />
+                              ) : null}
+</Table>
               )}
             </CardContent>
           </Card>

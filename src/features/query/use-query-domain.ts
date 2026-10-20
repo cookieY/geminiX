@@ -13,6 +13,7 @@ import {
   decideQueryAccess,
   listQueryAccessRequests,
   listQueryGrants,
+  listQueryOrders,
   relinquishQueryGrant,
   revokeQueryGrant,
   withdrawQueryAccessRequest,
@@ -33,7 +34,9 @@ import type {
   ExecuteQueryRequest,
   Flow,
   QueryAccessRequest,
+  QueryAccessRequestState,
   QueryGrant,
+  QueryOrderEntry,
   QueryResultPage,
   QuerySession,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -86,17 +89,36 @@ export function useMyQueryFlows(enabled: boolean) {
 
 // ---- access requests & grants -------------------------------------------
 
-export function useMyAccessRequests(enabled: boolean) {
-  return useQuery({
-    queryKey: ["query", "actor", useSessionUserKey(), "access-requests"],
+export function useMyAccessRequests(
+  enabled: boolean,
+  paging?: { limit?: number; after?: string; state?: QueryAccessRequestState },
+) {
+  const query = useQuery({
+    queryKey: [
+      "query", "actor", useSessionUserKey(), "access-requests",
+      paging?.after ?? "", paging?.limit ?? 0, paging?.state ?? "",
+    ],
     queryFn: async () => {
-      const response = (await listQueryAccessRequests({ limit: 100 })) as unknown as {
+      // §18.82: server-side cursor paging (default 20/page) — consumers
+      // read {items, page}; table pages render the footer from page.
+      // RCP-20261021: state filtered server-side (approvals pending view).
+      const response = (await listQueryAccessRequests({
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+        state: paging?.state || undefined,
+      })) as unknown as {
         items?: QueryAccessRequest[];
+        page?: { has_more: boolean; next_cursor: string | null };
       };
-      return itemsOf<QueryAccessRequest>(response);
+      return {
+        items: itemsOf<QueryAccessRequest>(response),
+        page: response.page ?? { has_more: false, next_cursor: null },
+      };
     },
     enabled,
   });
+  // §18.82：data 恒有定义（pending 期空页回退），消费端免判空。
+  return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
 }
 
 export function useMyGrants(enabled: boolean) {
@@ -198,19 +220,59 @@ export function useRelinquishGrant() {
   });
 }
 
-// ---- sessions ------------------------------------------------------------
+// ---- combined query orders (RCP-20261021) --------------------------------
 
-export function useMySessions(enabled: boolean) {
-  return useQuery({
-    queryKey: ["query", "actor", useSessionUserKey(), "sessions"],
+/** 查询工单组合视图：requests+sessions 服务端合并、统一键集分页。 */
+export function useQueryOrders(enabled: boolean, paging?: { limit?: number; after?: string }) {
+  const query = useQuery({
+    queryKey: [
+      "query", "actor", useSessionUserKey(), "orders",
+      paging?.after ?? "", paging?.limit ?? 0,
+    ],
     queryFn: async () => {
-      const response = (await listQuerySessions({ limit: 100 })) as unknown as {
-        items?: QuerySession[];
+      const response = (await listQueryOrders({
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      })) as unknown as {
+        items?: QueryOrderEntry[];
+        page?: { has_more: boolean; next_cursor: string | null };
       };
-      return itemsOf<QuerySession>(response);
+      return {
+        items: itemsOf<QueryOrderEntry>(response),
+        page: response.page ?? { has_more: false, next_cursor: null },
+      };
     },
     enabled,
   });
+  // §18.82：data 恒有定义（pending 期空页回退），消费端免判空。
+  return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
+}
+
+// ---- sessions ------------------------------------------------------------
+
+export function useMySessions(enabled: boolean, paging?: { limit?: number; after?: string }) {
+  const query = useQuery({
+    queryKey: [
+      "query", "actor", useSessionUserKey(), "sessions",
+      paging?.after ?? "", paging?.limit ?? 0,
+    ],
+    queryFn: async () => {
+      const response = (await listQuerySessions({
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      })) as unknown as {
+        items?: QuerySession[];
+        page?: { has_more: boolean; next_cursor: string | null };
+      };
+      return {
+        items: itemsOf<QuerySession>(response),
+        page: response.page ?? { has_more: false, next_cursor: null },
+      };
+    },
+    enabled,
+  });
+  // §18.82：data 恒有定义（pending 期空页回退），消费端免判空。
+  return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
 }
 
 export function useQuerySession(sessionId: string, enabled: boolean, pollWhileActive: boolean) {

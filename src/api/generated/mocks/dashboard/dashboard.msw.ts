@@ -21,8 +21,11 @@ import type {
 
 import type {
   BusinessErrorResponse,
+  LatestReleaseResultResponse,
+  LatestReleaseSuccess,
   MyDashboardResultResponse,
-  MyDashboardSuccess
+  MyDashboardSuccess,
+  ReleaseSnapshot
 } from '../../client/yearningV4HTTPAPI.schemas';
 
 
@@ -31,6 +34,14 @@ export const getGetMyDashboardResponseMyDashboardSuccessMock = (overrideResponse
 export const getGetMyDashboardResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getGetMyDashboardResponseMock = (): MyDashboardResultResponse => (faker.helpers.arrayElement([{...getGetMyDashboardResponseMyDashboardSuccessMock()},{...getGetMyDashboardResponseBusinessErrorResponseMock()},]))
+
+export const getGetLatestReleaseResponseReleaseSnapshotMock = (overrideResponse: Partial<ReleaseSnapshot> = {}): ReleaseSnapshot => ({...{tag_name: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), html_url: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), published_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), fetched_at: faker.date.past().toISOString().slice(0, 19) + 'Z', current_version: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])}, ...overrideResponse});
+
+export const getGetLatestReleaseResponseLatestReleaseSuccessMock = (overrideResponse: Partial<LatestReleaseSuccess> = {}): LatestReleaseSuccess => ({...{err_code: 0, message: "ok", data: faker.helpers.arrayElement([{...getGetLatestReleaseResponseReleaseSnapshotMock()},null,]), request_id: faker.string.uuid()}, ...overrideResponse});
+
+export const getGetLatestReleaseResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getGetLatestReleaseResponseMock = (): LatestReleaseResultResponse => (faker.helpers.arrayElement([{...getGetLatestReleaseResponseLatestReleaseSuccessMock()},{...getGetLatestReleaseResponseBusinessErrorResponseMock()},]))
 
 
 export const getGetMyDashboardMockHandler = (overrideResponse?: MyDashboardResultResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<MyDashboardResultResponse> | MyDashboardResultResponse), options?: RequestHandlerOptions) => {
@@ -44,6 +55,19 @@ export const getGetMyDashboardMockHandler = (overrideResponse?: MyDashboardResul
       })
   }, options)
 }
+
+export const getGetLatestReleaseMockHandler = (overrideResponse?: LatestReleaseResultResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LatestReleaseResultResponse> | LatestReleaseResultResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/releases/latest', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetLatestReleaseResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getDashboardMock = () => [
-  getGetMyDashboardMockHandler()
+  getGetMyDashboardMockHandler(),
+  getGetLatestReleaseMockHandler()
 ]

@@ -40,6 +40,8 @@ export default function AdminAnnouncementsPage() {
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
   const revisionsQuery = useAnnouncementRevisions(isAdmin, { limit: pager.pageSize, after: pager.after });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const revisionsLoaded = !revisionsQuery.isPending && !revisionsQuery.isError;
   const currentQuery = useCurrentAnnouncementQuery(isAdmin);
   const createRevision = useCreateAnnouncementRevision();
   const publish = usePublishAnnouncement();
@@ -170,20 +172,22 @@ export default function AdminAnnouncementsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={revisionsPage?.has_more ?? false}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(revisionsPage?.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="announcements"
-              />
               </>
             )}
+      {revisionsLoaded ? (
+        <TablePagination
+              page={pager.pageNo}
+              hasMore={revisionsPage?.has_more ?? false}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => {
+                pager.pushCursor(revisionsPage?.next_cursor);
+              }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="announcements"
+        />
+      ) : null}
           </CardContent>
         </Card>
       )}

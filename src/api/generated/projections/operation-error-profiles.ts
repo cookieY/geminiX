@@ -21,7 +21,8 @@ export const OPERATION_ERROR_PROFILES: {
       "startOidcLogin",
       "finishOidcLogin",
       "getCurrentUser",
-      "getCurrentAnnouncement"
+      "getCurrentAnnouncement",
+      "getLatestRelease"
     ]
   },
   "validated_list": {
@@ -47,6 +48,8 @@ export const OPERATION_ERROR_PROFILES: {
       "listQueryAccessRequests",
       "listQueryGrants",
       "listQuerySessions",
+      "listQueryOrders",
+      "listApprovalQueue",
       "listAnnouncementRevisions",
       "listKnowledgeEntries",
       "listFlowMaskingRules"

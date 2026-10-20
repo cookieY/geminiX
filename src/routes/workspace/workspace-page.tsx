@@ -69,7 +69,7 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
       queryClient.invalidateQueries({ queryKey: ["announcements"] }),
       queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
-      queryClient.invalidateQueries({ queryKey: ["github"] }),
+      queryClient.invalidateQueries({ queryKey: ["releases"] }),
       queryClient.invalidateQueries({ queryKey: ["auth", "flows"] }),
     ]);
     // Report after the refetches settle: the query objects above are live and
@@ -87,8 +87,11 @@ export default function WorkspacePage() {
     user !== null && !user.can_access_admin && reviewFlows.isSuccess && queryFlows.isSuccess
     && !hasFlowGrants;
 
+  // min-h-full + the section's flex-1: the dashboard block stretches to the
+  // footer at any window size (owner ruling 2026-10-20) — pages with taller
+  // content keep scrolling.
   return (
-    <div className="flex flex-col gap-5" data-testid="workspace-page">
+    <div className="flex min-h-full flex-col gap-5" data-testid="workspace-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">
@@ -132,11 +135,12 @@ export default function WorkspacePage() {
       {/* The statistics section mounts immediately for every authenticated
               session (§18.71, owner ruling 2026-10-16: platform statistics are
               visible to all logged-in users — /admin/dashboard/operations is an
-              authenticated-session read); the announcement slot renders null
-              until its query resolves so the rest of the home never waits on
-              it. Owner ruling 2026-09-02 keeps the reference blocks — release
-              banner, order trend beside the announcement, and the three stat
-              cards; nothing below them. */}
+              authenticated-session read). Owner ruling 2026-09-02 keeps the
+              reference blocks — release banner, order trend beside the
+              announcement, and the three stat cards; nothing below them.
+              Owner ruling 2026-10-20 (RCP-20261020): the release banner and
+              announcement card render minimum-height placeholders instead of
+              collapsing when the backend has no data yet. */}
       <AdminDashboardSection
         enabled={user !== null}
         announcement={<AnnouncementCard publication={announcementQuery.data ?? null} />}

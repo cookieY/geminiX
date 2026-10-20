@@ -18,6 +18,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  LatestReleaseResultResponse,
   MyDashboardResultResponse
 } from '../yearningV4HTTPAPI.schemas';
 
@@ -106,4 +107,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getGetMyDashboardMutationOptions(options), queryClient);
+    }
+    export type getLatestReleaseResponse200 = {
+  data: LatestReleaseResultResponse
+  status: 200
+}
+
+export type getLatestReleaseResponseSuccess = (getLatestReleaseResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getLatestReleaseResponse = (getLatestReleaseResponseSuccess)
+
+export const getGetLatestReleaseUrl = () => {
+
+
+
+
+  return `/api/v4/releases/latest`
+}
+
+export const getLatestRelease = async ( options?: Parameters<typeof customInstance>[1]): Promise<getLatestReleaseResponse> => {
+
+  return customInstance<getLatestReleaseResponse>(getGetLatestReleaseUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLatestReleaseMutationKey = () => ['getLatestRelease'] as const;
+
+export const getGetLatestReleaseMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getLatestRelease>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof getLatestRelease>>, TError,void, TContext> => {
+
+const mutationKey = getGetLatestReleaseMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getLatestRelease>>, void> = () => {
+
+
+          return  getLatestRelease(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetLatestReleaseMutationResult = NonNullable<Awaited<ReturnType<typeof getLatestRelease>>>
+
+    export type GetLatestReleaseMutationError = unknown
+
+
+    export const useGetLatestRelease = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getLatestRelease>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof getLatestRelease>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getGetLatestReleaseMutationOptions(options), queryClient);
     }

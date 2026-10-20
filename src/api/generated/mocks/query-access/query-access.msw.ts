@@ -21,7 +21,9 @@ import type {
 
 import {
   QueryAccessRequestState,
-  QueryGrantState
+  QueryGrantState,
+  QuerySessionDatasourceState,
+  QuerySessionState
 } from '../../client/yearningV4HTTPAPI.schemas';
 import type {
   BusinessErrorResponse,
@@ -32,6 +34,7 @@ import type {
   GetQueryGrant200,
   ListQueryAccessRequests200,
   ListQueryGrants200,
+  ListQueryOrders200,
   RelinquishQueryGrant200,
   RevokeQueryGrant200,
   WithdrawQueryAccessRequest200
@@ -77,6 +80,10 @@ export const getRelinquishQueryGrantResponseMock = (): RelinquishQueryGrant200 =
 export const getCreateQueryGrantRenewalRequestResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
 export const getCreateQueryGrantRenewalRequestResponseMock = (): CreateQueryGrantRenewalRequest200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {id: faker.string.uuid(), requester_user_id: faker.string.uuid(), state: faker.helpers.arrayElement(Object.values(QueryAccessRequestState)), datasource_ids: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), grant_id: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.uuid(),null,]), undefined]), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', reason: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), undefined]), requested_until: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), undefined]), terminal_at: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), undefined])}, request_id: faker.string.uuid()},{...getCreateQueryGrantRenewalRequestResponseBusinessErrorResponseMock()},]))
+
+export const getListQueryOrdersResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
+
+export const getListQueryOrdersResponseMock = (): ListQueryOrders200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {...{items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), page: {next_cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), has_more: faker.datatype.boolean()}},...{items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({kind: faker.helpers.arrayElement(['access_request','session'] as const), id: faker.string.uuid(), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', request: faker.helpers.arrayElement([{id: faker.string.uuid(), requester_user_id: faker.string.uuid(), state: faker.helpers.arrayElement(Object.values(QueryAccessRequestState)), datasource_ids: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), grant_id: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.uuid(),null,]), undefined]), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', reason: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), undefined]), requested_until: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), undefined]), terminal_at: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), undefined])}, undefined]), session: faker.helpers.arrayElement([{id: faker.string.uuid(), user_id: faker.string.uuid(), state: faker.helpers.arrayElement(Object.values(QuerySessionState)), grant_id: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.uuid(),null,]), undefined]), capabilities: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({datasource_id: faker.string.uuid(), datasource_name: faker.string.alpha({length: {min: 10, max: 20}}), state: faker.helpers.arrayElement(Object.values(QuerySessionDatasourceState)), can_query: true, can_export: faker.datatype.boolean()})), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z'}, undefined])}))},}, request_id: faker.string.uuid()},{...getListQueryOrdersResponseBusinessErrorResponseMock()},]))
 
 
 export const getListQueryAccessRequestsMockHandler = (overrideResponse?: ListQueryAccessRequests200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListQueryAccessRequests200> | ListQueryAccessRequests200), options?: RequestHandlerOptions) => {
@@ -198,6 +205,18 @@ export const getCreateQueryGrantRenewalRequestMockHandler = (overrideResponse?: 
       })
   }, options)
 }
+
+export const getListQueryOrdersMockHandler = (overrideResponse?: ListQueryOrders200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListQueryOrders200> | ListQueryOrders200), options?: RequestHandlerOptions) => {
+  return http.get('*/query/orders', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListQueryOrdersResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getQueryAccessMock = () => [
   getListQueryAccessRequestsMockHandler(),
   getCreateQueryAccessRequestMockHandler(),
@@ -208,5 +227,6 @@ export const getQueryAccessMock = () => [
   getGetQueryGrantMockHandler(),
   getRevokeQueryGrantMockHandler(),
   getRelinquishQueryGrantMockHandler(),
-  getCreateQueryGrantRenewalRequestMockHandler()
+  getCreateQueryGrantRenewalRequestMockHandler(),
+  getListQueryOrdersMockHandler()
 ]

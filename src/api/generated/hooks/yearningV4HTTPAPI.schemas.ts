@@ -921,6 +921,11 @@ export interface PromptToolWrite {
      * @maxLength 128
      */
   name: string;
+  /**
+     * Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.
+     * @maxLength 100
+     */
+  description?: string;
   state: PromptToolWriteState;
   engine?: PromptToolWriteEngine;
   /** 可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数/短字符串/布尔/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。 */
@@ -939,6 +944,8 @@ export const PromptToolEngine = {
 
 export type PromptTool = PromptToolWrite & {
   id: Uuid;
+  /** System-seeded for built-in rows; empty string when the skill carries no description. */
+  description: string;
   engine: PromptToolEngine;
   config_hash: string;
   /** @minimum 1 */
@@ -2295,6 +2302,17 @@ export const QueryAccessRequestState = {
   invalid: 'invalid',
 } as const;
 
+/**
+ * 条目来源；request 与 session 按 kind 二选一出现。
+ */
+export type QueryOrderEntryKind = typeof QueryOrderEntryKind[keyof typeof QueryOrderEntryKind];
+
+
+export const QueryOrderEntryKind = {
+  access_request: 'access_request',
+  session: 'session',
+} as const;
+
 export interface QueryAccessRequest {
   id: Uuid;
   requester_user_id: Uuid;
@@ -2312,41 +2330,6 @@ export interface QueryAccessRequest {
   requested_until?: Timestamp | null;
   /** Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant. */
   terminal_at?: Timestamp | null;
-}
-
-export type QueryGrantState = typeof QueryGrantState[keyof typeof QueryGrantState];
-
-
-export const QueryGrantState = {
-  active: 'active',
-  revoked: 'revoked',
-  expired: 'expired',
-  relinquished: 'relinquished',
-} as const;
-
-export interface QueryGrant {
-  id: Uuid;
-  requester_user_id: Uuid;
-  state: QueryGrantState;
-  /** @nullable */
-  revoked_reason?: string | null;
-  /**
-     * Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).
-     * @nullable
-     */
-  revoked_by_username?: string | null;
-  revoked_at?: Timestamp | null;
-  expires_at?: Timestamp | null;
-  /** @minimum 1 */
-  version: number;
-  created_at: Timestamp;
-}
-
-export interface CreateQuerySession {
-  flow_id: Uuid;
-  grant_id?: Uuid | null;
-  /** @minItems 1 */
-  datasource_ids: Uuid[];
 }
 
 export type QuerySessionState = typeof QuerySessionState[keyof typeof QuerySessionState];
@@ -2385,6 +2368,50 @@ export interface QuerySession {
   grant_id?: Uuid | null;
   capabilities: QuerySessionCapability[];
   created_at: Timestamp;
+}
+
+export interface QueryOrderEntry {
+  /** 条目来源；request 与 session 按 kind 二选一出现。 */
+  kind: QueryOrderEntryKind;
+  id: Uuid;
+  created_at: Timestamp;
+  request?: QueryAccessRequest;
+  session?: QuerySession;
+}
+
+export type QueryGrantState = typeof QueryGrantState[keyof typeof QueryGrantState];
+
+
+export const QueryGrantState = {
+  active: 'active',
+  revoked: 'revoked',
+  expired: 'expired',
+  relinquished: 'relinquished',
+} as const;
+
+export interface QueryGrant {
+  id: Uuid;
+  requester_user_id: Uuid;
+  state: QueryGrantState;
+  /** @nullable */
+  revoked_reason?: string | null;
+  /**
+     * Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).
+     * @nullable
+     */
+  revoked_by_username?: string | null;
+  revoked_at?: Timestamp | null;
+  expires_at?: Timestamp | null;
+  /** @minimum 1 */
+  version: number;
+  created_at: Timestamp;
+}
+
+export interface CreateQuerySession {
+  flow_id: Uuid;
+  grant_id?: Uuid | null;
+  /** @minItems 1 */
+  datasource_ids: Uuid[];
 }
 
 export interface DatasourceSchema {
@@ -2689,6 +2716,24 @@ export interface CurrentAnnouncementSuccess {
   request_id: Uuid;
 }
 
+export interface ReleaseSnapshot {
+  /** @minLength 1 */
+  tag_name: string;
+  name: string;
+  html_url: string;
+  body: string;
+  published_at: Timestamp | null;
+  fetched_at: Timestamp;
+  current_version: string | null;
+}
+
+export interface LatestReleaseSuccess {
+  err_code: 0;
+  message: 'ok';
+  data: ReleaseSnapshot | null;
+  request_id: Uuid;
+}
+
 export interface AnnouncementRevisionPageSuccess {
   err_code: 0;
   message: 'ok';
@@ -2868,6 +2913,11 @@ export type SystemHealthDashboardResultResponse = SystemHealthDashboardSuccess |
  * Current published safe announcement, or null
  */
 export type CurrentAnnouncementResultResponse = CurrentAnnouncementSuccess | BusinessErrorResponse;
+
+/**
+ * Latest upstream release snapshot recorded by this instance, or null before the first successful fetch (RCP-20261020)
+ */
+export type LatestReleaseResultResponse = LatestReleaseSuccess | BusinessErrorResponse;
 
 /**
  * Immutable announcement revision page
@@ -4124,6 +4174,10 @@ export type ListQueryAccessRequestsParams = {
  */
 limit?: LimitParameter;
 after?: AfterParameter;
+/**
+ * 按申请状态过滤（RCP-20261021；缺省返回全部状态的关系可见项）。
+ */
+state?: QueryAccessRequestState;
 };
 
 export type ListQueryAccessRequests200 = {
@@ -4206,6 +4260,24 @@ export type CreateQueryGrantRenewalRequest200 = {
   err_code: 0;
   message: 'ok';
   data: QueryAccessRequest;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListQueryOrdersParams = {
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: LimitParameter;
+after?: AfterParameter;
+};
+
+export type ListQueryOrders200 = {
+  err_code: 0;
+  message: 'ok';
+  data: Page & {
+  items?: QueryOrderEntry[];
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 

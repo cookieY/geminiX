@@ -25,9 +25,14 @@ export function FullLayout() {
           alignment. */}
       <SidebarInset className="m-2 h-[calc(100svh-1rem)] overflow-hidden rounded-xl! outline outline-border">
         <AppHeader />
+        {/* Fill chain (owner ruling 2026-10-20): the column below the nav is
+            a definite-height scroll container, so min-h-full resolves exactly
+            and every page can stretch its content to the footer — the old
+            min-h-[calc(100vh-140px)] approximation left dead space on tall
+            windows and floated the footer up on short ones. */}
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <div className="container mx-auto w-full">
-            <div className="min-h-[calc(100vh-140px)]">
+          <div className="container mx-auto flex min-h-full w-full flex-col">
+            <div className="flex flex-1 flex-col">
               <Outlet />
             </div>
             <AppFooter />

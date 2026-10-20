@@ -1,6 +1,8 @@
-import { HttpResponse, delay, http, passthrough } from "msw";
+import { HttpResponse, delay, http } from "msw";
 import { BUSINESS_ERROR_CATALOG } from "@/api/generated/projections/business-error-catalog";
 import {
+  getGetLatestReleaseMockHandler,
+  getGetLatestReleaseResponseLatestReleaseSuccessMock,
   getGetMyDashboardMockHandler,
   getGetMyDashboardResponseBusinessErrorResponseMock,
   getGetMyDashboardResponseMyDashboardSuccessMock,
@@ -210,19 +212,23 @@ export function scenarioHandlers(scenario: MockScenario) {
   }
 }
 
-// Deterministic GitHub-release fixture backing the home release banner
-// (owner ruling 2026-09-02). Mock/e2e builds point VITE_RELEASE_LATEST_URL
-// at this same-origin path, so tests never hit api.github.com and the
-// banner stays byte-stable. The fixture's html_url deliberately stays
-// same-origin too — the browser-storage gates forbid absolute transport
-// URL literals in src.
-const RELEASE_FIXTURE = {
+// Deterministic release-snapshot fixture backing the home release banner
+// (RCP-20261020-RELEASE-FEED-BACKEND): the banner reads the backend's
+// /releases/latest envelope, so the mock layer mirrors that endpoint. The
+// fixture's html_url deliberately stays same-origin — the browser-storage
+// gates forbid absolute transport URL literals in src.
+const RELEASE_SNAPSHOT_FIXTURE = {
   tag_name: "v4.1.0",
   name: "Yearning v4.1.0",
-  published_at: "2026-09-01T08:00:00Z",
+  published_at: "2026-09-01T08:00:00Z" as string | null,
   body: "工单趋势与首页服务状态优化，新增数据源TLS状态展示；修复查询导出在超宽结果下的截断问题，并提升大批量执行的稳定性。",
   html_url: "/mock/github-releases/latest/v4.1.0",
-} as const;
+  fetched_at: "2026-10-20T00:00:00Z",
+  // Equal to tag_name: the default mock world is up-to-date — no "update
+  // now" tag renders and the screenshot baselines stay byte-stable. The
+  // mismatch path is covered by an endpoint override in the unit tests.
+  current_version: "v4.1.0" as string | null,
+};
 
 /** Base set: the deterministic dashboard handler plus the hand-written
  * authentication handlers that simulate the cookie session, the stateful
@@ -237,11 +243,12 @@ export function baseHandlers() {
       }),
     ),
     ...adminDashboardHandlers(),
-    http.get("*/mock/github-releases/latest", () => HttpResponse.json(RELEASE_FIXTURE)),
-    // Dev mock builds fetch the real cookieY/Yearning releases API (owner
-    // ruling: real release data outside e2e) — pass it through instead of
-    // flagging it as unhandled.
-    http.get("*/repos/cookieY/Yearning/releases/latest", () => passthrough()),
+    getGetLatestReleaseMockHandler(
+      getGetLatestReleaseResponseLatestReleaseSuccessMock({
+        request_id: DEMO_REQUEST_ID,
+        data: { ...RELEASE_SNAPSHOT_FIXTURE },
+      }),
+    ),
     ...authMockHandlers(),
     ...reviewFixtureHandlers(),
     ...adminFixtureHandlers(),

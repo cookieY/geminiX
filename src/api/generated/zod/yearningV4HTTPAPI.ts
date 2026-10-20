@@ -2952,6 +2952,8 @@ export const ListPromptToolsQueryParams = zod.object({
 
 export const listPromptToolsResponseOneDataTwoItemsItemOneNameMax = 128;
 
+export const listPromptToolsResponseOneDataTwoItemsItemOneDescriptionMax = 100;
+
 export const listPromptToolsResponseOneDataTwoItemsItemOneEngineDefault = `all`;
 export const listPromptToolsResponseOneDataTwoItemsItemOneParametersOneMax = 1000000000000000;
 
@@ -2979,6 +2981,7 @@ export const ListPromptToolsResponse = zod.union([zod.object({
 }).and(zod.object({
   "items": zod.array(zod.object({
   "name": zod.string().min(1).max(listPromptToolsResponseOneDataTwoItemsItemOneNameMax),
+  "description": zod.string().max(listPromptToolsResponseOneDataTwoItemsItemOneDescriptionMax).describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(listPromptToolsResponseOneDataTwoItemsItemOneEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(listPromptToolsResponseOneDataTwoItemsItemOneParametersOneMax),zod.string().max(listPromptToolsResponseOneDataTwoItemsItemOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(listPromptToolsResponseOneDataTwoItemsItemOneParametersFourItemMax)).max(listPromptToolsResponseOneDataTwoItemsItemOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -2989,6 +2992,7 @@ export const ListPromptToolsResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "id": zod.uuid(),
+  "description": zod.string().describe('System-seeded for built-in rows; empty string when the skill carries no description.'),
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
@@ -3010,6 +3014,8 @@ export const ListPromptToolsResponse = zod.union([zod.object({
 
 export const createPromptToolBodyNameMax = 128;
 
+export const createPromptToolBodyDescriptionMax = 100;
+
 export const createPromptToolBodyEngineDefault = `all`;
 export const createPromptToolBodyParametersOneMax = 1000000000000000;
 
@@ -3026,6 +3032,7 @@ export const createPromptToolBodyDefinitionMaxSeverityDefault = `medium`;
 
 export const CreatePromptToolBody = zod.object({
   "name": zod.string().min(1).max(createPromptToolBodyNameMax),
+  "description": zod.string().max(createPromptToolBodyDescriptionMax).optional().describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(createPromptToolBodyEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(createPromptToolBodyParametersOneMax),zod.string().max(createPromptToolBodyParametersTwoMax),zod.boolean(),zod.array(zod.string().max(createPromptToolBodyParametersFourItemMax)).max(createPromptToolBodyParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -3037,6 +3044,8 @@ export const CreatePromptToolBody = zod.object({
 })
 
 export const createPromptToolResponseOneDataOneNameMax = 128;
+
+export const createPromptToolResponseOneDataOneDescriptionMax = 100;
 
 export const createPromptToolResponseOneDataOneEngineDefault = `all`;
 export const createPromptToolResponseOneDataOneParametersOneMax = 1000000000000000;
@@ -3058,6 +3067,7 @@ export const CreatePromptToolResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "name": zod.string().min(1).max(createPromptToolResponseOneDataOneNameMax),
+  "description": zod.string().max(createPromptToolResponseOneDataOneDescriptionMax).describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(createPromptToolResponseOneDataOneEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(createPromptToolResponseOneDataOneParametersOneMax),zod.string().max(createPromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(createPromptToolResponseOneDataOneParametersFourItemMax)).max(createPromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -3068,6 +3078,7 @@ export const CreatePromptToolResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "id": zod.uuid(),
+  "description": zod.string().describe('System-seeded for built-in rows; empty string when the skill carries no description.'),
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
@@ -3092,6 +3103,8 @@ export const GetPromptToolParams = zod.object({
 
 export const getPromptToolResponseOneDataOneNameMax = 128;
 
+export const getPromptToolResponseOneDataOneDescriptionMax = 100;
+
 export const getPromptToolResponseOneDataOneEngineDefault = `all`;
 export const getPromptToolResponseOneDataOneParametersOneMax = 1000000000000000;
 
@@ -3112,6 +3125,7 @@ export const GetPromptToolResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "name": zod.string().min(1).max(getPromptToolResponseOneDataOneNameMax),
+  "description": zod.string().max(getPromptToolResponseOneDataOneDescriptionMax).describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(getPromptToolResponseOneDataOneEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(getPromptToolResponseOneDataOneParametersOneMax),zod.string().max(getPromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(getPromptToolResponseOneDataOneParametersFourItemMax)).max(getPromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -3122,6 +3136,7 @@ export const GetPromptToolResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "id": zod.uuid(),
+  "description": zod.string().describe('System-seeded for built-in rows; empty string when the skill carries no description.'),
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
@@ -3153,6 +3168,8 @@ export const ReplacePromptToolHeader = zod.object({
 
 export const replacePromptToolBodyNameMax = 128;
 
+export const replacePromptToolBodyDescriptionMax = 100;
+
 export const replacePromptToolBodyEngineDefault = `all`;
 export const replacePromptToolBodyParametersOneMax = 1000000000000000;
 
@@ -3169,6 +3186,7 @@ export const replacePromptToolBodyDefinitionMaxSeverityDefault = `medium`;
 
 export const ReplacePromptToolBody = zod.object({
   "name": zod.string().min(1).max(replacePromptToolBodyNameMax),
+  "description": zod.string().max(replacePromptToolBodyDescriptionMax).optional().describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(replacePromptToolBodyEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(replacePromptToolBodyParametersOneMax),zod.string().max(replacePromptToolBodyParametersTwoMax),zod.boolean(),zod.array(zod.string().max(replacePromptToolBodyParametersFourItemMax)).max(replacePromptToolBodyParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -3180,6 +3198,8 @@ export const ReplacePromptToolBody = zod.object({
 })
 
 export const replacePromptToolResponseOneDataOneNameMax = 128;
+
+export const replacePromptToolResponseOneDataOneDescriptionMax = 100;
 
 export const replacePromptToolResponseOneDataOneEngineDefault = `all`;
 export const replacePromptToolResponseOneDataOneParametersOneMax = 1000000000000000;
@@ -3201,6 +3221,7 @@ export const ReplacePromptToolResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "name": zod.string().min(1).max(replacePromptToolResponseOneDataOneNameMax),
+  "description": zod.string().max(replacePromptToolResponseOneDataOneDescriptionMax).describe('Skill description shown under the name in the admin table and the rule-set composer (§18.80). Display metadata only — never part of config_hash or the definition hash, so editing it does not invalidate unsubmitted reviews. Full-replacement semantics like every other field — omitting it clears the description. Built-in rows keep their system-seeded description; the payload value is ignored for them.'),
   "state": zod.enum(['draft', 'enabled', 'disabled']),
   "engine": zod.enum(['all', 'mysql', 'postgresql']).default(replacePromptToolResponseOneDataOneEngineDefault),
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(replacePromptToolResponseOneDataOneParametersOneMax),zod.string().max(replacePromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(replacePromptToolResponseOneDataOneParametersFourItemMax)).max(replacePromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
@@ -3211,6 +3232,7 @@ export const ReplacePromptToolResponse = zod.union([zod.object({
 })
 }).and(zod.object({
   "id": zod.uuid(),
+  "description": zod.string().describe('System-seeded for built-in rows; empty string when the skill carries no description.'),
   "engine": zod.enum(['all', 'mysql', 'postgresql']),
   "config_hash": zod.string(),
   "version": zod.int().min(1),
@@ -6782,7 +6804,8 @@ export const listQueryAccessRequestsQueryLimitMax = 200;
 
 export const ListQueryAccessRequestsQueryParams = zod.object({
   "limit": zod.int().min(1).max(listQueryAccessRequestsQueryLimitMax).default(listQueryAccessRequestsQueryLimitDefault),
-  "after": zod.string().optional()
+  "after": zod.string().optional(),
+  "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']).optional().describe('按申请状态过滤（RCP-20261021；缺省返回全部状态的关系可见项）。')
 })
 
 
@@ -7247,6 +7270,75 @@ export const CreateQueryGrantRenewalRequestResponse = zod.union([zod.object({
 })])
 
 
+/**
+ * 本人查询工单组合视图（RCP-20261021）——access_requests 与 query_sessions 两源合并、统一按 created_at 倒序键集分页；request 与 session 按 kind 二选一出现。
+ */
+export const listQueryOrdersQueryLimitDefault = 50;
+export const listQueryOrdersQueryLimitMax = 200;
+
+
+
+export const ListQueryOrdersQueryParams = zod.object({
+  "limit": zod.int().min(1).max(listQueryOrdersQueryLimitMax).default(listQueryOrdersQueryLimitDefault),
+  "after": zod.string().optional()
+})
+
+
+
+
+export const ListQueryOrdersResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "items": zod.array(zod.unknown()),
+  "page": zod.object({
+  "next_cursor": zod.string().nullable(),
+  "has_more": zod.boolean()
+})
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "kind": zod.enum(['access_request', 'session']).describe('条目来源；request 与 session 按 kind 二选一出现。'),
+  "id": zod.uuid(),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "request": zod.object({
+  "id": zod.uuid(),
+  "requester_user_id": zod.uuid(),
+  "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
+  "datasource_ids": zod.array(zod.uuid()),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullish().describe('Application reason submitted by the requester (snapshot of the original request payload).'),
+  "requested_until": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional().describe('Time the request reached a terminal state (rejected, withdrawn or invalid); null while pending or under an active grant.')
+}).optional(),
+  "session": zod.object({
+  "id": zod.uuid(),
+  "user_id": zod.uuid(),
+  "state": zod.enum(['active', 'closed', 'revoked', 'expired', 'user_deleted']),
+  "grant_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Grant this session was authorized through (exact association for revocation visibility, RCP-20260901-QUERY-SESSION-GRANT-REF); null when the flow\'s query approval mode is off (direct-connection sessions carry no grant).'),
+  "capabilities": zod.array(zod.object({
+  "datasource_id": zod.uuid(),
+  "datasource_name": zod.string(),
+  "state": zod.enum(['active', 'datasource_unavailable', 'identity_changed']),
+  "can_query": zod.literal(true),
+  "can_export": zod.boolean()
+})),
+  "created_at": zod.iso.datetime({"offset":true})
+}).optional()
+}))
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
 export const listQuerySessionsQueryLimitDefault = 50;
 export const listQuerySessionsQueryLimitMax = 200;
 
@@ -7649,6 +7741,32 @@ export const GetMyDashboardResponse = zod.union([zod.object({
   "active_query_session_count": zod.int().min(getMyDashboardResponseOneDataActiveQuerySessionCountMin),
   "refreshed_at": zod.iso.datetime({"offset":true})
 }),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+
+
+
+export const GetLatestReleaseResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.union([zod.object({
+  "tag_name": zod.string().min(1),
+  "name": zod.string(),
+  "html_url": zod.string(),
+  "body": zod.string(),
+  "published_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]),
+  "fetched_at": zod.iso.datetime({"offset":true}),
+  "current_version": zod.union([zod.string(),zod.null()])
+}),zod.null()]),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),

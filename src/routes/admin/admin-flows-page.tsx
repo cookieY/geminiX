@@ -86,6 +86,8 @@ export default function AdminFlowsPage() {
   const [search, setSearch] = useState("");
 
   const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const flowsLoaded = !flowsQuery.isPending && !flowsQuery.isError;
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);
 
@@ -152,20 +154,22 @@ export default function AdminFlowsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={flowsQuery.data.page.has_more}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(flowsQuery.data.page.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="flows"
-              />
               </>
             )}
+      {flowsLoaded ? (
+        <TablePagination
+              page={pager.pageNo}
+              hasMore={flowsQuery.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => {
+                pager.pushCursor(flowsQuery.data.page.next_cursor);
+              }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="flows"
+        />
+      ) : null}
           </CardContent>
         </Card>
       )}

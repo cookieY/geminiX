@@ -150,6 +150,8 @@ export default function AdminIdentityProvidersPage() {
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
   const providersQuery = useIdentityProviders(isAdmin, { limit: pager.pageSize, after: pager.after });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const providersLoaded = !providersQuery.isPending && !providersQuery.isError;
   const [editing, setEditing] = useState<IdentityProvider | null>(null);
   const [createKind, setCreateKind] = useState<"ldap" | "oidc" | null>(null);
 
@@ -261,20 +263,22 @@ export default function AdminIdentityProvidersPage() {
                     ))}
                   </TableBody>
                 </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={providersQuery.data.page.has_more}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(providersQuery.data.page.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="idp"
-              />
                 </>
               )}
+              {providersLoaded ? (
+                <TablePagination
+                  page={pager.pageNo}
+                  hasMore={providersQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onNext={() => {
+                    pager.pushCursor(providersQuery.data.page.next_cursor);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  testIdPrefix="idp"
+                />
+              ) : null}
             </CardContent>
           </Card>
         </>

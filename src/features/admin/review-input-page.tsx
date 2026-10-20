@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
@@ -6,12 +6,14 @@ import { Sheet, SheetContent } from "@/shared/components/ui/sheet";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import { Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import type {
   KnowledgeEntry,
   KnowledgeEntryEvaluation,
   KnowledgeEntryWrite,
   PromptTool,
   PromptToolWrite,
+  PromptToolWriteParameters,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
   useCreateKnowledgeEntry,
@@ -29,6 +31,9 @@ import {
   ReviewInputDefinitionEditor,
   type ReviewInputEditorValue,
 } from "@/features/admin/review-input-editor";
+import { renderSkillDescription } from "@/features/admin/skill-description";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
@@ -103,6 +108,7 @@ type InputState = (typeof STATE_ORDER)[number];
 
 interface ReviewInputFormState {
   name: string;
+  description: string;
   state: InputState;
   engine: "all" | "mysql" | "postgresql";
   purpose: string;
@@ -110,12 +116,64 @@ interface ReviewInputFormState {
   datasourceId: string;
   databaseName: string;
   tableName: string;
+  /** §18.81：可调参数值的字符串草稿（键集与类型跟随行内，仅值可编辑）。 */
+  paramDrafts: Record<string, string>;
   editor: ReviewInputEditorValue;
+}
+
+// §18.80：技能说明上限（与OpenAPI PromptToolWrite.description maxLength
+// 一致，按Unicode字符计）。
+const MAX_SKILL_DESCRIPTION = 100;
+
+// §18.81（owner裁定）：内置技能提示词锁定不动，但提示词中{{变量}}的
+// 具体值开放调整。草稿以字符串承载，提交时按行内值的类型还原——
+// 类型与键集由构造保证不漂移，后端键集+类型比对仍兜底（B8治理三分）。
+function stringifyParamDrafts(params: PromptToolWriteParameters): Record<string, string> {
+  const drafts: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "boolean") drafts[key] = value ? "true" : "false";
+    else if (Array.isArray(value)) drafts[key] = value.join(", ");
+    else drafts[key] = String(value);
+  }
+  return drafts;
+}
+
+function convertParamDrafts(
+  drafts: Record<string, string>,
+  template: PromptToolWriteParameters,
+): PromptToolWriteParameters | null {
+  const out: PromptToolWriteParameters = {};
+  for (const [key, raw] of Object.entries(drafts)) {
+    const sample = template[key];
+    if (typeof sample === "number") {
+      const parsed = Number(raw);
+      if (raw.trim() === "" || !Number.isInteger(parsed) || parsed < 1 || parsed > 1e15) return null;
+      out[key] = parsed;
+    } else if (typeof sample === "boolean") {
+      out[key] = raw === "true";
+    } else if (Array.isArray(sample)) {
+      const items = raw.split(",").map((item) => item.trim()).filter((item) => item !== "");
+      if (items.length > 16 || items.some((item) => item.length > 64)) return null;
+      out[key] = items;
+    } else {
+      if (raw.trim() === "" || raw.length > 128) return null;
+      out[key] = raw;
+    }
+  }
+  return out;
+}
+
+function paramTypeKey(value: number | string | boolean | string[]): string {
+  if (typeof value === "number") return "paramTypeNumber";
+  if (typeof value === "boolean") return "paramTypeBoolean";
+  if (Array.isArray(value)) return "paramTypeStringList";
+  return "paramTypeString";
 }
 
 function emptyForm(): ReviewInputFormState {
   return {
     name: "",
+    description: "",
     state: "draft",
     engine: "all",
     purpose: "",
@@ -123,6 +181,7 @@ function emptyForm(): ReviewInputFormState {
     datasourceId: "",
     databaseName: "",
     tableName: "",
+    paramDrafts: {},
     editor: {
       definition: {
         knowledge_text: "",
@@ -137,6 +196,7 @@ function emptyForm(): ReviewInputFormState {
 function formForTool(tool: PromptTool): ReviewInputFormState {
   return {
     name: tool.name,
+    description: tool.description,
     state: tool.state,
     engine: tool.engine,
     purpose: "",
@@ -144,6 +204,7 @@ function formForTool(tool: PromptTool): ReviewInputFormState {
     datasourceId: "",
     databaseName: "",
     tableName: "",
+    paramDrafts: stringifyParamDrafts(tool.parameters ?? {}),
     editor: { definition: tool.definition, parameters: tool.parameters ?? {} },
   };
 }
@@ -151,13 +212,15 @@ function formForTool(tool: PromptTool): ReviewInputFormState {
 function formForEntry(entry: KnowledgeEntry): ReviewInputFormState {
   return {
     name: entry.name,
+    description: "",
     state: entry.state,
     engine: "all",
     purpose: entry.purpose ?? "",
     scopeType: entry.scope_type,
     datasourceId: entry.datasource_id ?? "",
-    databaseName: entry.database_name ?? "",
-    tableName: entry.table_name ?? "",
+    databaseName: "",
+    tableName: "",
+    paramDrafts: {},
     editor: { definition: entry.definition, parameters: {} },
   };
 }
@@ -178,8 +241,18 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const enabled = session.user?.can_access_admin === true;
   const [skillSearch, setSkillSearch] = useState("");
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  // §18.82：技能表格走后端游标分页（默认20行/页）；搜索变更回到第一页。
+  const skillPager = useCursorPage(20);
+  const skillKeyword = skillSearch.trim();
+  useEffect(() => { skillPager.reset(); }, [skillKeyword]); // eslint-disable-line react-hooks/exhaustive-deps -- reset is intentional on keyword change
   // §18.73：技能/经验搜索走服务端q（名称子串）。
-  const toolsQuery = usePromptTools(enabled && kind === "skills", { q: skillSearch.trim() || undefined });
+  const toolsQuery = usePromptTools(enabled && kind === "skills", {
+    q: skillKeyword || undefined,
+    limit: skillPager.pageSize,
+    after: skillPager.after,
+  });
+  // 先于下方穷尽三元捕获，避免判别联合收窄泄漏进分页守卫（§18.82）。
+  const toolsLoaded = !toolsQuery.isPending && !toolsQuery.isError;
   const entriesQuery = useKnowledgeEntries(enabled && kind === "knowledge", { q: knowledgeSearch.trim() || undefined });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PromptTool | KnowledgeEntry | null>(null);
@@ -650,15 +723,29 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const state = row.state;
                   
                   const builtin = (row as PromptTool).is_builtin;
+                  const description = (row as PromptTool).description;
                   return (
                     <TableRow key={id} data-testid={`review-input-row-${id}`}>
                       <TableCell className="font-medium">
-                        <span className="flex items-center gap-1.5">
-                          {name}
-                          {builtin ? (
-                            <Badge variant="outline" data-testid={`review-input-builtin-${id}`}>
-                              <Lock /> {t("admin.skills.builtinBadge")}
-                            </Badge>
+                        {/* §18.80：名称下方浅灰展示技能说明，用户不用进
+                            编辑弹窗即可知道每个技能的用途；说明中的
+                            {{参数}}占位按行内当前值动态渲染（补记1）。 */}
+                        <span className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1.5">
+                            {name}
+                            {builtin ? (
+                              <Badge variant="outline" data-testid={`review-input-builtin-${id}`}>
+                                <Lock /> {t("admin.skills.builtinBadge")}
+                              </Badge>
+                            ) : null}
+                          </span>
+                          {description ? (
+                            <span
+                              className="text-muted-foreground text-xs font-normal"
+                              data-testid={`review-input-description-${id}`}
+                            >
+                              {renderSkillDescription(description, (row as PromptTool).parameters ?? {})}
+                            </span>
                           ) : null}
                         </span>
                       </TableCell>
@@ -696,6 +783,18 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               </TableBody>
             </Table>
           )}
+          {toolsLoaded ? (
+            <TablePagination
+              page={skillPager.pageNo}
+              hasMore={toolsQuery.data.page.has_more}
+              isFirst={skillPager.isFirst}
+              onPrev={skillPager.goPrev}
+              onNext={() => { skillPager.pushCursor(toolsQuery.data.page.next_cursor); }}
+              pageSize={skillPager.pageSize}
+              onPageSizeChange={skillPager.setPageSize}
+              testIdPrefix="skills"
+            />
+          ) : null}
         </CardContent>
       </Card>
 
@@ -796,6 +895,10 @@ function ReviewInputDialog({
         ? formForTool(editing as PromptTool)
         : formForEntry(editing as KnowledgeEntry),
   );
+  // §18.81：行内参数（键顺序稳定展示；内置与用户行同规则——值可调）。
+  const rowParams: PromptToolWriteParameters =
+    isSkills && editing !== null ? ((editing as PromptTool).parameters ?? {}) : {};
+  const [paramInvalid, setParamInvalid] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
 
@@ -811,11 +914,20 @@ function ReviewInputDialog({
     setErrorKey(null);
     setErrorRequestId(null);
     if (isSkills) {
+      // §18.81：参数值按行内类型还原后再提交；非法值就地拦截不发请求。
+      const params = convertParamDrafts(form.paramDrafts, rowParams);
+      if (params === null) {
+        setParamInvalid(true);
+        return;
+      }
+      setParamInvalid(false);
       const write: PromptToolWrite = {
         name: form.name,
+        // §18.80：全量替换语义——空串即清空；内置行由后端忽略载荷说明。
+        description: form.description,
         state: form.state,
         engine: form.engine,
-        parameters: form.editor.parameters,
+        parameters: params,
         definition: form.editor.definition,
       };
       if (editing === null) {
@@ -897,16 +1009,47 @@ function ReviewInputDialog({
             </p>
           ) : null}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="review-input-name">{t("admin.reviewInput.name")}</Label>
-              <Input
-                id="review-input-name"
-                value={form.name}
-                onChange={(event) => { setForm({ ...form, name: event.target.value }); }}
-                disabled={editingBuiltin}
-                data-testid="review-input-name"
-              />
-            </div>
+            {isSkills ? (
+              <>
+                {/* §18.80：名称整行 → 技能说明整行 → 状态/使用引擎水平
+                    分布成一个段落。 */}
+                <div className="flex flex-col gap-1 md:col-span-2">
+                  <Label htmlFor="review-input-name">{t("admin.reviewInput.name")}</Label>
+                  <Input
+                    id="review-input-name"
+                    value={form.name}
+                    onChange={(event) => { setForm({ ...form, name: event.target.value }); }}
+                    disabled={editingBuiltin}
+                    data-testid="review-input-name"
+                  />
+                </div>
+                <div className="flex flex-col gap-1 md:col-span-2">
+                  <Label htmlFor="review-input-description">{t("admin.skills.descriptionLabel")}</Label>
+                  <Input
+                    id="review-input-description"
+                    value={form.description}
+                    maxLength={MAX_SKILL_DESCRIPTION}
+                    onChange={(event) => { setForm({ ...form, description: event.target.value }); }}
+                    placeholder={t("admin.skills.descriptionPlaceholder")}
+                    disabled={editingBuiltin}
+                    data-testid="review-input-description"
+                  />
+                  <p className="text-muted-foreground text-xs" data-testid="review-input-description-count">
+                    {t("admin.skills.descriptionCount", { current: Array.from(form.description).length, max: MAX_SKILL_DESCRIPTION })}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="review-input-name">{t("admin.reviewInput.name")}</Label>
+                <Input
+                  id="review-input-name"
+                  value={form.name}
+                  onChange={(event) => { setForm({ ...form, name: event.target.value }); }}
+                  data-testid="review-input-name"
+                />
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <Label>{t("admin.reviewInput.state")}</Label>
               <Select
@@ -1034,6 +1177,50 @@ function ReviewInputDialog({
               </>
             )}
           </div>
+          {isSkills && Object.keys(rowParams).length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-lg border p-3" data-testid="review-input-params">
+              <div className="flex flex-col gap-0.5">
+                <Label>{t("admin.skills.parametersTitle")}</Label>
+                <p className="text-muted-foreground text-xs">{t("admin.skills.parametersHint")}</p>
+              </div>
+              {Object.entries(rowParams).map(([key, sample]) => (
+                <div key={key} className="flex flex-col gap-1">
+                  <Label htmlFor={`review-input-param-${key}`} className="font-mono text-xs">
+                    {key} · {t(`admin.skills.${paramTypeKey(sample)}`)}
+                  </Label>
+                  {typeof sample === "boolean" ? (
+                    <Checkbox
+                      id={`review-input-param-${key}`}
+                      checked={form.paramDrafts[key] === "true"}
+                      onCheckedChange={(checked) => {
+                        setParamInvalid(false);
+                        setForm({ ...form, paramDrafts: { ...form.paramDrafts, [key]: checked ? "true" : "false" } });
+                      }}
+                      data-testid={`review-input-param-${key}`}
+                    />
+                  ) : (
+                    <Input
+                      id={`review-input-param-${key}`}
+                      value={form.paramDrafts[key] ?? ""}
+                      type={typeof sample === "number" ? "number" : "text"}
+                      min={typeof sample === "number" ? 1 : undefined}
+                      step={typeof sample === "number" ? 1 : undefined}
+                      onChange={(event) => {
+                        setParamInvalid(false);
+                        setForm({ ...form, paramDrafts: { ...form.paramDrafts, [key]: event.target.value } });
+                      }}
+                      data-testid={`review-input-param-${key}`}
+                    />
+                  )}
+                </div>
+              ))}
+              {paramInvalid ? (
+                <p className="text-destructive text-xs" data-testid="review-input-param-error">
+                  {t("admin.skills.parametersInvalid")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <ReviewInputDefinitionEditor
             value={form.editor}
             onChange={(next) => { setForm({ ...form, editor: next }); }}

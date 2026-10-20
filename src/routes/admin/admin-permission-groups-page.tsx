@@ -57,6 +57,8 @@ export default function AdminPermissionGroupsPage() {
   const pager = useCursorPage(20);
   const [groupSearch, setGroupSearch] = useState("");
   const groupsQuery = usePermissionGroups(isAdmin, { limit: pager.pageSize, after: pager.after, q: groupSearch.trim() || undefined });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const groupsLoaded = !groupsQuery.isPending && !groupsQuery.isError;
   const usersQuery = useUsers(isAdmin);
   const flowsQuery = useFlows(isAdmin);
   const [editing, setEditing] = useState<PermissionGroup | null>(null);
@@ -194,20 +196,22 @@ export default function AdminPermissionGroupsPage() {
                     ))}
                   </TableBody>
                 </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={groupsQuery.data?.page.has_more ?? false}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(groupsQuery.data?.page.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="groups"
-              />
               </>
               )}
+      {groupsLoaded ? (
+        <TablePagination
+          page={pager.pageNo}
+          hasMore={groupsQuery.data.page.has_more}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => {
+            pager.pushCursor(groupsQuery.data.page.next_cursor);
+          }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="groups"
+        />
+      ) : null}
             </CardContent>
           </Card>
         </>

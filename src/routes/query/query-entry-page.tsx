@@ -90,9 +90,9 @@ export default function QueryEntryPage() {
   const [needsAccessFlows, setNeedsAccessFlows] = useState<Set<string>>(new Set());
 
   const flows = flowsQuery.data ?? [];
-  const requests = requestsQuery.data ?? [];
+  const requests = requestsQuery.data.items;
   const grants = grantsQuery.data ?? [];
-  const sessions = (sessionsQuery.data ?? []).filter((row) => row.state === "active");
+  const sessions = (sessionsQuery.data.items).filter((row) => row.state === "active");
   const matches = useMemo(
     () => new Map(flows.map((flow) => [flow.id, matchGrantForFlow(flow, requests, grants)])),
     [flows, grants, requests],

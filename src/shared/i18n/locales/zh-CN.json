@@ -918,7 +918,17 @@
       "builtinBadge": "内置",
       "builtinDialogTitle": "内置技能（锁定）",
       "builtinDialogBody": "名称、引擎与定义由系统拥有且已锁定；本次保存仅可切换状态。",
-      "evalGateHint": "保存时执行Eval门禁（结构/隐私/注入/严重级别）：启用状态的保存会就地校验，未通过将阻止保存并显示错误。"
+      "evalGateHint": "保存时执行Eval门禁（结构/隐私/注入/严重级别）：启用状态的保存会就地校验，未通过将阻止保存并显示错误。",
+      "descriptionLabel": "技能说明",
+      "descriptionPlaceholder": "一句话说明该技能的用途",
+      "descriptionCount": "{{current}}/{{max}}",
+      "parametersTitle": "可调参数",
+      "parametersHint": "规则正文由系统拥有、不可修改；参数仅开放数值调整，键与类型跟随行内定义。保存会重算配置 Hash，使引用旧 Hash 的未提交预审失效。",
+      "paramTypeNumber": "正整数",
+      "paramTypeString": "文本",
+      "paramTypeBoolean": "开关",
+      "paramTypeStringList": "字符串列表（逗号分隔）",
+      "parametersInvalid": "参数值不合法：正整数范围为 1 ~ 10^15；文本不超过 128 字符；列表不超过 16 项且每项不超过 64 字符。"
     },
     "knowledge": {
       "title": "内部经验（知识库）",
@@ -1057,7 +1067,9 @@
       "deleteDescription": "确认删除规则集 {{name}}？被流程绑定的规则集不能删除。",
       "emptyTitle": "暂无规则集",
       "emptyDescription": "创建第一个规则集以组合审核技能。",
-      "createdAtColumn": "创建时间"
+      "createdAtColumn": "创建时间",
+      "selectAll": "全选",
+      "toolsSearchPlaceholder": "搜索技能包"
     }
   },
   "query": {
@@ -1198,7 +1210,8 @@
   "dashboard": {
     "announcement": {
       "publishedAt": "发布于 {{time}}",
-      "title": "公告"
+      "title": "公告",
+      "empty": "暂无公告"
     },
     "admin": {
       "partial": "部分指标暂不可用（completeness=partial）",
@@ -1215,7 +1228,9 @@
     },
     "release": {
       "latestLabel": "最新版本",
-      "details": "更新内容详情"
+      "details": "更新内容详情",
+      "unavailable": "暂无版本信息，服务端尚未获取到上游快照",
+      "updateNow": "立即更新"
     }
   },
   "records": {

@@ -15,6 +15,8 @@ import {
   useTestAiProviderConnection,
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -431,7 +433,7 @@ function ProviderRow({
 }) {
   const { t } = useTranslation();
   const testMutation = useTestAiProviderConnection();
-  // RCP-20261017 #019：连接测试是同步{ok}结果——pending/成功/失败三态
+  // RCP-20261017 第019项：连接测试是同步{ok}结果——pending/成功/失败三态
   // 直接渲染；失败带request_id与上游拒因（§18.75-A同通道），不再有
   // 任何Task轮询路径（旧Task形状会让成功静默、失败无细节）。
   const [testOk, setTestOk] = useState(false);
@@ -597,13 +599,22 @@ export default function AdminProvidersPage() {
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
   const [search, setSearch] = useState("");
-  const query = useAiProviders(enabled, search.trim() || undefined);
+  // §18.82：后端游标分页（默认20行/页）；搜索变更回到第一页。
+  const pager = useCursorPage(20);
+  const keyword2 = search.trim();
+  useEffect(() => { pager.reset(); }, [keyword2]); // eslint-disable-line react-hooks/exhaustive-deps -- reset is intentional on keyword change
+  const query = useAiProviders(enabled, search.trim() || undefined, {
+    limit: pager.pageSize,
+    after: pager.after,
+  });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const providersLoaded = !query.isPending && !query.isError;
   const [editing, setEditing] = useState<AiProvider | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   // §18.73：搜索走服务端q（名称/BaseURL/模型名子串）；keyword仅用于
   // 空态文案区分。
   const keyword = search.trim();
-  const providers = query.data ?? [];
+  const providers = query.data?.items ?? [];
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (
@@ -634,7 +645,7 @@ export default function AdminProvidersPage() {
             <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-providers-search-empty">
               {t("table.emptySearch")}
             </p>
-          ) : query.data.length === 0 ? (
+          ) : providers.length === 0 ? (
             <Empty className="rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -674,6 +685,18 @@ export default function AdminProvidersPage() {
               </TableBody>
             </Table>
           )}
+          {providersLoaded ? (
+            <TablePagination
+              page={pager.pageNo}
+              hasMore={query.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onNext={() => { pager.pushCursor(query.data.page.next_cursor); }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              testIdPrefix="providers"
+            />
+          ) : null}
         </CardContent>
       </Card>
       {deleting !== null ? (

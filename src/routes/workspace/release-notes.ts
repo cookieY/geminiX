@@ -1,16 +1,9 @@
 /**
- * GitHub release payload shaping for the home release banner (owner ruling
- * 2026-09-02: the banner slot shows the latest release from the upstream
- * repository, fetched client-side from the public REST API).
+ * Release notes shaping for the home release banner. Since
+ * RCP-20261020-RELEASE-FEED-BACKEND the payload arrives as the backend's
+ * ReleaseSnapshot (upstream GitHub release metadata fetched server-side);
+ * this module only owns the plain-text excerpt.
  */
-
-export interface LatestRelease {
-  tag_name: string;
-  name?: string;
-  published_at?: string;
-  html_url: string;
-  body?: string;
-}
 
 /** Release notes are free markdown; the banner shows one plain-text line,
  * hard-truncated at 50 characters with an ellipsis (owner ruling). */

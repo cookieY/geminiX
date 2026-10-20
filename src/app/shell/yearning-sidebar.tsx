@@ -45,19 +45,22 @@ function SidebarGroupSection({ group }: { group: NavGroup }) {
   );
 }
 
-/** Reference-image "V.1.0" badge (owner ruling 2026-09-02): the currently
- * tracked release tag beside the logo, visible only in the expanded state.
- * Shares the release banner's query (10-minute stale time) — hidden until
- * the tag resolves. */
+/** Reference-image "V.1.0" badge (owner ruling 2026-09-02, revised
+ * 2026-10-20): the installed version reference (current_version — the
+ * upstream latest seeded at serve startup) beside the logo, visible only
+ * in the expanded state. Shares the release banner's query; hidden until
+ * the snapshot resolves and while the reference is unset (a chip, not a
+ * layout slot). */
 function ReleaseVersionBadge() {
   const release = useLatestReleaseQuery(true);
-  if (release.data === undefined) return null;
+  const current = release.data?.current_version;
+  if (current == null || current === "") return null;
   return (
     <span
       data-testid="sidebar-version-badge"
       className="group-data-[state=collapsed]:hidden rounded-md bg-muted px-2 py-1 text-[10px] font-semibold text-foreground"
     >
-      {release.data.tag_name}
+      {current}
     </span>
   );
 }

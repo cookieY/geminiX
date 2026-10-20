@@ -31,8 +31,12 @@ export default function WorkspaceOrderTrendChart({ points }: { points: DailyMetr
       role="img"
       aria-label={t("dashboard.admin.trendAria", { total, days: points.length })}
       data-testid="workspace-order-trend-chart"
+      className="flex min-h-0 flex-1 flex-col"
     >
-      <ChartContainer config={config} className="h-[240px] w-full">
+      {/* flex-1 in the card's fill chain: the plot stretches to the card on
+          tall windows; min-h keeps the reference compact height when the
+          viewport is short (F5 definite-height-chain lesson). */}
+      <ChartContainer config={config} className="min-h-[240px] w-full flex-1">
         <LineChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: -10 }}>
           <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
           <XAxis

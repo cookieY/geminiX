@@ -318,6 +318,8 @@ export default function MinePage() {
     { limit: ordersPager.pageSize, after: ordersPager.after },
   );
   const ordersPageMeta = ordersQuery.data?.page;
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const ordersLoaded = !ordersQuery.isPending && !ordersQuery.isError;
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
 
   const draftsError = draftsQuery.error ?? ordersQuery.error;
@@ -402,22 +404,24 @@ export default function MinePage() {
                         ))}
                       </TableBody>
                     </Table>
-                    <TablePagination
-                      page={ordersPager.pageNo}
-                      hasMore={ordersPageMeta?.has_more ?? false}
-                      isFirst={ordersPager.pageNo === 1}
-                      onPrev={() => {
-                        ordersPager.goPrev();
-                      }}
-                      onNext={() => {
-                        ordersPager.pushCursor(ordersPageMeta?.next_cursor);
-                      }}
-                      pageSize={ordersPager.pageSize}
-                      onPageSizeChange={ordersPager.setPageSize}
-                      testIdPrefix="mine-orders"
-                    />
                     </>
                   )}
+                    {ordersLoaded ? (
+                      <TablePagination
+                        page={ordersPager.pageNo}
+                        hasMore={ordersPageMeta?.has_more ?? false}
+                        isFirst={ordersPager.pageNo === 1}
+                        onPrev={() => {
+                          ordersPager.goPrev();
+                        }}
+                        onNext={() => {
+                          ordersPager.pushCursor(ordersPageMeta?.next_cursor);
+                        }}
+                        pageSize={ordersPager.pageSize}
+                        onPageSizeChange={ordersPager.setPageSize}
+                        testIdPrefix="mine-orders"
+                      />
+                    ) : null}
                 </CardContent>
               </Card>
             </>

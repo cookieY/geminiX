@@ -14,6 +14,8 @@ import {
   useSettingsRevisions,
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { describeError } from "@/shared/api/error-display";
 import { SettingsNavTabs } from "@/routes/admin/settings-tabs";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
@@ -271,7 +273,15 @@ export default function AdminAiBudgetPage() {
   const enabled = session.user?.can_access_admin === true;
   const namespace = "ai-budget" as const;
   const query = useSettingsNamespace(namespace, enabled);
-  const revisionsQuery = useSettingsRevisions(namespace, enabled);
+  // §18.82：修订历史走后端游标分页（默认20行/页）。
+  const revisionsPager = useCursorPage(20);
+  const revisionsQuery = useSettingsRevisions(namespace, enabled, {
+    limit: revisionsPager.pageSize,
+    after: revisionsPager.after,
+  });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const revisionsLoaded = !revisionsQuery.isPending && !revisionsQuery.isError;
+
   const replaceMutation = useReplaceSettings();
   const [savedTick, setSavedTick] = useState(0);
   const [saveErrorKey, setSaveErrorKey] = useState<string | null>(null);
@@ -375,7 +385,7 @@ export default function AdminAiBudgetPage() {
               operationId="listSettingsRevisions"
               onRetry={() => void revisionsQuery.refetch()}
             />
-          ) : revisionsQuery.data.length === 0 ? (
+          ) : revisionsQuery.data.items.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("admin.aiBudget.revisionsEmpty")}</p>
           ) : (
             <Table>
@@ -388,7 +398,7 @@ export default function AdminAiBudgetPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {revisionsQuery.data.map((revision) => (
+                {revisionsQuery.data.items.map((revision) => (
                   <TableRow key={revision.version} data-testid={`ai-budget-revision-${String(revision.version)}`}>
                     <TableCell className="font-mono text-xs">v{revision.version}</TableCell>
                     <TableCell className="font-mono text-xs">{revision.changed_by}</TableCell>
@@ -399,8 +409,21 @@ export default function AdminAiBudgetPage() {
               </TableBody>
             </Table>
           )}
+          {revisionsLoaded ? (
+            <TablePagination
+              page={revisionsPager.pageNo}
+              hasMore={revisionsQuery.data.page.has_more}
+              isFirst={revisionsPager.isFirst}
+              onPrev={revisionsPager.goPrev}
+              onNext={() => { revisionsPager.pushCursor(revisionsQuery.data.page.next_cursor); }}
+              pageSize={revisionsPager.pageSize}
+              onPageSizeChange={revisionsPager.setPageSize}
+              testIdPrefix="ai-budget-revisions"
+            />
+          ) : null}
         </CardContent>
       </Card>
     </div>
   );
 }
+

@@ -74,6 +74,8 @@ export default function AdminNotificationsPage() {
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
   const channelsQuery = useNotificationChannels(isAdmin, { limit: pager.pageSize, after: pager.after });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const channelsLoaded = !channelsQuery.isPending && !channelsQuery.isError;
   const deliveriesQuery = useNotificationDeliveries(isAdmin);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<NotificationChannel | null>(null);
@@ -131,20 +133,22 @@ export default function AdminNotificationsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                page={pager.pageNo}
-                hasMore={channelsQuery.data.page.has_more}
-                isFirst={pager.isFirst}
-                onPrev={pager.goPrev}
-                onNext={() => {
-                  pager.pushCursor(channelsQuery.data.page.next_cursor);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                testIdPrefix="notifications"
-              />
               </>
             )}
+              {channelsLoaded ? (
+                <TablePagination
+                  page={pager.pageNo}
+                  hasMore={channelsQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onNext={() => {
+                    pager.pushCursor(channelsQuery.data.page.next_cursor);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  testIdPrefix="notifications"
+                />
+              ) : null}
           </CardContent>
         </Card>
       )}

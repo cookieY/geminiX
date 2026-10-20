@@ -149,36 +149,45 @@ function OperationsStatCard({ label, value, testId, icon, sparkSeed, sparkStroke
 /** Template "Total Assets" card slot per the owner mapping — the system
  * announcement (title, publication time, server-sanitized HTML). Static
  * marker dot: the template's animate-ping is deliberately not copied
- * (screenshot baselines are byte-compared). */
+ * (screenshot baselines are byte-compared). Owner ruling 2026-10-20: a
+ * missing announcement still renders the card frame at minimum height —
+ * the slot never collapses to null for lack of data. */
 export function AnnouncementCard({ publication }: { publication: AnnouncementPublication | null }) {
   const { t } = useTranslation();
-  if (publication === null) return null;
   return (
-    <Card data-testid="workspace-announcement" className="h-full">
+    <Card data-testid="workspace-announcement" className="h-full min-h-24">
       <CardHeader className="border-b border-border">
         <CardTitle className="flex items-center gap-2 text-base">
           <Megaphone size={16} className="text-muted-foreground" />
           {t("dashboard.announcement.title")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="bg-chart-1 size-2 rounded-full" aria-hidden />
-          <p className="text-sm font-medium">{publication.revision.title}</p>
-          <span className="bg-border size-1 rounded-full" aria-hidden />
-          <p className="text-muted-foreground text-sm font-normal">
-            {t("dashboard.announcement.publishedAt", {
-              time: publication.published_at.replace("T", " ").replace("Z", " UTC"),
-            })}
+      {publication === null ? (
+        <CardContent className="flex min-h-10 items-center">
+          <p className="text-muted-foreground text-sm" data-testid="workspace-announcement-empty">
+            {t("dashboard.announcement.empty")}
           </p>
-        </div>
-        {/* Server-sanitized HTML (sanitizer_policy_version recorded on the
-            revision); the client renders, it does not re-sanitize. */}
-        <div
-          className="prose prose-sm dark:prose-invert max-w-none text-sm"
-          dangerouslySetInnerHTML={{ __html: publication.revision.sanitized_html }}
-        />
-      </CardContent>
+        </CardContent>
+      ) : (
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="bg-chart-1 size-2 rounded-full" aria-hidden />
+            <p className="text-sm font-medium">{publication.revision.title}</p>
+            <span className="bg-border size-1 rounded-full" aria-hidden />
+            <p className="text-muted-foreground text-sm font-normal">
+              {t("dashboard.announcement.publishedAt", {
+                time: publication.published_at.replace("T", " ").replace("Z", " UTC"),
+              })}
+            </p>
+          </div>
+          {/* Server-sanitized HTML (sanitizer_policy_version recorded on the
+              revision); the client renders, it does not re-sanitize. */}
+          <div
+            className="prose prose-sm dark:prose-invert max-w-none text-sm"
+            dangerouslySetInnerHTML={{ __html: publication.revision.sanitized_html }}
+          />
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -204,7 +213,7 @@ function OrderTrendCard({
           {t("dashboard.admin.orderTrend")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-normal">{t("dashboard.admin.orderTotal")}</span>
@@ -253,8 +262,9 @@ function OrderTrendCard({
           </Select>
         </div>
         {operations !== undefined && operations.order_trend.length === 0 ? (
-          // Dashboard PRD §6: charts handle empty data explicitly.
-          <Empty className="rounded-lg border border-dashed">
+          // Dashboard PRD §6: charts handle empty data explicitly. flex-1:
+          // the empty frame stretches with the fill chain too.
+          <Empty className="min-h-[240px] flex-1 rounded-lg border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <TrendingUp />
@@ -288,8 +298,8 @@ export function AdminDashboardSection({
   if (!enabled) return null;
 
   return (
-    <div className="flex flex-col gap-3" data-testid="workspace-admin-dashboards">
-      <div className="grid gap-3 lg:grid-cols-12" data-testid="workspace-home-main-row">
+    <div className="flex flex-1 flex-col gap-3" data-testid="workspace-admin-dashboards">
+      <div className="grid flex-1 gap-3 lg:grid-cols-12" data-testid="workspace-home-main-row">
         <div className="lg:col-span-7">
           <OrderTrendCard
             operations={operations.data}

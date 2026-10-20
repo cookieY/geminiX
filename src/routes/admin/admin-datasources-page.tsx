@@ -1177,20 +1177,22 @@ export default function AdminDatasourcesPage() {
                 ))}
               </TableBody>
             </Table>
-            <TablePagination
-              page={pager.pageNo}
-              hasMore={query.data.page.has_more}
-              isFirst={pager.isFirst}
-              onPrev={pager.goPrev}
-              onNext={() => {
-                  pager.pushCursor(query.data.page.next_cursor);
-                }}
-              pageSize={pager.pageSize}
-              onPageSizeChange={pager.setPageSize}
-              testIdPrefix="datasources"
-            />
             </>
           )}
+      {!query.isPending && !query.isError ? (
+        <TablePagination
+            page={pager.pageNo}
+            hasMore={query.data.page.has_more}
+            isFirst={pager.isFirst}
+            onPrev={pager.goPrev}
+            onNext={() => {
+                pager.pushCursor(query.data.page.next_cursor);
+              }}
+            pageSize={pager.pageSize}
+            onPageSizeChange={pager.setPageSize}
+            testIdPrefix="datasources"
+        />
+      ) : null}
         </CardContent>
       </Card>
       {dialogOpen ? (

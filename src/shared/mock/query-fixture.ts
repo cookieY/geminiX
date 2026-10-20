@@ -981,8 +981,11 @@ export function queryFixtureHandlers(): HttpHandler[] {
     ensureQueryWorld();
       const actorId = queryActorUserId();
       const url = new URL(request.url);
+      // RCP-20261021：服务端 state 过滤（镜像后端 ListAccessRequests）。
+      const stateFilter = url.searchParams.get("state");
       const rows = [...world.accessRequests.values()]
         .filter((row) => canReadRequestRow(actorId, row))
+        .filter((row) => stateFilter === null || stateFilter === "" || row.state === stateFilter)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
       return HttpResponse.json(
         successEnvelope(
@@ -1229,6 +1232,32 @@ export function queryFixtureHandlers(): HttpHandler[] {
     }),
 
     // -------------------------------------------------------- sessions --
+    // RCP-20261021：查询工单组合视图（requests+sessions 服务端合并分页）。
+    http.get("*/query/orders", ({ request }) => {
+      if (!sessionAuthenticated()) return unauthenticated();
+    ensureQueryWorld();
+      const actorId = queryActorUserId();
+      const url = new URL(request.url);
+      const keys = [
+        ...[...world.accessRequests.values()]
+          .filter((row) => canReadRequestRow(actorId, row))
+          .map((row) => ({ id: row.id, created_at: row.created_at, kind: "access_request" as const })),
+        ...[...world.sessions.values()]
+          .filter((session) => session.user_id === actorId)
+          .map((session) => ({ id: session.id, created_at: session.created_at, kind: "session" as const })),
+      ].sort((a, b) => b.created_at.localeCompare(a.created_at));
+      const pageKeys = pageOf(keys, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"));
+      const entries = pageKeys.items.map((key) => {
+        if (key.kind === "access_request") {
+          const row = world.accessRequests.get(key.id);
+          return row === undefined ? null : { kind: "access_request" as const, id: key.id, created_at: key.created_at, request: accessRequestView(row), session: null };
+        }
+        const row = world.sessions.get(key.id);
+        return row === undefined ? null : { kind: "session" as const, id: key.id, created_at: key.created_at, request: null, session: sessionView(row) };
+      }).filter((entry) => entry !== null);
+      return HttpResponse.json(successEnvelope({ items: entries, page: pageKeys.page }));
+    }),
+
     http.get("*/query-sessions", ({ request }) => {
       if (!sessionAuthenticated()) return unauthenticated();
     ensureQueryWorld();

@@ -40,8 +40,9 @@ interface TaskView { id: string; state?: string; result_ref?: string | null }
 
 const asView = <T>(value: unknown): T => value as T;
 const suffix = crypto.randomUUID().slice(0, 8);
-const draftETag = (v: IdVersion | undefined): number =>
-  (mode === "mock" ? v?.revision ?? v?.version : v?.version) ?? 1;
+// §18.74：If-Match 目标是行version（评审完成后SQL revision与它分叉，
+// 绝不能作If-Match目标）——与batch2助手及mock revisionConflict对齐。
+const draftETag = (v: IdVersion | undefined): number => v?.version ?? 1;
 const ifMatch = (version: number | undefined, idem = false): Record<string, string> => ({
   "If-Match": `"${String(version ?? 1)}"`,
   ...(idem ? { "Idempotency-Key": `f12-contract-${crypto.randomUUID()}` } : {}),

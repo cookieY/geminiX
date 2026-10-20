@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { CircleCheck, CircleDashed, DatabaseZap, ShieldAlert } from "lucide-react";
 import type { LegacyMigrationCandidate, LegacyMigrationRun } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { describeError } from "@/shared/api/error-display";
+import { useCursorPage } from "@/shared/lib/cursor-page";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -36,10 +38,12 @@ function describeErrorText(display: { messageKey: string; requestId: string | nu
 
 export default function AdminMigrationsPage() {
   const { t } = useTranslation();
-  const runsQuery = useMigrationRuns(true);
+  // §18.82：后端游标分页（默认20行/页）。
+  const pager = useCursorPage(20);
+  const runsQuery = useMigrationRuns(true, { limit: pager.pageSize, after: pager.after });
   const [selectedId, setSelectedId] = useState<string>("");
 
-  const runs = runsQuery.data ?? [];
+  const runs = runsQuery.data.items;
   const selected: LegacyMigrationRun | null =
     runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
 
@@ -67,6 +71,18 @@ export default function AdminMigrationsPage() {
         </p>
       )}
 
+      {!runsQuery.isPending && runsQuery.error === null && (
+        <TablePagination
+          page={pager.pageNo}
+          hasMore={runsQuery.data.page.has_more}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => { pager.pushCursor(runsQuery.data.page.next_cursor); }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="migrations"
+        />
+      )}
       {selected !== null && (
         <>
           {runs.length > 1 && (

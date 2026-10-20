@@ -248,17 +248,30 @@ export function useAdminTask(taskId: string, enabled: boolean) {
 
 // ---- ai providers ---------------------------------------------------------
 
-export function useAiProviders(enabled: boolean, q?: string) {
+export function useAiProviders(
+  enabled: boolean,
+  q?: string,
+  paging?: { limit?: number; after?: string },
+) {
   return useQuery({
-    queryKey: ["admin", "ai-providers", q ?? ""],
+    queryKey: ["admin", "ai-providers", q ?? "", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = (await listAiProviders({ q: q || undefined })) as unknown as {
+      // §18.82: server-side cursor paging (default 20/page) — the hook
+      // returns the full paged envelope for the table footer.
+      const response = (await listAiProviders({
+        q: q || undefined,
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      })) as unknown as {
         items?: AiProvider[];
+        page?: { has_more: boolean; next_cursor: string | null };
       };
-      // §18.73: standard paged envelope ({items, page}) — the contract now
-      // matches the implementation; ordered by selection_priority ascending
-      // so index 0 is the primary provider (backend provider/chain.go:3).
-      return pageItems<AiProvider>(response);
+      // Ordered by selection_priority ascending so index 0 is the primary
+      // provider (backend provider/chain.go:3).
+      return {
+        items: pageItems<AiProvider>(response),
+        page: response.page ?? { has_more: false, next_cursor: null },
+      };
     },
     placeholderData: keepPreviousData,
     enabled,
@@ -334,12 +347,25 @@ export function useSettingsNamespace(namespace: "general" | "query" | "execution
   });
 }
 
-export function useSettingsRevisions(namespace: "general" | "query" | "execution" | "ai-budget" | "branding", enabled: boolean) {
+export function useSettingsRevisions(
+  namespace: "general" | "query" | "execution" | "ai-budget" | "branding",
+  enabled: boolean,
+  paging?: { limit?: number; after?: string },
+) {
   return useQuery({
-    queryKey: ["admin", "settings", namespace, "revisions"],
+    queryKey: ["admin", "settings", namespace, "revisions", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listSettingsRevisions(namespace, { limit: 50 });
-      return pageItems<SettingsRevision>(response as unknown as { items?: SettingsRevision[] });
+      // §18.82: server-side cursor paging (default 20/page).
+      const response = await listSettingsRevisions(namespace, {
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      });
+      return {
+        items: pageItems<SettingsRevision>(response as unknown as { items?: SettingsRevision[] }),
+        page:
+          (response as unknown as { page?: { has_more: boolean; next_cursor: string | null } })
+            .page ?? { has_more: false, next_cursor: null },
+      };
     },
     enabled,
   });
@@ -968,18 +994,31 @@ export function useTestNotificationDelivery() {
 
 // ---- migration review ----------------------------------------------------------
 
-export function useMigrationRuns(enabled: boolean) {
-  return useQuery({
-    queryKey: ["admin", "migrations"],
+export function useMigrationRuns(enabled: boolean, paging?: { limit?: number; after?: string }) {
+  const query = useQuery({
+    queryKey: ["admin", "migrations", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
-      const response = await listLegacyMigrationRuns({ limit: PAGE_LIMIT });
-      return pageItems<LegacyMigrationRun>(
-        response as unknown as { items?: LegacyMigrationRun[] },
-      );
+      // §18.82: server-side cursor paging (default 20/page).
+      const response = await listLegacyMigrationRuns({
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      });
+      return {
+        items: pageItems<LegacyMigrationRun>(
+          response as unknown as { items?: LegacyMigrationRun[] },
+        ),
+        page:
+          (response as unknown as { page?: { has_more: boolean; next_cursor: string | null } })
+            .page ?? { has_more: false, next_cursor: null },
+      };
     },
     enabled,
   });
+  return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
 }
+
+// 空页回退：wrapper 层保证 data 恒有定义（pending 期即为空页），
+// 消费端无需再对 data 判空（§18.82）。
 
 export function useMigrationRun(runId: string, enabled: boolean) {
   return useQuery({

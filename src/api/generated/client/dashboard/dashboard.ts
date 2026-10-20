@@ -8,6 +8,7 @@
  * OpenAPI spec version: 4.0.0-draft.1
  */
 import type {
+  LatestReleaseResultResponse,
   MyDashboardResultResponse
 } from '../yearningV4HTTPAPI.schemas';
 
@@ -36,6 +37,38 @@ export const getGetMyDashboardUrl = () => {
 export const getMyDashboard = async ( options?: Parameters<typeof customInstance>[1]): Promise<getMyDashboardResponse> => {
 
   return customInstance<getMyDashboardResponse>(getGetMyDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type getLatestReleaseResponse200 = {
+  data: LatestReleaseResultResponse
+  status: 200
+}
+
+export type getLatestReleaseResponseSuccess = (getLatestReleaseResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getLatestReleaseResponse = (getLatestReleaseResponseSuccess)
+
+export const getGetLatestReleaseUrl = () => {
+
+
+
+
+  return `/api/v4/releases/latest`
+}
+
+export const getLatestRelease = async ( options?: Parameters<typeof customInstance>[1]): Promise<getLatestReleaseResponse> => {
+
+  return customInstance<getLatestReleaseResponse>(getGetLatestReleaseUrl(),
   {
     ...options,
     method: 'GET'
