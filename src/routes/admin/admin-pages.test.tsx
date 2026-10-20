@@ -22,6 +22,7 @@ import AdminRuleSetsPage from "@/routes/admin/admin-rule-sets-page";
 import AdminReviewSkillsPage from "@/routes/admin/admin-review-skills-page";
 import AdminReviewKnowledgePage from "@/routes/admin/admin-review-knowledge-page";
 import { renderSkillDescription } from "@/features/admin/skill-description";
+import { convertParamDrafts, paramTypeKey, stringifyParamDrafts } from "@/features/admin/review-input-page";
 
 /**
  * FE-F9-REVIEW-ADMIN acceptance-gate component tests. The five package
@@ -983,5 +984,52 @@ describe("gate: 数据源连接测试成功反馈", () => {
     expect(
       await screen.findByTestId(`ds-test-ok-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),
     ).toBeInTheDocument();
+  });
+});
+
+describe("parameter draft helpers (§18.81)", () => {
+  it("stringifies every supported parameter type", () => {
+    expect(
+      stringifyParamDrafts({ n: 1000, b: false, s: "text", list: ["a", "b"] }),
+    ).toEqual({ n: "1000", b: "false", s: "text", list: "a, b" });
+    expect(stringifyParamDrafts({ b: true })).toEqual({ b: "true" });
+  });
+
+  it("restores typed values from drafts by the row's parameter types", () => {
+    expect(
+      convertParamDrafts({ n: "2000", b: "true", s: "hello", list: "x, y" }, {
+        n: 1000, b: false, s: "old", list: ["x"],
+      }),
+    ).toEqual({ n: 2000, b: true, s: "hello", list: ["x", "y"] });
+  });
+
+  it("rejects number drafts that are empty, fractional or out of range", () => {
+    const template = { n: 1000 };
+    expect(convertParamDrafts({ n: "" }, template)).toBeNull();
+    expect(convertParamDrafts({ n: "12.5" }, template)).toBeNull();
+    expect(convertParamDrafts({ n: "0" }, template)).toBeNull();
+    expect(convertParamDrafts({ n: "1e16" }, template)).toBeNull();
+    expect(convertParamDrafts({ n: "1000" }, template)).toEqual({ n: 1000 });
+  });
+
+  it("rejects string drafts that are empty or over 128 characters", () => {
+    expect(convertParamDrafts({ s: "" }, { s: "old" })).toBeNull();
+    expect(convertParamDrafts({ s: "x".repeat(129) }, { s: "old" })).toBeNull();
+    expect(convertParamDrafts({ s: "ok" }, { s: "old" })).toEqual({ s: "ok" });
+  });
+
+  it("rejects list drafts over 16 items or with items over 64 characters", () => {
+    expect(convertParamDrafts({ list: Array.from({ length: 17 }, (_, i) => `i${String(i)}`).join(", ") }, { list: ["x"] })).toBeNull();
+    expect(convertParamDrafts({ list: "x".repeat(65) }, { list: ["x"] })).toBeNull();
+    expect(convertParamDrafts({ list: "a, b" }, { list: ["x"] })).toEqual({ list: ["a", "b"] });
+    // 过滤逗号产生的空项。
+    expect(convertParamDrafts({ list: "a, , b" }, { list: ["x"] })).toEqual({ list: ["a", "b"] });
+  });
+
+  it("maps parameter value types to their i18n label keys", () => {
+    expect(paramTypeKey(1)).toBe("paramTypeNumber");
+    expect(paramTypeKey("s")).toBe("paramTypeString");
+    expect(paramTypeKey(true)).toBe("paramTypeBoolean");
+    expect(paramTypeKey(["l"])).toBe("paramTypeStringList");
   });
 });

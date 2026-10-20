@@ -128,7 +128,7 @@ const MAX_SKILL_DESCRIPTION = 100;
 // §18.81（owner裁定）：内置技能提示词锁定不动，但提示词中{{变量}}的
 // 具体值开放调整。草稿以字符串承载，提交时按行内值的类型还原——
 // 类型与键集由构造保证不漂移，后端键集+类型比对仍兜底（B8治理三分）。
-function stringifyParamDrafts(params: PromptToolWriteParameters): Record<string, string> {
+export function stringifyParamDrafts(params: PromptToolWriteParameters): Record<string, string> {
   const drafts: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
     if (typeof value === "boolean") drafts[key] = value ? "true" : "false";
@@ -138,7 +138,7 @@ function stringifyParamDrafts(params: PromptToolWriteParameters): Record<string,
   return drafts;
 }
 
-function convertParamDrafts(
+export function convertParamDrafts(
   drafts: Record<string, string>,
   template: PromptToolWriteParameters,
 ): PromptToolWriteParameters | null {
@@ -163,7 +163,7 @@ function convertParamDrafts(
   return out;
 }
 
-function paramTypeKey(value: number | string | boolean | string[]): string {
+export function paramTypeKey(value: number | string | boolean | string[]): string {
   if (typeof value === "number") return "paramTypeNumber";
   if (typeof value === "boolean") return "paramTypeBoolean";
   if (Array.isArray(value)) return "paramTypeStringList";
