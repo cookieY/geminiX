@@ -71,6 +71,8 @@ export default function QueryAccessApprovalsPage() {
     state: "access_pending",
   });
   const grantsQuery = useMyGrants(authenticated);
+  // §18.82：先于穷尽条件捕获，避免收窄泄漏进分页守卫。
+  const requestsLoaded = !requestsQuery.isPending && !requestsQuery.isError;
   const decide = useDecideAccessRequest();
 
   const [deciding, setDeciding] = useState<QueryAccessRequest | null>(null);
@@ -205,20 +207,20 @@ export default function QueryAccessApprovalsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
-                                {!requestsQuery.isPending && !requestsQuery.isError ? (
-                                <TablePagination
-                                  page={pager.pageNo}
-                                  hasMore={requestsQuery.data.page.has_more}
-                                  isFirst={pager.isFirst}
-                                  onPrev={pager.goPrev}
-                                  onNext={() => { pager.pushCursor(requestsQuery.data.page.next_cursor); }}
-                                  pageSize={pager.pageSize}
-                                  onPageSizeChange={pager.setPageSize}
-                                  testIdPrefix="query-access-approvals"
-                                />
-                              ) : null}
-</Table>
+                </Table>
               )}
+              {requestsLoaded ? (
+                <TablePagination
+                  page={pager.pageNo}
+                  hasMore={requestsQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onNext={() => { pager.pushCursor(requestsQuery.data.page.next_cursor); }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  testIdPrefix="query-access-approvals"
+                />
+              ) : null}
             </CardContent>
           </Card>
 
