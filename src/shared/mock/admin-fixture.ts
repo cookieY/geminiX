@@ -1656,7 +1656,7 @@ export function siteFixtureHandlers(): HttpHandler[] {
           version: 1,
         };
       });
-      return HttpResponse.json(successEnvelope(items ?? []));
+      return HttpResponse.json(successEnvelope({ items: items ?? [] }));
     }),
 
     http.put("*/admin/flows/:flowId/datasources/:datasourceId/masking-rules", async ({ request, params }) => {

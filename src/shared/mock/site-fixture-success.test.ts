@@ -103,12 +103,12 @@ describe("flow happy writes", () => {
   });
 
   it("serves the masking-rule list for a query flow", async () => {
-    const rules = await call<{ datasource_id: string; sensitive_columns: string[] }[]>(
+    const rules = await call<{ items: { datasource_id: string; sensitive_columns: string[] }[] }>(
       "GET",
       "/admin/flows/7a1a3c4d-3333-4333-8333-00000000f002/masking-rules",
     );
     expect(rules.err_code).toBe(0);
-    const mysql = rules.data.find((rule) => rule.datasource_id === "4f6f1a2b-0000-4000-8000-00000000a001");
+    const mysql = rules.data.items.find((rule) => rule.datasource_id === "4f6f1a2b-0000-4000-8000-00000000a001");
     expect(mysql?.sensitive_columns.sort()).toEqual(["email", "phone"]);
   });
 });

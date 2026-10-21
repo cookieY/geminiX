@@ -781,7 +781,9 @@ export function useFlowMaskingRules(flowId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["admin", "flows", flowId, "masking-rules"],
     queryFn: async () => {
-      return (await listFlowMaskingRules(flowId)) as unknown as FlowMaskingRule[];
+      // 契约 data 是 {items} 信封而不是裸数组；此前的强转在真实后端上会让编辑弹窗 .map 崩溃。
+      const response = (await listFlowMaskingRules(flowId)) as unknown as { items?: FlowMaskingRule[] };
+      return response.items ?? [];
     },
     enabled: enabled && flowId !== "",
   });

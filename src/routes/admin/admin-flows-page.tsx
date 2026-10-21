@@ -950,7 +950,17 @@ function MaskingRulesSection({ flow }: { flow: Flow }) {
   const [savedFor, setSavedFor] = useState<Record<string, string>>({});
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const rules: FlowMaskingRule[] = rulesQuery.data ?? [];
+  const fetched: FlowMaskingRule[] = rulesQuery.data ?? [];
+  // 词表按流程的每个数据源配置（OpenAPI：per datasource of the flow），但后端只返回
+  // 已存在的规则行；未配置的数据源在此补空行，否则首条规则在 UI 上无从创建。
+  const capabilities = flow.query_capabilities ?? [];
+  const rules: { datasource_id: string; datasource_name?: string; sensitive_columns: string[] }[] = [
+    ...capabilities.map((capability) => {
+      const existing = fetched.find((rule) => rule.datasource_id === capability.datasource_id);
+      return { datasource_id: capability.datasource_id, datasource_name: capability.datasource_name, sensitive_columns: existing?.sensitive_columns ?? [] };
+    }),
+    ...fetched.filter((rule) => !capabilities.some((capability) => capability.datasource_id === rule.datasource_id)),
+  ];
 
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3" data-testid="flow-masking-rules">
@@ -966,7 +976,7 @@ function MaskingRulesSection({ flow }: { flow: Flow }) {
         const dirty = value !== savedValue;
         return (
           <div key={rule.datasource_id} className="flex flex-col gap-1">
-            <span className="font-mono text-xs">{rule.datasource_id}</span>
+            <span className="font-mono text-xs">{rule.datasource_name ?? rule.datasource_id}</span>
             <div className="flex items-center gap-2">
               <Textarea
                 value={value}
