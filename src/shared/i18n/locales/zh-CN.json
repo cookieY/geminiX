@@ -553,7 +553,7 @@
       "invalidTitle": "工单已失效",
       "invalidDescription": "冻结审核人已被移除，该工单不再可审批；仅提交人可作废此工单。",
       "frozenReview": "冻结审核结果",
-      "frozenReviewNote": "以下发现来自提交时冻结的审核快照（真实AI身份与用量见预审概览）。",
+      "frozenReviewNote": "以下发现来自提交时冻结的审核快照（真实AI身份与用量见预审概览）；审批阶段不会重新运行AI审核。",
       "comments": "评论",
       "commentPlaceholder": "添加评论…",
       "commentSubmit": "发送",

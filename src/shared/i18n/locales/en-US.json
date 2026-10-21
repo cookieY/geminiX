@@ -553,7 +553,7 @@
       "invalidTitle": "Order invalidated",
       "invalidDescription": "Frozen reviewers were removed; this order can no longer be approved. Only the submitter may void it.",
       "frozenReview": "Frozen review results",
-      "frozenReviewNote": "Findings come from the review snapshot frozen at submission (see the precheck overview for the real AI identity and usage).",
+      "frozenReviewNote": "Findings come from the review snapshot frozen at submission (see the precheck overview for the real AI identity and usage); approval never re-runs the AI review.",
       "comments": "Comments",
       "commentPlaceholder": "Add a comment…",
       "commentSubmit": "Send",
