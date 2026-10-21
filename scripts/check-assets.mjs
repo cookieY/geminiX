@@ -53,13 +53,14 @@ for (const asset of manifest.assets) {
 }
 
 // Every font and image under public/ and src/assets/ must be manifest-covered.
+// SEC-0032: there is no public/ exclusion any more — the MSW service worker
+// moved to src/shared/mock/mockServiceWorker.js (dev/test only, served through
+// the vite msw-worker-dev-only plugin). Anything reappearing under public/ —
+// e.g. a stray `msw init public/` — now fails this gate because public/* is
+// copied into every build, release dists included.
 const shippedLocations = [join(frontendRoot, "public"), join(frontendRoot, "src/assets")];
-const publicRootExclusions = new Set([
-  join(frontendRoot, "public", "mockServiceWorker.js"), // MSW tooling, dev/test only
-]);
 for (const location of shippedLocations) {
   for (const file of walk(location)) {
-    if (publicRootExclusions.has(file)) continue;
     const relativePath = relative(frontendRoot, file).split("\\").join("/");
     if (relativePath === "src/assets/brand/asset-manifest.json") continue;
     if (!manifestPaths.has(relativePath)) {

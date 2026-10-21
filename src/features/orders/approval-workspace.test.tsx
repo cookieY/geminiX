@@ -340,7 +340,8 @@ describe("frozen review and comments on the order detail page", () => {
     // Memory-only: plaintext never touches web storage.
     expect(JSON.stringify(localStorage)).not.toContain("UPDATE orders SET status = 1;");
     expect(sessionStorage.length).toBe(0);
-    // Copy is audited before the clipboard write (audit endpoint observed).
+    // Copy goes through the audited path: the clipboard write resolves first,
+    // then the copy-audit endpoint is observed (SEC-0035 ordering).
     let copyAudited = false;
     server.use(
       http.post("*/change-orders/:orderId/sql-copy-events", () => {

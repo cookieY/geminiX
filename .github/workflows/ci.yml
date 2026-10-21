@@ -13,26 +13,57 @@ jobs:
     name: Verify commit signature
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
         with:
-          fetch-depth: 2
+          # SEC-0014: full history keeps the protected origin/main ref
+          # available for reading the allowed_signers trust root.
+          fetch-depth: 0
+          persist-credentials: false
       - name: Verify the branch commit against the approved signing key
         run: |
+          # SEC-0014: the allowed_signers trust root must come from the
+          # protected origin/main ref, never from the PR-controlled working
+          # tree (a PR that edits .github/allowed_signers must not be able to
+          # bootstrap its own signing key into trust).
+          git show origin/main:.github/allowed_signers > "$RUNNER_TEMP/allowed_signers"
           git config gpg.format ssh
-          git config gpg.ssh.allowedSignersFile .github/allowed_signers
+          git config gpg.ssh.allowedSignersFile "$RUNNER_TEMP/allowed_signers"
           # pull_request checkouts are unsigned GitHub merge commits; verify
           # the actual PR head commit instead.
           git verify-commit "${{ github.event.pull_request.head.sha || 'HEAD' }}"
+
+  action-pinning:
+    name: Forbid floating action refs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
+        with:
+          persist-credentials: false
+      - name: "Assert every uses: is pinned to a 40-hex commit SHA"
+        run: |
+          # SEC-0025: a floating tag can be repointed upstream; only commit
+          # SHA pins make this CI supply chain auditable. The pattern is
+          # anchored so this check never matches its own literal text.
+          floating=$(grep -RnE '^[[:space:]]*-[[:space:]]*uses:[[:space:]]*[^[:space:]]+@' .github/workflows/ \
+            | grep -vE 'uses:[[:space:]]*[^[:space:]]+@[0-9a-f]{40}([[:space:]]|$)' || true)
+          if [ -n "$floating" ]; then
+            echo "floating (non-40-hex-SHA) action reference(s) found:"
+            echo "$floating"
+            exit 1
+          fi
+          echo "all workflow action references are commit-SHA pinned"
 
   quality:
     name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (SEC-0025: pinned)
         with:
           package_json_file: package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (SEC-0025: pinned)
         with:
           node-version-file: .github/node.version
           cache: pnpm
@@ -59,11 +90,13 @@ jobs:
     name: Offline build proof
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (SEC-0025: pinned)
         with:
           package_json_file: package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (SEC-0025: pinned)
         with:
           node-version-file: .github/node.version
           cache: pnpm
@@ -95,11 +128,13 @@ jobs:
     name: Playwright e2e
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (SEC-0025: pinned)
         with:
           package_json_file: package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (SEC-0025: pinned)
         with:
           node-version-file: .github/node.version
           cache: pnpm
@@ -109,7 +144,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Run e2e
         run: pnpm test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (SEC-0025: pinned)
         if: failure()
         with:
           name: playwright-report

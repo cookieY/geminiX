@@ -51,6 +51,9 @@ export function EvidenceSheet({ finding, open, onOpenChange }: EvidenceSheetProp
   const evidence: ReviewEvidence[] = evidenceQuery.data ?? [];
 
   const [revealed, setRevealed] = useState<Record<string, RevealedRaw>>({});
+  // SEC-0035: copy-flow errors (clipboard write or copy-audit) surface inline
+  // — a copy whose audit failed to record must never pass silently.
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   // Plaintext lives in component memory only: closing the sheet wipes every
   // revealed raw payload (migration contract §6); unmount does the same via
@@ -91,20 +94,28 @@ export function EvidenceSheet({ finding, open, onOpenChange }: EvidenceSheetProp
   const copyRevealed = (evidenceId: string) => {
     const revealedRaw = revealed[evidenceId];
     if (revealedRaw === undefined) return;
-    // The independent audit API call is initiated before any clipboard write
-    // (migration contract §6) — the audit request is ordered first and the
-    // record is persisted server-side. The write is issued in the same
-    // user-activation window: awaiting the audit response first lets
-    // Chromium's transient activation expire and silently drops the copy.
-    const audit = copyMutation
-      .mutateAsync({ evidenceId, revealId: revealedRaw.revealId })
-      .then(() => true)
-      .catch(() => false);
-    const write = navigator.clipboard
+    setCopyError(null);
+    // SEC-0035: the clipboard write is issued synchronously inside the click
+    // handler (migration contract §6) — awaiting anything before it lets
+    // Chromium's transient activation expire and silently drop the copy. The
+    // audit request fires only after the plaintext actually reached the
+    // clipboard, and every failure surfaces inline (nothing is swallowed):
+    // an unrecorded audit must never pass silently after a real copy.
+    void navigator.clipboard
       .writeText(revealedRaw.text)
-      .then(() => true)
-      .catch(() => false);
-    void Promise.all([audit, write]);
+      .then(() =>
+        copyMutation
+          .mutateAsync({ evidenceId, revealId: revealedRaw.revealId })
+          .catch((auditError: unknown) => {
+            const display = describeError(auditError, "recordRawReviewEvidenceCopy");
+            setCopyError(
+              `${t("precheck.evidence.copyAuditFailed", { detail: t(display.messageKey) })}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
+            );
+          }),
+      )
+      .catch(() => {
+        setCopyError(t("precheck.evidence.copyFailed"));
+      });
   };
 
   // Each query/mutation is judged by its own operation error profile.
@@ -127,6 +138,11 @@ export function EvidenceSheet({ finding, open, onOpenChange }: EvidenceSheetProp
             <p role="alert" className="text-destructive text-sm">
               {t(errorDisplay.messageKey)}
               {errorDisplay.requestId !== null ? ` (${errorDisplay.requestId})` : ""}
+            </p>
+          )}
+          {copyError !== null && (
+            <p role="alert" className="text-destructive text-sm" data-testid="evidence-copy-error">
+              {copyError}
             </p>
           )}
           {evidence.length === 0 && evidenceQuery.isSuccess && (

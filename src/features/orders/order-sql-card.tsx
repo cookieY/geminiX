@@ -56,18 +56,26 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
 
   const copyRevealed = (): void => {
     if (revealed === null) return;
-    // The audit request is ordered before the clipboard write (migration
-    // contract §6); awaiting it first would let the transient activation
-    // expire, so both run in the same activation window.
-    const audit = copyAudit
-      .mutateAsync(revealed.revealId)
-      .then(() => true)
-      .catch(() => false);
-    const write = navigator.clipboard
+    setError(null);
+    // SEC-0035: the clipboard write is issued synchronously inside the click
+    // handler — awaiting anything before it would let Chromium's transient
+    // activation expire and silently drop the copy. The audit request fires
+    // only after the plaintext actually reached the clipboard, and every
+    // failure surfaces through the inline error alert (nothing is swallowed):
+    // an unrecorded audit must never pass silently after a real copy.
+    void navigator.clipboard
       .writeText(revealed.sql)
-      .then(() => true)
-      .catch(() => false);
-    void Promise.all([audit, write]);
+      .then(() =>
+        copyAudit.mutateAsync(revealed.revealId).catch((auditError: unknown) => {
+          const display = describeError(auditError, "recordOrderSqlCopy");
+          setError(
+            `${t("orders.sql.copyAuditFailed", { detail: t(display.messageKey) })}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
+          );
+        }),
+      )
+      .catch(() => {
+        setError(t("orders.sql.copyFailed"));
+      });
   };
 
   return (

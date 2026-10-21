@@ -151,6 +151,119 @@ describe("EvidenceSheet", () => {
     });
     // The clipboard write carried the revealed plaintext.
     expect(clipboardWrite).toHaveBeenCalledWith(expect.stringContaining("raw-marker"));
+    // Success stays silent: no error alert for a fully audited copy.
+    expect(screen.queryByTestId("evidence-copy-error")).toBeNull();
+  });
+
+  it("audits only after the clipboard write resolved (SEC-0035 ordering)", async () => {
+    const user = userEvent.setup();
+    let copyAuditCalls = 0;
+    // A deferred clipboard write proves the ordering: the audit endpoint
+    // stays untouched while the write is in flight; resolving it releases
+    // the audit request.
+    let resolveWrite: () => void = () => {};
+    const writeGate = new Promise<void>((resolve) => {
+      resolveWrite = resolve;
+    });
+    vi.spyOn(navigator.clipboard, "writeText").mockImplementation(() =>
+      writeGate.then(() => undefined),
+    );
+    server.use(
+      http.post("*/review-evidence/:evidenceId/raw-reveals", () =>
+        HttpResponse.json(
+          envelope({
+            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+            content_type: "application/json",
+            raw_payload: { note: "raw-marker" },
+            watermark: "henry · server-time",
+            valid_until: new Date(Date.now() + 600_000).toISOString(),
+          }),
+        ),
+      ),
+      http.post("*/review-evidence/:evidenceId/raw-copy-events", () => {
+        copyAuditCalls += 1;
+        return HttpResponse.json(envelope(null));
+      }),
+    );
+    renderSheet(true);
+    await screen.findByText("built-in:mysql.table_stats");
+    await user.click(screen.getByTestId(`reveal-raw-${EVIDENCE_ID}`));
+    await screen.findByTestId(`raw-view-${EVIDENCE_ID}`);
+    await user.click(screen.getByTestId(`copy-raw-${EVIDENCE_ID}`));
+    expect(copyAuditCalls).toBe(0);
+    resolveWrite();
+    await waitFor(() => {
+      expect(copyAuditCalls).toBe(1);
+    });
+  });
+
+  it("surfaces an audit failure after the copy instead of swallowing it", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    server.use(
+      http.post("*/review-evidence/:evidenceId/raw-reveals", () =>
+        HttpResponse.json(
+          envelope({
+            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+            content_type: "application/json",
+            raw_payload: { note: "raw-marker" },
+            watermark: "henry · server-time",
+            valid_until: new Date(Date.now() + 600_000).toISOString(),
+          }),
+        ),
+      ),
+      http.post("*/review-evidence/:evidenceId/raw-copy-events", () =>
+        HttpResponse.json({
+          err_code: 1002,
+          message: "evidence not found",
+          data: null,
+          request_id: FINDING_ID,
+          retryable: false,
+        }),
+      ),
+    );
+    renderSheet(true);
+    await screen.findByText("built-in:mysql.table_stats");
+    await user.click(screen.getByTestId(`reveal-raw-${EVIDENCE_ID}`));
+    await screen.findByTestId(`raw-view-${EVIDENCE_ID}`);
+    await user.click(screen.getByTestId(`copy-raw-${EVIDENCE_ID}`));
+    const alert = await screen.findByTestId("evidence-copy-error");
+    expect(alert.textContent).toContain("复制审计上报失败");
+    expect(alert.textContent).toContain(FINDING_ID);
+  });
+
+  it("surfaces a clipboard failure and sends no audit for a copy that never happened", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
+    let copyAuditCalls = 0;
+    server.use(
+      http.post("*/review-evidence/:evidenceId/raw-reveals", () =>
+        HttpResponse.json(
+          envelope({
+            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945f9901",
+            content_type: "application/json",
+            raw_payload: { note: "raw-marker" },
+            watermark: "henry · server-time",
+            valid_until: new Date(Date.now() + 600_000).toISOString(),
+          }),
+        ),
+      ),
+      http.post("*/review-evidence/:evidenceId/raw-copy-events", () => {
+        copyAuditCalls += 1;
+        return HttpResponse.json(envelope(null));
+      }),
+    );
+    renderSheet(true);
+    await screen.findByText("built-in:mysql.table_stats");
+    await user.click(screen.getByTestId(`reveal-raw-${EVIDENCE_ID}`));
+    await screen.findByTestId(`raw-view-${EVIDENCE_ID}`);
+    await user.click(screen.getByTestId(`copy-raw-${EVIDENCE_ID}`));
+    const alert = await screen.findByTestId("evidence-copy-error");
+    expect(alert.textContent).toContain("复制失败");
+    // The plaintext never reached the clipboard — there is nothing to audit.
+    await waitFor(() => {
+      expect(copyAuditCalls).toBe(0);
+    });
   });
 
   it("wipes the revealed plaintext when the sheet closes", async () => {

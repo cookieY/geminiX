@@ -1,0 +1,19 @@
+# SEC-0052: dependency update channel for the frontend repository.
+# npm covers runtime + dev dependencies; github-actions keeps the SHA-pinned
+# workflow actions (SEC-0025) moving to fresh upstream commits.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-production:
+        patterns: ["*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]

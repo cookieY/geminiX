@@ -20,7 +20,10 @@ export default tseslint.config(
       "src/api/generated/**",
       "src/shared/components/ui/**",
       "src/shared/hooks/**",
-      "public/mockServiceWorker.js",
+      // SEC-0032: MSW tooling moved out of public/ — it is dev/test only and
+      // ships through the vite msw-worker-dev-only plugin, never in a release
+      // dist. Unminified vendor output stays outside lint scope.
+      "src/shared/mock/mockServiceWorker.js",
     ],
   },
   {
