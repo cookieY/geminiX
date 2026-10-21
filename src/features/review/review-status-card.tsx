@@ -76,6 +76,16 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
               {t("precheck.review.statements", { count: run.statement_count })} ·{" "}
               {t("precheck.review.fingerprints", { count: run.fingerprint_group_count })}
             </div>
+            {run.usage != null && (
+              <p className="text-muted-foreground text-xs" data-testid="review-usage">
+                {t("precheck.review.usageLine", {
+                  model: run.usage.model_name,
+                  provider: run.usage.provider_name,
+                  input: run.usage.input_tokens,
+                  output: run.usage.output_tokens,
+                })}
+              </p>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>

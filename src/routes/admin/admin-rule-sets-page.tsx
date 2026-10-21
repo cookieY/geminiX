@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Layers, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { RuleSet, RuleSetWrite } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -169,7 +170,10 @@ function RuleSetFormDialog({
     };
     if (editing === null) {
       createMutation.mutate(write, {
-        onSuccess: onClose,
+        onSuccess: () => {
+          toast.success(t("common.createdToast"));
+          onClose();
+        },
         onError: (error) => {
           const display = describeError(error, "createRuleSet");
           setErrorKey(display.messageKey);
@@ -180,7 +184,10 @@ function RuleSetFormDialog({
       replaceMutation.mutate(
         { id: editing.id, version: editing.version, write },
         {
-          onSuccess: onClose,
+          onSuccess: () => {
+            toast.success(t("common.savedToast"));
+            onClose();
+          },
           onError: (error) => {
             const display = describeError(error, "replaceRuleSet");
             setErrorKey(display.messageKey);

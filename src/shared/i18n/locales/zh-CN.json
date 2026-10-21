@@ -228,7 +228,9 @@
     "delete": "删除",
     "close": "关闭",
     "actions": "操作",
-    "clear": "清空"
+    "clear": "清空",
+    "createdToast": "用户已创建。",
+    "savedToast": "已保存。"
   },
   "table": {
     "pagination": {
@@ -318,7 +320,8 @@
       "findings": "风险发现",
       "evidence": "审核证据",
       "noRun": "尚未运行预审。点击“运行AI预审”开始。",
-      "timeout": "预审超过预期时间仍未完成，可稍后刷新查看；持续卡滞请联系管理员。"
+      "timeout": "预审超过预期时间仍未完成，可稍后刷新查看；持续卡滞请联系管理员。",
+      "usageLine": "模型 {{model}} · Provider {{provider}} · tokens {{input}}入/{{output}}出"
     },
     "phase": {
       "idle": "未预审",
@@ -550,7 +553,7 @@
       "invalidTitle": "工单已失效",
       "invalidDescription": "冻结审核人已被移除，该工单不再可审批；仅提交人可作废此工单。",
       "frozenReview": "冻结审核结果",
-      "frozenReviewNote": "以下发现来自提交时冻结的审核快照；审批阶段不会重新运行AI审核。",
+      "frozenReviewNote": "以下发现来自提交时冻结的审核快照（真实AI身份与用量见预审概览）。",
       "comments": "评论",
       "commentPlaceholder": "添加评论…",
       "commentSubmit": "发送",
@@ -663,7 +666,8 @@
       "schedulePrefilled": "已按提交人期望时间预填，可直接确认或修改。",
       "schedulePlaceholder": "选择预约时间",
       "waitTitle": "等待执行",
-      "waitNote": "该阶段审批已通过。执行操作只属于流程冻结的执行人（{{names}}）；其他角色在此等待执行结果。"
+      "waitNote": "该阶段审批已通过。执行操作只属于流程冻结的执行人（{{names}}）；其他角色在此等待执行结果。",
+      "scheduleLeadHint": "预约时间需晚于当前至少 5 分钟（前端已拦截，无需后端错误）。"
     },
     "attemptState": {
       "created": "已创建",
@@ -763,9 +767,10 @@
       "rejectTitle": "拒绝该审批步？",
       "approveDescription": "通过后流程按阶段顺序推进；末步通过后工单进入待执行状态，由冻结执行人另行执行，不会自动执行。",
       "rejectDescription": "任一审批人拒绝都会立即拒绝整单，剩余审批步全部作废，且不可撤销。",
-      "commentLabel": "审批意见（可选，将写入审批时间线）",
+      "commentLabel": "审批意见（驳回必填；写入审批时间线）",
       "conflictTitle": "决定未生效",
-      "conflictHint": "页面已刷新为最新状态，请确认当前状态后再试。"
+      "conflictHint": "页面已刷新为最新状态，请确认当前状态后再试。",
+      "rejectReasonRequired": "驳回必须填写理由。"
     },
     "stepState": {
       "pending": "待轮到",
@@ -1042,7 +1047,11 @@
       "revisionVersion": "版本",
       "revisionChangedBy": "修改人",
       "revisionChangedAt": "修改时间",
-      "revisionPaths": "变更路径"
+      "revisionPaths": "变更路径",
+      "inputPrice": "输入单价（每百万token）",
+      "outputPrice": "输出单价（每百万token）",
+      "inputPriceHint": "按实际token用量计价；两项均为0时回退每阶段固定估算。最小货币单位计。",
+      "outputPriceHint": "按实际token用量计价；两项均为0时回退每阶段固定估算。最小货币单位计。"
     },
     "ruleSets": {
       "title": "规则集",
@@ -1093,7 +1102,9 @@
       "enter": "进入查询",
       "enterDirect": "直接进入",
       "sessionsCard": "进行中的会话",
-      "sessionsDescription": "恢复未结束的查询会话。"
+      "sessionsDescription": "恢复未结束的查询会话。",
+      "pendingTitle": "访问申请待审批",
+      "pendingDescription": "已提交的访问申请正在等待审批；审批通过后此处会出现进入查询入口。可在“我的工单-查询工单”查看进度。"
     },
     "apply": {
       "title": "申请数据源访问：{{name}}",
@@ -1103,7 +1114,8 @@
       "until": "有效期至",
       "reason": "申请理由",
       "failed": "提交申请失败",
-      "submit": "提交申请"
+      "submit": "提交申请",
+      "untilTime": "时间（时:分，本地时区）"
     },
     "workspace": {
       "title": "查询工作台 · {{name}}",
@@ -1459,7 +1471,8 @@
     "stageDown": "下移阶段{{index}}",
     "stageRemove": "删除阶段{{index}}",
     "stepRemove": "删除审批步骤{{index}}",
-    "mappingRemove": "删除Schema映射{{index}}"
+    "mappingRemove": "删除Schema映射{{index}}",
+    "engineMismatch": "同一审核流程的所有阶段必须绑定相同引擎类型的数据源（跨引擎阶段无法通过执行前校验）。"
   },
   "adminAnnouncements": {
     "title": "公告管理",

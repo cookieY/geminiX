@@ -114,6 +114,11 @@ function TimelineCard({ orderId }: { orderId: string }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p>{entry.summary}</p>
+                  {entry.comment != null && entry.comment !== "" && (
+                    <p className="text-foreground/80 whitespace-pre-wrap break-words text-xs" data-testid="order-timeline-comment">
+                      {entry.comment}
+                    </p>
+                  )}
                   <p className="text-muted-foreground text-xs">
                     {formatTimestamp(entry.occurred_at)}
                     {entry.stage_position !== null && (

@@ -485,7 +485,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const showActionError = (error: unknown, operationId: string) => {
     const display = describeError(error, operationId);
     const requestId = display.requestId !== null ? ` (${display.requestId})` : "";
-    setActionError(`${t(display.messageKey)}${requestId}`);
+    // BUG-006/010：meta.detail携带后端诊断文本（如preflight拒因、驱动
+    // 错误原文）时逐字追加，执行人不再只见泛化文案。
+    const detail = display.detail !== null ? ` ${display.detail}` : "";
+    setActionError(`${t(display.messageKey)}${detail}${requestId}`);
   };
 
   const saveMutation = useMutation({
@@ -534,9 +537,24 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           "Idempotency-Key": idempotencyKey(),
         },
       }),
-    onSuccess: () => {
+    onSuccess: (task) => {
       setActionError(null);
       void invalidateAll();
+      // BUG-003：POST与草稿行写入review_run_id之间存在竞态——首次invalidate
+      // 读回的草稿可能仍是review_run_id=null，此后无任何触发器，UI永远停在
+      // "未预审"。result_ref携带Run引用，短轮询草稿直到它带上run id，
+      // 让useReviewRun的1秒轮询接管。
+      const ref = (task as { result_ref?: string } | null)?.result_ref;
+      const runId = typeof ref === "string" ? ref.split("/").pop() : undefined;
+      if (runId !== undefined && runId !== "") {
+        void queryClient.invalidateQueries({ queryKey: ["review-run", runId] });
+        let tries = 0;
+        const timer = setInterval(() => {
+          tries += 1;
+          void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+          if (tries >= 10) clearInterval(timer);
+        }, 600);
+      }
     },
     onError: (error) => { showActionError(error, "runDraftReview"); },
   });

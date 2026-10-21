@@ -3938,6 +3938,12 @@ export const getSettingsNamespaceResponseOneDataSettingsFourCurrencyRegExp = new
 export const getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault = 80;
 export const getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax = 100;
 
+export const getSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorDefault = 0;
+export const getSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorMin = 0;
+
+export const getSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorDefault = 0;
+export const getSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorMin = 0;
+
 export const getSettingsNamespaceResponseOneDataSettingsFiveProductNameMax = 64;
 
 export const getSettingsNamespaceResponseOneDataSettingsFiveLoginDescriptionMax = 500;
@@ -3981,7 +3987,9 @@ export const GetSettingsNamespaceResponse = zod.union([zod.object({
   "enforced": zod.boolean(),
   "currency": zod.string().regex(getSettingsNamespaceResponseOneDataSettingsFourCurrencyRegExp).default(getSettingsNamespaceResponseOneDataSettingsFourCurrencyDefault),
   "daily_budget_minor": zod.int().min(1),
-  "alert_threshold_percent": zod.int().min(1).max(getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax).default(getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault)
+  "alert_threshold_percent": zod.int().min(1).max(getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax).default(getSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault),
+  "input_price_per_million_minor": zod.int().min(getSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorMin).default(getSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M input tokens. 0 = fall back to the flat per-stage estimate.'),
+  "output_price_per_million_minor": zod.int().min(getSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorMin).default(getSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M output tokens. 0 = fall back to the flat per-stage estimate.')
 }),zod.object({
   "product_name": zod.string().min(1).max(getSettingsNamespaceResponseOneDataSettingsFiveProductNameMax),
   "login_description": zod.string().max(getSettingsNamespaceResponseOneDataSettingsFiveLoginDescriptionMax),
@@ -4046,6 +4054,12 @@ export const replaceSettingsNamespaceBodySettingsFourCurrencyRegExp = new RegExp
 export const replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentDefault = 80;
 export const replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentMax = 100;
 
+export const replaceSettingsNamespaceBodySettingsFourInputPricePerMillionMinorDefault = 0;
+export const replaceSettingsNamespaceBodySettingsFourInputPricePerMillionMinorMin = 0;
+
+export const replaceSettingsNamespaceBodySettingsFourOutputPricePerMillionMinorDefault = 0;
+export const replaceSettingsNamespaceBodySettingsFourOutputPricePerMillionMinorMin = 0;
+
 export const replaceSettingsNamespaceBodySettingsFiveProductNameMax = 64;
 
 export const replaceSettingsNamespaceBodySettingsFiveLoginDescriptionMax = 500;
@@ -4086,7 +4100,9 @@ export const ReplaceSettingsNamespaceBody = zod.object({
   "enforced": zod.boolean(),
   "currency": zod.string().regex(replaceSettingsNamespaceBodySettingsFourCurrencyRegExp).default(replaceSettingsNamespaceBodySettingsFourCurrencyDefault),
   "daily_budget_minor": zod.int().min(1),
-  "alert_threshold_percent": zod.int().min(1).max(replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentMax).default(replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentDefault)
+  "alert_threshold_percent": zod.int().min(1).max(replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentMax).default(replaceSettingsNamespaceBodySettingsFourAlertThresholdPercentDefault),
+  "input_price_per_million_minor": zod.int().min(replaceSettingsNamespaceBodySettingsFourInputPricePerMillionMinorMin).default(replaceSettingsNamespaceBodySettingsFourInputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M input tokens. 0 = fall back to the flat per-stage estimate.'),
+  "output_price_per_million_minor": zod.int().min(replaceSettingsNamespaceBodySettingsFourOutputPricePerMillionMinorMin).default(replaceSettingsNamespaceBodySettingsFourOutputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M output tokens. 0 = fall back to the flat per-stage estimate.')
 }),zod.object({
   "product_name": zod.string().min(1).max(replaceSettingsNamespaceBodySettingsFiveProductNameMax),
   "login_description": zod.string().max(replaceSettingsNamespaceBodySettingsFiveLoginDescriptionMax),
@@ -4128,6 +4144,12 @@ export const replaceSettingsNamespaceResponseOneDataSettingsFourCurrencyRegExp =
 
 export const replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault = 80;
 export const replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax = 100;
+
+export const replaceSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorDefault = 0;
+export const replaceSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorMin = 0;
+
+export const replaceSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorDefault = 0;
+export const replaceSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorMin = 0;
 
 export const replaceSettingsNamespaceResponseOneDataSettingsFiveProductNameMax = 64;
 
@@ -4172,7 +4194,9 @@ export const ReplaceSettingsNamespaceResponse = zod.union([zod.object({
   "enforced": zod.boolean(),
   "currency": zod.string().regex(replaceSettingsNamespaceResponseOneDataSettingsFourCurrencyRegExp).default(replaceSettingsNamespaceResponseOneDataSettingsFourCurrencyDefault),
   "daily_budget_minor": zod.int().min(1),
-  "alert_threshold_percent": zod.int().min(1).max(replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax).default(replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault)
+  "alert_threshold_percent": zod.int().min(1).max(replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentMax).default(replaceSettingsNamespaceResponseOneDataSettingsFourAlertThresholdPercentDefault),
+  "input_price_per_million_minor": zod.int().min(replaceSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorMin).default(replaceSettingsNamespaceResponseOneDataSettingsFourInputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M input tokens. 0 = fall back to the flat per-stage estimate.'),
+  "output_price_per_million_minor": zod.int().min(replaceSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorMin).default(replaceSettingsNamespaceResponseOneDataSettingsFourOutputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M output tokens. 0 = fall back to the flat per-stage estimate.')
 }),zod.object({
   "product_name": zod.string().min(1).max(replaceSettingsNamespaceResponseOneDataSettingsFiveProductNameMax),
   "login_description": zod.string().max(replaceSettingsNamespaceResponseOneDataSettingsFiveLoginDescriptionMax),
@@ -4233,6 +4257,12 @@ export const assessSettingsImpactBodySettingsFourCurrencyRegExp = new RegExp('^[
 export const assessSettingsImpactBodySettingsFourAlertThresholdPercentDefault = 80;
 export const assessSettingsImpactBodySettingsFourAlertThresholdPercentMax = 100;
 
+export const assessSettingsImpactBodySettingsFourInputPricePerMillionMinorDefault = 0;
+export const assessSettingsImpactBodySettingsFourInputPricePerMillionMinorMin = 0;
+
+export const assessSettingsImpactBodySettingsFourOutputPricePerMillionMinorDefault = 0;
+export const assessSettingsImpactBodySettingsFourOutputPricePerMillionMinorMin = 0;
+
 export const assessSettingsImpactBodySettingsFiveProductNameMax = 64;
 
 export const assessSettingsImpactBodySettingsFiveLoginDescriptionMax = 500;
@@ -4270,7 +4300,9 @@ export const AssessSettingsImpactBody = zod.object({
   "enforced": zod.boolean(),
   "currency": zod.string().regex(assessSettingsImpactBodySettingsFourCurrencyRegExp).default(assessSettingsImpactBodySettingsFourCurrencyDefault),
   "daily_budget_minor": zod.int().min(1),
-  "alert_threshold_percent": zod.int().min(1).max(assessSettingsImpactBodySettingsFourAlertThresholdPercentMax).default(assessSettingsImpactBodySettingsFourAlertThresholdPercentDefault)
+  "alert_threshold_percent": zod.int().min(1).max(assessSettingsImpactBodySettingsFourAlertThresholdPercentMax).default(assessSettingsImpactBodySettingsFourAlertThresholdPercentDefault),
+  "input_price_per_million_minor": zod.int().min(assessSettingsImpactBodySettingsFourInputPricePerMillionMinorMin).default(assessSettingsImpactBodySettingsFourInputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M input tokens. 0 = fall back to the flat per-stage estimate.'),
+  "output_price_per_million_minor": zod.int().min(assessSettingsImpactBodySettingsFourOutputPricePerMillionMinorMin).default(assessSettingsImpactBodySettingsFourOutputPricePerMillionMinorDefault).describe('OBS-002 token pricing — minor currency units per 1M output tokens. 0 = fall back to the flat per-stage estimate.')
 }),zod.object({
   "product_name": zod.string().min(1).max(assessSettingsImpactBodySettingsFiveProductNameMax),
   "login_description": zod.string().max(assessSettingsImpactBodySettingsFiveLoginDescriptionMax),
@@ -5517,6 +5549,12 @@ export const getReviewRunResponseOneDataStageResultsItemFindingCountMin = 0;
 
 export const getReviewRunResponseOneDataStageResultsItemEvidenceCountMin = 0;
 
+export const getReviewRunResponseOneDataUsageOneInputTokensMin = 0;
+
+export const getReviewRunResponseOneDataUsageOneOutputTokensMin = 0;
+
+export const getReviewRunResponseOneDataUsageOneAmountMinorMin = 0;
+
 
 
 
@@ -5544,6 +5582,14 @@ export const GetReviewRunResponse = zod.union([zod.object({
   "passed": zod.boolean(),
   "reason_codes": zod.array(zod.string())
 }),
+  "usage": zod.union([zod.object({
+  "provider_name": zod.string().describe('Display name of the provider that served the run.'),
+  "model_name": zod.string(),
+  "input_tokens": zod.int().min(getReviewRunResponseOneDataUsageOneInputTokensMin),
+  "output_tokens": zod.int().min(getReviewRunResponseOneDataUsageOneOutputTokensMin),
+  "amount_minor": zod.int().min(getReviewRunResponseOneDataUsageOneAmountMinorMin).describe('Billed amount in minor currency units for this run.'),
+  "currency": zod.string()
+}),zod.null()]).optional().describe('Real AI identity and token usage aggregated from the run\'s model calls (OBS-001 decision - visible to submitters and approvers). Null while no model call has completed.'),
   "failure_code": zod.string().nullish(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -6151,6 +6197,7 @@ export const ListChangeOrderTimelineResponse = zod.union([zod.object({
   "actor_user_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "actor_display_name": zod.string().nullish(),
   "summary": zod.string(),
+  "comment": zod.string().nullish().describe('Approval\/rejection comment carried by change_order.approval_decided events (BUG-004 read face; optional and absent on non-decision events).'),
   "stage_position": zod.int().min(1).nullish(),
   "state": zod.string().nullish()
 }))
@@ -6824,8 +6871,10 @@ export const ListQueryAccessRequestsResponse = zod.union([zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -6876,8 +6925,10 @@ export const CreateQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -6909,8 +6960,10 @@ export const GetQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -6963,8 +7016,10 @@ export const DecideQueryAccessResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -7016,8 +7071,10 @@ export const WithdrawQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -7062,6 +7119,7 @@ export const ListQueryGrantsResponse = zod.union([zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "holder_name": zod.string().nullish().describe('Frozen username snapshot of the grant holder (requester_user_id_snapshot twin; survives user deletion).'),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
   "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
@@ -7095,6 +7153,7 @@ export const GetQueryGrantResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "holder_name": zod.string().nullish().describe('Frozen username snapshot of the grant holder (requester_user_id_snapshot twin; survives user deletion).'),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
   "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
@@ -7147,6 +7206,7 @@ export const RevokeQueryGrantResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "holder_name": zod.string().nullish().describe('Frozen username snapshot of the grant holder (requester_user_id_snapshot twin; survives user deletion).'),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
   "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
@@ -7199,6 +7259,7 @@ export const RelinquishQueryGrantResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "holder_name": zod.string().nullish().describe('Frozen username snapshot of the grant holder (requester_user_id_snapshot twin; survives user deletion).'),
   "state": zod.enum(['active', 'revoked', 'expired', 'relinquished']),
   "revoked_reason": zod.string().nullish(),
   "revoked_by_username": zod.string().nullish().describe('Display-name snapshot of the revoking operator, captured at revocation time (RCP-20260901-QUERY-REVOCATION-READ-FACE).'),
@@ -7250,8 +7311,10 @@ export const CreateQueryGrantRenewalRequestResponse = zod.union([zod.object({
   "data": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -7303,8 +7366,10 @@ export const ListQueryOrdersResponse = zod.union([zod.object({
   "request": zod.object({
   "id": zod.uuid(),
   "requester_user_id": zod.uuid(),
+  "applicant_name": zod.string().nullish().describe('Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).'),
   "state": zod.enum(['access_pending', 'grant_active', 'access_rejected', 'withdrawn', 'invalid']),
   "datasource_ids": zod.array(zod.uuid()),
+  "datasource_names": zod.array(zod.string()).optional().describe('Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted).'),
   "grant_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),

@@ -33,6 +33,7 @@ export function DatePicker({
   ariaLabel,
   testId,
   className,
+  disableBefore,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -40,10 +41,13 @@ export function DatePicker({
   ariaLabel?: string;
   testId?: string;
   className?: string;
+  /** Plain YYYY-MM-DD; days strictly before this date are not selectable (UX-006). */
+  disableBefore?: string;
 }) {
   const { i18n } = useTranslation();
   const locale: Locale = i18n.language?.startsWith("zh") ? zhCN : enUS;
   const selected = value === "" ? undefined : parseLocalDate(value);
+  const disabledDays = disableBefore === undefined ? undefined : { before: parseLocalDate(disableBefore) };
 
   return (
     <Popover>
@@ -69,6 +73,7 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={selected}
+          disabled={disabledDays}
           onSelect={(day) => {
             onChange(day === undefined ? "" : formatLocalDate(day));
           }}

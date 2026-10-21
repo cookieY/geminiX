@@ -1197,6 +1197,16 @@ export interface AiBudgetSettings {
      * @maximum 100
      */
   alert_threshold_percent: number;
+  /**
+     * OBS-002 token pricing — minor currency units per 1M input tokens. 0 = fall back to the flat per-stage estimate.
+     * @minimum 0
+     */
+  input_price_per_million_minor: number;
+  /**
+     * OBS-002 token pricing — minor currency units per 1M output tokens. 0 = fall back to the flat per-stage estimate.
+     * @minimum 0
+     */
+  output_price_per_million_minor: number;
 }
 
 export interface BrandingSettings {
@@ -1843,6 +1853,22 @@ export interface CopyChangeOrderToDraftRequest {
   description?: string;
 }
 
+export interface ReviewRunUsage {
+  /** Display name of the provider that served the run. */
+  provider_name: string;
+  model_name: string;
+  /** @minimum 0 */
+  input_tokens: number;
+  /** @minimum 0 */
+  output_tokens: number;
+  /**
+     * Billed amount in minor currency units for this run.
+     * @minimum 0
+     */
+  amount_minor: number;
+  currency: string;
+}
+
 export type ReviewRunState = typeof ReviewRunState[keyof typeof ReviewRunState];
 
 
@@ -1916,6 +1942,8 @@ export interface ReviewRun {
   fingerprint_group_count: number;
   stage_results: ReviewStageResult[];
   gate: SubmissionGate;
+  /** Real AI identity and token usage aggregated from the run's model calls (OBS-001 decision - visible to submitters and approvers). Null while no model call has completed. */
+  usage?: ReviewRunUsage | null;
   /** @nullable */
   failure_code?: string | null;
   /** @minimum 1 */
@@ -2032,6 +2060,11 @@ export interface ChangeOrderTimelineEntry {
   /** @nullable */
   actor_display_name?: string | null;
   summary: string;
+  /**
+     * Approval/rejection comment carried by change_order.approval_decided events (BUG-004 read face; optional and absent on non-decision events).
+     * @nullable
+     */
+  comment?: string | null;
   /**
      * @minimum 1
      * @nullable
@@ -2316,8 +2349,15 @@ export const QueryOrderEntryKind = {
 export interface QueryAccessRequest {
   id: Uuid;
   requester_user_id: Uuid;
+  /**
+     * Display name of the requester at read time (null when the user was deleted; callers fall back to requester_user_id).
+     * @nullable
+     */
+  applicant_name?: string | null;
   state: QueryAccessRequestState;
   datasource_ids: Uuid[];
+  /** Datasource display names aligned by index with datasource_ids (empty string when the datasource was deleted). */
+  datasource_names?: string[];
   grant_id?: Uuid | null;
   /** @minimum 1 */
   version: number;
@@ -2392,6 +2432,11 @@ export const QueryGrantState = {
 export interface QueryGrant {
   id: Uuid;
   requester_user_id: Uuid;
+  /**
+     * Frozen username snapshot of the grant holder (requester_user_id_snapshot twin; survives user deletion).
+     * @nullable
+     */
+  holder_name?: string | null;
   state: QueryGrantState;
   /** @nullable */
   revoked_reason?: string | null;

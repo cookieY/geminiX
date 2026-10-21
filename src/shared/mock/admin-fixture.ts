@@ -262,7 +262,7 @@ const DEFAULT_SETTINGS: Record<string, SettingsValue> = {
   general: { registration_enabled: false, system_timezone: "Asia/Shanghai", default_locale: "zh-CN" },
   query: { approval_enabled: true, default_timeout_ms: 30000, maximum_approved_access_duration_minutes: 43200 },
   execution: { restriction_enabled: false, windows: [], osc: { tool: "none", defaults: {} } },
-  "ai-budget": { enforced: false, currency: "USD", daily_budget_minor: 10000, alert_threshold_percent: 80 },
+  "ai-budget": { enforced: false, currency: "USD", daily_budget_minor: 10000, alert_threshold_percent: 80, input_price_per_million_minor: 0, output_price_per_million_minor: 0 },
   branding: { product_name: "Yearning", login_description: "", logo_asset_id: null, favicon_asset_id: null },
 };
 

@@ -228,7 +228,9 @@
     "delete": "Delete",
     "close": "Close",
     "actions": "Actions",
-    "clear": "Clear"
+    "clear": "Clear",
+    "createdToast": "User created.",
+    "savedToast": "Saved."
   },
   "table": {
     "pagination": {
@@ -318,7 +320,8 @@
       "findings": "Findings",
       "evidence": "Evidence",
       "noRun": "No precheck yet. Click “Run AI precheck” to start.",
-      "timeout": "The precheck has not finished within the expected window. Refresh later; contact an administrator if it stays stuck."
+      "timeout": "The precheck has not finished within the expected window. Refresh later; contact an administrator if it stays stuck.",
+      "usageLine": "Model {{model}} · Provider {{provider}} · {{input}} in/{{output}} out tokens"
     },
     "phase": {
       "idle": "Not reviewed",
@@ -550,7 +553,7 @@
       "invalidTitle": "Order invalidated",
       "invalidDescription": "Frozen reviewers were removed; this order can no longer be approved. Only the submitter may void it.",
       "frozenReview": "Frozen review results",
-      "frozenReviewNote": "The findings below come from the review snapshot frozen at submission; the approval stage never re-runs the AI review.",
+      "frozenReviewNote": "Findings come from the review snapshot frozen at submission (see the precheck overview for the real AI identity and usage).",
       "comments": "Comments",
       "commentPlaceholder": "Add a comment…",
       "commentSubmit": "Send",
@@ -663,7 +666,8 @@
       "schedulePrefilled": "Prefilled from the submitter's desired time; confirm or adjust.",
       "schedulePlaceholder": "Pick a schedule time",
       "waitTitle": "Awaiting execution",
-      "waitNote": "This stage is approved. Only the frozen executors ({{names}}) can run it; everyone else waits for the outcome."
+      "waitNote": "This stage is approved. Only the frozen executors ({{names}}) can run it; everyone else waits for the outcome.",
+      "scheduleLeadHint": "The scheduled time must be at least 5 minutes in the future (blocked client-side; no backend error needed)."
     },
     "attemptState": {
       "created": "Created",
@@ -763,9 +767,10 @@
       "rejectTitle": "Reject this step?",
       "approveDescription": "Approval advances the flow stage by stage; after the final step the order enters execution-pending and is executed separately by the frozen executor — never automatically.",
       "rejectDescription": "A rejection by any reviewer immediately rejects the whole order; all remaining steps are voided. This cannot be undone.",
-      "commentLabel": "Comment (optional, written to the approval timeline)",
+      "commentLabel": "Comment (required for rejection; recorded in the approval timeline)",
       "conflictTitle": "Decision not applied",
-      "conflictHint": "The page was refreshed to the latest state; please check it and retry."
+      "conflictHint": "The page was refreshed to the latest state; please check it and retry.",
+      "rejectReasonRequired": "A rejection reason is required."
     },
     "stepState": {
       "pending": "Pending",
@@ -1042,7 +1047,11 @@
       "revisionVersion": "Version",
       "revisionChangedBy": "Changed by",
       "revisionChangedAt": "Changed at",
-      "revisionPaths": "Changed paths"
+      "revisionPaths": "Changed paths",
+      "inputPrice": "Input price (per 1M tokens)",
+      "outputPrice": "Output price (per 1M tokens)",
+      "inputPriceHint": "Bill by actual token usage; both 0 = flat per-stage estimate. In minor currency units.",
+      "outputPriceHint": "Bill by actual token usage; both 0 = flat per-stage estimate. In minor currency units."
     },
     "ruleSets": {
       "title": "Rule sets",
@@ -1093,7 +1102,9 @@
       "enter": "Enter",
       "enterDirect": "Enter directly",
       "sessionsCard": "Active sessions",
-      "sessionsDescription": "Resume an unfinished query session."
+      "sessionsDescription": "Resume an unfinished query session.",
+      "pendingTitle": "Access request pending",
+      "pendingDescription": "A submitted access request is awaiting approval; the query entry appears here once granted. Track it under My orders → Query orders."
     },
     "apply": {
       "title": "Request datasource access: {{name}}",
@@ -1103,7 +1114,8 @@
       "until": "Valid until",
       "reason": "Reason",
       "failed": "Failed to submit the request",
-      "submit": "Submit request"
+      "submit": "Submit request",
+      "untilTime": "Time (HH:mm, local timezone)"
     },
     "workspace": {
       "title": "Query workspace · {{name}}",
@@ -1459,7 +1471,8 @@
     "stageDown": "Move stage {{index}} down",
     "stageRemove": "Remove stage {{index}}",
     "stepRemove": "Remove approval step {{index}}",
-    "mappingRemove": "Remove schema mapping {{index}}"
+    "mappingRemove": "Remove schema mapping {{index}}",
+    "engineMismatch": "All stages of a change-review flow must bind datasources of the same engine (cross-engine stages can never pass execution preflight)."
   },
   "adminAnnouncements": {
     "title": "Announcements",

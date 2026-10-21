@@ -1,6 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Plus, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, PermissionGroup, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -417,6 +418,7 @@ function GroupFormDialog({
       } else {
         await replaceGroup.mutateAsync({ groupId: editing.id, version: editing.version, body });
       }
+      toast.success(editing === null ? t("common.createdToast") : t("common.savedToast"));
       onClose();
     } catch (error) {
       setErrorText(describeErrorText(describeError(error, editing === null ? "createPermissionGroup" : "replacePermissionGroup")));

@@ -156,6 +156,12 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
       return;
     }
     const lead = new Date(value).getTime() - Date.now();
+    // UX-004：不足5分钟时给出明确提示而非静默禁用按钮。
+    setScheduleNote(
+      !Number.isNaN(lead) && lead >= 0 && lead <= 5 * 60 * 1000
+        ? t("orders.execution.scheduleLeadHint")
+        : null,
+    );
     setDueInRange(!Number.isNaN(lead) && lead > 5 * 60 * 1000 && lead < 30 * 24 * 3600 * 1000);
   };
 
@@ -181,8 +187,11 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
         },
         onError: (error) => {
           const display = describeError(error, "createExecutionAttempt");
+          // BUG-006：meta.detail携带preflight拒因（如sql_changed_after_review），
+          // 逐字追加——执行人不再只见"执行前校验未通过"泛化文案。
+          const detail = display.detail !== null ? ` ${display.detail}` : "";
           setActionError(
-            `${t(display.messageKey)}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
+            `${t(display.messageKey)}${detail}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
           );
         },
       },
@@ -199,8 +208,9 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
       },
       onError: (error) => {
         const display = describeError(error, "createExecutionSchedule");
+        const detail = display.detail !== null ? ` ${display.detail}` : "";
         setActionError(
-          `${t(display.messageKey)}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
+          `${t(display.messageKey)}${detail}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
         );
       },
     });

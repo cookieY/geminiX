@@ -49,7 +49,6 @@ export const OPERATION_ERROR_PROFILES: {
       "listQueryGrants",
       "listQuerySessions",
       "listQueryOrders",
-      "listApprovalQueue",
       "listAnnouncementRevisions",
       "listKnowledgeEntries",
       "listFlowMaskingRules"

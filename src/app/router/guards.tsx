@@ -48,6 +48,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
 export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const status = useGuardSession();
   const location = useLocation();
+  const { user } = useSession();
   if (status === "loading") {
     return <LoadingState />;
   }
@@ -56,10 +57,15 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   }
   if (status === "authenticated") {
     const from: unknown = location.state;
-    const target =
+    let target =
       typeof from === "object" && from !== null && "from" in from && typeof from.from === "string"
         ? from.from
         : "/workspace";
+    // UX-002：回跳目标是管理面而当前会话无admin能力时回落工作台，
+    // 不再借道/403。
+    if (target.startsWith("/admin") && !user?.can_access_admin) {
+      target = "/workspace";
+    }
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;

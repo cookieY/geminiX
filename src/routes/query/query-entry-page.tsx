@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Label } from "@/shared/components/ui/label";
+import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import {
@@ -68,6 +69,12 @@ function matchGrantForFlow(flow: Flow, requests: QueryAccessRequest[], grants: Q
   return candidates.reduce((latest, current) =>
     current.grant.created_at > latest.grant.created_at ? current : latest,
   );
+}
+
+/** UX-006：本地时区的今天（YYYY-MM-DD），供日期选择器禁用过去日期。 */
+function todayLocal(): string {
+  const now = new Date();
+  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 export default function QueryEntryPage() {
@@ -144,6 +151,12 @@ export default function QueryEntryPage() {
         <Alert data-testid="query-needs-access-hint">
           <AlertTitle>{t("query.entry.needsAccessTitle")}</AlertTitle>
           <AlertDescription>{t("query.entry.needsAccessDescription", { name: needsAccessHint })}</AlertDescription>
+        </Alert>
+      )}
+      {requests.some((request) => request.state === "access_pending") && (
+        <Alert data-testid="query-pending-hint">
+          <AlertTitle>{t("query.entry.pendingTitle")}</AlertTitle>
+          <AlertDescription>{t("query.entry.pendingDescription")}</AlertDescription>
         </Alert>
       )}
 
@@ -267,6 +280,7 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
   const createRequest = useCreateAccessRequest();
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState("");
+  const [untilTime, setUntilTime] = useState("23:59");
   const [selected, setSelected] = useState<string[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -288,7 +302,9 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
       await createRequest.mutateAsync({
         flow_id: flow.id,
         datasource_ids: selected,
-        requested_until: new Date(`${until}T23:59:59Z`).toISOString(),
+        // OBS-009裁定（RCP）：发送墙钟时间（Z标记）+分钟粒度，由服务端按
+        // general.system_timezone重锚——多时区团队语义一致。
+        requested_until: `${until}T${untilTime}:00Z`,
         reason,
       });
       onClose();
@@ -320,7 +336,7 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
                     onChange={() => { toggle(capability.datasource_id); }}
                     data-testid={`query-apply-ds-${capability.datasource_id}`}
                   />
-                  <span className="truncate font-mono text-xs">{capability.datasource_id}</span>
+                  <span className="truncate font-mono text-xs">{capability.datasource_name}</span>
                   {capability.can_export && <Badge variant="secondary">{t("query.entry.exportable")}</Badge>}
                 </label>
               ))}
@@ -333,7 +349,18 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
               onChange={(next) => { setUntil(next); }}
               testId="query-apply-until"
               ariaLabel={t("query.apply.until")}
+              disableBefore={todayLocal()}
             />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="query-apply-until-time">{t("query.apply.untilTime")}</Label>
+              <Input
+                id="query-apply-until-time"
+                type="time"
+                value={untilTime}
+                onChange={(event) => { setUntilTime(event.target.value); }}
+                data-testid="query-apply-until-time"
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="query-apply-reason">{t("query.apply.reason")}</Label>

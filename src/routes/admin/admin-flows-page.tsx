@@ -1,6 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Database, EyeOff, Plus, Trash2, Workflow } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, FlowMaskingRule, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -338,13 +339,23 @@ function FlowFormDialog({
   }
   if (!open && openFor !== null) setOpenFor(null);
 
-  const datasources = datasourcesQuery.data?.items ?? [];
+  const datasources = useMemo(() => datasourcesQuery.data?.items ?? [], [datasourcesQuery.data]);
   const users = usersQuery.data?.items ?? [];
   const ruleSets = ruleSetsQuery.data?.items ?? [];
+
+  // BUG-005方案A：同引擎校验的前端镜像（后端权威校验兜底）。
+  const engineMismatch = useMemo(() => {
+    if (flowType !== "change_review") return false;
+    const engines = form.stages
+      .map((stage) => datasources.find((ds) => ds.id === stage.datasourceId))
+      .map((ds) => (ds ? `${ds.engine}/${ds.compatibility_mode}` : ""));
+    return engines.length >= 2 && engines.some((e) => e !== engines[0]);
+  }, [datasources, flowType, form]);
 
   const valid = useMemo(() => {
     if (form.name.trim() === "") return false;
     if (flowType === "change_review") {
+      if (engineMismatch) return false;
       return (
         form.stages.length >= 1 &&
         form.stages.every(
@@ -363,7 +374,7 @@ function FlowFormDialog({
       form.approvalSteps.length <= 10 &&
       form.approvalSteps.every((step) => step.actorIds.length >= 1)
     );
-  }, [flowType, form]);
+  }, [engineMismatch, flowType, form]);
 
   const submit = async () => {
     setErrorText(null);
@@ -405,6 +416,7 @@ function FlowFormDialog({
       } else {
         await replaceFlow.mutateAsync({ flowId: editing.id, version: editing.version, body });
       }
+      toast.success(editing === null ? t("common.createdToast") : t("common.savedToast"));
       onClose();
     } catch (error) {
       setErrorText(describeErrorText(describeError(error, editing === null ? "createFlow" : "replaceFlow")));
@@ -759,6 +771,11 @@ function FlowFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
+          {engineMismatch && (
+            <Alert variant="destructive" data-testid="flow-engine-mismatch">
+              <AlertDescription>{t("adminFlows.engineMismatch")}</AlertDescription>
+            </Alert>
+          )}
           <Button disabled={!valid || createFlow.isPending || replaceFlow.isPending} onClick={() => void submit()} data-testid="flow-form-submit">
             {createFlow.isPending || replaceFlow.isPending ? t("common.saving") : t("common.save")}
           </Button>

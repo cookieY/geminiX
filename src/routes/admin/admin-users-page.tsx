@@ -1,6 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Plus, ShieldCheck, UserRound } from "lucide-react";
 import type { User, UserDeletionImpact } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
@@ -337,6 +338,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
         password: form.password,
       });
       setForm({ username: "", displayName: "", email: "", password: "", confirmPassword: "" });
+      toast.success(t("common.createdToast"));
       onClose();
     } catch (error) {
       setErrorText(describeErrorText(describeError(error, "createUser")));

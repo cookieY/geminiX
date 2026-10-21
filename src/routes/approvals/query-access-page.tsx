@@ -166,9 +166,9 @@ export default function QueryAccessApprovalsPage() {
                   <TableBody>
                     {pending.map((row) => (
                       <TableRow key={row.id} data-testid={`query-access-pending-${row.id}`}>
-                        <TableCell className="font-mono text-xs">{row.requester_user_id}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.applicant_name ?? row.requester_user_id}</TableCell>
                         <TableCell className="max-w-72 truncate font-mono text-xs">
-                          {row.datasource_ids.join(" · ")}
+                          {(row.datasource_names?.length ? row.datasource_names : row.datasource_ids).join(" · ")}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{t("query.request.state.access_pending")}</Badge>
@@ -333,7 +333,7 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
             <TableBody>
               {grants.map((grant) => (
                 <TableRow key={grant.id} data-testid={`query-access-grant-${grant.id}`}>
-                  <TableCell className="font-mono text-xs">{grant.requester_user_id}</TableCell>
+                  <TableCell className="font-mono text-xs">{grant.holder_name ?? grant.requester_user_id}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{t("query.grant.state.active")}</Badge>
                   </TableCell>

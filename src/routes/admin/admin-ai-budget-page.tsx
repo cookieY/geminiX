@@ -185,6 +185,31 @@ function AiBudgetPanel({
             }}
             data-testid="ai-budget-alert"
           />
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="ai-budget-input-price">{t("admin.aiBudget.inputPrice")}</Label>
+            <Input
+              id="ai-budget-input-price"
+              type="number"
+              min={0}
+              value={form.input_price_per_million_minor}
+              onChange={(event) => { setForm({ ...form, input_price_per_million_minor: Number(event.target.value) }); }}
+              data-testid="ai-budget-input-price"
+            />
+            <p className="text-muted-foreground text-xs">{t("admin.aiBudget.inputPriceHint")}</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="ai-budget-output-price">{t("admin.aiBudget.outputPrice")}</Label>
+            <Input
+              id="ai-budget-output-price"
+              type="number"
+              min={0}
+              value={form.output_price_per_million_minor}
+              onChange={(event) => { setForm({ ...form, output_price_per_million_minor: Number(event.target.value) }); }}
+              data-testid="ai-budget-output-price"
+            />
+            <p className="text-muted-foreground text-xs">{t("admin.aiBudget.outputPriceHint")}</p>
+          </div>
+
           <p className="text-muted-foreground text-xs">{t("admin.aiBudget.alertHint")}</p>
         </div>
       </div>

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import type { QueryGrant, QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
-import { describeError } from "@/shared/api/error-display";
+import { describeError, type ErrorDisplay } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -836,8 +836,10 @@ function ExportDialog({
   );
 }
 
-function describeErrorText(display: { messageKey: string; requestId: string | null }): string {
+function describeErrorText(display: ErrorDisplay): string {
   // Translated through the shared i18n bundle so users never see raw keys.
-  const text = i18next.t(display.messageKey);
+  // BUG-010：meta.detail携带的驱动诊断文本逐字追加，查询失败可诊断。
+  const detail = typeof display.detail === "string" && display.detail !== "" ? ` ${display.detail}` : "";
+  const text = i18next.t(display.messageKey) + detail;
   return display.requestId === null ? text : `${text} (${display.requestId})`;
 }

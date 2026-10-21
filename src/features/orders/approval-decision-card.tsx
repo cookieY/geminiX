@@ -64,8 +64,14 @@ export function ApprovalDecisionCard({
   };
 
   const confirmDecision = (): void => {
+    const trimmed = comment.trim();
+    // UX-003裁定：驳回必须填写理由（BUG-004修复后理由进审批时间线）。
+    if (dialog === "reject" && trimmed === "") {
+      setDialogError(t("approvals.decision.rejectReasonRequired"));
+      return;
+    }
     decision.mutate(
-      { decision: dialog === "approve" ? "approve" : "reject", comment: comment.trim() },
+      { decision: dialog === "approve" ? "approve" : "reject", comment: trimmed },
       {
         onSuccess: () => { closeDialog(); },
         onError: (error) => {
@@ -160,7 +166,7 @@ export function ApprovalDecisionCard({
             <Button
               variant={dialog === "reject" ? "destructive" : "default"}
               onClick={confirmDecision}
-              disabled={decision.isPending}
+              disabled={decision.isPending || (dialog === "reject" && comment.trim() === "")}
               data-testid="approval-decision-confirm"
             >
               {dialog === "approve"
