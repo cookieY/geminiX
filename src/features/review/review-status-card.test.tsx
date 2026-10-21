@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ReviewRun } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import type { ReviewRun, ReviewStageResultState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import "@/shared/i18n";
 import { ReviewStatusCard } from "./review-status-card";
 import type { RunPhase } from "./run-state";
@@ -95,5 +95,56 @@ describe("ReviewStatusCard", () => {
   it("explains that no run exists yet instead of fabricating one", () => {
     renderCard("idle", null);
     expect(screen.getByText(/尚未运行预审/)).toBeInTheDocument();
+  });
+
+  it("renders the real AI identity and usage line when the run carries usage", () => {
+    renderCard(
+      "ready",
+      runFixture({
+        usage: {
+          provider_name: "DeepSeek",
+          model_name: "deepseek-chat",
+          input_tokens: 1234,
+          output_tokens: 567,
+          amount_minor: 9,
+          currency: "CNY",
+        },
+      }),
+    );
+    const usage = screen.getByTestId("review-usage").textContent;
+    expect(usage).toContain("deepseek-chat");
+    expect(usage).toContain("DeepSeek");
+    expect(usage).toContain("1234");
+    expect(usage).toContain("567");
+  });
+
+  it("falls back to pending copy for an unrecognized stage state", () => {
+    // 生成类型联合与 STAGE_BADGE 一致，回退分支防御的是运行时漂移，
+    // 因此用显式断言构造一个联合之外的状态。
+    renderCard(
+      "ready",
+      runFixture({
+        stage_results: [
+          {
+            stage_position: 1,
+            state: "outdated" as unknown as ReviewStageResultState,
+            highest_severity: "none",
+            gate_passed: false,
+            finding_count: 0,
+            evidence_count: 0,
+            snapshot_hash: "snap-o",
+          },
+        ],
+      }),
+    );
+    expect(screen.getByText("等待")).toBeInTheDocument();
+  });
+
+  it("renders budget and timeout failure copy from the known set", () => {
+    const first = renderCard("failed", runFixture({ state: "failed", failure_code: "budget_exhausted" }));
+    expect(screen.getByTestId("review-failure").textContent).toContain("当日AI预算已耗尽");
+    first.unmount();
+    renderCard("failed", runFixture({ state: "failed", failure_code: "timed_out" }));
+    expect(screen.getByTestId("review-failure").textContent).toContain("预审超时");
   });
 });
