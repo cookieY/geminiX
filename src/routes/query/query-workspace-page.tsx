@@ -748,11 +748,18 @@ function ExportDialog({
     setProgress({ pagesRead: 0, rowsExported: 0, finished: false, failure: null });
     setDone(null);
     setFailure(null);
-    // Server cursors are strictly forward: the display cursor has already
-    // streamed the visible rows, so the export starts its OWN execution of
-    // the same SELECT with the export page size and walks it with
-    // purpose=export — every page re-authorizes the frozen can_export
-    // server-side (4003) and revocation mid-export fails honestly (4004).
+    // Server cursors are strictly forward and the frozen executeSelect
+    // contract carries no purpose field — the first screen of an export
+    // cannot itself be an export-purpose read. SEC-0031 tightening: the
+    // export therefore opens its OWN execution with page_size=1, bounding
+    // the un-enforced display read to a single row, and walks EVERYTHING
+    // else through purpose=export continuations — each one re-authorizes
+    // the frozen can_export server-side (4003) and writes the
+    // query.export_page_read audit, the same caliber as the detail pages.
+    // Results of 0..1 rows open no cursor (has_more=false) and have no
+    // auditable read path under this contract; that single row is
+    // equivalent to manual collection through display, which the PRD
+    // already declares outside can_export's boundary.
     void (async () => {
       try {
         const first = await runSelect(sessionId, {
@@ -760,12 +767,12 @@ function ExportDialog({
           schema_name: context.schemaName,
           sql: context.sql,
           timeout_ms: 30000,
-          page_size: EXPORT_PAGE_SIZE,
+          page_size: 1,
         });
         const executionId = first.execution_id;
         await exportExecutionToXlsx(
           first,
-          (cursor) => fetchPage(executionId, cursor, "export"),
+          (cursor) => fetchPage(executionId, cursor, "export", EXPORT_PAGE_SIZE),
           {
             onProgress: setProgress,
             onDone: (bytes, rows) => {

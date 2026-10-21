@@ -395,13 +395,16 @@ export async function fetchPage(
   executionId: string,
   cursor: string,
   purpose: "display" | "export",
+  pageSize?: number,
 ): Promise<QueryResultPage> {
-  // The frozen contract declares no page-size parameter on the continuation
-  // endpoint — the cursor keeps the page size it was opened with
-  // (display pages 500, export pages 1000).
+  // pageSize is the RCP-20260901-QUERY-PAGE-SIZE-PARAM override (1..5000,
+  // applies to this and subsequent fetches server-side); omit it to keep
+  // the size the cursor was opened with (display pages 500, export pages
+  // opened small — see the workspace export SEC-0031 note).
   return (await fetchQueryResultPage(executionId, {
     cursor,
     purpose,
+    page_size: pageSize,
   })) as unknown as QueryResultPage;
 }
 

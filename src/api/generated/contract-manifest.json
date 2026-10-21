@@ -11,11 +11,11 @@
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "39dd55daa7dea0c8537acd35d281a61dbb325126f247613a32788965e1dbb3c0"
+      "sha256": "1a03df83fce37ca13769835300a23cd8073fbba62219dd04fbf55e64f79197c9"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
-      "sha256": "77048e5a19a17fe8c402cf0ee455d11407d6cbbe2f1520b0eb99d793116a4ad7"
+      "sha256": "05ebb9fbe0463c9a575e97e8428a34b236b985ad8700080c62130b6cebe46e55"
     }
   },
   "generator": {
@@ -23,7 +23,7 @@
     "version": "8.27.0",
     "version_source": "package.json",
     "lockfile": "pnpm-lock.yaml",
-    "lockfile_sha256": "e803be473091346b69b826224fb41ec70a4ee9accbcab1fc4085607ce3900252"
+    "lockfile_sha256": "708eafbb346786dd5e8d1f74ed60070fc7c59bdfaa3a0b201dbba75b4c36169e"
   },
   "generation_command": "pnpm api:generate",
   "outputs": {
@@ -49,7 +49,7 @@
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "f5de07db91563204b4007409653205fb0229059623985ae4b0da51f95294a41c"
+      "sha256": "6393762ab22387c82998e4689f65f8a25c953708aaab0b6c6755892a2cac2704"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-10-21T06:10:27.439Z"
+  "generated_at": "2026-10-21T16:36:06.977Z"
 }

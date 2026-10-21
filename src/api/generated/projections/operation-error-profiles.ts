@@ -618,6 +618,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1001,
       1002,
+      1012,
       4002,
       4004,
       4005,
@@ -651,6 +652,7 @@ export const OPERATION_ERROR_PROFILES: {
     "err_codes": [
       1001,
       1002,
+      1012,
       1009,
       4010,
       4003,

@@ -19,7 +19,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { HttpResponse, http } from "msw";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/test/msw/server";
-import { resetQueryFixture, seedQueryScenario } from "@/shared/mock/query-fixture";
+import { QUERY_FIXTURE_DS_MYSQL_ID, resetQueryFixture, seedQueryScenario } from "@/shared/mock/query-fixture";
 import { setMockIdentity } from "@/shared/mock/identity-store";
 import { SessionProvider } from "@/features/auth/session-provider";
 import "@/shared/i18n";
@@ -404,6 +404,104 @@ describe("review R2 fix L-8: export dialog reset at the component level", () => 
     await userEvent.click(screen.getByTestId("query-export"));
     await screen.findByTestId("query-export-done", undefined, { timeout: 8000 });
     expect(downloads).toHaveLength(2);
+
+    downloadSpy.mockRestore();
+  });
+});
+
+// SEC-0031: the workspace export is held to the same caliber as the
+// continuation pages — the entry is gated on can_export and every bulk data
+// read goes through purpose=export (the read the server answers with the
+// query.export_page_read audit and the frozen 4003 re-authorization).
+describe("SEC-0031: workspace export caliber (can_export gate + audited export reads)", () => {
+  afterEach(() => {
+    server.events.removeAllListeners();
+    setMockIdentity("henry");
+  });
+
+  it("cannot trigger an export when the session capability denies can_export", async () => {
+    seedQueryScenario("query-session");
+    stubSession(false);
+    // Same active session, frozen capability without export: the workspace
+    // entry must not render, so there is no in-product export path at all.
+    server.use(
+      http.get("*/query-sessions/qs-fixture-active", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: "qs-fixture-active",
+            user_id: SESSION_USER_ID,
+            state: "active",
+            capabilities: [
+              {
+                datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+                datasource_name: "analytics-mysql",
+                state: "active",
+                can_query: true,
+                can_export: false,
+              },
+            ],
+            created_at: "2026-08-28T08:00:00Z",
+          },
+          request_id: "qs-fixture-active",
+        }),
+      ),
+    );
+    renderAt("/query/sessions/qs-fixture-active");
+    await screen.findByTestId("query-workspace");
+    await chooseSchema("app");
+    await userEvent.type(screen.getByTestId("query-sql-editor"), "select id from app.users");
+    // SQL is ready and the session is active — the absence is purely the
+    // can_export gate, not a missing-prerequisite state.
+    expect(screen.queryByTestId("query-export")).not.toBeInTheDocument();
+  });
+
+  it("routes export data through audited purpose=export reads with a one-row first screen", async () => {
+    seedQueryScenario("query-session");
+    stubSession(false);
+    renderAt("/query/sessions/qs-fixture-active");
+    await screen.findByTestId("query-workspace");
+    await chooseSchema("app");
+
+    const exportReads: URL[] = [];
+    const executePageSizes: number[] = [];
+    server.events.on("request:start", (event) => {
+      const { request } = event;
+      const url = new URL(request.url);
+      if (url.pathname.endsWith("/pages") && url.searchParams.get("purpose") === "export") {
+        exportReads.push(url);
+      }
+      if (request.method === "POST" && url.pathname.endsWith("/executions")) {
+        void request.clone().json().then((body) => {
+          executePageSizes.push((body as { page_size?: number }).page_size ?? 0);
+        });
+      }
+    });
+
+    const downloadSpy = vi.spyOn(
+      await import("@/features/query/xlsx-export"),
+      "downloadXlsx",
+    );
+    downloadSpy.mockImplementation(() => {});
+
+    await userEvent.type(screen.getByTestId("query-sql-editor"), "select id from app.users");
+    await userEvent.click(screen.getByTestId("query-run"));
+    await screen.findByTestId(/query-result-loaded-/);
+    await userEvent.click(screen.getByTestId("query-export"));
+    await screen.findByTestId("query-export-done", undefined, { timeout: 8000 });
+
+    // Done (and therefore the download) is only reachable after audited
+    // export-purpose reads — can_export is re-authorized on each one
+    // server-side before any byte is written to a file.
+    expect(exportReads.length).toBeGreaterThan(0);
+    expect(exportReads.every((url) => url.searchParams.get("purpose") === "export")).toBe(true);
+    // The frozen executeSelect contract has no purpose field, so the export
+    // execution opens its cursor with page_size=1: the unaudited display
+    // first screen is bounded to a single row while every bulk page is an
+    // export read (last POST on this page is the export execution's).
+    expect(executePageSizes.length).toBeGreaterThan(0);
+    expect(executePageSizes[executePageSizes.length - 1]).toBe(1);
 
     downloadSpy.mockRestore();
   });
