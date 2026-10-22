@@ -19,6 +19,47 @@ export default defineConfig({
     baseURL: "http://localhost:4173",
     trace: "retain-on-failure",
   },
+  // tests/screenshots/*.png are assertions, not by-products. The template keeps
+  // their historical paths and names so the committed baseline set stays
+  // canonical, and a capture can no longer "pass" by silently rewriting the
+  // file it was supposed to compare against.
+  snapshotPathTemplate: "{testDir}/../screenshots/{arg}{ext}",
+  // Tolerance, honestly derived: `threshold: 0.2` (a Playwright default) already
+  // treats any single pixel within 0.2 YIQ distance as identical, so the
+  // 2–39 px / ≤6 per channel anti-aliasing wobble measured on the reference
+  // platform produces *zero* diff pixels. `maxDiffPixelRatio: 0.01` therefore
+  // does not absorb that noise — it absorbs what was not measured: anti-aliased
+  // edges that occasionally cross the 0.2 boundary, and browser-build drift
+  // (Playwright pins a chromium revision, and a dependency bump can change it;
+  // the committed baselines are only valid for the pinned build). 12960 px on a
+  // 1440×900 frame stays far tighter than a structural regression (a missing
+  // sidebar, a shifted column or a broken theme each move several percent).
+  //
+  // Known blind spot this creates: a *uniform, low-amplitude* colour shift
+  // (every channel inside 0.2 YIQ) passes at any area — the ratio cannot catch
+  // it, and a chromium upgrade turns all 116 baselines red at once.
+  //
+  // `animations`, `caret` and `scale` below restate Playwright defaults; they
+  // are written out so a future config edit cannot silently re-enable them,
+  // not because this package calibrated them.
+  //
+  // Todo: a global template also covers `toMatchAriaSnapshot`, whose default
+  // lives in a different path — any future aria snapshot would land in
+  // tests/screenshots/*.yml. Nothing uses it today; scope the template before
+  // adding one.
+  //
+  // Platform caveat: no CI workflow runs Playwright today, so baselines are
+  // only produced and compared on macOS. If e2e is ever wired into Linux CI,
+  // this template needs a {platform} segment plus a Linux baseline set.
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+      threshold: 0.2,
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+    },
+  },
   webServer: {
     // The e2e suite is mock-driven (code-generation-policy.json mock_layer):
     // the build inlines VITE_ENABLE_MOCK=true so the shared MSW worker backs

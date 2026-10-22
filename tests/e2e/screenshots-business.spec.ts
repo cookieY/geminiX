@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { KEY_PAGE_TYPES } from "./helpers/key-pages";
 import { mockSession, setMockIdentity } from "./helpers/auth";
 
@@ -53,10 +53,10 @@ for (const pageType of KEY_PAGE_TYPES) {
           await pageType.prepare(page);
           await page.evaluate(() => document.fonts.ready);
           await page.waitForTimeout(150);
-          await page.screenshot({
-            path: `tests/screenshots/${pageType.name}-${viewport.name}-${locale}-${theme}.png`,
-            fullPage: true,
-          });
+          await expect(page).toHaveScreenshot(
+            `${pageType.name}-${viewport.name}-${locale}-${theme}.png`,
+            { fullPage: true },
+          );
         });
       }
     }

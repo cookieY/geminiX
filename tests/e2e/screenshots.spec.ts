@@ -4,8 +4,9 @@ import { mockSession } from "./helpers/auth";
 
 // FE-F2 screenshot baseline (yearning-ui-design-spec.md §13): the real React
 // shell captured at 1440px, 1280px, 1024px and narrow width, in zh-CN and
-// en-US, light and dark. Files land in tests/screenshots/ and are committed
-// as the stable visual baseline for owner review.
+// en-US, light and dark. These are assertions, not captures: each one compares
+// against the committed PNG in tests/screenshots/, which stays the stable
+// baseline for owner review. Regenerate only through `pnpm screenshots:update`.
 const VIEWPORTS = [
   { name: "1440", width: 1440, height: 900 },
   { name: "1280", width: 1280, height: 800 },
@@ -46,8 +47,7 @@ for (const viewport of VIEWPORTS) {
         await page.evaluate(() => document.fonts.ready);
         await expect(page.getByText(READY_TEXT[locale])).toBeVisible();
         await page.waitForTimeout(150);
-        await page.screenshot({
-          path: `tests/screenshots/shell-${viewport.name}-${locale}-${theme}.png`,
+        await expect(page).toHaveScreenshot(`shell-${viewport.name}-${locale}-${theme}.png`, {
           fullPage: true,
         });
       });
@@ -62,10 +62,7 @@ for (const viewport of VIEWPORTS) {
         await page.evaluate(() => document.fonts.ready);
         await expect(page.getByText(/登录 Yearning|Sign in to Yearning/)).toBeVisible();
         await page.waitForTimeout(150);
-        await page.screenshot({
-          path: `tests/screenshots/login-${locale}-${theme}.png`,
-          fullPage: true,
-        });
+        await expect(page).toHaveScreenshot(`login-${locale}-${theme}.png`, { fullPage: true });
       });
     }
   }
