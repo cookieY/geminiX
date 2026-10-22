@@ -29,8 +29,8 @@ export function ThemeToggle() {
           clipPath: ["inset(0 0 100% 0)", "inset(0)"],
         },
         {
-          duration: 800,
-          easing: "ease-in-out",
+          duration: 450,
+          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
           pseudoElement: "::view-transition-new(root)",
         },
       );

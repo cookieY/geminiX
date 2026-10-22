@@ -323,7 +323,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                         setKnowledgeTextDraft(null);
                       }}
                       className={cn(
-                        "cursor-pointer p-4 rounded-xl transition-all",
+                        "cursor-pointer p-4 rounded-xl transition-[scale,opacity,background-color,border-color]",
                         entry.state === "disabled"
                           ? "bg-destructive/10 border border-destructive/20"
                           : entry.state === "draft"

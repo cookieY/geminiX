@@ -846,9 +846,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   function renderWizard(infoContent?: ReactNode): ReactNode {
     const phasePresented = mode === "draft" ? presentPhase(store.serverState, phase, dirty) : "idle";
     const variants = {
-      initial: (dir: number) => ({ x: `${String(110 * dir)}%`, opacity: 0 }),
-      animate: { x: "0%", opacity: 1 },
-      exit: (dir: number) => ({ x: `${String(-110 * dir)}%`, opacity: 0 }),
+      initial: (dir: number) => ({ x: `${String(32 * dir)}px`, opacity: 0 }),
+      animate: { x: "0px", opacity: 1 },
+      exit: (dir: number) => ({ x: `${String(-32 * dir)}px`, opacity: 0 }),
     };
 
     const stepContent = (): ReactNode => {
@@ -910,7 +910,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
     return (
       <div className="flex justify-center p-4" data-testid={mode === "create" ? "changes-new-page" : "draft-workspace-page"}>
-        <MotionConfig transition={{ duration: 0.5, type: "spring", bounce: 0 }} reducedMotion="user">
+        <MotionConfig transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }} reducedMotion="user">
           <Card className="bg-background w-full max-w-4xl overflow-hidden pt-0 shadow-none">
             <div>
               <CardHeader className="gap-4 border-b px-6 py-5">

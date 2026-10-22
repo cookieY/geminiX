@@ -34,7 +34,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/badge.tsx",
-          "sha256": "f33e899b64662f2ff28108f65c8662df39d603950e1518902af2edbd8193a819"
+          "sha256": "e1f246f71277f9614661c717b14f9956eaa2f68444d44d518965fe5b5052655d"
         }
       ]
     },
@@ -122,7 +122,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/progress.tsx",
-          "sha256": "03b188d12638b26f182d5ca0c2331ceb96c6908db5a8c460cf3e8ac04925aa3d"
+          "sha256": "64aebb90190581321e287fe90546ec0b54724fcc45158ac90e4b9fa23d0adcb0"
         }
       ]
     },
@@ -177,7 +177,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/sidebar.tsx",
-          "sha256": "6c1db997949bdc204a178f7fe6f86f631f16356964e7f479c4fedd4a016a1a34"
+          "sha256": "37608ad264400606ee77881800ab38305137134bc25b010cb8a4ae1e4f60b61b"
         }
       ]
     },
@@ -188,7 +188,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/skeleton.tsx",
-          "sha256": "32ad0bc816e6946ceb1582be143e991f6ea0446505e14a404116cc7d62782c0d"
+          "sha256": "9db076cdd9a3b40ca6dba601e1bb65e0d4a774a7cd231777c642e4385081604f"
         }
       ]
     },
@@ -232,7 +232,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/tabs.tsx",
-          "sha256": "3aea99fba5112dac09ed8f47d66ee7fb687b26b01e067de0cbd3177ee1f406d9"
+          "sha256": "d26f63e7077e6f649facb6d47c1a6768d7ed807b1d4351222df9e445e05c7315"
         }
       ]
     },
