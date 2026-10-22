@@ -15,6 +15,16 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Tooling sources are not UI. `scripts/scan-motion.mjs` talks *about* class names
+ * (regexes, report strings), and Tailwind's extractor cannot tell that from usage —
+ * it happily emits the catch-all transition utility (and its arbitrary-value
+ * spelling) for a file that only forbids them. Exclude the directory so the gate
+ * documents the rule without smuggling the utilities it bans into the bundle. */
+@source not "../../../scripts";
+/* AGENTS.md documents the motion rules and therefore *names* the utilities they
+ * forbid; documenting a rule must not emit the rule's own counter-example. */
+@source not "../../../AGENTS.md";
+
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
