@@ -116,13 +116,24 @@
       ]
     },
     {
+      "name": "popover",
+      "registry_type": "registry:ui",
+      "content_sha256": "f138b6e27abbd76c0ecb0bf3bfb3ff15ceee273e9bee225effbc9386d68fdd9e",
+      "files": [
+        {
+          "path": "src/shared/components/ui/popover.tsx",
+          "sha256": "2c5448e5704eb67c5ec90826a502fe1ffe97f5645bc3ae4e2cdc94462d8c69d1"
+        }
+      ]
+    },
+    {
       "name": "progress",
       "registry_type": "registry:ui",
       "content_sha256": "2b17863ca8458431fa238b74d58f21ed154ae0c771e1d51634dd98e969d1e909",
       "files": [
         {
           "path": "src/shared/components/ui/progress.tsx",
-          "sha256": "64aebb90190581321e287fe90546ec0b54724fcc45158ac90e4b9fa23d0adcb0"
+          "sha256": "30d9f984f4430ac69704d9e4c13039b3ae04d6bc9b3b711158f2000839f1e35c"
         }
       ]
     },
@@ -166,7 +177,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/sheet.tsx",
-          "sha256": "053ee3907d4dfbd6d7ba33c00f8cae7ee009a8feaf2bfcd0fdfba145579397c7"
+          "sha256": "74a98d04e6ef2c8a726141f77c0553606b662504629e8285d6b7723712f0acfd"
         }
       ]
     },
@@ -254,7 +265,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/tooltip.tsx",
-          "sha256": "f2b47f8ed5b8ffbff6cc049b3c89e78ec39f470ceb90bb261761f9dcb1066c4c"
+          "sha256": "6d582c212bb0c233414304dcba376336725d3c0f04f4337a5fcc837f0a28e08c"
         }
       ]
     },

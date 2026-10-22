@@ -399,17 +399,34 @@ html[data-card-shadow="false"] [data-slot="card"] {
 }
 
 /* Accessibility + screenshot determinism: under prefers-reduced-motion every
- * entrance/transition completes instantly (final state) and infinite
- * decorative loops stop after one instant pass (their unfilled base state).
- * The harness captures with reducedMotion: reduce, so baselines always see
- * settled pages instead of racing whatever animate-in frame the load allows. */
+ * entrance animation completes instantly (final state) and infinite decorative
+ * loops stop after one instant pass (their unfilled base state). The harness
+ * captures with reducedMotion: reduce, so baselines always see settled pages
+ * instead of racing whatever animate-in frame the load allows.
+ *
+ * Colour feedback is deliberately NOT killed: only spatial properties are
+ * dropped from the transition list, so hover/press/selected affordances still
+ * arrive visibly while nothing translates, scales or animates layout. The
+ * screenshot harness additionally passes `animations: "disabled"`, so the
+ * remaining colour transitions cannot race a capture either. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transition-property: color, background-color, border-color, fill, stroke,
+      opacity, box-shadow !important;
+    transition-duration: 120ms !important;
+  }
+
+  /* Opting out stays possible: `.transition-none` is more specific than `*`, so
+   * a surface that must not fade at all (the footer links) keeps its opt-out
+   * instead of inheriting the 120ms colour transition above. */
+  .transition-none,
+  .transition-none::before,
+  .transition-none::after {
+    transition-property: none !important;
   }
 }

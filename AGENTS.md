@@ -26,11 +26,12 @@ UI基线前置：开始任何前端UI实现前，必须读取`../docs/frontend/y
 - 不实现聊天壳，不引入旧`gemini-next`运行时，不在浏览器持久化SQL、Evidence、凭据、Token、映射或Reveal明文。
 - React、TypeScript、Vite、Tailwind CSS v4、shadcn/ui、Base UI、i18n、生成Client和测试命令以当前工具链契约及脚手架为准；不引入Ant Design或第二套通用组件库。
 - 非业务视觉（布局、主题、色彩、间距、圆角、阴影和通用组件外观）继承冻结Commit的Shadcn Dashboard基线，通过Tailwind CSS v4语义变量和shadcn Variant管理，不为品牌感重建第二套主题。
+- 动效遵守`../docs/frontend/yearning-ui-design-spec.md`：只动`transform`/`opacity`（必要时`clip-path`/`filter`），禁止`transition-all`，过渡按实际变化的属性逐项声明；曲线只用`src/app/styles/global.css`定义的`--ease-out`（进入、退出）与`--ease-sheet`（抽屉），不得新增`cubic-bezier()`字面量；禁止`ease-in`；UI过渡时长不超过500ms，弹层入场不得从`scale(0)`起手（用`scale(0.95)`加透明度）；`hover:`触发的动效必须包在`@media (hover: hover) and (pointer: fine)`内；任何动效都要在`prefers-reduced-motion: reduce`下退化为无位移而非直接消失。新增或修改动效后运行`pnpm check:motion`，提交前该命令必须通过。
 - 前端隐藏操作不能代替后端权限检查，页面不得复制另一套Submission Gate或状态机。
 - 前端源码和测试先在本仓库提交，再由YearningX更新Gitlink并绑定两个仓库Commit证据。
 - 未经用户明确授权不得commit或push；不得把未运行测试报告为通过。
 
-工具链命令（在本仓库内执行；生成命令需要父仓库的共享契约，见README"常用命令"）：`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:coverage`、`pnpm build`、`pnpm test:e2e`、`pnpm api:generate`、`pnpm api:breaking`。生成目录`src/api/generated/`禁止手改；shadcn组件为源码拥有，改动后运行`node scripts/generate-registry-inventory.mjs`刷新`registry-inventory.json`（CI以`--check`核对）。
+工具链命令（在本仓库内执行；生成命令需要父仓库的共享契约，见README"常用命令"）：`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:coverage`、`pnpm build`、`pnpm test:e2e`、`pnpm check:motion`、`pnpm api:generate`、`pnpm api:breaking`。生成目录`src/api/generated/`禁止手改；shadcn组件为源码拥有，改动后运行`node scripts/generate-registry-inventory.mjs`刷新`registry-inventory.json`（CI以`--check`核对）。
 
 标准操作序列：进入本仓库先查`git status`；处于detached HEAD时核对`git rev-parse main`等于YearningX Gitlink指向后`git checkout main`，禁止在detached HEAD上提交。新环境首次使用前必须配置本地`user.signingkey`（YearningX批准公钥串）与`gpg.ssh.allowedSignersFile`（指向YearningX的`api/development/allowed_signers`）——全局`.gitconfig`中的signingkey不是批准公钥。提交后以`git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=<allowed_signers> verify-commit`输出`Good signature`为准；`%G?`对SSH签名不可靠。推送main后回YearningX更新Gitlink并附本仓库CI证据完成YearningX侧提交。
 

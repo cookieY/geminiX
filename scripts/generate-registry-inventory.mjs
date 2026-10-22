@@ -25,6 +25,7 @@ const COMPONENTS = [
   "empty",
   "input",
   "label",
+  "popover",
   "progress",
   "resizable",
   "select",

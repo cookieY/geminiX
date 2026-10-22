@@ -23,6 +23,7 @@
     "check:tokens": "node scripts/check-token-contrast.mjs",
     "check:colors": "node scripts/scan-raw-colors.mjs",
     "check:prohibited": "node scripts/scan-prohibited.mjs",
+    "check:motion": "node scripts/scan-motion.mjs",
     "check:assets": "node scripts/check-assets.mjs",
     "check:registry": "node scripts/generate-registry-inventory.mjs --check",
     "api:generate": "orval --config orval.config.ts && node scripts/generate-projections.mjs && node scripts/generate-contract-manifest.mjs",
