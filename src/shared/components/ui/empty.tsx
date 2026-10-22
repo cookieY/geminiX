@@ -8,6 +8,9 @@ function Empty({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="empty"
       className={cn(
         "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border-dashed p-6 text-center text-balance",
+        // Data-plane entrance: an empty state replacing a table (or the
+        // reverse) is a content swap, so it arrives rather than blinks.
+        "animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out",
         className
       )}
       {...props}

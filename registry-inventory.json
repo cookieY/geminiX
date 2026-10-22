@@ -89,7 +89,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/empty.tsx",
-          "sha256": "59ccd8d3c8b47b3a04be8fd81b98ecbd7633ddf581ff77d52c3bdd0b248affa2"
+          "sha256": "68ce0d39692cd3e6716712a01ef919254bf1141fb71d10a7be6083658836e13b"
         }
       ]
     },
@@ -221,7 +221,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/table.tsx",
-          "sha256": "b918396f0d0dcaa3292a51f249d6b7284bcc08a68cf71f1b5f03be81eaa11246"
+          "sha256": "6d4ecd23ca084da7f5c77b912591dc5fb0a48eecaa725392cd0aaa6785f75942"
         }
       ]
     },
