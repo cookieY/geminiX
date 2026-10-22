@@ -292,7 +292,8 @@ test("query workbench with the Monaco SQL editor runs under the backend CSP with
   // login — the backend rate-limits logins, so this runs once per suite run).
   const browser = page.context().browser();
   expect(browser, "browser handle available for the approver context").toBeTruthy();
-  const approverContext = await browser!.newContext({
+  if (browser === null) throw new Error("browser handle unavailable");
+  const approverContext = await browser.newContext({
     baseURL: process.env.CSP_E2E_BASE_URL,
   });
   try {
