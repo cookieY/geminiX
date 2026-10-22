@@ -38,6 +38,18 @@
   --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   --shadow-md: 0 1px 4px rgba(133, 146, 173, 0.2);
   --shadow-btn-shadow: 0 9px 17.5px rgba(0, 0, 0, 0.05);
+
+  /*
+   * Motion (FE-F11-MOTION-POLISH). Curves live here instead of component files
+   * so the shared UI layer keeps one easing vocabulary and never hard-codes
+   * cubic-bezier() literals. Both names are additive: Tailwind's built-in
+   * --ease-out (cubic-bezier(0, 0, 0.2, 1)) starts too flat at 100-200ms, and
+   * no component under src/ used it before this token existed (grep: 0 call
+   * sites). --ease-out is the general enter/exit curve; --ease-sheet is the
+   * drawer curve that leaves fast and settles slowly.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @theme inline {
