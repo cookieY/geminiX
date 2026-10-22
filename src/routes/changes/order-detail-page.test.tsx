@@ -148,6 +148,70 @@ describe("OrderDetailPage", () => {
     expect(screen.queryByTestId("void-order")).toBeNull();
   });
 
+  it("projects approval decision comments on timeline entries only (BUG-004)", async () => {
+    // The backend timeline projection carries approval_decisions.comment as
+    // its own field (NEW-FE-01); empty or absent comments must not render a
+    // comment container at all.
+    const id = seedOrder();
+    server.use(
+      http.get("*/change-orders/:orderId/timeline", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: [
+              {
+                id: "b1a7c2d4-0000-4000-8000-00000000aa01",
+                event_type: "change_order.approval_decided",
+                occurred_at: "2026-09-01T09:30:00Z",
+                actor_kind: "user",
+                actor_user_id: "b1a7c2d4-0000-4000-8000-00000000aa09",
+                actor_display_name: "reviewer",
+                summary: "审批拒绝，工单终止",
+                comment: "语句风险不可接受，请拆分后重新提交",
+                stage_position: 1,
+                state: "rejected",
+              },
+              {
+                id: "b1a7c2d4-0000-4000-8000-00000000aa02",
+                event_type: "change_order.submitted",
+                occurred_at: "2026-09-01T09:00:00Z",
+                actor_kind: "user",
+                actor_user_id: FIXTURE_OWNER_ID,
+                actor_display_name: "henry",
+                summary: "工单提交并冻结流程快照",
+                stage_position: 1,
+                state: "submitted",
+              },
+              {
+                id: "b1a7c2d4-0000-4000-8000-00000000aa03",
+                event_type: "change_order.approval_decided",
+                occurred_at: "2026-09-01T09:10:00Z",
+                actor_kind: "user",
+                actor_user_id: "b1a7c2d4-0000-4000-8000-00000000aa09",
+                actor_display_name: "reviewer",
+                summary: "审批通过",
+                comment: "",
+                stage_position: 1,
+                state: null,
+              },
+            ],
+            page: { next_cursor: null, has_more: false },
+          },
+          request_id: REQUEST_ID,
+        }),
+      ),
+    );
+    renderDetail(id);
+    expect(await screen.findByTestId("order-timeline-list")).toBeVisible();
+    const comments = screen.getAllByTestId("order-timeline-comment");
+    // Only the rejected decision renders its comment; the commentless
+    // decision and the submitted entry render no comment container.
+    expect(comments).toHaveLength(1);
+    expect(comments[0]?.textContent).toContain("语句风险不可接受");
+    expect(screen.getByTestId("order-timeline-list").textContent).toContain("工单提交并冻结流程快照");
+  });
+
   it("withdraws a submitted order after confirmation, without a partial warning", async () => {
     const user = userEvent.setup();
     const id = seedOrder();

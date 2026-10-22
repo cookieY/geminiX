@@ -159,6 +159,9 @@ interface FixtureTimelineEntry {
   actor_user_id: string | null;
   actor_display_name: string | null;
   summary: string;
+  /** BUG-004 read face: approval/rejection comment, projected from the
+   * decision row like the backend timeline; absent on non-decision events. */
+  comment?: string;
   stage_position: number | null;
   state: string | null;
 }
@@ -629,7 +632,10 @@ function orderPublic(order: FixtureOrder) {
 }
 
 /** Appends a timeline entry for an order lifecycle fact; the timeline is the
- * audit projection of the same facts the outbox publishes as events. */
+ * audit projection of the same facts the outbox publishes as events. The
+ * optional comment mirrors the backend projection: only approval_decided
+ * entries carry the decision comment, and empty comments stay absent
+ * (backend `comment,omitempty`). */
 function recordOrderEvent(
   order: FixtureOrder,
   eventType: string,
@@ -638,9 +644,10 @@ function recordOrderEvent(
   summary: string,
   stagePosition: number | null,
   state: string | null,
+  comment: string | null = null,
 ): void {
   const entries = world.orderTimeline.get(order.id) ?? [];
-  entries.push({
+  const entry: FixtureTimelineEntry = {
     id: uuid(),
     event_type: eventType,
     occurred_at: now(),
@@ -650,7 +657,11 @@ function recordOrderEvent(
     summary,
     stage_position: stagePosition,
     state,
-  });
+  };
+  if (comment !== null && comment !== "") {
+    entry.comment = comment;
+  }
+  entries.push(entry);
   world.orderTimeline.set(order.id, entries);
 }
 
@@ -2394,11 +2405,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       step.state = body.decision === "approve" ? "approved" : "rejected";
       order.version += 1;
       const from = order.state;
-      const decisionSummary = `审批人 ${currentIdentity().username} ${body.decision === "approve" ? "通过" : "拒绝"}阶段 ${String(stage.position)} 审批步 ${String(step.position)}${
-        body.comment ? `：${body.comment}` : ""
-      }`;
+      // The comment rides the timeline entry as its own field (BUG-004
+      // read face, matching the backend projection from
+      // approval_decisions.comment) — not glued into the summary.
+      const decisionSummary = `审批人 ${currentIdentity().username} ${body.decision === "approve" ? "通过" : "拒绝"}阶段 ${String(stage.position)} 审批步 ${String(step.position)}`;
+      const decidedComment = body.comment?.trim() ? body.comment : null;
       const decidedEmit = (): void => {
-        recordOrderEvent(order, "change_order.approval_decided", "user", currentIdentityId(), decisionSummary, stage.position, null);
+        recordOrderEvent(order, "change_order.approval_decided", "user", currentIdentityId(), decisionSummary, stage.position, null, decidedComment);
         emit(
           `change-orders/${order.id}`,
           "io.yearning.v4.change_order.approval_decided",

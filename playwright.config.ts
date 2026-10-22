@@ -6,6 +6,12 @@ import { defineConfig } from "@playwright/test";
 // (code-generation-policy.json mock_layer).
 export default defineConfig({
   testDir: "./tests/e2e",
+  // SEC-0012: csp-security.spec.ts needs the real Go backend (embedded
+  // release SPA) as the document source — vite preview sends no CSP. The
+  // spec runs via its own project (tests/e2e/csp.playwright.config.ts,
+  // driver scripts/run-csp-e2e.mjs) and is excluded here so the mock
+  // regression baseline never executes it against a CSP-less server.
+  testIgnore: /csp-security\.spec\.ts/,
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "list" : "html",

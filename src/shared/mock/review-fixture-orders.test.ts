@@ -421,6 +421,12 @@ describe("approval decision fixture contract (FE-F7)", () => {
     const entries = timeline.body.data.items as Array<Record<string, unknown>>;
     expect(entries.some((entry) => entry.event_type === "change_order.approval_decided")).toBe(true);
     expect(entries.some((entry) => entry.event_type === "change_order.rejected")).toBe(true);
+    // BUG-004 read face: the decision comment rides the timeline entry as
+    // its own field (backend projects approval_decisions.comment), not
+    // glued into the summary — the page renders it in a dedicated element.
+    const decided = entries.find((entry) => entry.event_type === "change_order.approval_decided");
+    expect(decided?.comment).toBe("语句风险不可接受");
+    expect(String(decided?.summary)).not.toContain("语句风险不可接受");
   });
 
   it("a non-final approve activates the next step and keeps the order in approval", async () => {
