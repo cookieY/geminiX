@@ -14,15 +14,32 @@ const MOVED = 2
  *
  * Positions are measured relative to the container, which makes the delta
  * invariant to scrolling between renders.
+ *
+ * A shift longer than the list itself is not "this row moved up a few places":
+ * that is a filter or search swapping in a different set of rows, and gliding a
+ * row across the whole list reads as a bug. Those rows land where they belong
+ * instead. The bound takes the smaller of the previous and current heights, so
+ * clearing a filter (a list growing) is suppressed as well as narrowing one —
+ * otherwise the same row would glide back across a wider container.
+ *
+ * A hidden container reports height 0, which suppresses every tween. None of
+ * the current call sites renders its table inside a hidden element.
  */
 export function useFlipReorder<Container extends HTMLElement>(orderKey: string) {
   const ref = React.useRef<Container | null>(null)
   const positions = React.useRef(new Map<string, number>())
   const running = React.useRef<Animation[]>([])
+  /** Height of the list at the previous pass, for the two-directional bound. */
+  const previousHeight = React.useRef<number | null>(null)
 
   React.useLayoutEffect(() => {
     const container = ref.current
     if (container === null) {
+      // The list was unmounted (empty state, tab switch). Keeping the map would
+      // make the next render animate from coordinates measured before the
+      // container went away, which is how you get a row flying in from nowhere.
+      positions.current.clear()
+      previousHeight.current = null
       return
     }
 
@@ -38,7 +55,12 @@ export function useFlipReorder<Container extends HTMLElement>(orderKey: string) 
     }
     running.current = []
 
-    const containerTop = container.getBoundingClientRect().top
+    const containerRect = container.getBoundingClientRect()
+    const containerTop = containerRect.top
+    const bound =
+      previousHeight.current === null
+        ? containerRect.height
+        : Math.min(previousHeight.current, containerRect.height)
     const next = new Map<string, number>()
     const moved: Array<{ row: HTMLElement; delta: number }> = []
 
@@ -55,12 +77,13 @@ export function useFlipReorder<Container extends HTMLElement>(orderKey: string) 
         continue
       }
       const delta = previous - top
-      if (Math.abs(delta) >= MOVED) {
+      if (Math.abs(delta) >= MOVED && Math.abs(delta) <= bound) {
         moved.push({ row, delta })
       }
     }
 
     positions.current = next
+    previousHeight.current = containerRect.height
 
     if (moved.length === 0) {
       return

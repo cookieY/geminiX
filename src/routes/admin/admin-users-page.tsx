@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   useCreateUser,
   useDeletionImpact,
@@ -66,6 +67,10 @@ export default function AdminUsersPage() {
   // 空态文案区分。
   const keyword = search.trim();
   const users = usersQuery.data?.items ?? [];
+  // 服务端搜索：同一行可能留在屏幕上但换位置。
+  const usersBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(users.map((user) => user.id)),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-users-page">
@@ -111,7 +116,7 @@ export default function AdminUsersPage() {
                     <TableHead />
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody ref={usersBodyRef}>
                   {users.map((user) => (
                     <UserRow key={user.id} user={user} onEdit={() => { setEditing(user); }} />
                   ))}
@@ -152,7 +157,7 @@ function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
 
   return (
     <>
-      <TableRow data-testid={`admin-user-row-${user.id}`}>
+      <TableRow data-testid={`admin-user-row-${user.id}`} data-row-key={user.id}>
         <TableCell className="font-mono text-xs">{user.username}</TableCell>
         <TableCell>{user.display_name}</TableCell>
         <TableCell className="text-muted-foreground text-xs">{user.email ?? "—"}</TableCell>

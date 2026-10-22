@@ -29,6 +29,7 @@ import {
 } from "@/shared/components/ui/select";
 import { DatePicker } from "@/shared/components/ui/date-picker";
 import { useCursorPage } from "@/shared/lib/cursor-page";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
@@ -114,6 +115,7 @@ function OrderRow({ order }: { order: ChangeOrder }) {
       className="cursor-pointer"
       onClick={() => { void navigate(`/changes/orders/${order.id}`); }}
       data-testid="mine-order-row"
+      data-row-key={order.id}
     >
       <TableCell className="font-mono text-xs">{order.display_number}</TableCell>
       <TableCell className="max-w-56 truncate">{order.title}</TableCell>
@@ -318,6 +320,11 @@ export default function MinePage() {
     { limit: ordersPager.pageSize, after: ordersPager.after },
   );
   const ordersPageMeta = ordersQuery.data?.page;
+  const orderItems = ordersQuery.data?.items ?? [];
+  // 筛选之后仍留在列表里的行换了位置：记录旧位置再补间，而不是瞬跳。
+  const ordersBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(orderItems.map((order) => order.id)),
+  );
   // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
   const ordersLoaded = !ordersQuery.isPending && !ordersQuery.isError;
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
@@ -398,8 +405,8 @@ export default function MinePage() {
                           <TableHead />
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
-                        {(ordersQuery.data?.items ?? []).map((order) => (
+                      <TableBody ref={ordersBodyRef}>
+                        {orderItems.map((order) => (
                           <OrderRow key={order.id} order={order} />
                         ))}
                       </TableBody>

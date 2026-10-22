@@ -18,6 +18,7 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import { useState } from "react";
 
@@ -85,6 +86,10 @@ export default function AuditRecordsPage() {
       (event.resource_id ?? "").toLowerCase().includes(keyword) ||
       event.outcome.toLowerCase().includes(keyword),
   );
+  // 搜索会在已加载的一页里收窄行，收窄后的位置变化同样应当补间。
+  const auditBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(auditItems.map((event) => event.id)),
+  );
   const auditNext = eventsQuery.data?.nextCursor ?? null;
   const auditHasMore = eventsQuery.data?.hasMore ?? false;
 
@@ -145,10 +150,11 @@ export default function AuditRecordsPage() {
                     <TableHead>{t("records.column.outcome")}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody ref={auditBodyRef}>
                   {auditItems.map((event) => (
                     <TableRow
                       key={event.id}
+                      data-row-key={event.id}
                       className="cursor-pointer"
                       onClick={() => { setDetail(event); }}
                       data-testid={`records-row-${event.id}`}

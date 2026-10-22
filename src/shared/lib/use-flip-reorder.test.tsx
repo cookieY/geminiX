@@ -12,12 +12,15 @@ import { useFlipReorder } from "./use-flip-reorder"
 
 /** Vertical offset per row key, mutated between renders to fake a reorder. */
 let tops: Record<string, number> = {}
+/** Height the container reports; growing it fakes a list that gained rows. */
+let containerHeight = 600
 type Flight = { cancel: () => void }
 const flights: Array<{ cancel: ReturnType<typeof vi.fn> }> = []
 const animate = vi.fn<(keyframes: unknown, options: unknown) => Flight>()
 
 beforeEach(() => {
   tops = {}
+  containerHeight = 600
   flights.length = 0
   animate.mockReset()
   animate.mockImplementation(() => {
@@ -34,10 +37,13 @@ beforeEach(() => {
     function (this: HTMLElement) {
       const top =
         this.dataset.rowKey === undefined ? 0 : (tops[this.dataset.rowKey] ?? 0)
+      // The container (no data-row-key) reports its height: the hook uses it as
+      // the upper bound for a plausible reorder.
+      const height = this.dataset.rowKey === undefined ? containerHeight : 32
       return {
         top,
-        bottom: top + 32,
-        height: 32,
+        bottom: top + height,
+        height,
         left: 0,
         right: 100,
         width: 100,
@@ -56,6 +62,21 @@ afterEach(() => {
 
 function Harness({ keys }: { keys: string[] }) {
   const ref = useFlipReorder<HTMLDivElement>(keys.join("|"))
+  return (
+    <div ref={ref}>
+      {keys.map((key) => (
+        <div key={key} data-row-key={key} />
+      ))}
+    </div>
+  )
+}
+
+/** The list can disappear (empty state, tab switch) while the page stays mounted. */
+function ToggleHarness({ keys, mount }: { keys: string[]; mount: boolean }) {
+  const ref = useFlipReorder<HTMLDivElement>(JSON.stringify(keys))
+  if (!mount) {
+    return null
+  }
   return (
     <div ref={ref}>
       {keys.map((key) => (
@@ -194,5 +215,48 @@ describe("useFlipReorder", () => {
     tops = { b: 0, c: 32 }
     rerender(<Harness keys={["b", "c"]} />)
     expect(flights[0]?.cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it("lands a row instead of gliding it when the shift exceeds the container", () => {
+    setMotionPreference(false)
+    // 600px container, rows 32px apart: a row 660px up is a different list, not
+    // the same row in a new slot (that is what a filter swap looks like).
+    tops = { a: 0, b: 700 }
+    const { rerender } = render(<Harness keys={["a", "b"]} />)
+
+    // "a" leaves; "b" would have to travel 660px — past the 600px container.
+    tops = { b: 40 }
+    rerender(<Harness keys={["b"]} />)
+    expect(animate).not.toHaveBeenCalled()
+  })
+
+  it("also lands the row when a cleared filter widens the list", () => {
+    setMotionPreference(false)
+    // Three rows visible: a row pushed further than this is a different list.
+    containerHeight = 96
+    tops = { c: 0 }
+    const { rerender } = render(<Harness keys={["c"]} />)
+
+    // The filter is cleared: twenty rows come back and "c" now sits five slots
+    // down. The bound must stay the narrower list, otherwise those 160px slip
+    // under the wider container's height and the row glides across the list.
+    containerHeight = 640
+    tops = { x: 0, c: 160 }
+    rerender(<Harness keys={["x", "c"]} />)
+    expect(animate).not.toHaveBeenCalled()
+  })
+
+  it("forgets positions measured before the list unmounted", () => {
+    setMotionPreference(false)
+    tops = { a: 0, b: 32 }
+    const { rerender } = render(<ToggleHarness keys={["a", "b"]} mount />)
+
+    // Unmount while the page stays mounted: the effect clears on the next key.
+    rerender(<ToggleHarness keys={[]} mount={false} />)
+
+    // Remounted with rows that moved a lot: stale coordinates would animate.
+    tops = { a: 320, b: 0 }
+    rerender(<ToggleHarness keys={["b", "a"]} mount />)
+    expect(animate).not.toHaveBeenCalled()
   })
 })
