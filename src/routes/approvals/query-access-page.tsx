@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
@@ -83,6 +84,16 @@ export default function QueryAccessApprovalsPage() {
   const pending = requestsQuery.data.items;
   const grants = grantsQuery.data ?? [];
   const activeGrants = grants.filter((row) => row.state === "active");
+  // Decisions remove a row from this list, so every row below it shifts up.
+  // The ids give the body something to follow; the plain table is the visual
+  // result of a decision, not a decorative entrance.
+  // Page-scoped and unambiguous: ids are UUIDs today, but `join("|")` would
+  // silently collide if a future id embeds the separator. Paging replaces the
+  // whole set, so nothing is shared across pages — no reorder is expected
+  // there and none is animated.
+  const pendingBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    `p${String(pager.pageNo)}:${JSON.stringify(pending.map((row) => row.id))}`
+  );
 
   const submitDecision = async () => {
     if (deciding === null) return;
@@ -163,9 +174,13 @@ export default function QueryAccessApprovalsPage() {
                       <TableHead />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody ref={pendingBodyRef}>
                     {pending.map((row) => (
-                      <TableRow key={row.id} data-testid={`query-access-pending-${row.id}`}>
+                      <TableRow
+                        key={row.id}
+                        data-row-key={row.id}
+                        data-testid={`query-access-pending-${row.id}`}
+                      >
                         <TableCell className="font-mono text-xs">{row.applicant_name ?? row.requester_user_id}</TableCell>
                         <TableCell className="max-w-72 truncate font-mono text-xs">
                           {(row.datasource_names?.length ? row.datasource_names : row.datasource_ids).join(" · ")}

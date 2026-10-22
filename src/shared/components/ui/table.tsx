@@ -6,7 +6,10 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      // `overflow-y: clip` instead of the implicit `auto`: rows are translated
+      // during a FLIP reorder and an auto/scroll pairing would flash a
+      // scrollbar (reflowing the table width) on every 200ms animation.
+      className="relative w-full overflow-x-auto overflow-y-clip"
     >
       <table
         data-slot="table"
