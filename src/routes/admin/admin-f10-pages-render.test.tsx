@@ -225,7 +225,13 @@ describe("workspace home", () => {
     // operations numbers the admin home shows.
     expect(await screen.findByTestId("home-order-overview")).toBeVisible();
     expect(screen.getByTestId("home-distribution")).toBeVisible();
-    expect(screen.getByTestId("home-completion-ring")).toBeVisible();
+    // The loaded-state counterpart to the unknown-state test below. Without it
+    // a "render unknown forever" regression would satisfy every unknown-state
+    // assertion: the fixture is 41/47 = 87%, so the ring must announce 87% and
+    // carry both the track and the progress circle.
+    const loadedRing = screen.getByTestId("home-completion-ring");
+    expect(loadedRing).toHaveAccessibleName("工单完成率 87%");
+    expect(loadedRing.querySelectorAll("circle")).toHaveLength(2);
     // 状态分布与成功率同口径（RCP-20261023-HOME-METRICS-ALIGNMENT）：
     // 四段计数取自平台 state_distribution，合计等于窗口工单总量 47；
     // 旧实现用本人最近 20 条聚合，会得到 20。
