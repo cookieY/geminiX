@@ -1748,6 +1748,7 @@
       "users": "用户数",
       "completion": "工单完成率",
       "completionCaption": "{{completed}} 完成 / {{total}} 总计",
+      "completionAriaUnknown": "工单完成率（加载中）",
       "completionAria": "工单完成率 {{percent}}%",
       "planCompleted": "完成进度",
       "done": "已完成",
@@ -1766,7 +1767,9 @@
       "breakdownDone": "已完成",
       "breakdownActive": "进行中",
       "breakdownFailed": "失败",
-      "breakdownOther": "其他"
+      "breakdownOther": "其他",
+      "captionUnknown": "正在统计执行结果…",
+      "descriptionUnknown": "正在加载统计窗口内的工单状态…"
     },
     "announcement": {
       "kicker": "系统公告",

@@ -13,8 +13,8 @@ import { Loadable } from "@/app/router/loadable";
 // every page is lazy and the admin bundle must not enter the first screen.
 const LoginPage = lazy(() => import("@/routes/login/login-page"));
 
-// Temporary A/B preview (owner request 2026-10-23); lazy like every page so it
-// never enters the first-screen bundle.
+// The workspace home replaced the previous dashboard wholesale (owner ruling
+// 2026-10-23); the /workspace/preview A/B route was retired with it.
 const WorkspaceHomePage = lazy(() => import("@/routes/workspace/workspace-home-page"));
 const ProfilePage = lazy(() => import("@/routes/profile/profile-page"));
 const AuditRecordsPage = lazy(() => import("@/routes/records/audit-records-page"));

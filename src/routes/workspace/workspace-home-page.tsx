@@ -11,6 +11,7 @@ import {
   Megaphone,
   Stamp,
   Terminal,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { getSystemHealthDashboard } from "@/api/generated/client/administration/administration";
@@ -80,7 +81,7 @@ function useSystemHealthQuery(enabled: boolean) {
       (await getSystemHealthDashboard()) as unknown as SystemHealthDashboard,
     enabled,
     staleTime: 60_000,
-    // §18.73 (owner 2026-10-23): the health read surface is open to every
+    // §18.83 (owner 2026-10-23): the health read surface is open to every
     // signed-in session, so plain users see the same dots as admins. `retry:
     // false` still keeps a transient failure from becoming a visible error.
     retry: false,
@@ -141,16 +142,34 @@ function formatPercent(percent: number): string {
   return `${String(percent)}%`;
 }
 
-/** Recent 7 days against the 7 days before them. The same order_trend points
- * feed both windows, so this is a real comparison, never a fabricated delta;
- * a window without a predecessor renders nothing instead of +0%. */
+/** Recent 7 days against the 7 days before them. The server's `order_trend`
+ * is `group by day`, so days with zero submissions are **absent**, not zero —
+ * slicing the last 14 array entries would silently compare 14 orders-days
+ * against a different span. Rebuild the calendar first (missing day = 0),
+ * then take the two weeks. A window without a predecessor still renders
+ * nothing instead of +0%. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function weekOverWeek(points: DailyMetricPoint[]): number | null {
-  if (points.length < 14) return null;
-  const sum = (slice: DailyMetricPoint[]) =>
-    slice.reduce((total, point) => total + point.value, 0);
-  const prior = sum(points.slice(-14, -7));
+  if (points.length === 0) return null;
+  const byDay = new Map<string, number>();
+  for (const point of points) byDay.set(point.day, point.value);
+  const first = points[0];
+  if (first === undefined) return null;
+  const latest = points.reduce((max, point) => (point.day > max ? point.day : max), first.day);
+  const latestMs = Date.parse(`${latest}T00:00:00Z`);
+  if (Number.isNaN(latestMs)) return null;
+  const dayKey = (offset: number): string =>
+    new Date(latestMs - offset * DAY_MS).toISOString().slice(0, 10);
+  const sumRange = (from: number, to: number): number => {
+    let total = 0;
+    for (let offset = from; offset < to; offset += 1) total += byDay.get(dayKey(offset)) ?? 0;
+    return total;
+  };
+  // offsets are days back from the latest point: 0..6 recent, 7..13 prior.
+  const prior = sumRange(7, 14);
   if (prior === 0) return null;
-  const recent = sum(points.slice(-7));
+  const recent = sumRange(0, 7);
   return Math.round(((recent - prior) / prior) * 100);
 }
 
@@ -162,7 +181,7 @@ function stageRatio(order: ChangeOrder): number {
   return Math.min(1, (order.current_stage_position ?? 1) / total);
 }
 
-/** The preview reuses the shared order-state tone vocabulary, so a state has
+/** The home reuses the shared order-state tone vocabulary, so a state has
  * one colour across every surface (badge, strip dot, legend) and that colour
  * is theme-specific — never a second local map. */
 const stateDot = (state: ChangeOrder["state"]) => ORDER_STATE_TONE_DOT[orderStateTone(state)];
@@ -214,17 +233,32 @@ function MiniBars({ points }: { points: DailyMetricPoint[] }) {
 /** Completion ring. `pathLength={100}` lets the draw keyframes speak in
  * percent instead of arc length, and the stroke is a brand gradient so the
  * page is not monochrome. */
-function CompletionRing({ completed, total }: { completed: number; total: number }) {
+function CompletionRing({
+  completed,
+  total,
+}: {
+  completed: number | undefined;
+  total: number | undefined;
+}) {
   const { t } = useTranslation();
   const gradientId = `ring-${useId().replace(/:/g, "")}`;
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+  // `undefined` means the dashboard query has not resolved (or failed). Drawing
+  // 0/0 there would claim "nothing is done", which is a different statement from
+  // "not loaded yet" — the KPI cards already show a skeleton in that state, so
+  // the ring must not assert a number it does not have.
+  const known = completed !== undefined && total !== undefined;
+  const percent = !known || total === 0 ? 0 : Math.round((completed / total) * 100);
   return (
     <div className="relative flex items-center justify-center">
       <svg
         viewBox="0 0 100 100"
         className="size-36"
         role="img"
-        aria-label={t("home.metrics.completionAria", { percent })}
+        aria-label={
+          known
+            ? t("home.metrics.completionAria", { percent })
+            : t("home.metrics.completionAriaUnknown")
+        }
         data-testid="home-completion-ring"
       >
         <defs>
@@ -234,21 +268,25 @@ function CompletionRing({ completed, total }: { completed: number; total: number
           </linearGradient>
         </defs>
         <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" strokeWidth="9" />
-        <circle
-          cx="50"
-          cy="50"
-          r="42"
-          fill="none"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="9"
-          strokeLinecap="round"
-          pathLength={100}
-          strokeDasharray="100"
-          strokeDashoffset={100 - percent}
-          transform="rotate(-90 50 50)"
-          className="motion-safe:animate-ring-draw"
-          style={{ "--ring-offset": String(100 - percent) } as React.CSSProperties}
-        />
+        {/* Unknown state draws no arc at all: a 0% arc would be a claim, an
+            absent arc reads as "not measured yet" (review L4). */}
+        {known && (
+          <circle
+            cx="50"
+            cy="50"
+            r="42"
+            fill="none"
+            stroke={`url(#${gradientId})`}
+            strokeWidth="9"
+            strokeLinecap="round"
+            pathLength={100}
+            strokeDasharray="100"
+            strokeDashoffset={100 - percent}
+            transform="rotate(-90 50 50)"
+            className="motion-safe:animate-ring-draw"
+            style={{ "--ring-offset": String(100 - percent) } as React.CSSProperties}
+          />
+        )}
       </svg>
       <div className="absolute flex flex-col items-center gap-0.5">
         <span className="text-2xl font-semibold tabular-nums">
@@ -351,8 +389,8 @@ function AnnouncementPanel({
 }: {
   publication: AnnouncementPublication | null;
   health: SystemHealthDashboard | undefined;
-  completed: number;
-  orderTotal: number;
+  completed: number | undefined;
+  orderTotal: number | undefined;
   className?: string;
 }) {
   const { t } = useTranslation();
@@ -436,7 +474,7 @@ function AnnouncementPanel({
             </span>
             <CountUp
               value={
-                orderTotal === 0
+                orderTotal === undefined || completed === undefined || orderTotal === 0
                   ? undefined
                   : Math.round((completed / orderTotal) * 100)
               }
@@ -490,7 +528,7 @@ function HealthDots({ health }: { health: SystemHealthDashboard | undefined }) {
 function buildBreakdown(
   distribution: ChangeOrderStateDistribution | undefined,
   t: (key: string) => string,
-): { key: string; label: string; tone: string; count: number; share: number }[] {
+): { key: string; label: string; tone: string; count: number | undefined; share: number }[] {
   const groups = [
     { key: "done", label: t("home.distribution.breakdownDone"), tone: "bg-tone-emerald", match: (s: ChangeOrderState) => s === "completed" },
     {
@@ -526,7 +564,10 @@ function buildBreakdown(
     key: group.key,
     label: group.label,
     tone: group.tone,
-    count: values[index] ?? 0,
+    // `undefined` (query pending or failed) stays undefined instead of becoming
+    // 0: a zero here is a factual claim about the platform window, and the page
+    // must not assert one it has not loaded. CountUp renders "—" for undefined.
+    count: distribution === undefined ? undefined : (values[index] ?? 0),
     share: total === 0 ? 0 : ((values[index] ?? 0) / total) * 100,
   }));
 }
@@ -675,8 +716,24 @@ export default function WorkspaceHomePage() {
                     className="text-3xl font-semibold tabular-nums"
                   />
                   {delta !== null && (
-                    <span className="text-success inline-flex items-center gap-0.5 text-[13px] font-medium">
-                      <TrendingUp className="size-3.5" aria-hidden />
+                    // Direction must be visible without reading the sign: a
+                    // falling week in success-green with an up arrow reads as
+                    // growth at a glance (review F7).
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 text-[13px] font-medium",
+                        delta < 0
+                          ? "text-destructive"
+                          : delta === 0
+                            ? "text-muted-foreground"
+                            : "text-success",
+                      )}
+                    >
+                      {delta < 0 ? (
+                        <TrendingDown className="size-3.5" aria-hidden />
+                      ) : (
+                        <TrendingUp className="size-3.5" aria-hidden />
+                      )}
                       {delta > 0 ? `+${String(delta)}%` : `${String(delta)}%`}
                     </span>
                   )}
@@ -821,8 +878,8 @@ export default function WorkspaceHomePage() {
           <AnnouncementPanel
             publication={announcement.data ?? null}
             health={health.data}
-            completed={completed}
-            orderTotal={orderTotal}
+            completed={ops?.completed_total}
+            orderTotal={ops?.change_order_total}
             className="order-2 xl:col-span-8 xl:col-start-5 xl:row-start-1"
           />
 
@@ -843,7 +900,9 @@ export default function WorkspaceHomePage() {
                 />
               </div>
               <p className="text-muted-foreground text-[13px] leading-relaxed">
-                {t("home.distribution.caption", { completed, executed })}
+                {ops === undefined
+                  ? t("home.distribution.captionUnknown")
+                  : t("home.distribution.caption", { completed, executed })}
               </p>
               {/* The four operator numbers that used to sit in the announcement
                   slot keep their place in the reference's stat column — here as
@@ -875,7 +934,9 @@ export default function WorkspaceHomePage() {
             <div className="flex flex-col gap-4">
               <h3 className="text-lg font-semibold">{t("home.distribution.legendTitle")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                {t("home.distribution.description", { count: orderTotal })}
+                {ops === undefined
+                  ? t("home.distribution.descriptionUnknown")
+                  : t("home.distribution.description", { count: orderTotal })}
               </p>
               <div className="flex flex-col gap-2">
                 <div className="bg-muted flex h-2 w-full gap-0.5 overflow-hidden rounded-full">

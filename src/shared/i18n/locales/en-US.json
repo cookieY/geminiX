@@ -1748,6 +1748,7 @@
       "users": "Users",
       "completion": "Order completion",
       "completionCaption": "{{completed}} completed / {{total}} total",
+      "completionAriaUnknown": "Order completion (loading)",
       "completionAria": "Order completion {{percent}}%",
       "planCompleted": "Plan completed",
       "done": "completed",
@@ -1766,7 +1767,9 @@
       "breakdownDone": "Completed",
       "breakdownActive": "In flight",
       "breakdownFailed": "Failed",
-      "breakdownOther": "Other"
+      "breakdownOther": "Other",
+      "captionUnknown": "Loading execution results…",
+      "descriptionUnknown": "Loading the order states in the window…"
     },
     "announcement": {
       "kicker": "System notice",
