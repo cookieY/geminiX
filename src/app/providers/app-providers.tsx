@@ -17,7 +17,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <TooltipProvider>
             <SessionProvider>{children}</SessionProvider>
           </TooltipProvider>
-          <Toaster position="top-right" />
+          {/* The header is a floating card pinned to the viewport top and
+              carries the refresh control at its right edge. A top-right toast
+              at sonner's default offset lands exactly on that control and
+              swallows the next click, so feedback would block the action it
+              reports. Push the stack below the header band (4px margin + 48px
+              control row + gap) instead of letting it overlap. */}
+          <Toaster position="top-right" offset={{ top: 68, right: 16 }} />
         </QueryClientProvider>
       </ThemeProvider>
     </ErrorBoundary>

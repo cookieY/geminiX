@@ -549,7 +549,7 @@ export default function QueryWorkspacePage() {
           data-testid="query-inspect-overlay"
         >
           <div
-            className="bg-popover text-popover-foreground absolute w-44 rounded-md border p-1 shadow-md"
+            className="bg-popover text-popover-foreground absolute w-44 rounded-md border p-1"
             style={{ left: inspectMenu.x, top: inspectMenu.y }}
             onClick={(event) => { event.stopPropagation(); }}
           >

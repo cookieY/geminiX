@@ -50,6 +50,9 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.workspace",
     items: [
       { labelKey: "nav.home", to: "/workspace", icon: House, visibility: "all" },
+      // Temporary A/B surface (owner request 2026-10-23): the new-home preview
+      // sits between 首页 and 我的工单 so both layouts open in adjacent tabs.
+      // Remove together with the preview route once the owner picks a layout.
       { labelKey: "nav.myOrders", to: "/changes/mine", icon: FileStack, visibility: "all" },
       { labelKey: "nav.orderSubmit", to: "/changes/new", icon: FilePlus2, visibility: "all" },
       { labelKey: "nav.orderApprovals", to: "/approvals/changes", icon: Stamp, visibility: "all" },

@@ -7843,6 +7843,10 @@ export const GetLatestReleaseResponse = zod.union([zod.object({
 })])
 
 
+/**
+ * 平台运营统计。按 owner 2026-10-16 指令（§18.71），该读面对全部已登录会话开放，
+ * 路径与 tag 保留 admin 语义不做迁移。
+ */
 export const getOperationsDashboardQueryWindowDaysDefault = 30;
 export const getOperationsDashboardQueryWindowDaysMax = 90;
 
@@ -7876,6 +7880,42 @@ export const getOperationsDashboardResponseOneDataApprovalDurationP95MsMin = 0;
 
 export const getOperationsDashboardResponseOneDataOrderTrendItemValueMin = 0;
 
+export const getOperationsDashboardResponseOneDataStateDistributionSubmittedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionStageApprovalActiveMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionStageExecutionPendingMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionScheduledMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionRunningMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionCompletedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionRejectedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionWithdrawnMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionWithdrawnAfterPartialExecutionMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionVoidedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionFailedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionPartialFailedMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionCancelledMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionPartialCancelledMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionResultUnknownMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionBlockedDatasourceUnavailableMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionMissedScheduleMin = 0;
+
+export const getOperationsDashboardResponseOneDataStateDistributionInvalidMin = 0;
+
 
 
 export const GetOperationsDashboardResponse = zod.union([zod.object({
@@ -7904,7 +7944,27 @@ export const GetOperationsDashboardResponse = zod.union([zod.object({
   "order_trend": zod.array(zod.object({
   "day": zod.iso.date(),
   "value": zod.number().min(getOperationsDashboardResponseOneDataOrderTrendItemValueMin)
-}))
+})),
+  "state_distribution": zod.object({
+  "submitted": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionSubmittedMin),
+  "stage_approval_active": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionStageApprovalActiveMin),
+  "stage_execution_pending": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionStageExecutionPendingMin),
+  "scheduled": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionScheduledMin),
+  "running": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionRunningMin),
+  "completed": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionCompletedMin),
+  "rejected": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionRejectedMin),
+  "withdrawn": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionWithdrawnMin),
+  "withdrawn_after_partial_execution": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionWithdrawnAfterPartialExecutionMin),
+  "voided": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionVoidedMin),
+  "failed": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionFailedMin),
+  "partial_failed": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionPartialFailedMin),
+  "cancelled": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionCancelledMin),
+  "partial_cancelled": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionPartialCancelledMin),
+  "result_unknown": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionResultUnknownMin),
+  "blocked_datasource_unavailable": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionBlockedDatasourceUnavailableMin),
+  "missed_schedule": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionMissedScheduleMin),
+  "invalid": zod.int().min(getOperationsDashboardResponseOneDataStateDistributionInvalidMin)
+}).describe('窗口内按当前状态分组的工单计数。键集合恒为 ChangeOrderState 的 18 个枚举值\n（无该状态的工单时取 0），窗口条件与 change_order_total 完全一致，\n因此各键之和等于 change_order_total。\n')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -7917,88 +7977,11 @@ export const GetOperationsDashboardResponse = zod.union([zod.object({
 })])
 
 
-export const getReviewQualityDashboardQueryWindowDaysDefault = 30;
-export const getReviewQualityDashboardQueryWindowDaysMax = 90;
-
-
-
-export const GetReviewQualityDashboardQueryParams = zod.object({
-  "window_days": zod.int().min(1).max(getReviewQualityDashboardQueryWindowDaysMax).default(getReviewQualityDashboardQueryWindowDaysDefault)
-})
-
-export const getReviewQualityDashboardResponseOneDataReadyTotalMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataBlockedTotalMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataPartialTotalMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataFailedTotalMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataReviewDurationP50MsMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataReviewDurationP95MsMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataFingerprintCoverageRatioMin = 0;
-export const getReviewQualityDashboardResponseOneDataFingerprintCoverageRatioMax = 1;
-
-export const getReviewQualityDashboardResponseOneDataFindingSeverityCountsLowMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataFindingSeverityCountsMediumMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataFindingSeverityCountsHighMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataFindingSeverityCountsCriticalMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataInputTokenCountMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataOutputTokenCountMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataEstimatedCostMinorMin = 0;
-
-export const getReviewQualityDashboardResponseOneDataCurrencyRegExp = new RegExp('^[A-Z]{3}$');
-
-
-export const GetReviewQualityDashboardResponse = zod.union([zod.object({
-  "err_code": zod.literal(0),
-  "message": zod.literal("ok"),
-  "data": zod.object({
-  "meta": zod.object({
-  "window_start": zod.iso.date(),
-  "window_end": zod.iso.date(),
-  "system_timezone": zod.string(),
-  "refreshed_at": zod.iso.datetime({"offset":true}),
-  "completeness": zod.enum(['complete', 'partial']),
-  "unavailable_metric_keys": zod.array(zod.string()).optional()
-}),
-  "ready_total": zod.int().min(getReviewQualityDashboardResponseOneDataReadyTotalMin),
-  "blocked_total": zod.int().min(getReviewQualityDashboardResponseOneDataBlockedTotalMin),
-  "partial_total": zod.int().min(getReviewQualityDashboardResponseOneDataPartialTotalMin),
-  "failed_total": zod.int().min(getReviewQualityDashboardResponseOneDataFailedTotalMin),
-  "review_duration_p50_ms": zod.int().min(getReviewQualityDashboardResponseOneDataReviewDurationP50MsMin),
-  "review_duration_p95_ms": zod.int().min(getReviewQualityDashboardResponseOneDataReviewDurationP95MsMin),
-  "fingerprint_coverage_ratio": zod.number().min(getReviewQualityDashboardResponseOneDataFingerprintCoverageRatioMin).max(getReviewQualityDashboardResponseOneDataFingerprintCoverageRatioMax),
-  "finding_severity_counts": zod.object({
-  "low": zod.int().min(getReviewQualityDashboardResponseOneDataFindingSeverityCountsLowMin),
-  "medium": zod.int().min(getReviewQualityDashboardResponseOneDataFindingSeverityCountsMediumMin),
-  "high": zod.int().min(getReviewQualityDashboardResponseOneDataFindingSeverityCountsHighMin),
-  "critical": zod.int().min(getReviewQualityDashboardResponseOneDataFindingSeverityCountsCriticalMin)
-}),
-  "input_token_count": zod.int().min(getReviewQualityDashboardResponseOneDataInputTokenCountMin).optional(),
-  "output_token_count": zod.int().min(getReviewQualityDashboardResponseOneDataOutputTokenCountMin).optional(),
-  "estimated_cost_minor": zod.int().min(getReviewQualityDashboardResponseOneDataEstimatedCostMinorMin).optional(),
-  "currency": zod.string().regex(getReviewQualityDashboardResponseOneDataCurrencyRegExp).optional()
-}),
-  "request_id": zod.uuid()
-}),zod.object({
-  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
-  "message": zod.string(),
-  "data": zod.null(),
-  "request_id": zod.uuid(),
-  "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
-})])
-
-
+/**
+ * 系统组件健康读面。按 owner 2026-10-23 指令，该读面对全部已登录会话开放
+ * （authorization-policy authenticated-session 规则），供首页公告卡的健康点使用；
+ * 路径与 tag 保留 admin 语义不做迁移。
+ */
 export const GetSystemHealthDashboardResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),

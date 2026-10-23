@@ -218,10 +218,10 @@ test("reduced motion toasts keep their stacking offset without a transform trans
   await page.goto("/workspace");
 
   const toasts = page.locator("[data-sonner-toast]");
-  await page.getByTestId("workspace-refresh").click();
+  await page.getByTestId("header-refresh").click();
   await expect(toasts).toHaveCount(1);
   await page.waitForTimeout(200);
-  await page.getByTestId("workspace-refresh").click();
+  await page.getByTestId("header-refresh").click();
   await expect(toasts).toHaveCount(2);
 
   const stacked = await toasts.evaluateAll((els) =>

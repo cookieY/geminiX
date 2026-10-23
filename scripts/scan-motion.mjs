@@ -42,16 +42,18 @@ function walk(directory, files = []) {
   return files;
 }
 
-// The only two curves the design system owns. Anything else is a new easing
-// opinion smuggled into a component.
+// The only curves the design system owns. Anything else is a new easing opinion
+// smuggled into a component. --ease-data is the flatter data curve (charts,
+// counting numbers); --ease-out remains the interaction curve.
 const CANONICAL_CURVES = [
   /^cubic-bezier\(\s*0?\.23,\s*1,\s*0?\.32,\s*1\s*\)$/,
   /^cubic-bezier\(\s*0?\.32,\s*0?\.72,\s*0,\s*1\s*\)$/,
+  /^cubic-bezier\(\s*0?\.25,\s*0?\.46,\s*0?\.45,\s*0?\.94\s*\)$/,
 ];
 
 // Tokens the CSS layer must keep defining; removing one silently flattens every
 // component back onto Tailwind's built-in (too weak) default curve.
-const REQUIRED_TOKENS = ["--ease-out", "--ease-sheet"];
+const REQUIRED_TOKENS = ["--ease-out", "--ease-sheet", "--ease-data"];
 
 // Tailwind's `duration-*` is milliseconds; arbitrary values may use ms or s.
 const MAX_UI_DURATION_MS = 500;
@@ -744,5 +746,5 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `motion scan ok: ${files.length} files checked — no catch-all transition, no ease-in, curves from --ease-out/--ease-sheet, durations <= ${MAX_UI_DURATION_MS}ms, no scale(0) entry, no layout-property transitions outside the 3 reviewed sidebar exceptions`,
+  `motion scan ok: ${files.length} files checked — no catch-all transition, no ease-in, curves from --ease-out/--ease-sheet/--ease-data, durations <= ${MAX_UI_DURATION_MS}ms, no scale(0) entry, no layout-property transitions outside the 3 reviewed sidebar exceptions`,
 );

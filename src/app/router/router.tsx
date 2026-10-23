@@ -12,7 +12,10 @@ import { Loadable } from "@/app/router/loadable";
 // Route-level code splitting is a machine gate (migration contract §8):
 // every page is lazy and the admin bundle must not enter the first screen.
 const LoginPage = lazy(() => import("@/routes/login/login-page"));
-const WorkspacePage = lazy(() => import("@/routes/workspace/workspace-page"));
+
+// Temporary A/B preview (owner request 2026-10-23); lazy like every page so it
+// never enters the first-screen bundle.
+const WorkspaceHomePage = lazy(() => import("@/routes/workspace/workspace-home-page"));
 const ProfilePage = lazy(() => import("@/routes/profile/profile-page"));
 const AuditRecordsPage = lazy(() => import("@/routes/records/audit-records-page"));
 const QueryEntryPage = lazy(() => import("@/routes/query/query-entry-page"));
@@ -57,7 +60,7 @@ export const appRouter = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/workspace" replace /> },
-      { path: "workspace", element: Loadable(WorkspacePage) },
+      { path: "workspace", element: Loadable(WorkspaceHomePage) },
       {
         path: "changes/new",
         element: Loadable(ChangesNewPage),

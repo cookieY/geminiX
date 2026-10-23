@@ -167,7 +167,7 @@ test("gate 5: the remaining core pages render real content", async ({ page }) =>
   await useScenario(page, "query-session");
   await page.goto("/workspace");
   await expect(page.getByTestId("workspace-page")).toBeVisible();
-  await expect(page.getByTestId("workspace-announcement")).toBeVisible();
+  await expect(page.getByTestId("home-announcement")).toBeVisible();
 
   // 我的工单-查询工单 tab shows the unified query view.
   await page.goto("/changes/mine");

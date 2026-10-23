@@ -29,7 +29,8 @@
       "knowledge": "Internal Experience",
       "providers": "Providers",
       "ruleSets": "Rule sets"
-    }
+    },
+    "homeNext": "Home (new)"
   },
   "shell": {
     "toggleSidebar": "Toggle sidebar",
@@ -53,6 +54,25 @@
     "footer": {
       "sponsor": "Sponsor",
       "docs": "Docs"
+    },
+    "command": {
+      "title": "Search and go",
+      "open": "Search and go",
+      "placeholder": "Search pages or type a command…",
+      "hint": "ESC to close",
+      "suggestions": "Suggestions",
+      "results": "{{count}} results",
+      "empty": "No matching page"
+    },
+    "release": {
+      "upToDate": "Up to date",
+      "hasUpdate": "Update available {{latest}}",
+      "notes": "Release notes",
+      "refresh": "Refresh data"
+    },
+    "refresh": {
+      "success": "Refreshed",
+      "failed": "Refresh failed"
     }
   },
   "login": {
@@ -80,15 +100,6 @@
     "brandDescription": "Submission, AI precheck, multi-stage approval, execution audit and query governance — Yearning secures the whole database change lifecycle.",
     "oidcLabel": "Sign in with OIDC",
     "divider": "or continue with your account"
-  },
-  "workspace": {
-    "placeholderTitle": "Workspace content is not delivered yet",
-    "placeholderDesc": "The home overview arrives with the Dashboard work package.",
-    "greeting": "Welcome back, {{name}}",
-    "refreshedAt": "Refreshed {{time}}",
-    "refresh": "Refresh",
-    "refreshSuccess": "Refreshed successfully",
-    "refreshFailed": "Refresh failed, please try again"
   },
   "states": {
     "loading": "Loading",
@@ -1224,32 +1235,6 @@
       "comment": "Comment"
     }
   },
-  "dashboard": {
-    "announcement": {
-      "publishedAt": "Published {{time}}",
-      "title": "Announcements",
-      "empty": "No announcement"
-    },
-    "admin": {
-      "partial": "Some metrics are unavailable (completeness=partial)",
-      "window": "Window {{from}} ~ {{to}} ({{zone}})",
-      "orderTotal": "Orders",
-      "orderTrend": "Order trend",
-      "windowLabel": "Statistics window",
-      "windowDays": "Last {{days}} days",
-      "emptyTrend": "No orders in this window yet",
-      "trendAria": "Order trend line chart, {{total}} orders across the last {{days}} days",
-      "queryTotal": "Queries",
-      "userTotal": "Users",
-      "datasourceTotal": "Datasources"
-    },
-    "release": {
-      "latestLabel": "Latest release",
-      "details": "Release details",
-      "unavailable": "No release information yet — the server has not fetched an upstream snapshot",
-      "updateNow": "Update now"
-    }
-  },
   "records": {
     "title": "Audit records",
     "description": "Append-only 90-day audit events (S004); readable by the builtin admin only.",
@@ -1730,5 +1715,66 @@
     "maintenanceTitle": "System under maintenance (migration review mode)",
     "maintenanceDescription": "The server is running in migration review mode; normal business surfaces are unavailable.",
     "gotoWorkbench": "Go to the migration workbench"
+  },
+  "home": {
+    "kpi": {
+      "pendingApproval": "Awaiting my approval",
+      "pendingExecution": "Awaiting my execution",
+      "blockedReview": "Blocked",
+      "action": "Handle"
+    },
+    "overview": {
+      "title": "Order overview",
+      "window": "Window {{from}} ~ {{to}} ({{zone}})",
+      "orders": "Total orders",
+      "statements": "Total statements",
+      "ddl": "DDL",
+      "dml": "DML",
+      "weekOverWeek": "vs last week",
+      "compareEmpty": "Orders submitted in this window"
+    },
+    "recent": {
+      "title": "Recent orders",
+      "empty": "No orders yet",
+      "viewAll": "View all orders",
+      "inFlight": "My in-flight orders"
+    },
+    "metrics": {
+      "roleAdmin": "Admin",
+      "roleUser": "User",
+      "approvalP50": "Approval P50",
+      "approvalP95": "Approval P95",
+      "queryExecutions": "Query executions",
+      "users": "Users",
+      "completion": "Order completion",
+      "completionCaption": "{{completed}} completed / {{total}} total",
+      "completionAria": "Order completion {{percent}}%",
+      "planCompleted": "Plan completed",
+      "done": "completed",
+      "health": "Component health"
+    },
+    "distribution": {
+      "title": "Execution success rate",
+      "caption": "{{completed}} completed of {{executed}} executed orders",
+      "legendTitle": "Order state distribution",
+      "description": "Current state of the {{count}} orders in the window — same denominator as the rate.",
+      "dots": "The dot strip below is your own latest {{count}} orders, coloured by state.",
+      "success": "Succeeded",
+      "failed": "Failed",
+      "cta": "View all",
+      "aria": "Your latest order states",
+      "breakdownDone": "Completed",
+      "breakdownActive": "In flight",
+      "breakdownFailed": "Failed",
+      "breakdownOther": "Other"
+    },
+    "announcement": {
+      "kicker": "System notice",
+      "meta": "Published {{time}} · by {{user}}",
+      "emptyTitle": "No announcement",
+      "emptyMeta": "New notices appear here once published",
+      "empty": "Nothing has been published yet. A new notice shows up here as soon as an administrator publishes one.",
+      "version": "v{{version}}"
+    }
   }
 }

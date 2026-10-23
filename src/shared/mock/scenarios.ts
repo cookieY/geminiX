@@ -10,8 +10,6 @@ import {
 import {
   getGetOperationsDashboardMockHandler,
   getGetOperationsDashboardResponseOperationsDashboardSuccessMock,
-  getGetReviewQualityDashboardMockHandler,
-  getGetReviewQualityDashboardResponseReviewQualityDashboardSuccessMock,
   getGetSystemHealthDashboardMockHandler,
   getGetSystemHealthDashboardResponseSystemHealthDashboardSuccessMock,
 } from "@/api/generated/mocks/administration/administration.msw";
@@ -115,25 +113,32 @@ function adminDashboardHandlers() {
             day: shiftDay(FIXTURE_WINDOW_END, i - (days - 1)),
             value: trendValue(i),
           })),
+          // 平台 30 天窗口的状态分布（RCP-20261023-HOME-METRICS-ALIGNMENT）：
+          // 18 键全量，合计恒等于 change_order_total=47——41 completed +
+          // 3 failed + 2 partial_failed + 1 running，与成功率 41/46 同源。
+          state_distribution: {
+            submitted: 0,
+            stage_approval_active: 0,
+            stage_execution_pending: 0,
+            scheduled: 0,
+            running: 1,
+            completed: 41,
+            rejected: 0,
+            withdrawn: 0,
+            withdrawn_after_partial_execution: 0,
+            voided: 0,
+            failed: 3,
+            partial_failed: 2,
+            cancelled: 0,
+            partial_cancelled: 0,
+            result_unknown: 0,
+            blocked_datasource_unavailable: 0,
+            missed_schedule: 0,
+            invalid: 0,
+          },
         },
       });
     }),
-    getGetReviewQualityDashboardMockHandler(
-      getGetReviewQualityDashboardResponseReviewQualityDashboardSuccessMock({
-        request_id: DEMO_REQUEST_ID,
-        data: {
-          meta: fixtureWindow(30),
-          ready_total: 21,
-          blocked_total: 1,
-          partial_total: 2,
-          failed_total: 3,
-          review_duration_p50_ms: 42_000,
-          review_duration_p95_ms: 180_000,
-          fingerprint_coverage_ratio: 0.87,
-          finding_severity_counts: { low: 9, medium: 4, high: 2, critical: 0 },
-        },
-      }),
-    ),
     getGetSystemHealthDashboardMockHandler(
       getGetSystemHealthDashboardResponseSystemHealthDashboardSuccessMock({
         request_id: DEMO_REQUEST_ID,

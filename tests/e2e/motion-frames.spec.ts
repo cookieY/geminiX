@@ -263,7 +263,7 @@ test.afterAll(() => {
 test("sidebar collapse transitions its own gap width", async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto("/workspace");
-  await expect(page.getByText(/欢迎回来|Welcome back/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("home-kpi-pending-approval")).toBeVisible({ timeout: 15_000 });
 
   const trigger = page.locator("[data-slot='sidebar-trigger']").first();
   const gap = page.locator("[data-slot='sidebar-gap']").first();
@@ -310,7 +310,7 @@ test("mobile sidebar sheet transitions its own opacity and translate", async ({ 
   // trigger collapses the sidebar and no Sheet is ever mounted.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/workspace");
-  await expect(page.getByText(/欢迎回来|Welcome back/)).toBeVisible();
+  await expect(page.getByTestId("home-kpi-pending-approval")).toBeVisible();
 
   // Two triggers exist in the tree (desktop rail + mobile header); only the
   // visible one flips `openMobile` at this width. The mobile sidebar reuses the
@@ -427,7 +427,7 @@ test("button press stays inside the frame budget", async ({ page }) => {
   // idle login page has a p95 above the two-frame budget. The press feedback
   // itself is the same shared Button primitive.
   await page.goto("/workspace");
-  const button = page.getByTestId("workspace-refresh");
+  const button = page.getByTestId("header-refresh");
   await expect(button).toBeEnabled({ timeout: 15_000 });
 
   const box = await button.boundingBox();

@@ -89,7 +89,6 @@ export const OPERATION_ERROR_PROFILES: {
       "getQuerySession",
       "getMyDashboard",
       "getOperationsDashboard",
-      "getReviewQualityDashboard",
       "getSystemHealthDashboard",
       "getKnowledgeEntry"
     ]

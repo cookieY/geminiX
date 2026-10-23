@@ -78,27 +78,27 @@ describe("frozenExecutorStageFor", () => {
 
 describe("execution tone mappings", () => {
   it("tones attempt states: terminal outcomes, live progress and unknown", () => {
-    expect(executionAttemptTone("succeeded")).toBe("success");
-    expect(executionAttemptTone("failed")).toBe("destructive");
-    expect(executionAttemptTone("partial_failed")).toBe("destructive");
-    expect(executionAttemptTone("result_unknown")).toBe("warning");
-    expect(executionAttemptTone("cancelled")).toBe("warning");
-    expect(executionAttemptTone("partial_cancelled")).toBe("warning");
-    expect(executionAttemptTone("created")).toBe("info");
-    expect(executionAttemptTone("preflight")).toBe("info");
-    expect(executionAttemptTone("running")).toBe("info");
-    expect(executionAttemptTone("cancelling")).toBe("info");
-    expect(executionAttemptTone("mystery")).toBe("neutral");
+    expect(executionAttemptTone("succeeded")).toBe("emerald");
+    expect(executionAttemptTone("failed")).toBe("red");
+    expect(executionAttemptTone("partial_failed")).toBe("rose");
+    expect(executionAttemptTone("result_unknown")).toBe("orange");
+    expect(executionAttemptTone("cancelled")).toBe("stone");
+    expect(executionAttemptTone("partial_cancelled")).toBe("rose");
+    expect(executionAttemptTone("created")).toBe("indigo");
+    expect(executionAttemptTone("preflight")).toBe("indigo");
+    expect(executionAttemptTone("running")).toBe("indigo");
+    expect(executionAttemptTone("cancelling")).toBe("indigo");
+    expect(executionAttemptTone("mystery")).toBe("stone");
   });
 
-  it("tones statement states: unknown is warning, skipped and not_started neutral", () => {
-    expect(statementStateTone("succeeded")).toBe("success");
-    expect(statementStateTone("failed")).toBe("destructive");
-    expect(statementStateTone("unknown")).toBe("warning");
-    expect(statementStateTone("cancelled")).toBe("warning");
-    expect(statementStateTone("sent")).toBe("info");
-    expect(statementStateTone("not_started")).toBe("neutral");
-    expect(statementStateTone("skipped")).toBe("neutral");
-    expect(statementStateTone("mystery")).toBe("neutral");
+  it("tones statement states: unknown is orange, skipped and not_started stone", () => {
+    expect(statementStateTone("succeeded")).toBe("emerald");
+    expect(statementStateTone("failed")).toBe("red");
+    expect(statementStateTone("unknown")).toBe("orange");
+    expect(statementStateTone("cancelled")).toBe("stone");
+    expect(statementStateTone("sent")).toBe("sky");
+    expect(statementStateTone("not_started")).toBe("stone");
+    expect(statementStateTone("skipped")).toBe("stone");
+    expect(statementStateTone("mystery")).toBe("stone");
   });
 });

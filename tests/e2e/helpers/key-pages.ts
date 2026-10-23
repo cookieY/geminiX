@@ -42,8 +42,8 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
     identity: "henry",
     prepare: async (page) => {
       await page.goto("/workspace");
-      await expect(page.getByTestId("workspace-release-banner")).toBeVisible();
-      await expect(page.getByTestId("workspace-announcement")).toBeVisible();
+      await expect(page.getByTestId("home-announcement")).toBeVisible();
+      await expect(page.getByTestId("home-kpi-pending-approval")).toBeVisible();
     },
   },
   {

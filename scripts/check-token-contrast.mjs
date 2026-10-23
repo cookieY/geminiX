@@ -23,6 +23,18 @@ const BUSINESS_TEXT_TOKENS = [
   "exec-cancelled",
   "state-forbidden",
   "state-reveal",
+  // Status hues (owner ruling 2026-10-23): every chip tone must clear AA text
+  // contrast on --card in both themes.
+  "tone-emerald",
+  "tone-teal",
+  "tone-sky",
+  "tone-indigo",
+  "tone-violet",
+  "tone-amber",
+  "tone-orange",
+  "tone-rose",
+  "tone-red",
+  "tone-stone",
 ];
 const CHART_SERIES = ["chart-series-1", "chart-series-2", "chart-series-3", "chart-series-4", "chart-series-5"];
 

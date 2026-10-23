@@ -29,12 +29,11 @@ async function prepare(page: Page, locale: string, theme: string) {
   await page.clock.setFixedTime(new Date("2026-09-01T08:00:00Z"));
 }
 
-// FE-F10: the workspace renders the real dashboard (greeting + metric
-// cards) instead of the FE-F2 placeholder.
-const READY_TEXT: Record<(typeof LOCALES)[number], string> = {
-  "zh-CN": "欢迎回来",
-  "en-US": "Welcome back",
-};
+// FE-F10: the workspace renders the real dashboard instead of the FE-F2
+// placeholder. Owner ruling 2026-10-23 promoted the reference-derived home —
+// the readiness signal is its first counter, which renders once the personal
+// dashboard query resolves (no greeting line any more).
+const READY_TESTID = "home-kpi-pending-approval";
 
 for (const viewport of VIEWPORTS) {
   for (const locale of LOCALES) {
@@ -45,7 +44,7 @@ for (const viewport of VIEWPORTS) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto("/workspace");
         await page.evaluate(() => document.fonts.ready);
-        await expect(page.getByText(READY_TEXT[locale])).toBeVisible();
+        await expect(page.getByTestId(READY_TESTID)).toBeVisible();
         await page.waitForTimeout(150);
         await expect(page).toHaveScreenshot(`shell-${viewport.name}-${locale}-${theme}.png`, {
           fullPage: true,

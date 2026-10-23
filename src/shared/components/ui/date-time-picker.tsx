@@ -155,7 +155,7 @@ export function DateTimePicker({
         <div
           role="dialog"
           aria-label={t("dateTimePicker.title")}
-          className="bg-popover text-popover-foreground absolute top-[calc(100%+4px)] left-0 z-50 w-64 rounded-lg border p-2 shadow-md"
+          className="bg-popover text-popover-foreground absolute top-[calc(100%+4px)] left-0 z-50 w-64 rounded-lg border p-2"
           data-testid={testId === undefined ? undefined : `${testId}-panel`}
         >
           {view === "date" && (

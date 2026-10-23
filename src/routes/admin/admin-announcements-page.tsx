@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useAnnouncementRevisions, useCreateAnnouncementRevision, usePublishAnnouncement } from "@/features/admin/use-admin";
-import { useCurrentAnnouncementQuery } from "@/routes/workspace/workspace-dashboard-sections";
+import { useCurrentAnnouncementQuery } from "@/features/announcements/use-current-announcement";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 

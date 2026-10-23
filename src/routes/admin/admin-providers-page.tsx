@@ -332,7 +332,7 @@ function ProviderFormDialog({
               />
               {suggestOpen && catalogItems.length > 0 ? (
                 <div
-                  className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md"
+                  className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover"
                   data-testid="provider-model-options"
                 >
                   {catalogItems.map((model) => (

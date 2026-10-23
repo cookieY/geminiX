@@ -1,43 +1,177 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, RefreshCw, Search, Tags } from "lucide-react";
 import { SidebarTrigger } from "@/shared/components/ui/sidebar";
-import { Separator } from "@/shared/components/ui/separator";
+import { Button } from "@/shared/components/ui/button";
+import { useLatestReleaseQuery } from "@/features/releases/use-latest-release";
 import { BrandLogo } from "./brand-logo";
+import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { UserMenu } from "./user-menu";
 
 /**
- * Shell header following the frozen template's vertical header: sticky bar,
- * sidebar toggle on the left, global actions on the right. Template demo
- * widgets (menu search, notifications dropdown) are excluded — the header
- * carries only global context and global actions (spec §5).
+ * Shell header. Owner ruling 2026-10-23: the bar is a separate surface from
+ * the page content — its own border, radius and inset — instead of a
+ * full-bleed strip glued to the content by a bottom border, and it carries
+ * the command-menu trigger (the reference template's menu search, which
+ * spec §5 had excluded until this ruling).
  */
 export function AppHeader() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  // Release status lives in the bar, left of the theme toggle (owner request
+  // 2026-10-23), so the workspace pages no longer repeat a version row of
+  // their own. The query is shared with any page that asks for the same keys.
+  const release = useLatestReleaseQuery(true);
+  const releaseSnapshot = release.data ?? null;
+  const currentVersion = releaseSnapshot?.current_version ?? null;
+  const hasUpdate =
+    currentVersion !== null && currentVersion !== releaseSnapshot?.tag_name;
+
+  // Dashboard PRD §9: 60s polling refreshes on its own, this is the manual
+  // equivalent. It reports the outcome because a silent button gives the
+  // operator no feedback that fresh numbers are on screen.
+  const refreshAll = async () => {
+    const results = await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["releases"] }),
+      queryClient.invalidateQueries({ queryKey: ["change-orders", "mine"] }),
+    ]);
+    if (results.some((result) => result.status === "rejected")) {
+      toast.error(t("shell.refresh.failed"));
+    } else {
+      toast.success(t("shell.refresh.success"));
+    }
+  };
+
+  // ⌘K / Ctrl+K anywhere in the shell toggles the menu; the listener ignores
+  // repeats so a held key cannot strobe the dialog open and closed.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      setCommandOpen((open) => !open);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background">
-      <nav aria-label={t("shell.headerNav")} className="mx-auto flex flex-wrap items-center justify-between p-2">
+    <header className="bg-card mx-auto mt-1 mb-0 w-[calc(100%-2rem)] max-w-[1536px] rounded-xl border border-border">
+      {/* Floating card (restored 2026-10-23): the shell canvas is flush, the
+          bar itself stays a rounded card. `calc(100%-2rem)` + the shared
+          1536px cap keep it on the same band as the body column below, so the
+          two still share both edges at every width. */}
+      <nav
+        aria-label={t("shell.headerNav")}
+        className="flex items-center gap-2 px-3 py-2 md:h-12 md:py-0"
+      >
         <div className="flex items-center gap-2">
           {/* §18.59：断点对齐侧栏（ui/sidebar 在md:flex显示）——原lg:hidden
               在768~1024px与侧栏logo双显；改md:hidden后两者严格互补。 */}
-          <div className="md:hidden">
-            <BrandLogo />
+          <div className="shrink-0 md:hidden">
+            <BrandLogo className="max-w-24" />
           </div>
           <SidebarTrigger
             className="btn-circle-hover"
             aria-label={t("shell.toggleSidebar")}
           />
-          <Separator
-            orientation="vertical"
-            className="mr-4 ml-2 h-4 w-px self-center bg-border max-md:hidden"
-          />
         </div>
-        <div className="flex items-center gap-1">
+
+        {/* Reference-style search trigger: it looks like a field but is a
+            button. The real input lives in the dialog, so the shell never
+            steals a keystroke the page below is using. */}
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setCommandOpen(true);
+          }}
+          aria-label={t("shell.command.open")}
+          aria-keyshortcuts="Control+K Meta+K"
+          data-testid="header-command-trigger"
+          className="text-muted-foreground ml-1 hidden h-9 w-80 cursor-pointer justify-start gap-2 rounded-md border-0 bg-transparent px-2.5 font-medium hover:bg-transparent hover:text-muted-foreground md:flex lg:w-96"
+        >
+          <Search className="size-4" aria-hidden />
+          <span className="truncate">{t("shell.command.placeholder")}</span>
+          <kbd className="border-border/70 ml-auto rounded border px-1.5 py-0.5 font-mono text-[10px]">
+            ⌘K
+          </kbd>
+        </Button>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              setCommandOpen(true);
+            }}
+            aria-label={t("shell.command.open")}
+            className="md:hidden"
+          >
+            <Search className="size-4" />
+          </Button>
+
+          {/* Release cluster. Owner report 2026-10-23: it read as a foreign
+              widget beside the theme/language controls, so it now matches them
+              exactly — foreground (pure white in dark), 13px at the same
+              optical size as their 20px glyphs, and the same ghost button
+              rhythm for the refresh action. */}
+          <div
+            className="text-foreground mr-1 hidden items-center gap-2.5 text-[13px] font-medium xl:flex"
+            data-testid="header-release"
+          >
+            <span className="inline-flex items-center gap-1.5 font-mono tabular-nums">
+              <Tags className="size-4" aria-hidden />
+              {currentVersion ?? "—"}
+            </span>
+            <span className="bg-muted-foreground/40 size-1 rounded-full" aria-hidden />
+            <span className={hasUpdate ? "text-success" : undefined}>
+              {hasUpdate
+                ? t("shell.release.hasUpdate", { latest: releaseSnapshot?.tag_name ?? "" })
+                : t("shell.release.upToDate")}
+            </span>
+            {releaseSnapshot !== null && (
+              <>
+                <span className="bg-muted-foreground/40 size-1 rounded-full" aria-hidden />
+                <a
+                  href={releaseSnapshot.html_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="hover:text-primary inline-flex items-center gap-1 underline-offset-4 hover:underline"
+                >
+                  {t("shell.release.notes")}
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </a>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t("shell.release.refresh")}
+              data-testid="header-refresh"
+              onClick={() => {
+                void refreshAll();
+              }}
+            >
+              <RefreshCw className="size-5" />
+            </Button>
+          </div>
+
           <ThemeToggle />
           <LanguageToggle />
           <UserMenu />
         </div>
       </nav>
+      <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
     </header>
   );
 }

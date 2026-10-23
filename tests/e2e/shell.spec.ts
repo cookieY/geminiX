@@ -108,26 +108,32 @@ test("the sidebar collapses to icon mode and back", async ({ page }) => {
   await expect(sidebar).toHaveAttribute("data-state", "expanded");
 });
 
-test("the collapsed sidebar scales the logo, hides the badge, and reveals labels on hover", async ({
-  page,
-}) => {
+test("the collapsed sidebar scales the logo and reveals labels on hover", async ({ page }) => {
   // Owner ruling 2026-09-02: the wordmark scales proportionally instead of
-  // clipping, the version badge hides, and hovering the icon rail widens it
-  // back to the full menu with visible labels (template mechanism).
+  // clipping, and hovering the icon rail widens it back to the full menu with
+  // visible labels (template mechanism). Owner ruling 2026-10-23: the sidebar
+  // no longer carries a version badge — the release tag lives in the header.
+  //
+  // Collapsed rendering: the asset is drawn at its natural aspect ratio for a
+  // 36px-tall rail (so the mark keeps its proportions instead of squashing) and
+  // the wordmark to its right is clipped away by the 36px link box. The
+  // *visible* width is therefore the link, not the image — asserting the image
+  // box would demand a squashed logo.
   const sidebar = page.locator("[data-slot='sidebar']").first();
+  const logoLink = page.locator("[data-slot='sidebar'] a[aria-label]").first();
   const logo = page.locator("[data-slot='sidebar'] img").first();
-  const badge = page.getByTestId("sidebar-version-badge");
 
-  // Expanded: the release tag badge sits beside the logo.
   await expect(logo).toBeVisible();
-  await expect(badge).toBeVisible();
-  await expect(badge).toHaveText(/^v\d+\./);
 
   await page.getByRole("button", { name: "折叠侧边栏" }).click();
   await expect(sidebar).toHaveAttribute("data-state", "collapsed");
-  const collapsedLogoWidth = (await logo.boundingBox())?.width ?? 999;
-  expect(collapsedLogoWidth).toBeLessThanOrEqual(40);
-  await expect(badge).toBeHidden();
+  const collapsedLinkWidth = (await logoLink.boundingBox())?.width ?? 999;
+  expect(collapsedLinkWidth).toBeLessThanOrEqual(40);
+  // The mark is clipped, not scaled to a sliver: the image keeps its natural
+  // aspect ratio, so its box is wider than the rail it is clipped into.
+  const collapsedLogoBox = await logo.boundingBox();
+  expect(collapsedLogoBox?.height ?? 0).toBeGreaterThan(30);
+  expect(collapsedLogoBox?.width ?? 0).toBeGreaterThan(collapsedLinkWidth);
 
   await page.locator(".sidebar-box").hover();
   await expect(page.getByText("我的工单")).toBeVisible();

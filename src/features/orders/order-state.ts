@@ -53,69 +53,117 @@ export function canVoid(state: ChangeOrderState | null | undefined): boolean {
   return state !== null && state !== undefined && VOIDABLE_STATES.includes(state);
 }
 
-/** Badge visual class per aggregate state: completed greens, hard-terminal
- * reds, caution ambers for "effects happened but not finished" states, and
- * neutral greys for withdrawn paperwork. */
-export type OrderStateTone = "success" | "destructive" | "warning" | "info" | "neutral";
+/** One hue per outcome family (owner ruling 2026-10-23: "不同状态有不同的颜色…
+ * 颜色要符合状态结果含义"). Ten hue tokens instead of five generic ones, so a
+ * reviewer can tell "waiting for approval" (violet) from "waiting for
+ * execution" (amber) from "scheduled" (teal) at a glance, while every tone
+ * still maps to a real semantic group:
+ *   emerald  finished well        teal    queued for a fixed slot
+ *   sky      handed in            indigo  actively running
+ *   violet   decision pending     amber   execution pending
+ *   orange   outcome uncertain    rose    effects happened, ended badly
+ *   red      hard failure         stone   paperwork that closed quietly
+ * Each tone is declared per theme in global.css (light holds deeper inks on
+ * paper, dark holds luminous ones on near-black) and the contrast gate keeps
+ * the chip text at WCAG AA in both. */
+export type OrderStateTone =
+  | "emerald"
+  | "teal"
+  | "sky"
+  | "indigo"
+  | "violet"
+  | "amber"
+  | "orange"
+  | "rose"
+  | "red"
+  | "stone";
 
 export function orderStateTone(state: ChangeOrderState): OrderStateTone {
   switch (state) {
     case "completed":
-      return "success";
-    case "rejected":
-    case "failed":
-    case "partial_failed":
-    case "voided":
-      return "destructive";
-    case "withdrawn_after_partial_execution":
+      return "emerald";
+    case "scheduled":
+      return "teal";
+    case "submitted":
+      return "sky";
+    case "running":
+      return "indigo";
+    case "stage_approval_active":
+      return "violet";
+    case "stage_execution_pending":
+      return "amber";
     case "result_unknown":
     case "missed_schedule":
     case "blocked_datasource_unavailable":
+      return "orange";
+    case "partial_failed":
+    case "partial_cancelled":
+    case "withdrawn_after_partial_execution":
+      return "rose";
+    case "rejected":
+    case "failed":
     case "invalid":
-      return "warning";
-    case "submitted":
-    case "stage_approval_active":
-    case "stage_execution_pending":
-    case "scheduled":
-    case "running":
-      return "info";
+      return "red";
     case "withdrawn":
     case "cancelled":
-    case "partial_cancelled":
-      return "neutral";
+    case "voided":
+      return "stone";
   }
 }
 
-/** Tailwind classes per tone (badge.tsx ships only the shadcn base variants,
- * so the domain layer owns the state-color mapping). */
+/** Chip surface per tone: a 12% wash of the same hue plus a 30% hairline, so
+ * the chip stays flat (no gradient, no shadow) and the hue does the talking. */
 export const ORDER_STATE_TONE_CLASS: Record<OrderStateTone, string> = {
-  success: "border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400",
-  destructive: "border-destructive/30 bg-destructive/10 text-destructive",
-  warning: "border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400",
-  info: "border-primary/30 bg-primary/10 text-primary",
-  neutral: "border-muted bg-muted text-muted-foreground",
+  emerald: "border-tone-emerald/30 bg-tone-emerald/12 text-tone-emerald",
+  teal: "border-tone-teal/30 bg-tone-teal/12 text-tone-teal",
+  sky: "border-tone-sky/30 bg-tone-sky/12 text-tone-sky",
+  indigo: "border-tone-indigo/30 bg-tone-indigo/12 text-tone-indigo",
+  violet: "border-tone-violet/30 bg-tone-violet/12 text-tone-violet",
+  amber: "border-tone-amber/30 bg-tone-amber/12 text-tone-amber",
+  orange: "border-tone-orange/30 bg-tone-orange/12 text-tone-orange",
+  rose: "border-tone-rose/30 bg-tone-rose/12 text-tone-rose",
+  red: "border-tone-red/30 bg-tone-red/12 text-tone-red",
+  stone: "border-border bg-muted text-muted-foreground",
+};
+
+/** Solid dot/fill variant of the same tones (status strips, legends). */
+export const ORDER_STATE_TONE_DOT: Record<OrderStateTone, string> = {
+  emerald: "bg-tone-emerald",
+  teal: "bg-tone-teal",
+  sky: "bg-tone-sky",
+  indigo: "bg-tone-indigo",
+  violet: "bg-tone-violet",
+  amber: "bg-tone-amber",
+  orange: "bg-tone-orange",
+  rose: "bg-tone-rose",
+  red: "bg-tone-red",
+  stone: "bg-muted-foreground/60",
 };
 
 export function stageStateTone(state: StageState): OrderStateTone {
   switch (state) {
     case "succeeded":
-      return "success";
+      return "emerald";
     case "failed":
+      return "red";
     case "partial_failed":
-      return "destructive";
+      return "rose";
     case "result_unknown":
+      return "orange";
     case "partial_cancelled":
-      return "warning";
+      return "rose";
     case "pending":
     case "skipped":
-      return "neutral";
-    case "approval_active":
-    case "execution_pending":
-    case "scheduled":
-    case "running":
-      return "info";
     case "cancelled":
-      return "neutral";
+      return "stone";
+    case "approval_active":
+      return "violet";
+    case "execution_pending":
+      return "amber";
+    case "scheduled":
+      return "teal";
+    case "running":
+      return "indigo";
   }
 }
 
@@ -199,15 +247,15 @@ export function myApprovalStepFor(
 export function approvalStepTone(state: string): OrderStateTone {
   switch (state) {
     case "approved":
-      return "success";
+      return "emerald";
     case "rejected":
-      return "destructive";
+      return "red";
     case "invalid":
-      return "warning";
+      return "orange";
     case "active":
-      return "info";
+      return "violet";
     default:
-      return "neutral";
+      return "stone";
   }
 }
 
@@ -246,21 +294,24 @@ export function isAttemptTerminalState(state: string): boolean {
 export function executionAttemptTone(state: string): OrderStateTone {
   switch (state) {
     case "succeeded":
-      return "success";
+      return "emerald";
     case "failed":
+      return "red";
     case "partial_failed":
-      return "destructive";
+      return "rose";
     case "result_unknown":
+      return "orange";
     case "cancelled":
+      return "stone";
     case "partial_cancelled":
-      return "warning";
+      return "rose";
     case "created":
     case "preflight":
     case "running":
     case "cancelling":
-      return "info";
+      return "indigo";
     default:
-      return "neutral";
+      return "stone";
   }
 }
 
@@ -270,18 +321,19 @@ export function executionAttemptTone(state: string): OrderStateTone {
 export function statementStateTone(state: string): OrderStateTone {
   switch (state) {
     case "succeeded":
-      return "success";
+      return "emerald";
     case "failed":
-      return "destructive";
+      return "red";
     case "unknown":
+      return "orange";
     case "cancelled":
-      return "warning";
+      return "stone";
     case "sent":
-      return "info";
+      return "sky";
     case "not_started":
     case "skipped":
-      return "neutral";
+      return "stone";
     default:
-      return "neutral";
+      return "stone";
   }
 }

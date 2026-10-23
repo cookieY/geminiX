@@ -2573,6 +2573,50 @@ export interface DailyMetricPoint {
   value: number;
 }
 
+/**
+ * 窗口内按当前状态分组的工单计数。键集合恒为 ChangeOrderState 的 18 个枚举值
+ * （无该状态的工单时取 0），窗口条件与 change_order_total 完全一致，
+ * 因此各键之和等于 change_order_total。
+ */
+export interface ChangeOrderStateDistribution {
+  /** @minimum 0 */
+  submitted: number;
+  /** @minimum 0 */
+  stage_approval_active: number;
+  /** @minimum 0 */
+  stage_execution_pending: number;
+  /** @minimum 0 */
+  scheduled: number;
+  /** @minimum 0 */
+  running: number;
+  /** @minimum 0 */
+  completed: number;
+  /** @minimum 0 */
+  rejected: number;
+  /** @minimum 0 */
+  withdrawn: number;
+  /** @minimum 0 */
+  withdrawn_after_partial_execution: number;
+  /** @minimum 0 */
+  voided: number;
+  /** @minimum 0 */
+  failed: number;
+  /** @minimum 0 */
+  partial_failed: number;
+  /** @minimum 0 */
+  cancelled: number;
+  /** @minimum 0 */
+  partial_cancelled: number;
+  /** @minimum 0 */
+  result_unknown: number;
+  /** @minimum 0 */
+  blocked_datasource_unavailable: number;
+  /** @minimum 0 */
+  missed_schedule: number;
+  /** @minimum 0 */
+  invalid: number;
+}
+
 export interface OperationsDashboard {
   meta: DashboardSnapshotMeta;
   /** @minimum 0 */
@@ -2598,47 +2642,7 @@ export interface OperationsDashboard {
   /** @minimum 0 */
   approval_duration_p95_ms?: number;
   order_trend: DailyMetricPoint[];
-}
-
-export type ReviewQualityDashboardFindingSeverityCounts = {
-  /** @minimum 0 */
-  low: number;
-  /** @minimum 0 */
-  medium: number;
-  /** @minimum 0 */
-  high: number;
-  /** @minimum 0 */
-  critical: number;
-};
-
-export interface ReviewQualityDashboard {
-  meta: DashboardSnapshotMeta;
-  /** @minimum 0 */
-  ready_total: number;
-  /** @minimum 0 */
-  blocked_total: number;
-  /** @minimum 0 */
-  partial_total: number;
-  /** @minimum 0 */
-  failed_total: number;
-  /** @minimum 0 */
-  review_duration_p50_ms: number;
-  /** @minimum 0 */
-  review_duration_p95_ms: number;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  fingerprint_coverage_ratio: number;
-  finding_severity_counts: ReviewQualityDashboardFindingSeverityCounts;
-  /** @minimum 0 */
-  input_token_count?: number;
-  /** @minimum 0 */
-  output_token_count?: number;
-  /** @minimum 0 */
-  estimated_cost_minor?: number;
-  /** @pattern ^[A-Z]{3}$ */
-  currency?: string;
+  state_distribution: ChangeOrderStateDistribution;
 }
 
 export type HealthComponentComponent = typeof HealthComponentComponent[keyof typeof HealthComponentComponent];
@@ -2737,13 +2741,6 @@ export interface OperationsDashboardSuccess {
   err_code: 0;
   message: 'ok';
   data: OperationsDashboard;
-  request_id: Uuid;
-}
-
-export interface ReviewQualityDashboardSuccess {
-  err_code: 0;
-  message: 'ok';
-  data: ReviewQualityDashboard;
   request_id: Uuid;
 }
 
@@ -2945,12 +2942,7 @@ export type MyDashboardResultResponse = MyDashboardSuccess | BusinessErrorRespon
 export type OperationsDashboardResultResponse = OperationsDashboardSuccess | BusinessErrorResponse;
 
 /**
- * Builtin-admin review quality metrics
- */
-export type ReviewQualityDashboardResultResponse = ReviewQualityDashboardSuccess | BusinessErrorResponse;
-
-/**
- * Builtin-admin component health without secrets
+ * Component health without secrets
  */
 export type SystemHealthDashboardResultResponse = SystemHealthDashboardSuccess | BusinessErrorResponse;
 
@@ -4448,14 +4440,6 @@ export type FetchQueryResultPage200 = {
 } | BusinessErrorResponse;
 
 export type GetOperationsDashboardParams = {
-/**
- * @minimum 1
- * @maximum 90
- */
-window_days?: DashboardWindowDaysParameter;
-};
-
-export type GetReviewQualityDashboardParams = {
 /**
  * @minimum 1
  * @maximum 90

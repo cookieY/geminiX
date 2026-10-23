@@ -60,6 +60,23 @@
    */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Data curves are deliberately flatter than --ease-out. --ease-out is an expo
+     curve: it dumps ~78% of the distance into the first 100ms, which is right
+     for a popover (the eye is watching for it to appear) and wrong for a chart
+     or a counting number (the eye needs to read the value as it travels).
+     Owner 2026-10-23, twice: "动效太快了…眼睛都没反应过来就结束了". */
+  --ease-data: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Chart entrance vocabulary (owner report 2026-10-23: "图表没有动效").
+     Transform-only so the compositor owns both: bars scale from the baseline
+     and the completion arc draws itself. Keyframes live outside @theme below
+     so a future component can reuse them without re-declaring a curve.
+     --animate-bar-grow is the histogram (14 bars, ~1.1s with the stagger);
+     --animate-bar-rise is the 20-dot state strip, where a long sweep would be
+     noise rather than information. Same keyframe, different budget. */
+  --animate-bar-rise: bar-rise 400ms var(--ease-out) both;
+  --animate-bar-grow: bar-rise 900ms var(--ease-data) both;
+  --animate-ring-draw: ring-draw 900ms var(--ease-data) both;
 }
 
 @theme inline {
@@ -80,6 +97,26 @@
   --color-chart-series-1: var(--chart-1);
   --color-chart-series-2: var(--chart-2);
   --color-chart-series-user: var(--chart-series-user);
+  /* Brand-adjacent chart accents (owner request 2026-10-23: the monochrome
+     charts read flat — hues sit beside the violet wordmark instead of the
+     template's unrelated orange/teal defaults). */
+  /* Status hues (owner request 2026-10-23: one state, one colour). Ten tones,
+     declared per theme so dark holds luminous hues on the dark surface and
+     light holds deeper ones on white — never one palette reused across both.
+     AA text contrast is enforced by scripts/check-token-contrast.mjs. */
+  --color-tone-emerald: var(--tone-emerald);
+  --color-tone-teal: var(--tone-teal);
+  --color-tone-sky: var(--tone-sky);
+  --color-tone-indigo: var(--tone-indigo);
+  --color-tone-violet: var(--tone-violet);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-orange: var(--tone-orange);
+  --color-tone-rose: var(--tone-rose);
+  --color-tone-red: var(--tone-red);
+  --color-tone-stone: var(--tone-stone);
+  --color-chart-brand: var(--chart-brand);
+  --color-chart-brand-soft: var(--chart-brand-soft);
+  --color-chart-sky: var(--chart-sky);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -112,8 +149,13 @@
 }
 
 :root {
-  --font-geist: "Geist", sans-serif;
-  --font-geist-mono: "Geist Mono", monospace;
+  /* Geist has no CJK glyphs, so the stack names the Chinese face explicitly:
+     without it the browser picks its own fallback per run and mixed zh/en
+     lines drift in weight and width (owner report 2026-10-23). */
+  --font-geist: "Geist", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans SC", sans-serif;
+  --font-geist-mono: "Geist Mono", "SFMono-Regular", "JetBrains Mono",
+    "PingFang SC", monospace;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -139,11 +181,15 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Light-theme series (owner ruling 2026-10-23: dark and light must not
+     share one palette). On white paper the inks sit deep and slightly
+     desaturated — teal leads, amber/orange second, indigo third — which is
+     also what the light reference screenshot shows. */
+  --chart-1: oklch(0.55 0.12 190);
+  --chart-2: oklch(0.72 0.14 75);
+  --chart-3: oklch(0.5 0.14 265);
+  --chart-4: oklch(0.62 0.16 45);
+  --chart-5: oklch(0.55 0.18 20);
   /* FE-F12 a11y correction (§18.78 companion to the F11 destructive fix):
      the template's light-mode success green (L 0.627) lands ~3.3:1 on the
      near-white surface — below AA for the small "update now" tag text.
@@ -173,6 +219,24 @@
   --exec-cancelled: oklch(0.42 0.02 270);
   --state-forbidden: oklch(0.45 0.14 300);
   --state-reveal: oklch(0.45 0.09 230);
+  /* Status tones, light theme: deep enough for AA text on the 12% tint. */
+  --tone-emerald: oklch(0.5 0.13 155);
+  --tone-teal: oklch(0.5 0.1 195);
+  --tone-sky: oklch(0.5 0.13 240);
+  --tone-indigo: oklch(0.47 0.16 275);
+  --tone-violet: oklch(0.5 0.17 300);
+  --tone-amber: oklch(0.52 0.12 75);
+  --tone-orange: oklch(0.53 0.15 50);
+  --tone-rose: oklch(0.52 0.16 15);
+  --tone-red: oklch(0.46 0.245 27.325);
+  --tone-stone: oklch(0.44 0.01 260);
+  /* Brand-adjacent chart accents for the preview dashboard (owner request
+     2026-10-23): a violet on the wordmark's hue, its lighter magenta
+     neighbour, and a cool sky for secondary series. Decoration only, so no
+     AA text floor applies. */
+  --chart-brand: oklch(0.5 0.17 296);
+  --chart-brand-soft: oklch(0.55 0.14 270);
+  --chart-sky: oklch(0.55 0.12 235);
   --chart-series-1: var(--chart-1);
   --chart-series-2: var(--chart-2);
   --chart-series-3: var(--chart-3);
@@ -180,7 +244,7 @@
   --chart-series-5: var(--chart-5);
   /* Owner-ruled sparkline color for the user-count card (2026-09-02);
      query/datasource cards reuse --chart-series-2 teal. */
-  --chart-series-user: oklch(0.7 0.19 21.9);
+  --chart-series-user: oklch(0.55 0.18 20);
   /* Active sidebar menu item: pure white pill with black text. */
   --sidebar-active-bg: oklch(1 0 0);
   --sidebar-active-fg: oklch(0 0 0);
@@ -206,11 +270,17 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Dark-mode counterparts of the brand chart accents (see :root). */
+  --chart-brand: oklch(0.71 0.16 298);
+  --chart-brand-soft: oklch(0.73 0.13 265);
+  --chart-sky: oklch(0.75 0.1 230);
+  /* Dark-theme series: luminous violet/blue/emerald on near-black, per the
+     dark reference screenshot. Same five slots as light, different inks. */
+  --chart-1: oklch(0.68 0.17 298);
+  --chart-2: oklch(0.7 0.14 250);
+  --chart-3: oklch(0.74 0.15 165);
+  --chart-4: oklch(0.8 0.14 85);
+  --chart-5: oklch(0.7 0.18 18);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -230,6 +300,17 @@
   --exec-cancelled: oklch(0.68 0.02 270);
   --state-forbidden: oklch(0.75 0.12 300);
   --state-reveal: oklch(0.75 0.08 230);
+  /* Status tones, dark theme: light enough to clear AA on the 12% tint. */
+  --tone-emerald: oklch(0.75 0.15 158);
+  --tone-teal: oklch(0.76 0.11 195);
+  --tone-sky: oklch(0.75 0.12 240);
+  --tone-indigo: oklch(0.74 0.13 275);
+  --tone-violet: oklch(0.76 0.14 300);
+  --tone-amber: oklch(0.82 0.14 80);
+  --tone-orange: oklch(0.78 0.14 50);
+  --tone-rose: oklch(0.75 0.15 15);
+  --tone-red: oklch(0.704 0.191 22.216);
+  --tone-stone: oklch(0.72 0.01 260);
   --chart-series-1: var(--chart-1);
   --chart-series-2: var(--chart-2);
   --chart-series-3: var(--chart-3);
@@ -237,7 +318,7 @@
   --chart-series-5: var(--chart-5);
   /* Owner-ruled sparkline color for the user-count card (2026-09-02);
      query/datasource cards reuse --chart-series-2 teal. */
-  --chart-series-user: oklch(0.7 0.19 21.9);
+  --chart-series-user: oklch(0.72 0.18 18);
   /* Active sidebar menu item: pure white pill with black text. */
   --sidebar-active-bg: oklch(1 0 0);
   --sidebar-active-fg: oklch(0 0 0);
@@ -263,6 +344,15 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  /* Frozen-template parity: the reference app ships Tailwind's `antialiased`
+     on <html>. Without it macOS renders subpixel text that reads heavier and
+     fuzzier than the template, most visibly for white-on-dark (owner report
+     2026-10-23). */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -384,6 +474,27 @@ html[data-card-shadow="false"] [data-slot="card"] {
  * and immediately springs back to its original state — the character never
  * changes. Slots stagger via --flip-index. Static under reduced motion.
  */
+/* Chart entrance (see --animate-* above). Both animate only transform/paint
+ * state at the settled value, so prefers-reduced-motion's global 0.01ms pass
+ * lands on the final frame instead of an empty chart. */
+@keyframes bar-rise {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: var(--ring-offset, 0);
+  }
+}
+
 @keyframes flip-page-cycle {
   0%,
   74% {

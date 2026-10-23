@@ -53,7 +53,6 @@ import type {
   GetOperationsDashboardParams,
   GetPermissionGroup200,
   GetPromptTool200,
-  GetReviewQualityDashboardParams,
   GetRuleSet200,
   GetSettingsNamespace200,
   GetSettingsSchema200,
@@ -113,7 +112,6 @@ import type {
   ReplaceRuleSet200,
   ReplaceSettingsNamespace200,
   ReplaceSettingsNamespaceRequest,
-  ReviewQualityDashboardResultResponse,
   RuleSetWrite,
   SystemHealthDashboardResultResponse,
   TaskBusinessResultResponse,
@@ -2770,55 +2768,13 @@ export const getGetOperationsDashboardUrl = (params?: GetOperationsDashboardPara
   return stringifiedParams.length > 0 ? `/api/v4/admin/dashboard/operations?${stringifiedParams}` : `/api/v4/admin/dashboard/operations`
 }
 
+/**
+ * 平台运营统计。按 owner 2026-10-16 指令（§18.71），该读面对全部已登录会话开放，
+ * 路径与 tag 保留 admin 语义不做迁移。
+ */
 export const getOperationsDashboard = async (params?: GetOperationsDashboardParams, options?: Parameters<typeof customInstance>[1]): Promise<getOperationsDashboardResponse> => {
 
   return customInstance<getOperationsDashboardResponse>(getGetOperationsDashboardUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-export type getReviewQualityDashboardResponse200 = {
-  data: ReviewQualityDashboardResultResponse
-  status: 200
-}
-
-export type getReviewQualityDashboardResponse403 = {
-  data: ProblemResponse
-  status: 403
-}
-
-export type getReviewQualityDashboardResponseSuccess = (getReviewQualityDashboardResponse200) & {
-  headers: Headers;
-};
-export type getReviewQualityDashboardResponseError = (getReviewQualityDashboardResponse403) & {
-  headers: Headers;
-};
-
-export type getReviewQualityDashboardResponse = (getReviewQualityDashboardResponseSuccess | getReviewQualityDashboardResponseError)
-
-export const getGetReviewQualityDashboardUrl = (params?: GetReviewQualityDashboardParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v4/admin/dashboard/review-quality?${stringifiedParams}` : `/api/v4/admin/dashboard/review-quality`
-}
-
-export const getReviewQualityDashboard = async (params?: GetReviewQualityDashboardParams, options?: Parameters<typeof customInstance>[1]): Promise<getReviewQualityDashboardResponse> => {
-
-  return customInstance<getReviewQualityDashboardResponse>(getGetReviewQualityDashboardUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2855,6 +2811,11 @@ export const getGetSystemHealthDashboardUrl = () => {
   return `/api/v4/admin/dashboard/system-health`
 }
 
+/**
+ * 系统组件健康读面。按 owner 2026-10-23 指令，该读面对全部已登录会话开放
+ * （authorization-policy authenticated-session 规则），供首页公告卡的健康点使用；
+ * 路径与 tag 保留 admin 语义不做迁移。
+ */
 export const getSystemHealthDashboard = async ( options?: Parameters<typeof customInstance>[1]): Promise<getSystemHealthDashboardResponse> => {
 
   return customInstance<getSystemHealthDashboardResponse>(getGetSystemHealthDashboardUrl(),

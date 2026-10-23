@@ -955,20 +955,53 @@ function sha256Hex(input: string): string {
  * supports headings, bold, inline code and paragraphs; everything else is
  * escaped. Script/iframe/event-attribute/style input is escaped away — the
  * server stays the sanitizer authority. */
+/** Mock sanitizer: the production service renders markdown server-side and
+ * hands back sanitized HTML, so this fixture renderer only needs to cover the
+ * block shapes the UI styles (headings, lists, quotes, rules, code, links).
+ * Everything is escaped first; no attribute ever comes from the source. */
 function sanitizeMarkdown(source: string): string {
   const escapeHtml = (value: string) =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (value: string) =>
+    escapeHtml(value)
+      .replace(
+        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" rel="noreferrer noopener" target="_blank">$1</a>',
+      )
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  const headingLevel = (line: string) =>
+    Math.min(3, Math.max(2, (line.match(/^#+/)?.[0].length ?? 1) + 1));
   return source
     .split(/\n\n+/)
     .map((block) => {
-      const lines = block.split("\n");
+      const lines = block.split("\n").filter((line) => line.trim() !== "");
+      if (lines.length === 0) return "";
       if (lines.every((line) => line.startsWith("#"))) {
-        return `<h2>${escapeHtml(lines.join(" ").replace(/^#+\s*/, ""))}</h2>`;
+        const level = headingLevel(lines[0] ?? "");
+        const text = lines.join(" ").replace(/^#+\s*/, "");
+        return `<h${String(level)}>${escapeHtml(text)}</h${String(level)}>`;
       }
-      const html = escapeHtml(block)
-        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-        .replace(/`([^`]+)`/g, "<code>$1</code>");
-      return `<p>${html.replace(/\n/g, "<br />")}</p>`;
+      if (lines.every((line) => /^[-*]\s+/.test(line))) {
+        const items = lines
+          .map((line) => `<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`)
+          .join("");
+        return `<ul>${items}</ul>`;
+      }
+      if (lines.every((line) => /^\d+\.\s+/.test(line))) {
+        const items = lines
+          .map((line) => `<li>${inline(line.replace(/^\d+\.\s+/, ""))}</li>`)
+          .join("");
+        return `<ol>${items}</ol>`;
+      }
+      if (lines.every((line) => line.startsWith(">"))) {
+        const text = lines.map((line) => line.replace(/^>\s?/, "")).join(" ");
+        return `<blockquote><p>${inline(text)}</p></blockquote>`;
+      }
+      if (lines.every((line) => /^(-{3,}|\*{3,})$/.test(line.trim()))) {
+        return "<hr />";
+      }
+      return `<p>${lines.map((line) => inline(line)).join("<br />")}</p>`;
     })
     .join("\n");
 }
@@ -1052,7 +1085,19 @@ function seedSiteFixture(): void {
     revision_number: 1,
     title: "季度维护窗口公告",
     sanitized_html: sanitizeMarkdown(
-      "# 季度维护窗口\n\n本季度数据库维护窗口为**每周日 02:00-06:00**，请避开该时段提交紧急变更。",
+      [
+        "## 本季度维护安排",
+        "",
+        "为保证生产库稳定，例行维护窗口固定为**每周日 02:00-06:00**，请避开该时段提交紧急变更。",
+        "",
+        "- 维护期内 `DDL` 工单暂停执行，`DML` 工单照常排队",
+        "- 审批不受影响，执行队列会在维护结束后自动恢复",
+        "- 紧急变更请提前在工单里注明，并在审批时同步值班 DBA",
+        "",
+        "> 维护窗口调整以本公告为准，历史公告不再另行通知。",
+        "",
+        "更多排期见 [值班表](https://yearning.example.com/oncall)。",
+      ].join("\n"),
     ),
     content_sha256: sha256Hex("revision-1"),
     sanitizer_policy_version: "mock-sanitizer-1",

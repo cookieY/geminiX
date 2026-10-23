@@ -16,7 +16,6 @@ import {
 import { filterNavGroups, NAV_GROUPS, type NavGroup } from "./nav-model";
 import { sessionRoleFromCurrentUser } from "@/shared/session/session";
 import { useSession } from "@/features/auth/session-provider";
-import { useLatestReleaseQuery } from "@/routes/workspace/workspace-release-banner";
 import { BrandLogo } from "./brand-logo";
 
 function SidebarGroupSection({ group }: { group: NavGroup }) {
@@ -42,26 +41,6 @@ function SidebarGroupSection({ group }: { group: NavGroup }) {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
-}
-
-/** Reference-image "V.1.0" badge (owner ruling 2026-09-02, revised
- * 2026-10-20): the installed version reference (current_version — the
- * upstream latest seeded at serve startup) beside the logo, visible only
- * in the expanded state. Shares the release banner's query; hidden until
- * the snapshot resolves and while the reference is unset (a chip, not a
- * layout slot). */
-function ReleaseVersionBadge() {
-  const release = useLatestReleaseQuery(true);
-  const current = release.data?.current_version;
-  if (current == null || current === "") return null;
-  return (
-    <span
-      data-testid="sidebar-version-badge"
-      className="group-data-[state=collapsed]:hidden rounded-md bg-muted px-2 py-1 text-[10px] font-semibold text-foreground"
-    >
-      {current}
-    </span>
   );
 }
 
@@ -116,12 +95,11 @@ export function YearningSidebar(props: React.ComponentProps<typeof Sidebar>) {
       variant="inset"
       collapsible="icon"
       side="left"
-      className="sidebar-box **:data-[slot=sidebar-inner]:bg-background **:data-[slot=sidebar-inner]:border **:data-[slot=sidebar-inner]:border-border group-data-[state=collapsed]:hover:shadow-xl"
+      className="sidebar-box p-0! **:data-[slot=sidebar-inner]:bg-background **:data-[slot=sidebar-inner]:border-r **:data-[slot=sidebar-inner]:border-border group-data-[state=collapsed]:hover:ring-1 group-data-[state=collapsed]:hover:ring-border"
       {...props}
     >
-      <SidebarHeader className="flex flex-row items-center justify-between border-b border-border p-3 group-data-[state=collapsed]:px-2.5">
+      <SidebarHeader className="flex flex-row items-center px-3 pt-2 pb-0 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:px-2.5">
         <BrandLogo />
-        <ReleaseVersionBadge />
       </SidebarHeader>
       <SidebarContent>
         {groups.map((group) => (

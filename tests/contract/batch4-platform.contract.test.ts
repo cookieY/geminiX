@@ -14,7 +14,7 @@ import {
   approveLegacyMigrationRun, assessSettingsImpact, confirmLegacyMigrationCandidate,
   createAnnouncementRevision, createFlow, createNotificationChannel,
   createNotificationTestDelivery, deleteFlow, deleteNotificationChannel,
-  getFlow, getLegacyMigrationRun, getNotificationChannel, getReviewQualityDashboard, getSettingsNamespace,
+  getFlow, getLegacyMigrationRun, getNotificationChannel, getSettingsNamespace,
   getSettingsSchema, getSystemHealthDashboard, listAnnouncementRevisions,
   listAuditEvents, listFlowMaskingRules, listFlows, listNotificationChannels,
   listNotificationDeliveries, listSettingsRevisions, publishAnnouncementRevision,
@@ -227,8 +227,7 @@ describe("announcements", () => {
 });
 
 describe("dashboards and audit feed", () => {
-  it("review quality + system health + audit events", async () => {
-    await record("getReviewQualityDashboard", "admin-face", () => getReviewQualityDashboard());
+  it("system health + audit events", async () => {
     await record("getSystemHealthDashboard", "admin-face", () => getSystemHealthDashboard());
     await record("listAuditEvents", "admin-face", () => listAuditEvents({ limit: 20 }));
   });

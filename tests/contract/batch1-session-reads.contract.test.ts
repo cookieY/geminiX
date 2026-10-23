@@ -15,8 +15,8 @@ import {
   listFlows, listIdentityProviders, listKnowledgeEntries, listNotificationChannels,
   listNotificationDeliveries, listPermissionGroups, listPromptTools, listRuleSets,
   listSettingsRevisions, listUsers, getDatasource, getSettingsNamespace,
-  getSettingsSchema, getOperationsDashboard, getReviewQualityDashboard,
-  getSystemHealthDashboard, listLegacyMigrationRuns,
+  getSettingsSchema, getOperationsDashboard, getSystemHealthDashboard,
+  listLegacyMigrationRuns,
 } from "@/api/generated/client/administration/administration";
 import { getCurrentAnnouncement } from "@/api/generated/client/announcements/announcements";
 import { getMyDashboard } from "@/api/generated/client/dashboard/dashboard";
@@ -117,7 +117,6 @@ describe("admin read faces", () => {
     ["getSettingsNamespace", () => getSettingsNamespace("general")],
     ["getSettingsSchema", () => getSettingsSchema("general")],
     ["getOperationsDashboard", () => getOperationsDashboard()],
-    ["getReviewQualityDashboard", () => getReviewQualityDashboard()],
     ["getSystemHealthDashboard", () => getSystemHealthDashboard()],
   ];
   for (const [op, call] of reads) {
@@ -157,6 +156,11 @@ describe("authenticated-session faces", () => {
     const r = await record("getOperationsDashboard", "submitter", () => getOperationsDashboard());
     expect(r.errCode).toBe(0);
   });
+  it("getSystemHealthDashboard is open to any session (§18.83)", async () => {
+    const r = await record("getSystemHealthDashboard", "submitter", () => getSystemHealthDashboard());
+    expect(r.status).toBe(200);
+    expect(r.errCode).toBe(0);
+  });
   it("business list faces (real listChangeOrders: divergence #006)", async () => {
     for (const [op, call] of [
       ["listChangeDrafts", () => listChangeDrafts()],
@@ -181,7 +185,6 @@ describe("authorization matrix", () => {
       ["listDatasources", () => listDatasources()],
       ["listFlows", () => listFlows()],
       ["listAiProviders", () => listAiProviders()],
-      ["getSystemHealthDashboard", () => getSystemHealthDashboard()],
       ["listAuditEvents", () => listAuditEvents()],
     ] as Array<[string, () => Promise<unknown>]>) {
       const r = await record(op, "non-admin", call, MOCK_PARTIAL_AUTHZ);

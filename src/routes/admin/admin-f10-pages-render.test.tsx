@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -15,7 +15,7 @@ import AdminSettingsNamespacePage from "@/routes/admin/admin-settings-page";
 import AdminAiBudgetPage from "@/routes/admin/admin-ai-budget-page";
 import AdminIdentityProvidersPage from "@/routes/admin/admin-identity-providers-page";
 import AdminNotificationsPage from "@/routes/admin/admin-notifications-page";
-import WorkspacePage from "@/routes/workspace/workspace-page";
+import WorkspaceHomePage from "@/routes/workspace/workspace-home-page";
 import { QueryOrdersTab } from "@/routes/changes/query-orders-tab";
 
 /**
@@ -207,106 +207,77 @@ describe("notification channels page", () => {
   });
 });
 
-describe("workspace dashboard", () => {
-  it("renders the announcement and platform statistics for a granted user (§18.71)", async () => {
+describe("workspace home", () => {
+  it("renders the counters, announcement and platform statistics for a granted user (§18.71)", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
-    renderPage(<WorkspacePage />);
+    renderPage(<WorkspaceHomePage />);
     expect(await screen.findByTestId("workspace-page")).toBeVisible();
-    // RCP-20261020: the announcement card mounts immediately as a
-    // minimum-height placeholder, so the content itself needs a wait.
+    // Row 1 — the caller's own actionable counters (/dashboard/me).
+    expect(await screen.findByTestId("home-kpi-pending-approval")).toBeVisible();
+    expect(screen.getByTestId("home-kpi-pending-execution")).toBeVisible();
+    expect(screen.getByTestId("home-kpi-blocked-review")).toBeVisible();
+    // The announcement mounts immediately and fills in once the query lands.
     await screen.findByText("季度维护窗口公告");
-    expect(screen.getByTestId("workspace-announcement")).toHaveTextContent("季度维护窗口公告");
-    // The release banner reads the backend snapshot endpoint (mock base
-    // fixture): tag and excerpt render, details link points at the
-    // same-origin fixture path. Default world is up-to-date (current ==
-    // latest) — no "update now" tag. (The sidebar badge lives in the app
-    // shell, outside this page-level mount — shell.spec covers it.)
-    const banner = await screen.findByTestId("workspace-release-banner");
-    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("v4.1.0");
-    expect(within(banner).queryByTestId("release-update-now")).toBeNull();
+    expect(screen.getByTestId("home-announcement")).toHaveTextContent("季度维护窗口公告");
     // §18.71 (owner ruling 2026-10-16): platform statistics are an
-    // authenticated-session surface — non-admin sessions render the same
-    // operations trend + stat cards block the admin home shows.
-    expect(await screen.findByTestId("workspace-admin-dashboards")).toBeVisible();
-    expect(screen.getByTestId("admin-order-total")).toBeVisible();
-    expect(screen.getByTestId("admin-query-total")).toBeVisible();
-  });
-
-  it("renders the trend chart and stat cards for the admin session", async () => {
-    seedQueryScenario("query-flow");
-    stubSession(true);
-    renderPage(<WorkspacePage />);
-    expect(await screen.findByTestId("workspace-admin-dashboards")).toBeVisible();
-    expect(screen.getByTestId("admin-order-total")).toBeVisible();
-    expect(screen.getByTestId("admin-query-total")).toBeVisible();
-    // Owner ruling 2026-09-02: nothing renders below the stat-card row.
-    expect(screen.queryByTestId("dashboard-draft-count")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("workspace-admin-quality")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("workspace-admin-health")).not.toBeInTheDocument();
-  });
-
-  it("renders minimum-height placeholders for the release banner and announcement without data (RCP-20261020)", async () => {
-    seedQueryScenario("query-flow");
-    stubSession(false);
-    server.use(
-      http.get("*/releases/latest", () =>
-        HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: "req-release-null" }),
-      ),
-      http.get("*/announcements/current", () =>
-        HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: "req-release-null" }),
-      ),
+    // authenticated-session surface — a non-admin session sees the same
+    // operations numbers the admin home shows.
+    expect(await screen.findByTestId("home-order-overview")).toBeVisible();
+    expect(screen.getByTestId("home-distribution")).toBeVisible();
+    expect(screen.getByTestId("home-completion-ring")).toBeVisible();
+    // 状态分布与成功率同口径（RCP-20261023-HOME-METRICS-ALIGNMENT）：
+    // 四段计数取自平台 state_distribution，合计等于窗口工单总量 47；
+    // 旧实现用本人最近 20 条聚合，会得到 20。
+    expect(screen.getByTestId("home-distribution")).toHaveTextContent("工单状态分布");
+    // 平台窗口 47 单 = 已完成 41 + 进行中 1 + 失败 5（failed 3 + partial 2）+ 其他 0。
+    const counts = ["done", "active", "failed", "other"].map((key) =>
+      Number(screen.getByTestId(`home-distribution-count-${key}`).textContent),
     );
-    renderPage(<WorkspacePage />);
-    expect(await screen.findByTestId("workspace-page")).toBeVisible();
-    // Owner ruling 2026-10-20: no snapshot still renders the slots — the
-    // banner shows the label row with an em-dash and the unavailable hint,
-    // the announcement card keeps its frame with an empty hint.
-    const banner = screen.getByTestId("workspace-release-banner");
-    expect(banner).toBeVisible();
-    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("—");
-    expect(within(banner).getByTestId("release-notes-excerpt")).toHaveTextContent("暂无版本信息");
-    expect(within(banner).queryByRole("link", { name: "更新内容详情" })).toBeNull();
-    // The card lives inside the dashboard section, which mounts once the
-    // session resolves — wait for the placeholder to appear.
-    const announcement = await screen.findByTestId("workspace-announcement");
-    expect(announcement).toBeVisible();
-    expect(await screen.findByTestId("workspace-announcement-empty")).toHaveTextContent("暂无公告");
+    expect(counts).toEqual([41, 1, 5, 0]);
+    expect(counts.reduce((sum, n) => sum + n, 0)).toBe(47);
+    // §18.83（owner ruling 2026-10-23）：system-health 对全部已登录会话开放，
+    // 普通用户也能拿到组件健康点（此前 admin-only，普通用户永久缺失）。
+    expect(await screen.findByTestId("home-health-dots")).toBeVisible();
   });
 
-  it("renders the green update-now tag when the installed reference differs from upstream latest (owner ruling 2026-10-20)", async () => {
-    seedQueryScenario("query-flow");
+  it("renders the zero-permission notice alongside the dashboard, never instead of it (auth PRD §11)", async () => {
     stubSession(false);
     server.use(
-      http.get("*/releases/latest", () =>
+      http.get("*/users/me/flows", () =>
         HttpResponse.json({
           err_code: 0,
           message: "ok",
-          data: {
-            tag_name: "v4.2.0",
-            name: "Yearning v4.2.0",
-            html_url: "/mock/github-releases/latest/v4.2.0",
-            body: " newer release notes",
-            published_at: "2026-10-19T08:00:00Z",
-            fetched_at: "2026-10-20T00:00:00Z",
-            current_version: "v4.0.0",
-          },
-          request_id: "req-release-mismatch",
+          data: { items: [] },
+          request_id: "req-flows-empty",
         }),
       ),
     );
-    renderPage(<WorkspacePage />);
-    const banner = await screen.findByTestId("workspace-release-banner");
-    // The card mounts instantly as the placeholder and release-tag exists
-    // in that state too — wait for the snapshot CONTENT to arrive.
-    const updateNow = await within(banner).findByTestId("release-update-now");
-    expect(within(banner).getByTestId("release-tag")).toHaveTextContent("v4.2.0");
-    // Green tag beside the latest tag; links to the release page in a new
-    // tab. First install (current_version null) renders none — covered by
-    // the placeholder test above (data:null → no banner content at all).
-    expect(updateNow).toHaveTextContent("立即更新");
-    expect(updateNow).toHaveAttribute("href", "/mock/github-releases/latest/v4.2.0");
-    expect(updateNow).toHaveAttribute("target", "_blank");
+    renderPage(<WorkspaceHomePage />);
+    expect(await screen.findByTestId("workspace-page")).toBeVisible();
+    // The default fixture world grants nothing: the notice appears…
+    expect(await screen.findByText("等待管理员配置权限")).toBeVisible();
+    // …while the dashboard blocks keep rendering underneath.
+    expect(await screen.findByTestId("home-kpi-pending-approval")).toBeVisible();
+    expect(screen.getByTestId("home-order-overview")).toBeVisible();
+  });
+
+  it("keeps the announcement card frame when no announcement is published (RCP-20261020)", async () => {
+    seedQueryScenario("query-flow");
+    stubSession(false);
+    server.use(
+      http.get("*/announcements/current", () =>
+        HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: "req-ann-null" }),
+      ),
+    );
+    renderPage(<WorkspaceHomePage />);
+    expect(await screen.findByTestId("workspace-page")).toBeVisible();
+    const announcement = await screen.findByTestId("home-announcement");
+    expect(announcement).toBeVisible();
+    expect(await screen.findByTestId("home-announcement-empty")).toHaveTextContent(
+      "当前没有已发布的公告",
+    );
+    expect(screen.getByTestId("home-announcement-title")).toHaveTextContent("暂无公告");
   });
 });
 

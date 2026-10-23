@@ -29,7 +29,8 @@
       "knowledge": "内部经验",
       "providers": "Provider管理",
       "ruleSets": "规则集"
-    }
+    },
+    "homeNext": "首页（新版）"
   },
   "shell": {
     "toggleSidebar": "折叠侧边栏",
@@ -53,6 +54,25 @@
     "footer": {
       "sponsor": "赞助",
       "docs": "文档"
+    },
+    "command": {
+      "title": "搜索与跳转",
+      "open": "搜索与跳转",
+      "placeholder": "搜索页面或输入命令…",
+      "hint": "ESC 关闭",
+      "suggestions": "建议",
+      "results": "{{count}} 个结果",
+      "empty": "没有匹配的页面"
+    },
+    "release": {
+      "upToDate": "已是最新",
+      "hasUpdate": "有新版本 {{latest}}",
+      "notes": "更新日志",
+      "refresh": "刷新数据"
+    },
+    "refresh": {
+      "success": "已刷新",
+      "failed": "刷新失败"
     }
   },
   "login": {
@@ -80,15 +100,6 @@
     "brandDescription": "工单提交、AI 预审、多级审批、执行审计与查询管控——Yearning 为数据库变更提供全流程安全治理。",
     "oidcLabel": "OIDC 登录",
     "divider": "或使用账号登录"
-  },
-  "workspace": {
-    "placeholderTitle": "工作台内容尚未交付",
-    "placeholderDesc": "首页概览将在 Dashboard 工作包中提供。",
-    "greeting": "{{name}}，欢迎回来",
-    "refreshedAt": "数据刷新于 {{time}}",
-    "refresh": "刷新",
-    "refreshSuccess": "刷新成功",
-    "refreshFailed": "刷新失败，请稍后重试"
   },
   "states": {
     "loading": "加载中",
@@ -1224,32 +1235,6 @@
       "comment": "注释"
     }
   },
-  "dashboard": {
-    "announcement": {
-      "publishedAt": "发布于 {{time}}",
-      "title": "公告",
-      "empty": "暂无公告"
-    },
-    "admin": {
-      "partial": "部分指标暂不可用（completeness=partial）",
-      "window": "统计窗口 {{from}} ~ {{to}}（{{zone}}）",
-      "orderTotal": "工单总数",
-      "orderTrend": "工单趋势",
-      "windowLabel": "统计窗口",
-      "windowDays": "最近{{days}}天",
-      "emptyTrend": "该窗口内暂无工单",
-      "trendAria": "工单趋势折线图，最近 {{days}} 天共 {{total}} 单",
-      "queryTotal": "查询次数",
-      "userTotal": "用户数",
-      "datasourceTotal": "数据源"
-    },
-    "release": {
-      "latestLabel": "最新版本",
-      "details": "更新内容详情",
-      "unavailable": "暂无版本信息，服务端尚未获取到上游快照",
-      "updateNow": "立即更新"
-    }
-  },
   "records": {
     "title": "审计记录",
     "description": "只追加的90天审计事件（S004）；仅内置admin可读。",
@@ -1730,5 +1715,66 @@
     "maintenanceTitle": "系统维护中（迁移审查模式）",
     "maintenanceDescription": "服务器正在迁移审查模式下运行，普通业务功能不可用。",
     "gotoWorkbench": "前往迁移审查工作台"
+  },
+  "home": {
+    "kpi": {
+      "pendingApproval": "待我审批",
+      "pendingExecution": "待我执行",
+      "blockedReview": "被阻断",
+      "action": "去处理"
+    },
+    "overview": {
+      "title": "工单概览",
+      "window": "统计窗口 {{from}} ~ {{to}}（{{zone}}）",
+      "orders": "工单总量",
+      "statements": "语句总量",
+      "ddl": "DDL",
+      "dml": "DML",
+      "weekOverWeek": "较上周",
+      "compareEmpty": "统计窗口内提交的工单"
+    },
+    "recent": {
+      "title": "最近工单",
+      "empty": "还没有工单",
+      "viewAll": "查看全部工单",
+      "inFlight": "我进行中的工单"
+    },
+    "metrics": {
+      "roleAdmin": "管理员",
+      "roleUser": "普通用户",
+      "approvalP50": "审批 P50",
+      "approvalP95": "审批 P95",
+      "queryExecutions": "查询执行",
+      "users": "用户数",
+      "completion": "工单完成率",
+      "completionCaption": "{{completed}} 完成 / {{total}} 总计",
+      "completionAria": "工单完成率 {{percent}}%",
+      "planCompleted": "完成进度",
+      "done": "已完成",
+      "health": "组件健康"
+    },
+    "distribution": {
+      "title": "执行成功率",
+      "caption": "已完成 {{completed}} / 已执行 {{executed}} 条工单",
+      "legendTitle": "工单状态分布",
+      "description": "统计窗口内 {{count}} 条工单的当前状态，与大数字同分母。",
+      "dots": "下方点阵为本人最近 {{count}} 条工单，颜色对应其状态。",
+      "success": "成功",
+      "failed": "失败",
+      "cta": "查看全部",
+      "aria": "本人最近工单状态",
+      "breakdownDone": "已完成",
+      "breakdownActive": "进行中",
+      "breakdownFailed": "失败",
+      "breakdownOther": "其他"
+    },
+    "announcement": {
+      "kicker": "系统公告",
+      "meta": "发布于 {{time}} · {{user}} 发布",
+      "emptyTitle": "暂无公告",
+      "emptyMeta": "管理员发布后将在此显示",
+      "empty": "当前没有已发布的公告，管理员在「公告管理」发布后这里会立即显示。",
+      "version": "v{{version}}"
+    }
   }
 }

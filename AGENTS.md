@@ -26,7 +26,8 @@ UI基线前置：开始任何前端UI实现前，必须读取`../docs/frontend/y
 - 不实现聊天壳，不引入旧`gemini-next`运行时，不在浏览器持久化SQL、Evidence、凭据、Token、映射或Reveal明文。
 - React、TypeScript、Vite、Tailwind CSS v4、shadcn/ui、Base UI、i18n、生成Client和测试命令以当前工具链契约及脚手架为准；不引入Ant Design或第二套通用组件库。
 - 非业务视觉（布局、主题、色彩、间距、圆角、阴影和通用组件外观）继承冻结Commit的Shadcn Dashboard基线，通过Tailwind CSS v4语义变量和shadcn Variant管理，不为品牌感重建第二套主题。
-- 动效遵守`../docs/frontend/yearning-ui-design-spec.md`：只动`transform`/`opacity`（必要时`clip-path`/`filter`），禁止`transition-all`，过渡按实际变化的属性逐项声明；曲线只用`src/app/styles/global.css`定义的`--ease-out`（进入、退出）与`--ease-sheet`（抽屉），不得新增`cubic-bezier()`字面量；禁止`ease-in`；UI过渡时长不超过500ms，弹层入场不得从`scale(0)`起手（用`scale(0.95)`加透明度）；`hover:`触发的动效必须包在`@media (hover: hover) and (pointer: fine)`内；任何动效都要在`prefers-reduced-motion: reduce`下退化为无位移而非直接消失。新增或修改动效后运行`pnpm check:motion`，提交前该命令必须通过。
+- 动效遵守`../docs/frontend/yearning-ui-design-spec.md`：只动`transform`/`opacity`（必要时`clip-path`/`filter`），禁止`transition-all`，过渡按实际变化的属性逐项声明；曲线只用`src/app/styles/global.css`定义的`--ease-out`（进入、退出）、`--ease-sheet`（抽屉）与`--ease-data`（数据可视化入场，见下方例外），不得新增`cubic-bezier()`字面量；禁止`ease-in`；UI过渡时长不超过500ms，弹层入场不得从`scale(0)`起手（用`scale(0.95)`加透明度）；`hover:`触发的动效必须包在`@media (hover: hover) and (pointer: fine)`内；任何动效都要在`prefers-reduced-motion: reduce`下退化为无位移而非直接消失。新增或修改动效后运行`pnpm check:motion`，提交前该命令必须通过。
+  - **数据可视化例外（owner批准，2026-10-23）**：`--ease-data`（`cubic-bezier(0.25, 0.46, 0.45, 0.94)`）专用于需要被读数而非仅被感知的图表与数字入场，与交互反馈用的expo曲线`--ease-out`分开——expo在400ms下前100ms已走完77.5%，柱状图与计数看起来是“刷一下”（owner原话“直方图图表动效太快了”“眼睛都没反应过来就结束了”）。该例外同时允许突破500ms上限：直方图`--animate-bar-grow`900ms、环形`--animate-ring-draw`900ms、`CountUp`1000ms。**500ms上限约束的是交互过渡（hover/popover/sheet/dialog），不约束数据动画**；数据动画的唯一判据是可读性。`scripts/scan-motion.mjs`已把`--ease-data`列入`CANONICAL_CURVES`与`REQUIRED_TOKENS`，`--animate-bar-rise`（400ms）保留给装饰性点阵。
 - 前端隐藏操作不能代替后端权限检查，页面不得复制另一套Submission Gate或状态机。
 - 前端源码和测试先在本仓库提交，再由YearningX更新Gitlink并绑定两个仓库Commit证据。
 - 未经用户明确授权不得commit或push；不得把未运行测试报告为通过。
