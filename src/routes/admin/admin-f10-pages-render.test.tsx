@@ -262,6 +262,34 @@ describe("workspace home", () => {
     expect(screen.getByTestId("home-order-overview")).toBeVisible();
   });
 
+  it("never asserts a completion percentage it has not loaded (review L4)", async () => {
+    seedQueryScenario("query-flow");
+    stubSession(false);
+    // The operations aggregate fails: the page must degrade to "not measured"
+    // rather than claim 0 / 0 done. Regression guard for the round-1 finding
+    // that an unresolved query rendered a confident zero with a 0% arc.
+    server.use(
+      http.get("*/admin/dashboard/operations", () =>
+        HttpResponse.json(
+          { err_code: 5000, message: "internal error", data: null, request_id: "req-ops-fail" },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderPage(<WorkspaceHomePage />);
+    expect(await screen.findByTestId("workspace-page")).toBeVisible();
+
+    // The ring announces "loading", not "0%".
+    const ring = await screen.findByTestId("home-completion-ring");
+    expect(ring).toHaveAccessibleName("工单完成率（加载中）");
+    // An absent arc is the point: a zero-length arc would be a claim.
+    expect(ring.querySelectorAll("circle")).toHaveLength(1);
+    // The four breakdown columns show an em dash, not zeros that sum to 47.
+    for (const key of ["done", "active", "failed", "other"]) {
+      expect(screen.getByTestId(`home-distribution-count-${key}`)).toHaveTextContent("—");
+    }
+  });
+
   it("keeps the announcement card frame when no announcement is published (RCP-20261020)", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
