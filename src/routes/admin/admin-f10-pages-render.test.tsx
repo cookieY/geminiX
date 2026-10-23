@@ -284,10 +284,18 @@ describe("workspace home", () => {
     expect(ring).toHaveAccessibleName("工单完成率（加载中）");
     // An absent arc is the point: a zero-length arc would be a claim.
     expect(ring.querySelectorAll("circle")).toHaveLength(1);
+    // The centre must read "— / —". If CountUp ever fell back to 0 for an
+    // undefined value this would be "0 / 0" — the exact original symptom —
+    // while the three assertions above stayed green.
+    expect(ring.parentElement).toHaveTextContent("— / —");
     // The four breakdown columns show an em dash, not zeros that sum to 47.
+    // Exact match, not substring: "—%" must not pass as "—".
     for (const key of ["done", "active", "failed", "other"]) {
-      expect(screen.getByTestId(`home-distribution-count-${key}`)).toHaveTextContent("—");
+      expect(screen.getByTestId(`home-distribution-count-${key}`).textContent.trim()).toBe("—");
     }
+    // Copy must say "still measuring", never a count of zero orders.
+    expect(await screen.findByText("正在统计执行结果…")).toBeVisible();
+    expect(screen.getByText("正在加载统计窗口内的工单状态…")).toBeVisible();
   });
 
   it("keeps the announcement card frame when no announcement is published (RCP-20261020)", async () => {
