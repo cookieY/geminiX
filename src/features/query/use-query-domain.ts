@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/features/auth/session-provider";
 import {
   closeQuerySession,
@@ -116,6 +116,8 @@ export function useMyAccessRequests(
       };
     },
     enabled,
+    // 翻页/筛选期间保留上一页：表格不闪空，页脚可以显示进行中反馈。
+    placeholderData: keepPreviousData,
   });
   // §18.82：data 恒有定义（pending 期空页回退），消费端免判空。
   return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
@@ -243,6 +245,8 @@ export function useQueryOrders(enabled: boolean, paging?: { limit?: number; afte
       };
     },
     enabled,
+    // 翻页期间保留上一页：组合视图不闪空，页脚显示进行中反馈。
+    placeholderData: keepPreviousData,
   });
   // §18.82：data 恒有定义（pending 期空页回退），消费端免判空。
   return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };

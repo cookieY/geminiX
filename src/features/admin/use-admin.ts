@@ -368,6 +368,7 @@ export function useSettingsRevisions(
       };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -819,6 +820,7 @@ export function useAnnouncementRevisions(enabled: boolean, paging?: { limit: num
       return response as unknown as { items: AnnouncementRevision[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 export function useCreateAnnouncementRevision() {
@@ -871,6 +873,7 @@ export function useIdentityProviders(enabled: boolean, paging?: { limit: number;
       return response as unknown as { items: IdentityProvider[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 export function useCreateIdentityProvider() {
@@ -929,6 +932,7 @@ export function useNotificationChannels(enabled: boolean, paging?: { limit: numb
       return response as unknown as { items: NotificationChannel[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 export function useNotificationDeliveries(enabled: boolean, paging?: { limit: number; after?: string }) {
@@ -939,6 +943,7 @@ export function useNotificationDeliveries(enabled: boolean, paging?: { limit: nu
       return response as unknown as { items: NotificationDelivery[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 export function useCreateNotificationChannel() {
@@ -1015,6 +1020,7 @@ export function useMigrationRuns(enabled: boolean, paging?: { limit?: number; af
       };
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
   return { ...query, data: query.data ?? { items: [], page: { has_more: false, next_cursor: null } } };
 }

@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   Card,
   CardContent,
@@ -442,7 +443,7 @@ function ProviderRow({
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
 
   return (
-    <TableRow data-testid={`provider-row-${provider.id}`}>
+    <TableRow data-testid={`provider-row-${provider.id}`} data-row-key={provider.id}>
       <TableCell>
         <div className="flex items-center gap-1.5">
           <Badge variant={ordinal === 0 ? "default" : "outline"} data-testid={`provider-role-${provider.id}`}>
@@ -601,8 +602,6 @@ export default function AdminProvidersPage() {
   const [search, setSearch] = useState("");
   // §18.82：后端游标分页（默认20行/页）；搜索变更回到第一页。
   const pager = useCursorPage(20);
-  const keyword2 = search.trim();
-  useEffect(() => { pager.reset(); }, [keyword2]); // eslint-disable-line react-hooks/exhaustive-deps -- reset is intentional on keyword change
   const query = useAiProviders(enabled, search.trim() || undefined, {
     limit: pager.pageSize,
     after: pager.after,
@@ -615,6 +614,10 @@ export default function AdminProvidersPage() {
   // 空态文案区分。
   const keyword = search.trim();
   const providers = query.data?.items ?? [];
+  // §18.73：搜索在服务端收窄，行集合变化时用 FLIP 把整行位移补间掉。
+  const providersBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(providers.map((provider) => provider.id)),
+  );
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (
@@ -625,7 +628,14 @@ export default function AdminProvidersPage() {
             <CardTitle>{t("admin.providers.title")}</CardTitle>
             <CardDescription>{t("admin.providers.description")}</CardDescription>
           </div>
-          <TableSearchInput value={search} onChange={setSearch} testId="admin-providers-search" />
+          <TableSearchInput
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              pager.reset();
+            }}
+            testId="admin-providers-search"
+          />
           <Button
             onClick={() => {
               setEditing(null);
@@ -669,7 +679,7 @@ export default function AdminProvidersPage() {
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody ref={providersBodyRef} stale={query.isFetching && query.isPlaceholderData}>
                 {providers.map((provider, index) => (
                   <ProviderRow
                     key={provider.id}
@@ -687,6 +697,7 @@ export default function AdminProvidersPage() {
           )}
           {providersLoaded ? (
             <TablePagination
+              busy={query.isFetching && query.isPlaceholderData}
               page={pager.pageNo}
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}

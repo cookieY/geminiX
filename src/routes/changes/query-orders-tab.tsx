@@ -5,6 +5,7 @@ import type { QueryAccessRequest, QueryGrant, QuerySession } from "@/api/generat
 import { useSession } from "@/features/auth/session-provider";
 import { useMyGrants, useQueryOrders } from "@/features/query/use-query-domain";
 import { useCursorPage } from "@/shared/lib/cursor-page";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -75,6 +76,12 @@ export function QueryOrdersTab() {
     return [];
   });
 
+  // 游标翻页现在保留上一页数据；行集合变化时补间，过期期间禁点旧行。
+  const ordersStale = ordersQuery.isFetching && ordersQuery.isPlaceholderData;
+  const ordersBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(rows.map((row) => row.id)),
+  );
+
   const loadError = ordersQuery.error ?? grantsQuery.error;
 
   return (
@@ -113,10 +120,11 @@ export function QueryOrdersTab() {
                 <TableHead>{t("orders.query.column.terminal")}</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody ref={ordersBodyRef} stale={ordersStale}>
               {rows.map((row) => (
                 <TableRow
                   key={row.id}
+                  data-row-key={row.id}
                   className="cursor-pointer"
                   onClick={() => { setDetail(row); }}
                   data-testid={`orders-query-row-${row.id}`}
@@ -158,6 +166,7 @@ export function QueryOrdersTab() {
         )}
         {loadError === null && !ordersQuery.isPending && (
           <TablePagination
+            busy={ordersStale}
             page={pager.pageNo}
             hasMore={ordersQuery.data.page.has_more}
             isFirst={pager.isFirst}

@@ -11,7 +11,13 @@ export default defineConfig({
   // spec runs via its own project (tests/e2e/csp.playwright.config.ts,
   // driver scripts/run-csp-e2e.mjs) and is excluded here so the mock
   // regression baseline never executes it against a CSP-less server.
-  testIgnore: /csp-security\.spec\.ts/,
+  // The frame-budget spec measures rAF deltas, so it runs in its own
+  // single-worker process (`pnpm test:frames`) instead of competing with the
+  // parallel suite for the CPU: under contention the machine, not the motion,
+  // decides whether p95 fits. The rest of the suite still runs in parallel.
+  testIgnore: process.env.MOTION_FRAMES_ONLY
+    ? /csp-security\.spec\.ts/
+    : [/csp-security\.spec\.ts/, /motion-frames\.spec\.ts/],
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "list" : "html",

@@ -13,6 +13,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -95,6 +96,10 @@ export default function AdminFlowsPage() {
   // §18.73：搜索走服务端q；keyword仅用于空态文案区分。
   const keyword = search.trim();
   const flows = flowsQuery.data?.items ?? [];
+  // 搜索在服务端收窄；行集合变化时把整行位移补间掉。
+  const flowsBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(flows.map((flow) => flow.id)),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">
@@ -130,7 +135,14 @@ export default function AdminFlowsPage() {
               </CardTitle>
               <CardDescription>{t("adminFlows.cardDescription")}</CardDescription>
             </div>
-            <TableSearchInput value={search} onChange={setSearch} testId="admin-flows-search" />
+            <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-flows-search"
+            />
           </CardHeader>
           <CardContent>
             {flows.length === 0 ? (
@@ -149,7 +161,7 @@ export default function AdminFlowsPage() {
                     <TableHead />
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody ref={flowsBodyRef} stale={flowsQuery.isFetching && flowsQuery.isPlaceholderData}>
                   {flows.map((flow) => (
                     <FlowRow key={flow.id} flow={flow} onEdit={() => { setEditing(flow); }} />
                   ))}
@@ -159,16 +171,17 @@ export default function AdminFlowsPage() {
             )}
       {flowsLoaded ? (
         <TablePagination
-              page={pager.pageNo}
-              hasMore={flowsQuery.data.page.has_more}
-              isFirst={pager.isFirst}
-              onPrev={pager.goPrev}
-              onNext={() => {
-                pager.pushCursor(flowsQuery.data.page.next_cursor);
-              }}
-              pageSize={pager.pageSize}
-              onPageSizeChange={pager.setPageSize}
-              testIdPrefix="flows"
+          busy={flowsQuery.isFetching && flowsQuery.isPlaceholderData}
+          page={pager.pageNo}
+          hasMore={flowsQuery.data.page.has_more}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => {
+            pager.pushCursor(flowsQuery.data.page.next_cursor);
+          }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="flows"
         />
       ) : null}
           </CardContent>
@@ -198,7 +211,7 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
 
   return (
     <>
-      <TableRow data-testid={`admin-flow-row-${flow.id}`}>
+      <TableRow data-testid={`admin-flow-row-${flow.id}`} data-row-key={flow.id}>
         <TableCell>{flow.name}</TableCell>
         <TableCell>
           <Badge variant="outline">

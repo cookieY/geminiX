@@ -33,6 +33,7 @@ import {
 } from "@/features/admin/review-input-editor";
 import { renderSkillDescription } from "@/features/admin/skill-description";
 import { useCursorPage } from "@/shared/lib/cursor-page";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -274,6 +275,10 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const isSkills = kind === "skills";
   // §18.73：服务端q过滤后直接渲染；空态区分直接读skillSearch。
   const visibleSkillRows = rows;
+  // 服务端 q 收窄结果集时，把幸存技能行的位移补间掉；翻页同理。
+  const skillBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(visibleSkillRows.map((row) => row.id)),
+  );
 
   // 内部经验 renders as the Notes-app master-detail (owner ruling 2026-09-02,
   // frozen template apps/notes): entry cards on the left, the experience
@@ -716,7 +721,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody ref={skillBodyRef} stale={toolsQuery.isFetching && toolsQuery.isPlaceholderData}>
                 {visibleSkillRows.map((row) => {
                   const id = row.id;
                   const name = row.name;
@@ -725,7 +730,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const builtin = (row as PromptTool).is_builtin;
                   const description = (row as PromptTool).description;
                   return (
-                    <TableRow key={id} data-testid={`review-input-row-${id}`}>
+                    <TableRow key={id} data-row-key={id} data-testid={`review-input-row-${id}`}>
                       <TableCell className="font-medium">
                         {/* §18.80：名称下方浅灰展示技能说明，用户不用进
                             编辑弹窗即可知道每个技能的用途；说明中的
@@ -785,6 +790,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
           )}
           {toolsLoaded ? (
             <TablePagination
+              busy={toolsQuery.isFetching && toolsQuery.isPlaceholderData}
               page={skillPager.pageNo}
               hasMore={toolsQuery.data.page.has_more}
               isFirst={skillPager.isFirst}

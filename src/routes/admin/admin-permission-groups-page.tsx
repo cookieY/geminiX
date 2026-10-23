@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -69,6 +70,10 @@ export default function AdminPermissionGroupsPage() {
   // §18.73：搜索走服务端q；groupKeyword仅用于空态文案区分。
   const groupKeyword = groupSearch.trim();
   const groups = groupsQuery.data?.items ?? [];
+  // 搜索在服务端收窄；行集合变化时把整行位移补间掉。
+  const groupsBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(groups.map((group) => group.id)),
+  );
   const users = usersQuery.data?.items ?? [];
   const flows = flowsQuery.data?.items ?? [];
   const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
@@ -172,7 +177,14 @@ export default function AdminPermissionGroupsPage() {
                 </CardTitle>
                 <CardDescription>{t("adminGroups.cardDescription")}</CardDescription>
               </div>
-              <TableSearchInput value={groupSearch} onChange={setGroupSearch} testId="admin-groups-search" />
+              <TableSearchInput
+              value={groupSearch}
+              onChange={(value) => {
+                setGroupSearch(value);
+                pager.reset();
+              }}
+              testId="admin-groups-search"
+            />
             </CardHeader>
             <CardContent>
               {groups.length === 0 ? (
@@ -191,7 +203,7 @@ export default function AdminPermissionGroupsPage() {
                       <TableHead />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody ref={groupsBodyRef} stale={groupsQuery.isFetching && groupsQuery.isPlaceholderData}>
                     {groups.map((group) => (
                       <GroupRow key={group.id} group={group} userById={userById} flowById={flowById} onEdit={() => { setEditing(group); }} />
                     ))}
@@ -201,6 +213,7 @@ export default function AdminPermissionGroupsPage() {
               )}
       {groupsLoaded ? (
         <TablePagination
+          busy={groupsQuery.isFetching && groupsQuery.isPlaceholderData}
           page={pager.pageNo}
           hasMore={groupsQuery.data.page.has_more}
           isFirst={pager.isFirst}
@@ -254,7 +267,7 @@ function GroupRow({
 
   return (
     <>
-      <TableRow data-testid={`admin-group-row-${group.id}`}>
+      <TableRow data-testid={`admin-group-row-${group.id}`} data-row-key={group.id}>
         <TableCell>{group.name}</TableCell>
         <TableCell>
           <Badge variant={group.enabled ? "secondary" : "outline"}>

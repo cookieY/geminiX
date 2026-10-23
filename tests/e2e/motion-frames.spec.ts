@@ -4,6 +4,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { mockSession } from "./helpers/auth";
 
+// A retry would hide exactly the intermittent budget miss this gate exists to
+// catch, so the frame spec opts out of the suite-wide CI retry.
+test.describe.configure({ retries: 0 });
+
 // Frame-budget gate for the interactions the motion packages own.
 //
 // The measurement is deliberately narrow: it records the animation frames that
@@ -45,6 +49,8 @@ interface MotionExpectation {
   transitionProperties?: string[];
   /** `CSSAnimation.animationName` substrings that count, e.g. ["enter"]. */
   animationNames?: string[];
+  /** Keyframe properties that count for WAAPI animations, e.g. ["transform"]. */
+  keyframeProperties?: string[];
 }
 
 const FLOOR_BUDGET_MS = 16.7;
@@ -85,12 +91,15 @@ async function idleMedianDelta(page: Page): Promise<number> {
 interface MotionRun {
   /** Animations on the target that match the expectation and are running. */
   count: number;
+  /** Earliest document-timeline start of a matched animation, if known. */
+  startTime: number | null;
 }
 
 async function runningMatching(target: Locator, expectation: MotionExpectation): Promise<MotionRun> {
   const spec = {
     transitionProperties: expectation.transitionProperties ?? [],
     animationNames: expectation.animationNames ?? [],
+    keyframeProperties: expectation.keyframeProperties ?? [],
   };
   return target.evaluate((element, spec) => {
     const matches = element.getAnimations({ subtree: true }).filter((animation) => {
@@ -101,9 +110,19 @@ async function runningMatching(target: Locator, expectation: MotionExpectation):
       if (animation instanceof CSSAnimation) {
         return spec.animationNames.some((name) => animation.animationName.includes(name));
       }
-      return false;
+      const effect = animation.effect;
+      if (!(effect instanceof KeyframeEffect)) return false;
+      return effect.getKeyframes().some((frame) =>
+        spec.keyframeProperties.some((property) => {
+          const value = (frame as Record<string, unknown>)[property];
+          return typeof value === "string" && value !== "none" && !value.endsWith("(0px)");
+        }),
+      );
     });
-    return { count: matches.length };
+    const starts = matches
+      .map((animation) => animation.startTime)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    return { count: matches.length, startTime: starts.length > 0 ? Math.min(...starts) : null };
   }, spec);
 }
 
@@ -112,6 +131,7 @@ async function finishedAt(target: Locator, expectation: MotionExpectation): Prom
   const spec = {
     transitionProperties: expectation.transitionProperties ?? [],
     animationNames: expectation.animationNames ?? [],
+    keyframeProperties: expectation.keyframeProperties ?? [],
   };
   return target.evaluate(async (element, spec) => {
     const matches = element.getAnimations({ subtree: true }).filter((animation) => {
@@ -121,7 +141,14 @@ async function finishedAt(target: Locator, expectation: MotionExpectation): Prom
       if (animation instanceof CSSAnimation) {
         return spec.animationNames.some((name) => animation.animationName.includes(name));
       }
-      return false;
+      const effect = animation.effect;
+      if (!(effect instanceof KeyframeEffect)) return false;
+      return effect.getKeyframes().some((frame) =>
+        spec.keyframeProperties.some((property) => {
+          const value = (frame as Record<string, unknown>)[property];
+          return typeof value === "string" && value !== "none" && !value.endsWith("(0px)");
+        }),
+      );
     });
     if (matches.length === 0) return performance.now();
     await Promise.all(matches.map((animation) => animation.finished.catch(() => undefined)));
@@ -145,20 +172,30 @@ async function measure(
   // frame). It closes when the target's own animation reports `finished`.
   const start = await page.evaluate(() => performance.now());
   await action();
-  // The transition is created on the commit after the click. Sampling one frame
-  // later proves the *target's own* transition is running rather than counting
-  // whatever else the page happens to animate.
-  await page.waitForTimeout(60);
-  const running = await runningMatching(expectation.target, expectation);
+  // The transition is created on the commit after the action; poll for the
+  // target's own animation instead of sleeping a fixed 60ms. Under parallel
+  // load a fixed sleep can land after a 100ms animation has already finished,
+  // which used to make the gate retry rather than measure.
+  let running = await runningMatching(expectation.target, expectation);
+  const deadline = Date.now() + 500;
+  while (running.count === 0 && Date.now() < deadline) {
+    await page.waitForTimeout(20);
+    running = await runningMatching(expectation.target, expectation);
+  }
   await assertTargetReached();
   const end = await finishedAt(expectation.target, expectation);
+  // The click's handler, dialog close and data commit are inside the wall-clock
+  // window but outside the animation. Start the frame window at the animation's
+  // own document-timeline start so the gate judges the motion, not the work that
+  // scheduled it.
+  const windowStart = running.startTime === null ? start : Math.max(start, running.startTime);
 
   const deltas = await page.evaluate(
     ([windowStart, windowEnd]: [number, number]) =>
       window.__frames
         .filter((frame) => frame.t >= windowStart && frame.t <= windowEnd)
         .map((frame) => frame.d),
-    [start, end] as [number, number],
+    [windowStart, end] as [number, number],
   );
 
   return {
@@ -203,14 +240,19 @@ function persist() {
   };
   const body = `${JSON.stringify(report, null, 2)}\n`;
   writeFileSync("tests/performance/motion-frames.json", body);
-  // The raw file is gitignored (`tests/performance/`); the evidence manifest
-  // lives in the parent repository, so mirror the numbers there when the suite
-  // runs inside a full workspace. Written per test (not only in afterAll) so a
-  // partial or filtered run still records what it actually measured instead of
-  // an empty `measured: []`.
-  const evidence = "../artifacts/development/FE-F11-MOTION-FINISH/tests/motion-frames.json";
-  if (existsSync("../artifacts/development/FE-F11-MOTION-FINISH")) {
-    writeFileSync(evidence, body);
+  // `tests/performance/` is gitignored, so this file never dirties the tree.
+  //
+  // Mirroring into the parent repository is opt-in and off by default: it used
+  // to write `artifacts/development/FE-F11-MOTION-FINISH/tests/motion-frames.json`
+  // unconditionally, which turned every later `pnpm test:e2e` run into an
+  // uncommitted modification of an *already completed* package's committed
+  // evidence (found during FE-F11-MOTION-SPATIAL). Refreshing that record is a
+  // deliberate act: set MOTION_FRAMES_MIRROR=1 while regenerating that package.
+  if (process.env.MOTION_FRAMES_MIRROR === "1") {
+    const evidence = "../artifacts/development/FE-F11-MOTION-FINISH/tests/motion-frames.json";
+    if (existsSync("../artifacts/development/FE-F11-MOTION-FINISH")) {
+      writeFileSync(evidence, body);
+    }
   }
 }
 
@@ -292,6 +334,34 @@ test("mobile sidebar sheet transitions its own opacity and translate", async ({ 
   expectWithinBudget(sample);
 });
 
+test("dialog entry stays inside the frame budget", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockSession(page, "admin");
+  await page.goto("/admin/datasources");
+
+  // The delete confirmation is the smallest dialog on the page, but it uses the
+  // same Radix Dialog, scroll lock and enter animation as every other modal; a
+  // form-heavy dialog's first paint is app work, not motion, so it is not a
+  // stable frame gate target.
+  const trigger = page.locator('button[data-testid^="ds-delete-"]').first();
+  await expect(trigger).toBeEnabled({ timeout: 15_000 });
+  const dialog = page.locator("[data-slot='dialog-content']").first();
+  const sample = await measure(
+    page,
+    "dialog-enter",
+    { target: dialog, animationNames: ["enter"] },
+    async () => {
+      await trigger.click();
+    },
+    async () => {
+      await expect(dialog).toBeVisible();
+    },
+  );
+
+  expectWithinBudget(sample);
+  await page.keyboard.press("Escape");
+});
+
 test("progress fill is a scaled box, never an animated width", async ({ page }) => {
   test.setTimeout(120_000);
   // The review bulk-import dialog reads the file in chunks and paints a real
@@ -349,3 +419,70 @@ declare global {
     __frames: { t: number; d: number }[];
   }
 }
+
+test("button press stays inside the frame budget", async ({ page }) => {
+  test.setTimeout(60_000);
+  // Measure on the workspace header, not the login brand panel: the login
+  // decoration runs three large blurred glows on infinite loops, so even an
+  // idle login page has a p95 above the two-frame budget. The press feedback
+  // itself is the same shared Button primitive.
+  await page.goto("/workspace");
+  const button = page.getByTestId("workspace-refresh");
+  await expect(button).toBeEnabled({ timeout: 15_000 });
+
+  const box = await button.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) throw new Error("button has no box");
+
+  const sample = await measure(
+    page,
+    "button-press",
+    { target: button, transitionProperties: ["scale"] },
+    async () => {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+    },
+    async () => {
+      await expect
+        .poll(async () => {
+          const value = await button.evaluate((element) => getComputedStyle(element).scale);
+          return value === "none" ? 1 : Number.parseFloat(value);
+        })
+        .toBeLessThan(1);
+    },
+  );
+  await page.mouse.up();
+
+  expectWithinBudget(sample);
+});
+
+test("row reorder stays inside the frame budget", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockSession(page, "admin");
+  await page.goto("/admin/datasources");
+
+  const allRows = page.locator("tbody tr");
+  const rows = allRows.filter({ has: page.locator('button[data-testid^="ds-delete-"]') });
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
+  const row = rows.first();
+  const name = (await row.locator("td").first().innerText()).trim();
+  const body = page.locator("tbody").first();
+
+  // Open the confirmation before the window: a Playwright click waits for the
+  // post-commit work, so starting the window at the delete button would let the
+  // 200ms reorder finish before the first sample.
+  await row.locator('button[data-testid^="ds-delete-"]').click();
+  const sample = await measure(
+    page,
+    "table-reorder",
+    { target: body, keyframeProperties: ["transform"] },
+    async () => {
+      await page.getByTestId("ds-delete-confirm").click();
+    },
+    async () => {
+      await expect(body).not.toContainText(name);
+    },
+  );
+
+  expectWithinBudget(sample);
+});

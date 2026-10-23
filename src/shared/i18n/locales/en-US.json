@@ -237,7 +237,8 @@
       "prev": "Previous",
       "next": "Next",
       "page": "Page {{page}}",
-      "rowsPerPage": "Rows per page"
+      "rowsPerPage": "Rows per page",
+      "loading": "Loading"
     },
     "searchPlaceholder": "Search by name…",
     "emptySearch": "No matching rows"

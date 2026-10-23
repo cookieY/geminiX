@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   useCreateNotificationChannel,
   useDeleteNotificationChannel,
@@ -82,6 +83,10 @@ export default function AdminNotificationsPage() {
 
   const channels = channelsQuery.data?.items ?? [];
   const deliveries = deliveriesQuery.data?.items ?? [];
+  // 渠道表有游标分页且新建/删除会改变行集合；投递记录表只随轮询更新。
+  const channelsBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(channels.map((channel) => channel.id)),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-notifications-page">
@@ -127,7 +132,7 @@ export default function AdminNotificationsPage() {
                     <TableHead />
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody ref={channelsBodyRef} stale={channelsQuery.isFetching && channelsQuery.isPlaceholderData}>
                   {channels.map((channel) => (
                     <ChannelRow key={channel.id} channel={channel} onEdit={() => { setEditing(channel); }} />
                   ))}
@@ -137,6 +142,7 @@ export default function AdminNotificationsPage() {
             )}
               {channelsLoaded ? (
                 <TablePagination
+                  busy={channelsQuery.isFetching && channelsQuery.isPlaceholderData}
                   page={pager.pageNo}
                   hasMore={channelsQuery.data.page.has_more}
                   isFirst={pager.isFirst}
@@ -217,7 +223,7 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
 
   return (
     <>
-      <TableRow data-testid={`admin-channel-row-${channel.id}`}>
+      <TableRow data-row-key={channel.id} data-testid={`admin-channel-row-${channel.id}`}>
         <TableCell>
           <Badge variant="outline">{channel.kind}</Badge>
         </TableCell>

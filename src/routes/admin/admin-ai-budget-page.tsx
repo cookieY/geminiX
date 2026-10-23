@@ -422,7 +422,7 @@ export default function AdminAiBudgetPage() {
                   <TableHead>{t("admin.aiBudget.revisionPaths")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody stale={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}>
                 {revisionsQuery.data.items.map((revision) => (
                   <TableRow key={revision.version} data-testid={`ai-budget-revision-${String(revision.version)}`}>
                     <TableCell className="font-mono text-xs">v{revision.version}</TableCell>
@@ -436,6 +436,7 @@ export default function AdminAiBudgetPage() {
           )}
           {revisionsLoaded ? (
             <TablePagination
+              busy={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}
               page={revisionsPager.pageNo}
               hasMore={revisionsQuery.data.page.has_more}
               isFirst={revisionsPager.isFirst}

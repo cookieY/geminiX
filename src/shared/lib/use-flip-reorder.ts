@@ -77,9 +77,18 @@ export function useFlipReorder<Container extends HTMLElement>(orderKey: string) 
         continue
       }
       const delta = previous - top
-      if (Math.abs(delta) >= MOVED && Math.abs(delta) <= bound) {
-        moved.push({ row, delta })
+      if (Math.abs(delta) < MOVED || Math.abs(delta) > bound) {
+        continue
       }
+      // Animating rows that are outside the viewport buys nothing the user can
+      // see and multiplies the composited layers during the tween. A long page
+      // (the default 20-row admin table) otherwise pushes the animation off the
+      // frame budget on software rasterisers.
+      const rowRect = row.getBoundingClientRect()
+      if (rowRect.bottom <= 0 || rowRect.top >= window.innerHeight) {
+        continue
+      }
+      moved.push({ row, delta })
     }
 
     positions.current = next

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   useCreateIdentityProvider,
   useDeleteIdentityProvider,
@@ -158,6 +159,10 @@ export default function AdminIdentityProvidersPage() {
   const providers = providersQuery.data?.items ?? [];
   const ldap = providers.find((provider) => provider.provider_kind === "ldap") ?? null;
   const oidcProviders = providers.filter((provider) => provider.provider_kind === "oidc");
+  // 翻页与新增/删除都会改变这组行；只有 OIDC 行参与（LDAP 是单例卡片）。
+  const oidcBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(oidcProviders.map((provider) => provider.id)),
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-idp-page">
@@ -239,9 +244,9 @@ export default function AdminIdentityProvidersPage() {
                       <TableHead />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody ref={oidcBodyRef} stale={providersQuery.isFetching && providersQuery.isPlaceholderData}>
                     {oidcProviders.map((provider) => (
-                      <TableRow key={provider.id} data-testid={`admin-idp-row-${provider.id}`}>
+                      <TableRow key={provider.id} data-testid={`admin-idp-row-${provider.id}`} data-row-key={provider.id}>
                         <TableCell className="font-mono text-xs">{provider.provider_key}</TableCell>
                         <TableCell className="max-w-72 truncate font-mono text-xs">
                           {(provider.configuration as { issuer_url?: string }).issuer_url ?? ""}
@@ -267,6 +272,7 @@ export default function AdminIdentityProvidersPage() {
               )}
               {providersLoaded ? (
                 <TablePagination
+                  busy={providersQuery.isFetching && providersQuery.isPlaceholderData}
                   page={pager.pageNo}
                   hasMore={providersQuery.data.page.has_more}
                   isFirst={pager.isFirst}

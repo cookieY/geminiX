@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Motion discipline scan (UI design spec §motion; source: the motion review that
-// landed on 2026-10-22). Five rules the codebase already satisfies, pinned so a
+// landed on 2026-10-22). Six rules the codebase already satisfies, pinned so a
 // later change cannot quietly reintroduce them:
 // (1) no catch-all transition — name the properties that actually move,
 // (2) never `ease-in` (accelerating) for UI; use ease-out / ease-in-out,
@@ -9,7 +9,12 @@
 // (5) no transition on a layout property (width/height/inset/margin/padding/gap):
 //     those reflow on every frame. Three sidebar occupancy transitions are a
 //     reviewed exception — see ALLOWED_LAYOUT_TRANSITIONS and
-//     artifacts/development/FE-F11-MOTION-SPATIAL/assessment.md.
+//     artifacts/development/FE-F11-MOTION-SPATIAL/assessment.md,
+// (6) on a surface that owns both an enter and an exit state, dismissal is
+//     faster than arrival (enter:exit between 1.2x and 2.0x). Judged only on
+//     lines carrying `data-open`/`data-starting-style`/`data-closed`/
+//     `data-ending-style`, so a plain hover transition is not mistaken for an
+//     overlay lifecycle.
 //
 // `node scripts/scan-motion.mjs --self-test` runs the fixtures below, and
 // `pnpm check:motion` runs both. The fixtures assemble class strings at runtime
@@ -225,6 +230,175 @@ function detectLayoutTransitions(file, content) {
   return found;
 }
 
+// ------------------------------------------------------- rule 6: enter vs exit
+// Lifecycle timing lives in class strings, not in code lines: scan each string
+// literal and only evaluate the ones that name a state variant. This sees
+// `duration-150` (non-bracket), `data-[state=open]:` prefixes and multi-line
+// template literals, and fails closed when a stateful animation has no
+// parseable duration at all.
+const ENTER_STATE = /data-(?:open|starting-style):|data-\[state=open\]:/;
+const EXIT_STATE = /data-(?:closed|ending-style):|data-\[state=closed\]:/;
+const ENTER_DURATION =
+  /(?:data-(?:open|starting-style):|data-\[state=open\]:)duration-(?:\[(\d+(?:\.\d+)?)(ms|s)\]|(\d+))/g;
+const EXIT_DURATION =
+  /(?:data-(?:closed|ending-style):|data-\[state=closed\]:)duration-(?:\[(\d+(?:\.\d+)?)(ms|s)\]|(\d+))/g;
+const BASE_DURATION = /(?<![\w:-])duration-(?:\[(\d+(?:\.\d+)?)(ms|s)\]|(\d+))(?!-?[\w-])/g;
+const STATEFUL_ANIMATION = /animate-(?:in|out)/;
+
+const STRING_LITERAL = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/gs;
+
+function durationsIn(string, pattern) {
+  return [...string.matchAll(pattern)].map((match) => {
+    const amount = Number(match[1] ?? match[3]);
+    const unit = match[2] ?? "ms";
+    return unit === "s" ? amount * 1000 : amount;
+  });
+}
+
+function detectEnterExitAsymmetry(file, content) {
+  if (!/\.[cm]?[jt]sx?$/.test(file)) return [];
+  const found = [];
+  for (const match of content.matchAll(STRING_LITERAL)) {
+    const value = match[2];
+    const hasEnterState = ENTER_STATE.test(value);
+    const hasExitState = EXIT_STATE.test(value);
+    if (!hasEnterState && !hasExitState) continue;
+
+    const explicitEnter = durationsIn(value, ENTER_DURATION);
+    const explicitExit = durationsIn(value, EXIT_DURATION);
+    const base = durationsIn(value, BASE_DURATION);
+    const enter = explicitEnter.length > 0 ? Math.max(...explicitEnter) : base.length > 0 ? Math.max(...base) : null;
+    const exit = explicitExit.length > 0 ? Math.min(...explicitExit) : base.length > 0 ? Math.min(...base) : null;
+    const line = content.slice(0, match.index).split("\n").length;
+
+    if (enter === null && exit === null) {
+      if (STATEFUL_ANIMATION.test(value)) {
+        found.push({
+          line,
+          message:
+            "stateful animation has no parseable enter/exit duration — write duration-[Nms] for each state",
+        });
+      }
+      continue;
+    }
+    if (enter !== null && exit === null) {
+      found.push({
+        line,
+        message: `entry duration ${enter}ms without an exit duration — dismissal must be faster`,
+      });
+      continue;
+    }
+    if (enter === null && exit !== null) {
+      found.push({
+        line,
+        message: `exit duration ${exit}ms without an entry duration — measure both sides`,
+      });
+      continue;
+    }
+    if (enter === exit) {
+      found.push({
+        line,
+        message: `enter ${enter}ms / exit ${exit}ms = 1.00x — make dismissal faster than arrival`,
+      });
+      continue;
+    }
+    const ratio = enter / exit;
+    if (ratio < 1.2 || ratio > 2) {
+      found.push({
+        line,
+        message: `enter ${enter}ms / exit ${exit}ms = ${ratio.toFixed(2)}x — keep enter:exit between 1.2x and 2.0x`,
+      });
+    }
+  }
+  return found;
+}
+
+// ------------------------------------------------------- rule 5c/6c: CSS-only motion
+// Classes are not the only place motion is authored: global.css owns keyframes
+// and can carry lifecycle selectors. Rule 5 already reads CSS transition
+// declarations, but keyframes and data-state durations were invisible before.
+const CSS_LAYOUT_PROP = /(?:^|[;{\s])(width|height|inline-size|block-size|top|right|bottom|left|inset|margin[\w-]*|padding[\w-]*|gap|grid-template[\w-]*|flex-basis)\s*:/g;
+const CSS_ENTER_STATE = /\[data-(?:open|starting-style)(?:=[^\]]*)?\]|\[data-state=["']?open["']?\]/;
+const CSS_EXIT_STATE = /\[data-(?:closed|ending-style)(?:=[^\]]*)?\]|\[data-state=["']?closed["']?\]/;
+
+function cssKeyframes(content) {
+  const bodies = [];
+  const opener = /@keyframes\s+[\w-]+\s*\{/g;
+  for (const match of content.matchAll(opener)) {
+    let index = opener.lastIndex;
+    let depth = 1;
+    const bodyStart = index;
+    for (; index < content.length && depth > 0; index += 1) {
+      if (content[index] === "{") depth += 1;
+      else if (content[index] === "}") depth -= 1;
+    }
+    bodies.push({ body: content.slice(bodyStart, index - 1), offset: match.index });
+  }
+  return bodies;
+}
+
+function detectCssMotion(file, content) {
+  if (!/\.css$/.test(file)) return [];
+  const found = [];
+
+  for (const keyframe of cssKeyframes(content)) {
+    const props = [...keyframe.body.matchAll(CSS_LAYOUT_PROP)].map((match) => match[1]);
+    if (props.length > 0) {
+      found.push({
+        line: content.slice(0, keyframe.offset).split("\n").length,
+        message: `layout property in @keyframes (${[...new Set(props)].join(", ")}): animate transform/opacity instead`,
+      });
+    }
+  }
+
+  const enter = [];
+  const exit = [];
+  for (const match of content.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = match[1];
+    const body = match[2];
+    if (!/transition(?:-duration)?\s*:/.test(body)) continue;
+    const values = [
+      ...body.matchAll(/(?:^|[;\s])transition-duration\s*:\s*([^;]+)/g),
+      ...body.matchAll(/(?:^|[;\s])transition\s*:\s*([^;]+)/g),
+    ].flatMap((entry) =>
+      [...entry[1].matchAll(/(\d+(?:\.\d+)?|\.\d+)(ms|s)\b/g)].map((value) =>
+        value[2] === "s" ? Number(value[1]) * 1000 : Number(value[1]),
+      ),
+    );
+    if (values.length === 0) continue;
+    if (CSS_ENTER_STATE.test(selector)) enter.push(...values);
+    if (CSS_EXIT_STATE.test(selector)) exit.push(...values);
+  }
+  if (enter.length > 0 && exit.length > 0) {
+    const entry = Math.max(...enter);
+    const dismissal = Math.min(...exit);
+    if (entry === dismissal) {
+      found.push({
+        line: 1,
+        message: `css enter ${entry}ms / exit ${dismissal}ms = 1.00x — make dismissal faster than arrival`,
+      });
+    } else {
+      const ratio = entry / dismissal;
+      if (ratio < 1.2 || ratio > 2) {
+        found.push({
+          line: 1,
+          message: `css enter ${entry}ms / exit ${dismissal}ms = ${ratio.toFixed(2)}x — keep enter:exit between 1.2x and 2.0x`,
+        });
+      }
+    }
+  }
+
+  return found;
+}
+
+function detectAll(file, content) {
+  return [
+    ...detectLayoutTransitions(file, content),
+    ...detectEnterExitAsymmetry(file, content),
+    ...detectCssMotion(file, content),
+  ];
+}
+
 // ---------------------------------------------------------------- self-test
 // Never write a full utility literal here: Tailwind scans this file too. `u()`
 // assembles the strings at runtime so the bundle stays clean (finding N1).
@@ -276,12 +450,92 @@ const FIXTURES = [
   { name: "compositor-only transitions are clean", file: "src/a.tsx", code: `x = "transition-${u("[", "opacity,translate]")}"`, expected: 0 },
   { name: "transform shorthand is clean", file: "src/a.css", code: ".a { transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }", expected: 0 },
   { name: "leading-dot duration is not read as 15s", file: "src/a.css", code: ".a { transition: transform .15s; }", expected: 0 },
+  { name: "symmetric enter/exit", file: "src/a.tsx", code: `x = "${u("data-open:duration-[160ms]")} ${u("data-closed:duration-[160ms]")}"`, expected: 1 },
+  { name: "exit far too short", file: "src/a.tsx", code: `x = "${u("data-open:duration-[300ms]")} ${u("data-closed:duration-[100ms]")}"`, expected: 1 },
+  { name: "entry without exit", file: "src/a.tsx", code: `x = "${u("data-open:duration-[160ms]")}"`, expected: 1 },
+  { name: "base duration with faster exit", file: "src/a.tsx", code: `x = "duration-[280ms] ${u("data-ending-style:duration-[180ms]")}"`, expected: 0 },
+  { name: "asymmetric pair", file: "src/a.tsx", code: `x = "${u("data-open:duration-[180ms]")} ${u("data-closed:duration-[120ms]")}"`, expected: 0 },
+  { name: "base duration shared by both states", file: "src/a.tsx", code: `x = "duration-100 ${u("data-open:animate-in")} ${u("data-closed:animate-out")}"`, expected: 1 },
+  { name: "a plain hover duration is not a lifecycle", file: "src/a.tsx", code: `x = "transition-colors duration-100"`, expected: 0 },
+  { name: "two ordinary durations without state variants", file: "src/a.tsx", code: `x = "duration-200 ${u("data-active:duration-100")}"`, expected: 0 },
+  {
+    name: "non-bracket symmetric enter/exit",
+    file: "src/a.tsx",
+    code: `x = "${u("data-open:duration-150")} ${u("data-closed:duration-150")}"`,
+    expected: 1,
+  },
+  {
+    name: "non-bracket asymmetric enter/exit",
+    file: "src/a.tsx",
+    code: `x = "${u("data-open:duration-150")} ${u("data-closed:duration-100")}"`,
+    expected: 0,
+  },
+  {
+    name: "data-state=open/closed asymmetry",
+    file: "src/a.tsx",
+    code: `x = "${u("data-[state=open]:duration-[160ms]")} ${u("data-[state=closed]:duration-[100ms]")}"`,
+    expected: 0,
+  },
+  {
+    name: "data-state=open/closed symmetric",
+    file: "src/a.tsx",
+    code: `x = "${u("data-[state=open]:duration-[160ms]")} ${u("data-[state=closed]:duration-[160ms]")}"`,
+    expected: 1,
+  },
+  {
+    name: "state and duration on different template lines",
+    file: "src/a.tsx",
+    code: `x = \`${u("data-open:duration-[160ms]")}\n${u("data-closed:duration-[100ms]")}\``,
+    expected: 0,
+  },
+  {
+    name: "stateful animation without any duration fails closed",
+    file: "src/a.tsx",
+    code: `x = "${u("data-open:animate-in")} ${u("data-closed:animate-out")}"`,
+    expected: 1,
+  },
+  {
+    name: "css lifecycle asymmetric",
+    file: "src/a.css",
+    code: `[data-open] { transition-duration: 160ms; }\n[data-closed] { transition-duration: 100ms; }`,
+    expected: 0,
+  },
+  {
+    name: "css lifecycle symmetric",
+    file: "src/a.css",
+    code: `[data-open] { transition-duration: 160ms; }\n[data-closed] { transition-duration: 160ms; }`,
+    expected: 1,
+  },
+  {
+    name: "css lifecycle shorthand asymmetric",
+    file: "src/a.css",
+    code: `[data-open] { transition: opacity 160ms; }\n[data-closed] { transition: opacity 100ms; }`,
+    expected: 0,
+  },
+  {
+    name: "css lifecycle shorthand symmetric",
+    file: "src/a.css",
+    code: `[data-open] { transition: opacity 160ms; }\n[data-closed] { transition: opacity 160ms; }`,
+    expected: 1,
+  },
+  {
+    name: "css keyframe layout property",
+    file: "src/a.css",
+    code: `@keyframes grow {\n  from { width: 0; }\n  to { width: 100px; }\n}`,
+    expected: 1,
+  },
+  {
+    name: "css keyframe compositor-only",
+    file: "src/a.css",
+    code: `@keyframes fade {\n  from { opacity: 0; transform: translateY(4px); }\n  to { opacity: 1; transform: none; }\n}`,
+    expected: 0,
+  },
 ];
 
 function selfTest() {
   const failures = [];
   for (const fixture of FIXTURES) {
-    const found = detectLayoutTransitions(join(frontendRoot, fixture.file), fixture.code);
+    const found = detectAll(join(frontendRoot, fixture.file), fixture.code);
     if (found.length !== fixture.expected) {
       failures.push(`${fixture.name}: expected ${fixture.expected} violation(s), got ${found.length}`);
     }
@@ -295,7 +549,7 @@ if (process.argv.includes("--self-test")) {
     for (const failure of failures) process.stderr.write(`motion scan self-test: ${failure}\n`);
     process.exit(1);
   }
-  console.log(`motion scan self-test ok: ${FIXTURES.length} fixtures (rule 5 detectors)`);
+  console.log(`motion scan self-test ok: ${FIXTURES.length} fixtures (rules 5-6 detectors)`);
   process.exit(0);
 }
 
@@ -453,9 +707,13 @@ for (const file of files) {
     report(file, 1, "animation-timing-function: ease-in on a CSS animation");
   }
 
+  // (6) Enter/exit asymmetry — see detectEnterExitAsymmetry for the scoping.
   // (5) Layout properties must not be animated (three reviewed sidebar
   // occupancy transitions are the only allowances).
-  for (const finding of detectLayoutTransitions(file, content)) {
+  // (5c/6c) CSS keyframes and lifecycle selectors are only reachable through
+  // detectAll; keep the real scan on that same path so a detector cannot ship
+  // unwired (selfTest uses detectAll too).
+  for (const finding of detectAll(file, content)) {
     report(file, finding.line, finding.message);
   }
 }

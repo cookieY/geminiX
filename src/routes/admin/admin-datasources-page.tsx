@@ -22,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   Card,
   CardContent,
@@ -948,7 +949,7 @@ function DatasourceRow({
 }) {
   const { t } = useTranslation();
   return (
-    <TableRow data-testid={`ds-row-${datasource.id}`}>
+    <TableRow data-testid={`ds-row-${datasource.id}`} data-row-key={datasource.id}>
       <TableCell className="font-medium">
         {datasource.name}
         {datasource.enabled ? null : (
@@ -1102,6 +1103,10 @@ export default function AdminDatasourcesPage() {
   // §18.73：搜索走服务端q（名称/主机子串）；keyword仅用于空态文案区分。
   const keyword = search.trim();
   const datasources = query.data?.items ?? [];
+  // 搜索/翻页改变行集合时，把整行位移补间掉；能力探测行不带 data-row-key，不参与。
+  const datasourcesBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(datasources.map((datasource) => datasource.id)),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -1111,7 +1116,14 @@ export default function AdminDatasourcesPage() {
             <CardTitle>{t("admin.datasources.title")}</CardTitle>
             <CardDescription>{t("admin.datasources.description")}</CardDescription>
           </div>
-          <TableSearchInput value={search} onChange={setSearch} testId="admin-datasources-search" />
+          <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-datasources-search"
+            />
           <Button
             onClick={() => {
               setEditing(null);
@@ -1154,7 +1166,7 @@ export default function AdminDatasourcesPage() {
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody ref={datasourcesBodyRef} stale={query.isFetching && query.isPlaceholderData}>
                 {datasources.map((datasource) => (
                   <Fragment key={datasource.id}>
                     <DatasourceRow
@@ -1181,16 +1193,17 @@ export default function AdminDatasourcesPage() {
           )}
       {!query.isPending && !query.isError ? (
         <TablePagination
-            page={pager.pageNo}
-            hasMore={query.data.page.has_more}
-            isFirst={pager.isFirst}
-            onPrev={pager.goPrev}
-            onNext={() => {
-                pager.pushCursor(query.data.page.next_cursor);
-              }}
-            pageSize={pager.pageSize}
-            onPageSizeChange={pager.setPageSize}
-            testIdPrefix="datasources"
+          busy={query.isFetching && query.isPlaceholderData}
+          page={pager.pageNo}
+          hasMore={query.data.page.has_more}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => {
+            pager.pushCursor(query.data.page.next_cursor);
+          }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="datasources"
         />
       ) : null}
         </CardContent>

@@ -3,6 +3,21 @@ import { applySettingsToBridge, settingsBridge } from "@/shared/mock/settings-br
 import type { ExecutionWindow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+
+/** Test-only latency knob for e2e feedback assertions; 0 in every other run. */
+declare global {
+  interface Window {
+    /** Test-only delay for the mock datasource list, set from Playwright. */
+    __YEARNING_MOCK_LATENCY__?: number;
+  }
+}
+
+function mockLatencyMs(): number {
+  const raw = typeof window === "undefined" ? 0 : window.__YEARNING_MOCK_LATENCY__;
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 import {
   CATALOG_DATASOURCES,
   CATALOG_FLOWS,
@@ -2507,7 +2522,7 @@ function validateReviewInputDefinition(definition: unknown): string | null {
 export function adminFixtureHandlers(): HttpHandler[] {
   return [
     // ---- datasources -------------------------------------------------
-    http.get("*/admin/datasources", ({ request }) => {
+    http.get("*/admin/datasources", async ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
@@ -2516,6 +2531,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const items = [...world.datasources.values()]
         .filter((ds) => matchesQ([ds.name, ds.host], searchOf(url)))
         .map(datasourceView);
+      await sleep(mockLatencyMs());
       return HttpResponse.json(successEnvelope(pageOf(items, limit === null ? null : Number(limit), after)));
     }),
     http.post("*/admin/datasources", async ({ request }) => {

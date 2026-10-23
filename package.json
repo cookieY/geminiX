@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:frames": "MOTION_FRAMES_ONLY=1 playwright test tests/e2e/motion-frames.spec.ts --workers=1",
     "screenshots": "playwright test tests/e2e/screenshots.spec.ts tests/e2e/screenshots-business.spec.ts",
     "screenshots:update": "playwright test tests/e2e/screenshots.spec.ts tests/e2e/screenshots-business.spec.ts --update-snapshots",
     "check:i18n": "node scripts/check-i18n.mjs",

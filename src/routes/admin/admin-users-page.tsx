@@ -97,7 +97,14 @@ export default function AdminUsersPage() {
               <CardTitle className="text-sm">{t("adminUsers.card")}</CardTitle>
               <CardDescription>{t("adminUsers.cardDescription")}</CardDescription>
             </div>
-            <TableSearchInput value={search} onChange={setSearch} testId="admin-users-search" />
+            <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-users-search"
+            />
           </CardHeader>
           <CardContent>
             {users.length === 0 ? (
@@ -116,7 +123,7 @@ export default function AdminUsersPage() {
                     <TableHead />
                   </TableRow>
                 </TableHeader>
-                <TableBody ref={usersBodyRef}>
+                <TableBody ref={usersBodyRef} stale={usersQuery.isFetching && usersQuery.isPlaceholderData}>
                   {users.map((user) => (
                     <UserRow key={user.id} user={user} onEdit={() => { setEditing(user); }} />
                   ))}
@@ -126,16 +133,17 @@ export default function AdminUsersPage() {
             )}
       {usersLoaded ? (
         <TablePagination
-              page={pager.pageNo}
-              hasMore={usersQuery.data.page.has_more}
-              isFirst={pager.isFirst}
-              onPrev={pager.goPrev}
-              onNext={() => {
-                pager.pushCursor(usersQuery.data.page.next_cursor);
-              }}
-              pageSize={pager.pageSize}
-              onPageSizeChange={pager.setPageSize}
-              testIdPrefix="users"
+          busy={usersQuery.isFetching && usersQuery.isPlaceholderData}
+          page={pager.pageNo}
+          hasMore={usersQuery.data.page.has_more}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => {
+            pager.pushCursor(usersQuery.data.page.next_cursor);
+          }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="users"
         />
       ) : null}
           </CardContent>

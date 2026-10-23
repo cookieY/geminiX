@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Lock, ScrollText } from "lucide-react";
 import { listAuditEvents } from "@/api/generated/client/administration/administration";
@@ -68,6 +68,7 @@ export default function AuditRecordsPage() {
     },
     enabled: session.status === "authenticated" && isAdmin,
     retry: false,
+    placeholderData: keepPreviousData,
   });
   // Client-side search over the loaded page: the contract declares no filter
   // parameters for the audit list (§17 RCP-pending gap), so the search only
@@ -150,7 +151,7 @@ export default function AuditRecordsPage() {
                     <TableHead>{t("records.column.outcome")}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody ref={auditBodyRef}>
+                <TableBody ref={auditBodyRef} stale={eventsQuery.isFetching && eventsQuery.isPlaceholderData}>
                   {auditItems.map((event) => (
                     <TableRow
                       key={event.id}
@@ -182,6 +183,7 @@ export default function AuditRecordsPage() {
             )}
             {(
               <TablePagination
+                busy={eventsQuery.isFetching && eventsQuery.isPlaceholderData}
                 page={pager.pageNo}
                 hasMore={auditHasMore}
                 isFirst={pager.pageNo === 1}

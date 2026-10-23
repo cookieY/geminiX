@@ -27,6 +27,7 @@ export function TablePagination({
   pageSize,
   onPageSizeChange,
   testIdPrefix,
+  busy = false,
 }: {
   page: number;
   hasMore: boolean;
@@ -36,22 +37,57 @@ export function TablePagination({
   pageSize: number;
   onPageSizeChange: (size: number) => void;
   testIdPrefix: string;
+  /**
+   * True while the next/previous page is being fetched under TanStack Query's
+   * `keepPreviousData`: the table keeps the old rows (no flash of an empty
+   * page), so the only immediate acknowledgement of the click is here — the
+   * control disables and the busy dot appears on the same commit as the click.
+   */
+  busy?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <div
       className="flex flex-row items-center justify-between gap-3 pt-2"
       data-testid={`${testIdPrefix}-pagination`}
+      aria-busy={busy || undefined}
     >
       <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={isFirst} onClick={onPrev}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isFirst || busy}
+          onClick={onPrev}
+        >
           {t("table.pagination.prev")}
         </Button>
-        <Button type="button" variant="outline" size="sm" disabled={!hasMore} onClick={onNext}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!hasMore || busy}
+          data-testid={`${testIdPrefix}-next`}
+          onClick={onNext}
+        >
           {t("table.pagination.next")}
+          {busy ? (
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-current"
+              aria-hidden="true"
+              data-testid={`${testIdPrefix}-busy`}
+            />
+          ) : null}
         </Button>
+        <span role="status" className="sr-only">
+          {busy ? t("table.pagination.loading") : ""}
+        </span>
       </div>
-      <p className="text-sm text-muted-foreground" data-testid={`${testIdPrefix}-page`}>
+      <p
+        className="text-sm text-muted-foreground"
+        data-testid={`${testIdPrefix}-page`}
+        aria-live="polite"
+      >
         {t("table.pagination.page", { page })}
       </p>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">

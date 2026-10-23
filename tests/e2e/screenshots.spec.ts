@@ -67,3 +67,23 @@ for (const viewport of VIEWPORTS) {
     }
   }
 }
+
+// The modal overlay is the one visual change in the 10/10 pass that the page
+// baselines cannot see: no other capture has a dialog open. The blur was
+// removed because the full-screen backdrop-filter pushed the dialog-entry p95
+// to 33.3ms against a 16.7ms budget; the 40% black veil keeps the modality
+// without a full-screen filter pass.
+for (const theme of THEMES) {
+  test(`dialog overlay baseline ${theme}`, async ({ page }) => {
+    await prepare(page, "zh-CN", theme);
+    await mockSession(page, "admin");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/admin/datasources");
+    const trigger = page.locator('button[data-testid^="ds-delete-"]').first();
+    await expect(trigger).toBeEnabled({ timeout: 15_000 });
+    await trigger.click();
+    await expect(page.locator("[data-slot='dialog-content']").first()).toBeVisible();
+    await page.waitForTimeout(150);
+    await expect(page).toHaveScreenshot(`dialog-overlay-${theme}.png`, { fullPage: true });
+  });
+}

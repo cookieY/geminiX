@@ -10,6 +10,7 @@ import { ErrorState, LoadingState } from "@/shared/components/status/status-comp
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Table,
@@ -57,6 +58,7 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
       className="cursor-pointer"
       onClick={() => { void navigate(`/changes/orders/${order.id}`); }}
       data-testid="approval-queue-row"
+      data-row-key={order.id}
     >
       <TableCell className="font-mono text-xs">{order.display_number}</TableCell>
       <TableCell className="max-w-56 truncate">{order.title}</TableCell>
@@ -120,6 +122,11 @@ export default function ApprovalQueuePage() {
       (order.title ?? "").toLowerCase().includes(keyword) ||
       order.stages.some((stage) => stage.datasource_name.toLowerCase().includes(keyword)),
   );
+  // 搜索是客户端过滤；同伴决策会实时把行移出队列 — 两种都是行集合变化，
+  // 用 FLIP 把幸存行的位移补间掉（与 query-access 的待审表同一模式）。
+  const queueBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(queue.map((order) => order.id)),
+  );
 
   // The shared event feed keeps the queue live against peer decisions —
   // each row's subject is subscribed by the hook, this page just scopes the
@@ -176,7 +183,7 @@ export default function ApprovalQueuePage() {
                   <TableHead />
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody ref={queueBodyRef}>
                 {queue.map((order) => (
                   <QueueRow key={order.id} order={order} userId={session.user?.id} />
                 ))}

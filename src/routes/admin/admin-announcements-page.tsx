@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useAnnouncementRevisions, useCreateAnnouncementRevision, usePublishAnnouncement } from "@/features/admin/use-admin";
 import { useCurrentAnnouncementQuery } from "@/routes/workspace/workspace-dashboard-sections";
@@ -51,6 +52,10 @@ export default function AdminAnnouncementsPage() {
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const revisions = revisionsQuery.data?.items ?? [];
+  // 公告版本只能翻页，没有筛选；行集合变化时同样把位移补间掉。
+  const revisionsBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(revisions.map((revision) => revision.id)),
+  );
   const revisionsPage = revisionsQuery.data?.page;
   const current = currentQuery.data ?? null;
 
@@ -130,9 +135,9 @@ export default function AdminAnnouncementsPage() {
                     <TableHead />
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody ref={revisionsBodyRef} stale={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}>
                   {revisions.map((revision: AnnouncementRevision) => (
-                    <TableRow key={revision.id} data-testid={`admin-announcement-row-${revision.id}`}>
+                    <TableRow key={revision.id} data-testid={`admin-announcement-row-${revision.id}`} data-row-key={revision.id}>
                       <TableCell className="tabular-nums">{revision.revision_number}</TableCell>
                       <TableCell>{revision.title}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">
@@ -176,16 +181,17 @@ export default function AdminAnnouncementsPage() {
             )}
       {revisionsLoaded ? (
         <TablePagination
-              page={pager.pageNo}
-              hasMore={revisionsPage?.has_more ?? false}
-              isFirst={pager.isFirst}
-              onPrev={pager.goPrev}
-              onNext={() => {
-                pager.pushCursor(revisionsPage?.next_cursor);
-              }}
-              pageSize={pager.pageSize}
-              onPageSizeChange={pager.setPageSize}
-              testIdPrefix="announcements"
+          busy={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}
+          page={pager.pageNo}
+          hasMore={revisionsPage?.has_more ?? false}
+          isFirst={pager.isFirst}
+          onPrev={pager.goPrev}
+          onNext={() => {
+            pager.pushCursor(revisionsPage?.next_cursor);
+          }}
+          pageSize={pager.pageSize}
+          onPageSizeChange={pager.setPageSize}
+          testIdPrefix="announcements"
         />
       ) : null}
           </CardContent>

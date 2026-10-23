@@ -174,7 +174,7 @@ export default function QueryAccessApprovalsPage() {
                       <TableHead />
                     </TableRow>
                   </TableHeader>
-                  <TableBody ref={pendingBodyRef}>
+                  <TableBody ref={pendingBodyRef} stale={requestsQuery.isFetching && requestsQuery.isPlaceholderData}>
                     {pending.map((row) => (
                       <TableRow
                         key={row.id}
@@ -226,6 +226,7 @@ export default function QueryAccessApprovalsPage() {
               )}
               {requestsLoaded ? (
                 <TablePagination
+                  busy={requestsQuery.isFetching && requestsQuery.isPlaceholderData}
                   page={pager.pageNo}
                   hasMore={requestsQuery.data.page.has_more}
                   isFirst={pager.isFirst}
@@ -297,6 +298,9 @@ export default function QueryAccessApprovalsPage() {
 }
 
 function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
+  const grantsBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(grants.map((grant) => grant.id)),
+  );
   const { t } = useTranslation();
   const revoke = useRevokeGrant();
   const [revoking, setRevoking] = useState<QueryGrant | null>(null);
@@ -345,9 +349,9 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
                 <TableHead />
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody ref={grantsBodyRef}>
               {grants.map((grant) => (
-                <TableRow key={grant.id} data-testid={`query-access-grant-${grant.id}`}>
+                <TableRow key={grant.id} data-row-key={grant.id} data-testid={`query-access-grant-${grant.id}`}>
                   <TableCell className="font-mono text-xs">{grant.holder_name ?? grant.requester_user_id}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{t("query.grant.state.active")}</Badge>

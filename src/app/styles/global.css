@@ -440,3 +440,36 @@ html[data-card-shadow="false"] [data-slot="card"] {
     transition-property: none !important;
   }
 }
+
+/* Sonner ships `transform 400ms, opacity 400ms, height 400ms` on its toast
+ * element (node_modules/sonner/dist/styles.css), which breaks both the
+ * enter/exit asymmetry and the no-layout-transition criteria and cannot be
+ * reached by the source scanner. The toaster-scoped selectors outrank sonner's
+ * own rules regardless of CSS order; removal is intentionally faster and the
+ * height transition is dropped entirely (layout never animates). */
+[data-sonner-toaster] [data-sonner-toast] {
+  transition:
+    transform 200ms var(--ease-out),
+    opacity 160ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-removed="true"] {
+  transition:
+    transform 150ms var(--ease-out),
+    opacity 100ms var(--ease-out),
+    box-shadow 150ms var(--ease-out);
+}
+
+/* Sonner's own reduced-motion block sets `transition: none !important`, which
+ * also removes the opacity fade that is the only feedback left when spatial
+ * motion is off. Keep colour/opacity feedback (criterion 5) while dropping
+ * transform entirely. The toaster-scoped selector outranks sonner's. */
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] [data-sonner-toast],
+  [data-sonner-toaster] [data-sonner-toast][data-removed="true"] {
+    transition-property: opacity, box-shadow !important;
+    transition-duration: 120ms !important;
+    transition-timing-function: var(--ease-out) !important;
+  }
+}

@@ -327,6 +327,8 @@ export default function MinePage() {
   );
   // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
   const ordersLoaded = !ordersQuery.isPending && !ordersQuery.isError;
+  // keepPreviousData 会先展示上一页/上一关键词的行；在表体自证过期，避免点击旧行。
+  const ordersStale = ordersQuery.isFetching && ordersQuery.isPlaceholderData;
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
 
   const draftsError = draftsQuery.error ?? ordersQuery.error;
@@ -405,7 +407,7 @@ export default function MinePage() {
                           <TableHead />
                         </TableRow>
                       </TableHeader>
-                      <TableBody ref={ordersBodyRef}>
+                      <TableBody ref={ordersBodyRef} stale={ordersStale}>
                         {orderItems.map((order) => (
                           <OrderRow key={order.id} order={order} />
                         ))}
@@ -415,6 +417,7 @@ export default function MinePage() {
                   )}
                     {ordersLoaded ? (
                       <TablePagination
+                        busy={ordersStale}
                         page={ordersPager.pageNo}
                         hasMore={ordersPageMeta?.has_more ?? false}
                         isFirst={ordersPager.pageNo === 1}

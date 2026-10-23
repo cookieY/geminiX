@@ -144,6 +144,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Run e2e
         run: pnpm test:e2e
+      - name: Run frame budget (single worker)
+        run: pnpm test:frames
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (SEC-0025: pinned)
         if: failure()
         with:

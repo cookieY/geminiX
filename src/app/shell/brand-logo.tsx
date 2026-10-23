@@ -22,12 +22,16 @@ export function BrandLogo({ className }: { className?: string }) {
       {/* h-auto + collapsed max-width keep the wordmark fully visible inside
           the narrow icon rail (owner ruling 2026-09-02): the asset scales
           proportionally instead of being clipped. */}
+      {/* The legacy light-mode asset is a JPEG with a baked white background.
+          Multiply makes that white transparent against the off-white sidebar
+          (white × surface = surface); without it the logo renders as a white
+          rectangle on every non-pure-white surface. */}
       <img
         src={logoOnLight}
         alt=""
         width={120}
         height={38}
-        className="block h-auto max-w-[120px] group-data-[state=collapsed]:max-w-9 dark:hidden"
+        className="block h-auto max-w-[120px] mix-blend-multiply group-data-[state=collapsed]:max-w-9 dark:hidden"
       />
       <img
         src={logoOnDark}

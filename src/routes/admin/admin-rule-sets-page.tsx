@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   Card,
   CardContent,
@@ -104,6 +105,7 @@ function RuleSetFormDialog({
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
 
   const keyword = toolSearch.trim().toLowerCase();
+
   const allTools = toolsQuery.data?.items ?? [];
   // §18.80补记1：搜索与展示同源——匹配动态渲染后的说明文本。
   const renderedDescription = (tool: (typeof allTools)[number]): string =>
@@ -376,6 +378,13 @@ export default function AdminRuleSetsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   // §18.73：搜索走服务端q；keyword仅用于空态文案区分。
   const keyword = search.trim();
+  // 关键词过滤在客户端完成；行集合变化时把幸存行的位移补间掉。
+  const visibleRuleSets = (query.data?.items ?? []).filter(
+    (ruleSet: RuleSet) => keyword === "" || ruleSet.name.toLowerCase().includes(keyword),
+  );
+  const ruleSetBodyRef = useFlipReorder<HTMLTableSectionElement>(
+    JSON.stringify(visibleRuleSets.map((ruleSet: RuleSet) => ruleSet.id)),
+  );
   const [deleting, setDeleting] = useState<RuleSet | null>(null);
   const deleteMutation = useDeleteRuleSet();
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
@@ -389,7 +398,14 @@ export default function AdminRuleSetsPage() {
             <CardTitle>{t("admin.ruleSets.title")}</CardTitle>
             <CardDescription>{t("admin.ruleSets.description")}</CardDescription>
           </div>
-          <TableSearchInput value={search} onChange={setSearch} testId="admin-rule-sets-search" />
+          <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-rule-sets-search"
+            />
           <Button
             onClick={() => {
               setEditing(null);
@@ -432,15 +448,13 @@ export default function AdminRuleSetsPage() {
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {query.data.items
-                  .filter((ruleSet: RuleSet) => keyword === "" || ruleSet.name.toLowerCase().includes(keyword))
-                  .map((ruleSet: RuleSet) => {
+              <TableBody ref={ruleSetBodyRef} stale={query.isFetching && query.isPlaceholderData}>
+                {visibleRuleSets.map((ruleSet: RuleSet) => {
                   const boundFlows = (flowsQuery.data ?? []).filter(
                     (flow) => flow.rule_set_id === ruleSet.id,
                   );
                   return (
-                    <TableRow key={ruleSet.id} data-testid={`rule-set-row-${ruleSet.id}`}>
+                    <TableRow key={ruleSet.id} data-testid={`rule-set-row-${ruleSet.id}`} data-row-key={ruleSet.id}>
                       <TableCell className="font-medium">
                         {ruleSet.name}
                         {ruleSet.enabled ? null : (
@@ -512,13 +526,14 @@ export default function AdminRuleSetsPage() {
           )}
           {!query.isPending && !query.isError ? (
             <TablePagination
+              busy={query.isFetching && query.isPlaceholderData}
               page={pager.pageNo}
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}
               onPrev={pager.goPrev}
               onNext={() => {
-                  pager.pushCursor(query.data.page.next_cursor);
-                }}
+                pager.pushCursor(query.data.page.next_cursor);
+              }}
               pageSize={pager.pageSize}
               onPageSizeChange={pager.setPageSize}
               testIdPrefix="rulesets"

@@ -73,6 +73,7 @@ export default function AdminMigrationsPage() {
 
       {!runsQuery.isPending && runsQuery.error === null && (
         <TablePagination
+          busy={runsQuery.isFetching && runsQuery.isPlaceholderData}
           page={pager.pageNo}
           hasMore={runsQuery.data.page.has_more}
           isFirst={pager.isFirst}
