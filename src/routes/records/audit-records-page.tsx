@@ -96,12 +96,7 @@ export default function AuditRecordsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="records-page">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("records.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("records.description")}</p>
-      </header>
-
-      {!isAdmin && (
+            {!isAdmin && (
         <Empty className="rounded-xl border" data-testid="records-no-scope">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -124,7 +119,7 @@ export default function AuditRecordsPage() {
 
       {isAdmin && !eventsQuery.isPending && eventsQuery.error === null && (
         <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <ScrollText className="size-4" />
@@ -134,7 +129,7 @@ export default function AuditRecordsPage() {
             </div>
             <TableSearchInput value={search} onChange={setSearch} testId="records-search" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             {auditItems.length === 0 && (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="records-empty">
                 {keyword !== "" ? t("table.emptySearch") : t("records.empty")}
@@ -160,14 +155,14 @@ export default function AuditRecordsPage() {
                       onClick={() => { setDetail(event); }}
                       data-testid={`records-row-${event.id}`}
                     >
-                      <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
                         {formatTimestamp(event.occurred_at)}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell>
                         {event.actor_username_snapshot ?? event.actor_kind}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{event.action}</TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono">{event.action}</TableCell>
+                      <TableCell className="font-mono">
                         {event.resource_type}
                         {event.resource_id == null ? "" : ` \u00b7 ${event.resource_id.slice(0, 8)}`}
                       </TableCell>
@@ -190,11 +185,13 @@ export default function AuditRecordsPage() {
                 onPrev={() => {
                   pager.goPrev();
                 }}
+                          onJumpPage={pager.goToPage}
                 onNext={() => {
                   pager.pushCursor(auditNext);
                 }}
                 pageSize={pager.pageSize}
                 onPageSizeChange={pager.setPageSize}
+                rowsOnPage={auditItems.length}
                 testIdPrefix="audit"
               />
             )}

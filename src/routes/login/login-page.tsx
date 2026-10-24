@@ -18,6 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { ShineBorder } from "@/shared/components/ui/shine-border";
+import { BrandTypewriter } from "./brand-typewriter";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { ShieldAlert } from "lucide-react";
@@ -135,19 +137,22 @@ export default function LoginPage() {
             {t("login.brandBadge")}
           </div>
           <h2 className="relative z-10 text-5xl leading-tight font-semibold tracking-tight whitespace-pre-line">
-            {t("login.brandTitle").split("\n")[0]}
-            {"\n"}
-            <span className="whitespace-nowrap">
-              都
-              <span className="inline-flex" aria-hidden>
-                {["安", "全", "可", "控"].map((char) => (
-                  <span key={char} className="flip-slot">
-                    <span>{char}</span>
-                  </span>
-                ))}
-              </span>
-              <span className="sr-only">安全可控</span>
+            {/* animated-text-03 typewriter over the WHOLE headline (owner
+                ruling 2026-10-24). The invisible full phrase pins the final
+                two-line geometry so the loop never changes the block's height
+                (owner ruling: 打字机不应变化原本高度); the typed overlay is
+                absolutely positioned over it, and the sr-only twin keeps the
+                full phrase in the accessible name. */}
+            <span className="invisible" aria-hidden>
+              {t("login.brandTitle")}
             </span>
+            <span
+              aria-hidden
+              className="absolute inset-0 whitespace-pre-line"
+            >
+              <BrandTypewriter phrase={t("login.brandTitle")} />
+            </span>
+            <span className="sr-only">{t("login.brandTitle")}</span>
           </h2>
           <p className="relative z-10 max-w-md text-lg text-muted-foreground">
             {t("login.brandDescription")}
@@ -155,7 +160,10 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="relative z-10 flex items-center justify-center p-6">
-      <Card className="w-full max-w-sm rounded-2xl">
+      {/* ShineBorder (owner ruling 2026-10-24): the gradient ring only exists
+          under the cursor; at rest the card looks exactly as before. */}
+      <ShineBorder className="w-full max-w-sm">
+      <Card className="w-full rounded-2xl">
         <CardHeader className="items-center text-center">
           <BrandLogo className="mx-auto mb-2" />
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
@@ -276,6 +284,7 @@ export default function LoginPage() {
           )}
         </CardContent>
       </Card>
+      </ShineBorder>
       </div>
     </div>
   );

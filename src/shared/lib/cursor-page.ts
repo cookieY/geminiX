@@ -21,6 +21,10 @@ export interface CursorPageState {
   /** Hand back the last response's page.next_cursor to move forward. */
   pushCursor: (nextCursor: string | null | undefined) => void;
   goPrev: () => void;
+  /** Jump back to an already-visited page by truncating the cursor stack
+   * (pagination-01 numbered pills, owner ruling 2026-10-24); forward jumps
+   * are impossible with cursor paging — Next is the only way forward. */
+  goToPage: (page: number) => void;
   reset: () => void;
 }
 
@@ -42,6 +46,10 @@ export function useCursorPage(initialSize = 50): CursorPageState {
     },
     goPrev: () => {
       setCursorStack((stack) => stack.slice(0, -1));
+    },
+    goToPage: (page) => {
+      const target = Math.max(1, Math.floor(page));
+      setCursorStack((stack) => stack.slice(0, Math.min(stack.length, target - 1)));
     },
     reset: () => {
       setCursorStack([]);

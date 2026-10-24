@@ -92,11 +92,7 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-notifications-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminNotifications.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminNotifications.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-notifications-create">
           <Plus />
           {t("adminNotifications.create")}
@@ -110,14 +106,14 @@ export default function AdminNotificationsPage() {
 
       {!channelsQuery.isPending && channelsQuery.error === null && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="border-b pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Bell className="size-4" />
               {t("adminNotifications.channels")}
             </CardTitle>
             <CardDescription>{t("adminNotifications.channelsDescription")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             {channels.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-notifications-empty">
                 {t("adminNotifications.empty")}
@@ -149,11 +145,13 @@ export default function AdminNotificationsPage() {
                   hasMore={channelsQuery.data.page.has_more}
                   isFirst={pager.isFirst}
                   onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
                   onNext={() => {
                     pager.pushCursor(channelsQuery.data.page.next_cursor);
                   }}
                   pageSize={pager.pageSize}
                   onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={(channelsQuery.data.items ?? []).length}
                   testIdPrefix="notifications"
                 />
               ) : null}
@@ -163,11 +161,11 @@ export default function AdminNotificationsPage() {
 
       {!deliveriesQuery.isPending && deliveries.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="border-b pb-3">
             <CardTitle className="text-sm">{t("adminNotifications.deliveries")}</CardTitle>
             <CardDescription>{t("adminNotifications.deliveriesDescription")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             <Table data-testid="admin-deliveries-table">
               <TableHeader>
                 <TableRow>
@@ -191,15 +189,15 @@ export default function AdminNotificationsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="tabular-nums">{delivery.delivery_attempt_count}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground">
                       {delivery.next_attempt_at === null || delivery.next_attempt_at === undefined
                         ? "—"
                         : delivery.next_attempt_at.replace("T", " ").replace("Z", " UTC")}
                     </TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-xs">
+                    <TableCell className="text-muted-foreground font-mono">
                       {delivery.last_error_code ?? "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground">
                       {delivery.created_at.replace("T", " ").replace("Z", " UTC")}
                     </TableCell>
                   </TableRow>
@@ -229,7 +227,7 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
         <TableCell>
           <Badge variant="outline">{channel.kind}</Badge>
         </TableCell>
-        <TableCell>{channel.name}</TableCell>
+        <TableCell className="font-medium">{channel.name}</TableCell>
         <TableCell>
           <Badge variant={channel.enabled ? "secondary" : "outline"}>
             {channel.enabled ? t("adminNotifications.enabled") : t("adminNotifications.disabled")}

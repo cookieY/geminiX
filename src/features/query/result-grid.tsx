@@ -248,8 +248,10 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
               isFirst={pageNo <= 1}
               onPrev={() => { setPageNo((current) => Math.max(1, current - 1)); }}
               onNext={() => { setPageNo((current) => current + 1); }}
+              onJumpPage={(target) => { setPageNo(target); }}
               pageSize={pageSize}
               onPageSizeChange={(size) => { setPageSize(size); setPageNo(1); }}
+              rowsOnPage={visibleRows.length}
               testIdPrefix="query-result"
             />
           </div>

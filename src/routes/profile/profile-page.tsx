@@ -41,11 +41,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="profile-page">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("profile.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("profile.description")}</p>
-      </header>
-      <Tabs defaultValue="identity" className="gap-4">
+            <Tabs defaultValue="identity" className="gap-4">
         <TabsList>
           <TabsTrigger value="identity" data-testid="profile-tab-identity">
             <UserRound className="size-3.5" />

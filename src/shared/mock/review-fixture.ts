@@ -1997,14 +1997,12 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (revisionConflict(request, draft)) {
         return businessError(1003, "draft revision changed elsewhere");
       }
-      // state-machines.json change_draft: run_review is legal only from
-      // draft/outdated/failed/partial/blocked — never from reviewing, ready
-      // or submitted.
+      // state-machines.json change_draft: run_review is legal from
+      // draft/outdated/ready/failed/partial/blocked (ready re-run supersedes
+      // the previous run, RCP-20261024-REVIEW-RERUN-FROM-READY) — never from
+      // reviewing or submitted.
       if (draft.state === "reviewing") {
         return businessError(1010, "a review run is already in flight");
-      }
-      if (draft.state === "ready") {
-        return businessError(1010, "the current review is still valid; edit the SQL to void it first");
       }
       if (draft.state === "submitted") return businessError(1010, "draft already submitted");
       if (!draft.has_sql) return businessError(1001, "draft has no SQL to review");

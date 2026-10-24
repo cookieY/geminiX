@@ -38,14 +38,13 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
+  // Implicit drafts: save adopts silently; the page root carries the id.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
 
   // 打开编辑不自动Review: no run may exist until the explicit action.
   await typeSql(page, SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
 
   await page.getByTestId("run-review").click();
   // Fixture timeline: queued(0.4s) → running → terminal(1.3s).
@@ -55,10 +54,9 @@ async function runReviewThroughUi(page: Page): Promise<void> {
 }
 
 
-/** The submission dock lives on wizard step 3; continue (auto-saving dirty
- * SQL first) advances from the SQL step to the confirm step. */
+/** One-page layout (owner ruling 2026-10-24): the summary card and its
+ * submission dock are mounted from the start — nothing to walk to. */
 async function gotoConfirmStep(page: Page): Promise<void> {
-  await page.getByTestId("wizard-continue").click();
   await expect(page.getByTestId("wizard-summary")).toBeVisible();
 }
 
@@ -86,14 +84,13 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await page.goto("/changes/new");
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
+  // Implicit drafts: save adopts silently; the page root carries the id.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
 
   // Editing, saving and waiting produce zero review-run creations.
   await typeSql(page, SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
   await page.waitForTimeout(2_000);
   expect(reviewRunCalls).toEqual([]);
 
@@ -106,9 +103,8 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeEnabled();
 
-  // Back on the SQL step, findings and evidence stay structured; no
-  // reasoning channel exists.
-  await page.getByTestId("wizard-back").click();
+  // One-page layout: findings and evidence stay structured on the same
+  // page; no reasoning channel exists.
   await expect(page.getByTestId("tab-findings")).toBeVisible();
   await page.getByTestId("tab-findings").click();
   await expect(page.getByTestId("finding-item").first()).toBeVisible();

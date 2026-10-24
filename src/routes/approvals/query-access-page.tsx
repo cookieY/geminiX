@@ -117,11 +117,7 @@ export default function QueryAccessApprovalsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="query-access-approvals">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("approvals.queryAccess.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("approvals.queryAccess.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <Tabs defaultValue="query-access">
           <TabsList>
             <TabsTrigger
@@ -153,14 +149,14 @@ export default function QueryAccessApprovalsPage() {
       {loadError === null && !requestsQuery.isPending && (
         <>
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="border-b pb-3">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Stamp className="size-4" />
                 {t("approvals.queryAccess.pendingCard")}
               </CardTitle>
               <CardDescription>{t("approvals.queryAccess.pendingDescription")}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0!">
               {pending.length === 0 ? (
                 <p className="text-muted-foreground py-6 text-center text-sm" data-testid="query-access-pending-empty">
                   {t("approvals.queryAccess.pendingEmpty")}
@@ -183,14 +179,14 @@ export default function QueryAccessApprovalsPage() {
                         data-row-key={row.id}
                         data-testid={`query-access-pending-${row.id}`}
                       >
-                        <TableCell className="font-mono text-xs">{row.applicant_name ?? row.requester_user_id}</TableCell>
-                        <TableCell className="max-w-72 truncate font-mono text-xs">
+                        <TableCell className="font-mono font-medium">{row.applicant_name ?? row.requester_user_id}</TableCell>
+                        <TableCell className="max-w-72 truncate font-mono">
                           {(row.datasource_names?.length ? row.datasource_names : row.datasource_ids).join(" · ")}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{t("query.request.state.access_pending")}</Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
+                        <TableCell className="text-muted-foreground">
                           {formatTimestamp(row.created_at)}
                         </TableCell>
                         <TableCell className="text-right">
@@ -228,9 +224,11 @@ export default function QueryAccessApprovalsPage() {
                   hasMore={requestsQuery.data.page.has_more}
                   isFirst={pager.isFirst}
                   onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
                   onNext={() => { pager.pushCursor(requestsQuery.data.page.next_cursor); }}
                   pageSize={pager.pageSize}
                   onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={(requestsQuery.data.items ?? []).length}
                   testIdPrefix="query-access-approvals"
                 />
               ) : null}
@@ -318,14 +316,14 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="border-b pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <ShieldOff className="size-4" />
           {t("approvals.queryAccess.grantsCard")}
         </CardTitle>
         <CardDescription>{t("approvals.queryAccess.grantsDescription")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0!">
         {grants.length === 0 ? (
           <Empty className="border-none">
             <EmptyHeader>
@@ -353,7 +351,7 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
                   <TableCell>
                     <Badge variant="secondary">{t("query.grant.state.active")}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
+                  <TableCell className="text-muted-foreground">
                     {grant.expires_at === null || grant.expires_at === undefined
                       ? "—"
                       : formatTimestamp(grant.expires_at)}

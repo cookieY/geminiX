@@ -136,12 +136,7 @@ export default function QueryEntryPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="query-entry">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("query.entry.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("query.entry.description")}</p>
-      </header>
-
-      {entryError !== null && (
+            {entryError !== null && (
         <Alert variant="destructive" data-testid="query-entry-error">
           <AlertTitle>{t("query.entry.failed")}</AlertTitle>
           <AlertDescription>{entryError}</AlertDescription>

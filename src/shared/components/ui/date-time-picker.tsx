@@ -36,6 +36,7 @@ export function DateTimePicker({
   testId,
   id,
   className,
+  inputClassName,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -46,6 +47,8 @@ export function DateTimePicker({
   testId?: string;
   id?: string;
   className?: string;
+  /** Size override for the trigger input (default h-8 stays for compact hosts). */
+  inputClassName?: string;
 }) {
   const { t, i18n } = useTranslation();
   const zh = i18n.language?.startsWith("zh") ?? false;
@@ -129,7 +132,10 @@ export function DateTimePicker({
           onFocus={openPanel}
           onClick={openPanel}
           data-testid={testId}
-          className="h-8 w-56 cursor-pointer pr-14 text-xs tabular-nums"
+          className={cn(
+            "h-8 w-56 cursor-pointer pr-14 text-xs tabular-nums",
+            inputClassName,
+          )}
         />
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
           {value !== "" && (

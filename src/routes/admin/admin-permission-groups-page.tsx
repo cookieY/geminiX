@@ -92,11 +92,7 @@ export default function AdminPermissionGroupsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-groups-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminGroups.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminGroups.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-groups-create">
           <Plus />
           {t("adminGroups.create")}
@@ -171,7 +167,7 @@ export default function AdminPermissionGroupsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+            <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <ShieldCheck className="size-4" />
@@ -188,7 +184,7 @@ export default function AdminPermissionGroupsPage() {
               testId="admin-groups-search"
             />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0!">
               {groups.length === 0 ? (
                 <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-groups-empty">
                   {groupKeyword !== "" ? t("table.emptySearch") : t("adminGroups.empty")}
@@ -220,11 +216,13 @@ export default function AdminPermissionGroupsPage() {
           hasMore={groupsQuery.data.page.has_more}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => {
             pager.pushCursor(groupsQuery.data.page.next_cursor);
           }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={(groupsQuery.data.items ?? []).length}
           testIdPrefix="groups"
         />
       ) : null}
@@ -270,7 +268,7 @@ function GroupRow({
   return (
     <>
       <TableRow data-testid={`admin-group-row-${group.id}`} data-row-key={group.id}>
-        <TableCell>{group.name}</TableCell>
+        <TableCell className="font-medium">{group.name}</TableCell>
         <TableCell>
           <Badge variant={group.enabled ? "secondary" : "outline"}>
             {group.enabled ? t("adminGroups.enabled") : t("adminGroups.disabled")}

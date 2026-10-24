@@ -229,4 +229,25 @@ describe("ApprovalQueuePage", () => {
       expect(page.textContent).not.toContain(forbidden);
     }
   });
+
+  it("pages the queue client-side with the pill footer (owner ruling 2026-10-24)", async () => {
+    const user = userEvent.setup();
+    // 25 related orders: page 1 shows the first 20, the walk ends on a 5-row
+    // second page — the queue arrives as one live package, so the footer
+    // slices client-side exactly like the query result grid.
+    for (let i = 0; i < 25; i += 1) {
+      seedFixtureOrder(
+        queueOrder({
+          id: `bq6f1a2b-0000-4000-8000-1${String(i).padStart(12, "0")}`,
+          display_number: `YR-20260830-0030${String(i).padStart(2, "0")}`,
+        }),
+      );
+    }
+    renderQueue();
+    await screen.findByTestId("approval-queue-table");
+    expect(screen.getAllByTestId("approval-queue-row")).toHaveLength(20);
+    await user.click(screen.getByTestId("approval-queue-footer-next"));
+    expect(await screen.findAllByTestId("approval-queue-row")).toHaveLength(5);
+    expect(screen.getByTestId("approval-queue-footer-next")).toBeDisabled();
+  });
 });

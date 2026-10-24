@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion } from "motion/react";
 import { History, ShieldAlert } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type {
@@ -342,6 +343,12 @@ export default function AdminAiBudgetPage() {
       <header className="flex flex-row items-end justify-end gap-4">
         <SettingsNavTabs current="ai-budget" />
       </header>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16, ease: "easeOut" }}
+        className="flex flex-col gap-4"
+      >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -395,13 +402,13 @@ export default function AdminAiBudgetPage() {
         )}
       </Card>
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2 text-base">
             <History className="size-4" /> {t("admin.aiBudget.revisionsTitle")}
           </CardTitle>
           <CardDescription>{t("admin.aiBudget.revisionsDescription")}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           {revisionsQuery.isPending ? (
             <LoadingState />
           ) : revisionsQuery.isError ? (
@@ -425,10 +432,10 @@ export default function AdminAiBudgetPage() {
               <TableBody stale={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}>
                 {revisionsQuery.data.items.map((revision) => (
                   <TableRow key={revision.version} data-testid={`ai-budget-revision-${String(revision.version)}`}>
-                    <TableCell className="font-mono text-xs">v{revision.version}</TableCell>
-                    <TableCell className="font-mono text-xs">{revision.changed_by}</TableCell>
-                    <TableCell className="text-xs">{revision.changed_at}</TableCell>
-                    <TableCell className="font-mono text-xs">{revision.changed_paths.join(", ")}</TableCell>
+                    <TableCell className="font-mono">v{revision.version}</TableCell>
+                    <TableCell className="font-mono">{revision.changed_by}</TableCell>
+                    <TableCell>{revision.changed_at}</TableCell>
+                    <TableCell className="max-w-72 truncate font-mono">{revision.changed_paths.join(", ")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -441,15 +448,17 @@ export default function AdminAiBudgetPage() {
               hasMore={revisionsQuery.data.page.has_more}
               isFirst={revisionsPager.isFirst}
               onPrev={revisionsPager.goPrev}
+          onJumpPage={revisionsPager.goToPage}
               onNext={() => { revisionsPager.pushCursor(revisionsQuery.data.page.next_cursor); }}
               pageSize={revisionsPager.pageSize}
               onPageSizeChange={revisionsPager.setPageSize}
+              rowsOnPage={revisionsQuery.data.items.length}
               testIdPrefix="ai-budget-revisions"
             />
           ) : null}
         </CardContent>
       </Card>
-    </div>
+      </motion.div>    </div>
   );
 }
 

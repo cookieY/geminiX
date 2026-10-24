@@ -31,18 +31,24 @@ async function createDraft(page: Page, title: string): Promise<string> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
-  return page.url().split("/").at(-1) ?? "";
+  // Implicit drafts: the acting save adopts the draft silently — the URL
+  // never moves; the adopted id rides data-draft-id on the page root.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
+  await expect(page.getByTestId("changes-new-page")).toBeVisible();
+  return await page
+    .getByTestId("changes-new-page")
+    .getAttribute("data-draft-id")
+    .then((value) => value ?? "");
 }
 
 /** Types SQL, saves, runs the review explicitly and waits for Ready. */
 async function reviewToReady(page: Page): Promise<void> {
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
+  // Implicit save: the explicit save button is gone; running the review
+  // persists the typed SQL first (owner ruling 2026-10-24).
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
@@ -50,23 +56,19 @@ async function reviewToReady(page: Page): Promise<void> {
 }
 
 
-/** The submission dock lives on wizard step 3; continue (auto-saving dirty
- * SQL first) advances from the SQL step to the confirm step. */
+/** One-page layout (owner ruling 2026-10-24): the summary card and its
+ * submission dock are mounted from the start — nothing to walk to. */
 async function gotoConfirmStep(page: Page): Promise<void> {
-  await page.getByTestId("wizard-continue").click();
   await expect(page.getByTestId("wizard-summary")).toBeVisible();
 }
 
 test("a draft without a passing gate cannot be submitted from the UI", async ({ page }) => {
   await createDraft(page, "未预审草稿");
-  // No SQL: the wizard blocks the step-2 continue outright.
-  await page.getByTestId("wizard-continue").click();
-  await expect(page.getByTestId("wizard-step-error")).toBeVisible();
-  // Even with saved SQL, only a Ready gate unlocks submission on step 3.
+  // One-page layout: with no SQL the dock itself blocks submission.
+  await expect(page.getByTestId("submit-draft")).toBeDisabled();
+  // Even with saved SQL, only a Ready gate unlocks submission.
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
   await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
 });

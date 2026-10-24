@@ -257,12 +257,7 @@ describe("admin page flows", () => {
     // The owner test catalog pushed the table past one page; the created row
     // (newest created_at) sits on page 2 under the backend's asc ordering —
     // widen the page to see it.
-    await userEvent.click(await screen.findByTestId("datasources-page-size"));
-    // Parallel workers make the option popup and the list refetch slower
-    // than the 1s defaults — both waits get generous budgets.
-    await userEvent.click(
-      await screen.findByRole("option", { name: "50" }, { timeout: 4000 }),
-    );
+    await userEvent.click(await screen.findByTestId("datasources-page-size-50"));
     await waitFor(() => {
       expect(screen.getByText("new-warehouse")).toBeInTheDocument();
     }, { timeout: 4000 });

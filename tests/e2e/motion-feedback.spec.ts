@@ -210,8 +210,7 @@ test("paging and search acknowledge within 100ms while old rows stay", async ({ 
   const rows = page.locator('[data-testid^="ds-row-"]');
   await expect(rows.first()).toBeVisible({ timeout: 20_000 });
 
-  await page.getByTestId("datasources-page-size").click();
-  await page.getByRole("option", { name: "10", exact: true }).click();
+  await page.getByTestId("datasources-page-size-10").click();
   await expect(rows).toHaveCount(10, { timeout: 5_000 });
 
   const next = page.getByTestId("datasources-next");

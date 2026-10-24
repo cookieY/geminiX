@@ -49,12 +49,7 @@ export default function AdminMigrationsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-migrations-page">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("adminMigrations.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("adminMigrations.description")}</p>
-      </header>
-
-      <Alert data-testid="migration-no-apply-note">
+            <Alert data-testid="migration-no-apply-note">
         <ShieldAlert />
         <AlertTitle>{t("adminMigrations.noApplyTitle")}</AlertTitle>
         <AlertDescription>{t("adminMigrations.noApplyDescription")}</AlertDescription>
@@ -78,9 +73,11 @@ export default function AdminMigrationsPage() {
           hasMore={runsQuery.data.page.has_more}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => { pager.pushCursor(runsQuery.data.page.next_cursor); }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={(runsQuery.data.items ?? []).length}
           testIdPrefix="migrations"
         />
       )}
@@ -156,7 +153,7 @@ function RunDetail({ run }: { run: LegacyMigrationRun }) {
   return (
     <>
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="border-b pb-3">
           <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
             <DatabaseZap className="size-4" />
             {t("adminMigrations.run.title", { id: run.id })}
@@ -173,7 +170,7 @@ function RunDetail({ run }: { run: LegacyMigrationRun }) {
             })}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           <Table data-testid="migration-table-results">
             <TableHeader>
               <TableRow>
@@ -189,7 +186,7 @@ function RunDetail({ run }: { run: LegacyMigrationRun }) {
             <TableBody>
               {run.table_results.map((result) => (
                 <TableRow key={result.source_table} data-testid={`migration-table-result-${result.source_table}`}>
-                  <TableCell className="font-mono text-xs">{result.source_table}</TableCell>
+                  <TableCell className="font-mono font-medium">{result.source_table}</TableCell>
                   <TableCell className="tabular-nums">{result.read}</TableCell>
                   <TableCell className="tabular-nums">{result.written}</TableCell>
                   <TableCell className="tabular-nums">{result.excluded}</TableCell>

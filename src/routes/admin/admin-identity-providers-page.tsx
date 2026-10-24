@@ -168,11 +168,7 @@ export default function AdminIdentityProvidersPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-idp-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminIdp.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminIdp.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <div className="flex gap-2">
           <Button variant="outline" disabled={ldap !== null} onClick={() => { setCreateKind("ldap"); }} data-testid="admin-idp-create-ldap">
             <Plus />
@@ -226,11 +222,11 @@ export default function AdminIdentityProvidersPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="border-b pb-3">
               <CardTitle className="text-sm">{t("adminIdp.oidcCard")}</CardTitle>
               <CardDescription>{t("adminIdp.oidcDescription")}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0!">
               {oidcProviders.length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm" data-testid="admin-idp-oidc-empty">
                   {t("adminIdp.oidcEmpty")}
@@ -249,8 +245,8 @@ export default function AdminIdentityProvidersPage() {
                   <TableBody ref={oidcBodyRef} stale={providersQuery.isFetching && providersQuery.isPlaceholderData}>
                     {oidcProviders.map((provider) => (
                       <TableRow key={provider.id} data-testid={`admin-idp-row-${provider.id}`} data-row-key={provider.id}>
-                        <TableCell className="font-mono text-xs">{provider.provider_key}</TableCell>
-                        <TableCell className="max-w-72 truncate font-mono text-xs">
+                        <TableCell className="font-mono font-medium">{provider.provider_key}</TableCell>
+                        <TableCell className="max-w-72 truncate font-mono">
                           {(provider.configuration as { issuer_url?: string }).issuer_url ?? ""}
                         </TableCell>
                         <TableCell>
@@ -277,11 +273,13 @@ export default function AdminIdentityProvidersPage() {
                   hasMore={providersQuery.data.page.has_more}
                   isFirst={pager.isFirst}
                   onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
                   onNext={() => {
                     pager.pushCursor(providersQuery.data.page.next_cursor);
                   }}
                   pageSize={pager.pageSize}
                   onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={(providersQuery.data.items ?? []).length}
                   testIdPrefix="idp"
                 />
               ) : null}

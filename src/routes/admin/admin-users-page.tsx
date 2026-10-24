@@ -76,11 +76,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-users-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminUsers.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminUsers.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-users-create">
           <Plus />
           {t("adminUsers.create")}
@@ -94,7 +90,7 @@ export default function AdminUsersPage() {
 
       {!usersQuery.isPending && usersQuery.error === null && (
         <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
             <div className="space-y-1">
               <CardTitle className="text-sm">{t("adminUsers.card")}</CardTitle>
               <CardDescription>{t("adminUsers.cardDescription")}</CardDescription>
@@ -108,7 +104,7 @@ export default function AdminUsersPage() {
               testId="admin-users-search"
             />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             {users.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-users-empty">
                 {keyword !== "" ? t("table.emptySearch") : t("adminUsers.empty")}
@@ -140,11 +136,13 @@ export default function AdminUsersPage() {
           hasMore={usersQuery.data.page.has_more}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => {
             pager.pushCursor(usersQuery.data.page.next_cursor);
           }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={(usersQuery.data.items ?? []).length}
           testIdPrefix="users"
         />
       ) : null}
@@ -168,9 +166,9 @@ function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
   return (
     <>
       <TableRow data-testid={`admin-user-row-${user.id}`} data-row-key={user.id}>
-        <TableCell className="font-mono text-xs">{user.username}</TableCell>
-        <TableCell>{user.display_name}</TableCell>
-        <TableCell className="text-muted-foreground text-xs">{user.email ?? "—"}</TableCell>
+        <TableCell className="font-mono font-medium">{user.username}</TableCell>
+        <TableCell className="font-medium">{user.display_name}</TableCell>
+        <TableCell className="text-muted-foreground">{user.email ?? "—"}</TableCell>
         <TableCell>
           {user.is_builtin_admin ? (
             <Badge variant="secondary" className="gap-0.5">

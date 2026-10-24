@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import type {
   ChangeDraft,
   Flow,
@@ -52,14 +51,14 @@ import {
   useReviewRun,
 } from "@/features/review/use-draft-workspace";
 import { describeError } from "@/shared/api/error-display";
+import { useSession } from "@/features/auth/session-provider";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { Separator } from "@/shared/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
 import { Textarea } from "@/shared/components/ui/textarea";
 import {
   Dialog,
@@ -70,37 +69,41 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   CircleAlert,
-  ClipboardList,
   FileCode2,
   FileUp,
   Play,
-  Save,
   Search,
-  Send,
 } from "lucide-react";
 
 /**
- * Workspace Setup Wizard for the order submission journey (owner ruling
- * 2026-09-04, shadcn multi-step-form-02 style; migration contract §18.34):
- * step 1 collects the order metadata (flow + title + description), step 2 is
- * the SQL editor with the explicit AI precheck, step 3 confirms and submits
- * (or saves the draft). /changes/new hosts the create mode starting at step
- * 1; /changes/drafts/:id hosts the same wizard bound to an existing draft,
- * entering at step 2.
+ * Workspace for the order submission journey (one-page continuous form +
+ * sticky right-hand summary, owner ruling 2026-10-24, superseding the
+ * §18.34 three-step wizard): the left column walks 变更流程 → 标题与说明 →
+ * SQL 变更内容 as one continuous form separated by hairlines; the right
+ * column carries a live 工单摘要 card whose action area hosts the submission
+ * dock (gate-mirroring readiness, blockers, submit) and the draft actions.
+ * /changes/new hosts the create mode (flow + metadata + a SQL placeholder
+ * until the draft exists); /changes/drafts/:id binds the same page to an
+ * existing draft with the editor live.
  *
  * The audited workspace machinery (draft editor store, explicit review,
  * monotonic phase fold, bulk browser, gate-mirroring dock, submit confirm)
- * is retained verbatim as the step 2/3 engine — all of its state lives at
- * the wizard level so the run keeps polling while the user is on another
- * step. Nothing on step 2 triggers a run by itself (打开编辑不自动Review).
+ * is retained verbatim as the engine — all of its state lives at the page
+ * level so the run keeps polling while the user scrolls. Nothing here
+ * triggers a run by itself (打开编辑不自动Review).
  */
 
 const REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
-const STEP_COUNT = 3;
+
+const PRECHECK_TONE_CLASS = {
+  idle: { text: "text-muted-foreground/80", dot: "bg-muted-foreground/50" },
+  busy: { text: "text-foreground", dot: "bg-foreground/60" },
+  pass: { text: "text-success", dot: "bg-success" },
+  fail: { text: "text-destructive", dot: "bg-destructive" },
+  stale: { text: "text-warning", dot: "bg-warning" },
+} as const;
+
 
 function idempotencyKey(): string {
   return `draft-${crypto.randomUUID()}`;
@@ -120,56 +123,6 @@ function liveIfMatch(): Record<string, string> {
   return ifMatch(useDraftEditorStore.getState().savedVersion);
 }
 
-const STEP_META = [
-  { eyebrow: "info", titleKey: "precheck.wizard.title.info", descriptionKey: "precheck.wizard.description.info", icon: ClipboardList },
-  { eyebrow: "sql", titleKey: "precheck.wizard.title.sql", descriptionKey: "precheck.wizard.description.sql", icon: FileCode2 },
-  { eyebrow: "confirm", titleKey: "precheck.wizard.title.confirm", descriptionKey: "precheck.wizard.description.confirm", icon: Send },
-] as const;
-
-interface StepHeaderProps {
-  step: number;
-}
-
-function StepHeader({ step }: StepHeaderProps) {
-  const { t } = useTranslation();
-  const meta = STEP_META[step] as (typeof STEP_META)[number];
-  const Icon = meta.icon;
-  return (
-    <>
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          {t("precheck.wizard.stepOf", { current: step + 1, total: STEP_COUNT })}
-        </span>
-        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-          {t(`precheck.wizard.eyebrow.${meta.eyebrow}`)}
-        </Badge>
-      </div>
-      <div className="flex items-start gap-3">
-        <div className="bg-muted text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
-          <Icon className="size-4.5" aria-hidden />
-        </div>
-        <div className="flex flex-col gap-1">
-          <CardTitle className="text-xl">{t(meta.titleKey)}</CardTitle>
-          <p className="text-muted-foreground text-sm">{t(meta.descriptionKey)}</p>
-        </div>
-      </div>
-      <div className="flex gap-1.5">
-        {STEP_META.map((_, index) => (
-          <div
-            key={index}
-            className={
-              index <= step
-                ? "bg-primary h-1 flex-1 rounded-full transition-colors duration-300"
-                : "bg-border h-1 flex-1 rounded-full transition-colors duration-300"
-            }
-            aria-hidden
-          />
-        ))}
-      </div>
-    </>
-  );
-}
-
 interface MetaFieldsProps {
   title: string;
   description: string;
@@ -182,7 +135,7 @@ interface MetaFieldsProps {
   requestedForError?: string | null;
 }
 
-/** 标题/说明/期望执行时间 fields shared by step 1 in both modes. */
+/** 标题/说明/期望执行时间 fields of the 标题与说明 section in both modes. */
 function MetaFields({
   title,
   description,
@@ -195,9 +148,9 @@ function MetaFields({
 }: MetaFieldsProps) {
   const { t } = useTranslation();
   return (
-    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+    <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="draft-title-input">{t("precheck.new.dialog.titleLabel")}</Label>
+        <Label htmlFor="draft-title-input" className="text-sm font-semibold">{t("precheck.new.dialog.titleLabel")}</Label>
         <Input
           id="draft-title-input"
           value={title}
@@ -205,6 +158,7 @@ function MetaFields({
           maxLength={256}
           placeholder={t("precheck.wizard.titlePlaceholder")}
           aria-invalid={titleError != null}
+          className="h-10 text-sm md:text-sm"
           data-testid="draft-title-input"
         />
         {titleError != null && (
@@ -212,7 +166,7 @@ function MetaFields({
         )}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="draft-requested-for">{t("precheck.wizard.requestedScheduleLabel")}</Label>
+        <Label htmlFor="draft-requested-for" className="text-sm font-semibold">{t("precheck.wizard.requestedScheduleLabel")}</Label>
         <DateTimePicker
           id="draft-requested-for"
           value={requestedFor}
@@ -221,9 +175,10 @@ function MetaFields({
           ariaLabel={t("precheck.wizard.requestedScheduleLabel")}
           placeholder={t("precheck.wizard.requestedSchedulePlaceholder")}
           testId="draft-requested-for"
-          className="w-56"
+          className="w-full sm:w-64"
+          inputClassName="h-10 w-full text-sm"
         />
-        <p className="text-muted-foreground text-xs" data-testid="draft-requested-for-hint">
+        <p className="text-muted-foreground text-[13px]" data-testid="draft-requested-for-hint">
           {t("precheck.wizard.requestedScheduleHint")}
         </p>
         {requestedForError != null && (
@@ -231,13 +186,14 @@ function MetaFields({
         )}
       </div>
       <div className="flex flex-col gap-1.5 sm:col-span-2">
-        <Label htmlFor="draft-description-input">{t("precheck.new.dialog.descriptionLabel")}</Label>
+        <Label htmlFor="draft-description-input" className="text-sm font-semibold">{t("precheck.new.dialog.descriptionLabel")}</Label>
         <Textarea
           id="draft-description-input"
           value={description}
           onChange={(event) => { onDescriptionChange(event.target.value); }}
-          rows={3}
+          rows={4}
           maxLength={4096}
+          className="text-sm md:text-sm"
           data-testid="draft-description-input"
         />
       </div>
@@ -268,11 +224,13 @@ interface FlowPickerProps {
   onSelect: (flowId: string) => void;
 }
 
-/** Selectable flow cards (create mode, step 1): the frozen stage chain with
- * its datasource names is the deciding information, so each card shows it.
- * The flow is frozen once the draft is created. With many granted flows the
+/** Selectable flow cards (create mode): the frozen stage chain with its
+ * datasource names is the deciding information, so each card shows it. The
+ * flow is frozen once the draft is created. With many granted flows the
  * picker searches by title and scrolls inside a bounded region instead of
- * stretching the page (owner ruling 2026-09-04). */
+ * stretching the page (owner ruling 2026-09-04). One-page layout
+ * (2026-10-24): the cards run three-up horizontally as radio cards —
+ * selection is signalled by the bright border AND the check icon. */
 function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -280,7 +238,7 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
   const visible = keyword === "" ? flows : flows.filter((flow) => flow.name.toLowerCase().includes(keyword));
   return (
     <div className="space-y-3" data-testid="wizard-flow-picker">
-      <div className="relative">
+      <div className="relative max-w-64">
         <Search
           className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           aria-hidden
@@ -289,7 +247,7 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
           value={query}
           onChange={(event) => { setQuery(event.target.value); }}
           placeholder={t("precheck.wizard.searchPlaceholder")}
-          className="pl-9"
+          className="pl-9 text-sm md:text-sm"
           data-testid="wizard-flow-search"
         />
       </div>
@@ -298,7 +256,7 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
           {t("precheck.wizard.searchEmpty")}
         </p>
       ) : (
-        <div className="grid max-h-[380px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+        <div className="grid max-h-[380px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((flow) => {
             const selected = flow.id === selectedFlowId;
             return (
@@ -309,14 +267,23 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
                 aria-pressed={selected}
                 className={
                   selected
-                    ? "flex flex-col gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary"
-                    : "hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors"
+                    ? "flex flex-col gap-2 rounded-xl border border-foreground/70 bg-foreground/[0.04] p-4 text-left ring-1 ring-foreground/20"
+                    : "hover:border-foreground/30 flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors"
                 }
                 data-testid={`use-flow-${flow.id}`}
               >
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  {selected && <CheckCircle2 className="text-primary size-4" aria-hidden />}
+                <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   {flow.name}
+                  {/* Reference plan-card radio: the border thickness draws the
+                      selection donut — colour-free by construction. */}
+                  <span
+                    aria-hidden
+                    className={
+                      selected
+                        ? "size-4 shrink-0 rounded-full border-[5px] border-foreground"
+                        : "size-4 shrink-0 rounded-full border-2 border-foreground/25"
+                    }
+                  />
                 </span>
                 <StagePath flow={flow} />
               </button>
@@ -328,44 +295,113 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
   );
 }
 
+/** One continuous-form section: 标题＋简短说明＋字段, separated from the next
+ * section by a hairline (shared background — no per-section card). */
+function FormSection({
+  title,
+  hint,
+  action,
+  children,
+  last = false,
+}: {
+  title: string;
+  hint: string;
+  action?: ReactNode;
+  children: ReactNode;
+  last?: boolean;
+}) {
+  return (
+    <section className={last ? "px-6 py-5 lg:px-8" : "border-b px-6 py-5 lg:px-8"}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <p className="text-muted-foreground mt-1 text-[13px]">{hint}</p>
+        </div>
+        {action}
+      </div>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  testId,
+  muted = false,
+}: {
+  label: string;
+  value: ReactNode;
+  testId?: string;
+  /** Unfilled values (未填写/未选择): quieter than real data. */
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <dt className="text-muted-foreground flex-none text-[13px]">{label}</dt>
+      <dd
+        className={
+          muted
+            ? "text-muted-foreground/80 min-w-0 truncate text-right"
+            : "min-w-0 truncate text-right font-medium"
+        }
+        data-testid={testId}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 export default function SubmissionWizard({ mode }: { mode: "create" | "draft" }) {
   const { t } = useTranslation();
+  const session = useSession();
   const { draftId } = useParams<{ draftId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState(mode === "draft" ? 1 : 0);
-  const [direction, setDirection] = useState<number | undefined>(undefined);
-  const reducedMotion = useReducedMotion() ?? false;
-  const goToStep = useCallback((next: number) => {
-    setDirection(next > step ? 1 : -1);
-    setStep(next);
-  }, [step]);
-
-  // ---- step 1 state (create mode) ----
+  // ---- create-mode state ----
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createRequestedFor, setCreateRequestedFor] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
+  // Implicit drafts (owner ruling 2026-10-24): the server submission
+  // envelope is created silently on the first acting operation (save SQL /
+  // precheck / submit / save-draft), never as a user-facing prerequisite.
+  // Until adoption the SQL lives in plain local state; after adoption the
+  // page behaves exactly like the draft mode, in place.
+  const [localDraftId, setLocalDraftId] = useState<string | null>(null);
+  const [createSql, setCreateSql] = useState("");
+  const adopted = mode === "create" && localDraftId !== null;
+  /** Route drafts and adopted implicit drafts share the persisted metadata
+   * state; create-before-adoption keeps metadata in plain local state and
+   * carries it in the adoption create call. */
+  const metaBound = mode === "draft" || adopted;
+  /** The draft this page currently operates on (explicit route draft or the
+   * silently adopted implicit one). */
+  const activeDraftId = mode === "draft" ? draftId ?? null : localDraftId;
 
   // ---- shared data ----
-  const draftQuery = useChangeDraft(draftId ?? "", mode === "draft");
+  const draftQuery = useChangeDraft(
+    (mode === "draft" ? draftId : localDraftId) ?? "",
+    mode === "draft" || localDraftId !== null,
+  );
   const flowsQuery = useCurrentUserChangeFlows();
   const draft = draftQuery.data ?? null;
   const flows = flowsQuery.data ?? [];
-  const flow = (mode === "draft"
+  const flow = (mode === "draft" || adopted
     ? flows.find((entry) => entry.id === draft?.flow_id)
     : flows.find((entry) => entry.id === selectedFlowId)) ?? null;
 
-  // ---- step 1 state (draft mode, keyed remount via draft.id below) ----
+  // ---- draft-mode metadata state (keyed remount via draft.id below) ----
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   // §18.56方案B：期望执行时间（datetime-local；空=清除）。
   const [metaRequestedFor, setMetaRequestedFor] = useState("");
 
-  // ---- workspace engine (steps 2-3); survives step switches so the run
-  // keeps polling and the dock stays live on step 3. ----
+  // ---- workspace engine; lives at the page level so the run keeps polling
+  // while the user scrolls the form or reads the summary. ----
   const store = useDraftEditorStore();
   const dirty = useDraftEditorStore(selectDirty);
   const flowUpdated = useFlowUpdated(draft?.flow_id ?? null);
@@ -378,6 +414,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [evidenceFinding, setEvidenceFinding] = useState<ReviewFinding | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  // tabs-02 pattern (owner ruling 2026-10-24): controlled results tab pair so
+  // the content switch runs through TransitionPanel's slide+blur motion —
+  // same behaviour as the mine page tabs.
+  const [resultsTab, setResultsTab] = useState<"overview" | "findings">("overview");
   const [timedOutState, setTimedOutState] = useState<{ phase: RunPhase; timedOut: boolean }>({
     phase: "idle",
     timedOut: false,
@@ -391,13 +431,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     if (draft === null || attachedDraftId.current === draft.id) return;
     attachedDraftId.current = draft.id;
     store.attach({ id: draft.id, state: draft.state, version: draft.version, sql: null });
-    // Step 1 metadata starts from the persisted draft (async load lands here).
+    // Metadata starts from the persisted draft (async load lands here).
     setMetaTitle(draft.title ?? "");
     setMetaDescription(draft.description ?? "");
     setMetaRequestedFor(isoToRequestedFor(draft.requested_scheduled_for));
   }, [draft, store]);
 
-  // The shared event feed lives for the wizard's lifetime in draft mode.
+  // The shared event feed lives for the page's lifetime in draft mode.
   useEffect(() => {
     if (mode !== "draft") return;
     void startReviewEvents();
@@ -407,27 +447,28 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // Bulk mode (frontend PRD F5): drafts beyond one max-statement size or a
   // thousand statements never mount the Monaco editor — the virtualized
   // browser takes over so the full SQL is never rendered.
+  const localSqlText = mode === "create" && localDraftId === null ? createSql : store.sql;
   const isBulk =
     (draft?.sql_size_bytes ?? 0) > BULK_MODE_MIN_BYTES ||
     (draft?.statement_count ?? 0) > BULK_MODE_MIN_STATEMENTS ||
-    store.sql.length > BULK_MODE_MIN_BYTES;
-  const bulkDigest = isBulk && store.sql !== "" ? importedDigest : null;
+    localSqlText.length > BULK_MODE_MIN_BYTES;
+  const bulkDigest = isBulk && localSqlText !== "" ? importedDigest : null;
 
   const digestSourceRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!isBulk || store.sql === "" || digestSourceRef.current === store.sql) return;
+    if (!isBulk || localSqlText === "" || digestSourceRef.current === localSqlText) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       if (!cancelled) {
-        digestSourceRef.current = store.sql;
-        setImportedDigest(digestSqlText(store.sql));
+        digestSourceRef.current = localSqlText;
+        setImportedDigest(digestSqlText(localSqlText));
       }
     }, 0);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isBulk, store.sql]);
+  }, [isBulk, localSqlText]);
 
   const { run, phase } = useReviewRun(draft);
   const findingsQuery = useReviewFindings(
@@ -448,20 +489,22 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     };
   }, [phase, run?.id]);
 
-  // Leave guard: unsaved SQL would be lost silently in a refresh.
+  // Leave guard: unsaved SQL would be lost silently in a refresh — the
+  // pre-adoption local SQL of the create mode counts too.
+  const unsavedCreateSql = mode === "create" && localDraftId === null && createSql !== "";
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !unsavedCreateSql) return;
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
     window.addEventListener("beforeunload", handler);
     return () => { window.removeEventListener("beforeunload", handler); };
-  }, [dirty]);
+  }, [dirty, unsavedCreateSql]);
 
   const invalidateAll = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+    await queryClient.invalidateQueries({ queryKey: ["change-draft", activeDraftId] });
     await queryClient.invalidateQueries({ queryKey: ["review-run"] });
-  }, [queryClient, draftId]);
+  }, [queryClient, activeDraftId]);
 
   // §18.74：查询刷新带回更高行version时单调同步进store——审核run终态在
   // 服务端异步推进version，不同步则后续If-Match全部过期。
@@ -482,18 +525,18 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     // 依赖收敛为终态run id：同run终态只失效一次，run对象轮询刷新不重触发。
   }, [terminalRunId, invalidateAll]);
 
-  const showActionError = (error: unknown, operationId: string) => {
+  const showActionError = useCallback((error: unknown, operationId: string) => {
     const display = describeError(error, operationId);
     const requestId = display.requestId !== null ? ` (${display.requestId})` : "";
     // BUG-006/010：meta.detail携带后端诊断文本（如preflight拒因、驱动
     // 错误原文）时逐字追加，执行人不再只见泛化文案。
     const detail = display.detail !== null ? ` ${display.detail}` : "";
     setActionError(`${t(display.messageKey)}${detail}${requestId}`);
-  };
+  }, [t]);
 
   const saveMutation = useMutation({
     mutationFn: (sql: string) =>
-      replaceDraftSql(draftId as string, { sql }, { headers: liveIfMatch() }),
+      replaceDraftSql(activeDraftId as string, { sql }, { headers: liveIfMatch() }),
     onSuccess: (saved) => {
       const savedDraft = saved as unknown as ChangeDraft;
       store.markSaved(savedDraft.version, savedDraft.state, store.sql);
@@ -503,17 +546,87 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     onError: (error) => { showActionError(error, "replaceDraftSql"); },
   });
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createChangeDraft({
+        flow_id: selectedFlowId as string,
+        title: createTitle.trim(),
+        description: createDescription === "" ? undefined : createDescription,
+        requested_scheduled_for: requestedForToIso(createRequestedFor) ?? undefined,
+      }),
+    onError: (error) => { showActionError(error, "createChangeDraft"); },
+  });
+
+  /**
+   * Implicit-draft adoption (owner ruling 2026-10-24): create the server
+   * submission envelope — silently, in place — on the first acting
+   * operation. The flow + title gate stays (the envelope cannot exist
+   * without them) but it surfaces as a near-field error at the moment of
+   * the action, never as a mandatory user step. Local SQL travels with the
+   * adoption so the editor never blanks.
+   */
+  const ensureDraft = useCallback(async (): Promise<string | null> => {
+    if (activeDraftId !== null) return activeDraftId;
+    const requestedIssue = (value: string): string | null => {
+      if (value === "") return null;
+      if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
+      if (new Date(value).getTime() <= Date.now()) return t("precheck.wizard.requestedSchedulePast");
+      return null;
+    };
+    if (selectedFlowId === null) {
+      setStepError(t("precheck.wizard.error.needFlow"));
+      return null;
+    }
+    if (createTitle.trim() === "") {
+      setStepError(t("precheck.wizard.error.needTitle"));
+      return null;
+    }
+    const issue = requestedIssue(createRequestedFor);
+    if (issue !== null) {
+      setStepError(issue);
+      return null;
+    }
+    setStepError(null);
+    try {
+      const created = (await createMutation.mutateAsync()) as unknown as {
+        id: string;
+        version: number;
+        state: ChangeDraft["state"];
+      };
+      let version = created.version;
+      if (createSql !== "") {
+        const saved = (await replaceDraftSql(created.id, { sql: createSql }, {
+          headers: ifMatch(created.version),
+        })) as unknown as ChangeDraft;
+        version = saved.version;
+      }
+      store.attach({ id: created.id, state: created.state, version, sql: createSql });
+      if (createSql !== "") store.markSaved(version, "draft", createSql);
+      setLocalDraftId(created.id);
+      // Editor continuity: the value the user typed stays on screen.
+      setLoadValue({ text: createSql, nonce: Date.now() });
+      return created.id;
+    } catch (error) {
+      showActionError(error, "createChangeDraft");
+      return null;
+    }
+  }, [activeDraftId, createMutation, createRequestedFor, createSql, createTitle, selectedFlowId, showActionError, store, t]);
+
   const handleImportConfirm = useCallback((text: string, digest: SqlDigest) => {
     setImportOpen(false);
     setImportedDigest(digest);
     digestSourceRef.current = text;
     setBulkLocate(null);
-    store.setSql(text);
-    saveMutation.mutate(text);
-  }, [store, saveMutation]);
+    void (async () => {
+      // Bulk import always lands SQL on the server: adopt implicitly first.
+      if (await ensureDraft() === null) return;
+      store.setSql(text);
+      saveMutation.mutate(text);
+    })();
+  }, [store, saveMutation, ensureDraft]);
 
   const revealMutation = useMutation({
-    mutationFn: () => revealDraftSql(draftId as string, { purpose: "draft-edit" }),
+    mutationFn: () => revealDraftSql(activeDraftId as string, { purpose: "draft-edit" }),
     onSuccess: (reveal) => {
       const payload = reveal as unknown as { sql: string };
       if (draft === null) return;
@@ -531,7 +644,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
   const reviewMutation = useMutation({
     mutationFn: () =>
-      runDraftReview(draftId as string, {
+      runDraftReview(activeDraftId as string, {
         headers: {
           ...liveIfMatch(),
           "Idempotency-Key": idempotencyKey(),
@@ -551,7 +664,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         let tries = 0;
         const timer = setInterval(() => {
           tries += 1;
-          void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+          void queryClient.invalidateQueries({ queryKey: ["change-draft", activeDraftId] });
           if (tries >= 10) clearInterval(timer);
         }, 600);
       }
@@ -561,11 +674,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      // 保存信息 folded into the submit path (owner ruling 2026-10-24):
+      // metadata edits must land before the order freezes them. Adoption in
+      // the same click already carries the metadata in the create call.
+      if (metaBound && activeDraftId !== null) {
+        await metaSaveMutation.mutateAsync();
+      }
       // §18.74：run完成在服务端异步推进行version——提交前强制重读草稿，
       // If-Match用服务端真值（种子链同款姿势），消除终态竞态。
-      const fresh = (await getChangeDraft(draftId as string)) as unknown as ChangeDraft;
+      const fresh = (await getChangeDraft(activeDraftId as string)) as unknown as ChangeDraft;
       store.markVersioned(fresh.version, fresh.state);
-      return submitChangeDraft(draftId as string, {
+      return submitChangeDraft(activeDraftId as string, {
         headers: {
           ...ifMatch(fresh.version),
           "Idempotency-Key": idempotencyKey(),
@@ -589,24 +708,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      createChangeDraft({
-        flow_id: selectedFlowId as string,
-        title: createTitle.trim(),
-        description: createDescription === "" ? undefined : createDescription,
-        requested_scheduled_for: requestedForToIso(createRequestedFor) ?? undefined,
-      }),
-    onSuccess: (created) => {
-      const draftCreated = created as unknown as { id: string };
-      void navigate(`/changes/drafts/${draftCreated.id}`);
-    },
-    onError: (error) => { showActionError(error, "createChangeDraft"); },
-  });
-
   const metaSaveMutation = useMutation({
     mutationFn: () =>
-      updateChangeDraft(draftId as string, {
+      updateChangeDraft(activeDraftId as string, {
         title: metaTitle.trim(),
         description: metaDescription === "" ? undefined : metaDescription,
         // §18.56方案B：显式null清除（is-null语义）；值=设置。
@@ -614,15 +718,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       }, { headers: liveIfMatch() }),
     onSuccess: () => {
       setActionError(null);
-      void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+      void queryClient.invalidateQueries({ queryKey: ["change-draft", activeDraftId] });
     },
     onError: (error) => { showActionError(error, "updateChangeDraft"); },
   });
 
-  // Completion catalog for the SQL editor: the frozen flow's logical schema
-  // names are the submitter-facing database names. Table/column completion
-  // needs a metadata read surface the submission journey has no contract for
-  // yet, so the catalog carries schemas only.
   // Completion catalog (RCP-20260904-SUBMITTER-METADATA-PROJECTION): the
   // frozen flow's stage datasources are read for schemas/tables/columns —
   // one query per stage datasource; failures degrade to the mapping-name
@@ -692,83 +792,51 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   }, [flow, metadataQueries]);
 
   const handleRunReview = useCallback(() => {
-    if (dirty) {
-      // Save first: the run must freeze the exact SQL the user sees.
-      saveMutation.mutate(store.sql, { onSuccess: () => { reviewMutation.mutate(); } });
-      return;
-    }
-    reviewMutation.mutate();
-  }, [dirty, saveMutation, reviewMutation, store.sql]);
+    void (async () => {
+      // Implicit adoption first: precheck needs the server envelope.
+      if (await ensureDraft() === null) return;
+      if (dirty) {
+        // Save first: the run must freeze the exact SQL the user sees.
+        saveMutation.mutate(store.sql, { onSuccess: () => { reviewMutation.mutate(); } });
+        return;
+      }
+      reviewMutation.mutate();
+    })();
+  }, [dirty, ensureDraft, saveMutation, reviewMutation, store.sql]);
 
-  // ---- step transitions ----
-  const continueFromInfo = (): void => {
-    // §18.56方案B：期望执行时间客户端gate（后端仍会复核）。
-    const requestedIssue = (value: string): string | null => {
-      if (value === "") return null;
-      if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
-      if (new Date(value).getTime() <= Date.now()) return t("precheck.wizard.requestedSchedulePast");
-      return null;
-    };
-    if (mode === "create") {
-      if (selectedFlowId === null) {
-        setStepError(t("precheck.wizard.error.needFlow"));
-        return;
-      }
-      if (createTitle.trim() === "") {
-        setStepError(t("precheck.wizard.error.needTitle"));
-        return;
-      }
-      const issue = requestedIssue(createRequestedFor);
-      if (issue !== null) {
-        setStepError(issue);
-        return;
-      }
-      setStepError(null);
-      createMutation.mutate();
+  // ---- 保存并返回: the single secondary action (owner ruling 2026-10-24,
+  // 保存信息 folded away) — persist SQL then metadata, then leave. ----
+  const saveDraftAndLeave = (): void => {
+    const leave = () => { void navigate("/changes/mine"); };
+    if (mode === "create" && activeDraftId === null) {
+      // The one explicit opt-in to the draft: adopt implicitly, then leave.
+      void (async () => {
+        if (await ensureDraft() !== null) leave();
+      })();
       return;
     }
-    // Draft mode: persist metadata edits, then advance to the SQL step.
-    if (metaTitle.trim() === "") {
+    if (metaBound && metaTitle.trim() === "") {
       setStepError(t("precheck.wizard.error.needTitle"));
       return;
     }
-    const draftIssue = requestedIssue(metaRequestedFor);
-    if (draftIssue !== null) {
-      setStepError(draftIssue);
-      return;
-    }
-    setStepError(null);
-    metaSaveMutation.mutate(undefined, { onSuccess: () => { goToStep(1); } });
-  };
-
-  const continueFromSql = (): void => {
-    if (draft === null) return;
-    if (!dirty && !draft.has_sql && store.sql === "") {
-      setStepError(t("precheck.wizard.error.needSql"));
-      return;
-    }
-    setStepError(null);
     if (dirty) {
-      // The wizard only advances past a saved state — the confirm step
-      // always reflects exactly the frozen SQL.
-      saveMutation.mutate(store.sql, { onSuccess: () => { goToStep(2); } });
+      // SQL first: markSaved keeps the store version chain monotonic for the
+      // metadata PUT that follows.
+      saveMutation.mutate(store.sql, {
+        onSuccess: () => {
+          if (metaBound) metaSaveMutation.mutate(undefined, { onSuccess: leave });
+          else leave();
+        },
+      });
       return;
     }
-    goToStep(2);
-  };
-
-  const saveDraftAndLeave = (): void => {
-    const leave = () => { void navigate("/changes/mine"); };
-    if (dirty) {
-      saveMutation.mutate(store.sql, { onSuccess: leave });
-      return;
-    }
-    leave();
+    if (metaBound) metaSaveMutation.mutate(undefined, { onSuccess: leave });
+    else leave();
   };
 
   // ---- loading / error surfaces ----
   if (mode === "create") {
-    return renderCreate();
+    return renderPage();
   }
   if (draftQuery.isPending) {
     return (
@@ -789,366 +857,429 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     );
   }
   if (draft === null) return null;
-  return renderWizard();
+  return renderPage();
 
-  function renderCreate(): ReactNode {
-    const infoContent = (
-      <div className="space-y-6 py-2">
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">{t("precheck.wizard.section.meta")}</h4>
-            <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.metaHint")}</p>
+  /** The presented precheck state for the summary card: label plus the
+   * semantic tone the real state earns (green pass / red fail / amber
+   * outdated) — idle and in-flight stay neutral. */
+  function precheckStatus(): { label: string; tone: "idle" | "busy" | "pass" | "fail" | "stale" } {
+    if (mode === "create" && !adopted) return { label: t("precheck.wizard.precheck.idle"), tone: "idle" };
+    const presented = presentPhase(store.serverState, phase, dirty);
+    if (presented === "idle") return { label: t("precheck.wizard.precheck.idle"), tone: "idle" };
+    if (presented === "queued" || presented === "running")
+      return { label: t("precheck.wizard.precheck.running"), tone: "busy" };
+    if (presented === "outdated")
+      return { label: t("precheck.wizard.precheck.outdated"), tone: "stale" };
+    return run !== null && run.gate.passed
+      ? { label: t("precheck.wizard.precheck.passed"), tone: "pass" }
+      : { label: t("precheck.wizard.precheck.failed"), tone: "fail" };
+  }
+
+
+  /** Summary values share one source of truth with the form fields. */
+  function summaryValues() {
+    const presented = mode === "draft" || adopted ? presentPhase(store.serverState, phase, dirty) : "idle";
+    const title = adopted ? metaTitle.trim() : createTitle.trim();
+    const requestedFor = adopted ? metaRequestedFor : createRequestedFor;
+    const datasources = [...new Set((flow?.stages ?? []).map((stage) => stage.datasource_name))];
+    return {
+      presented,
+      flowName: flow?.name ?? t("precheck.wizard.summary.unselected"),
+      title: title === "" ? t("precheck.wizard.summary.empty") : title,
+      sql:
+        run?.statement_count != null
+          ? t("precheck.wizard.summary.statements", { count: run.statement_count })
+          : (mode === "draft" || adopted) && draft?.has_sql
+            ? t("precheck.wizard.summary.saved")
+            : t("precheck.wizard.summary.empty"),
+      requestedFor:
+        requestedFor === ""
+          ? t("precheck.wizard.summary.unselected")
+          : requestedFor.replace("T", " "),
+      datasources:
+        datasources.length > 0
+          ? datasources.join("、")
+          : t("precheck.wizard.summary.unselected"),
+    };
+  }
+
+  function renderSummaryCard(): ReactNode {
+    const values = summaryValues();
+    return (
+      <Card className="gap-0 overflow-hidden py-0" data-testid="wizard-summary">
+        <CardHeader className="border-b py-4">
+          <CardTitle className="text-base">{t("precheck.wizard.summaryTitle")}</CardTitle>
+          <p className="text-muted-foreground text-[13px] leading-relaxed">{t("precheck.wizard.summaryHint")}</p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2.5 py-3.5">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide">
+            {t("precheck.wizard.summary.groupInfo")}
+          </p>
+          <dl className="flex flex-col gap-3">
+            <SummaryRow
+              label={t("precheck.wizard.summary.flow")}
+              value={values.flowName}
+              muted={flow === null}
+            />
+            {flow !== null && (
+              <div className="flex justify-end">
+                <StagePath flow={flow} />
+              </div>
+            )}
+            <SummaryRow
+              label={t("precheck.new.dialog.titleLabel")}
+              value={values.title}
+              muted={values.title === t("precheck.wizard.summary.empty")}
+            />
+            <SummaryRow
+              label={t("precheck.wizard.summary.sql")}
+              value={values.sql}
+              testId="wizard-summary-sql"
+              muted={values.sql === t("precheck.wizard.summary.empty")}
+            />
+            <SummaryRow
+              label={t("precheck.wizard.summary.precheck")}
+              muted={precheckStatus().tone === "idle"}
+              value={
+                <span
+                  className={`inline-flex items-center gap-1.5 ${PRECHECK_TONE_CLASS[precheckStatus().tone].text}`}
+                  data-testid="wizard-summary-precheck"
+                >
+                  <span
+                    aria-hidden
+                    className={`size-1.5 rounded-full ${PRECHECK_TONE_CLASS[precheckStatus().tone].dot}`}
+                  />
+                  {precheckStatus().label}
+                </span>
+              }
+            />
+            <SummaryRow
+              label={t("precheck.wizard.summary.requestedFor")}
+              value={values.requestedFor}
+              muted={values.requestedFor === t("precheck.wizard.summary.unselected")}
+            />
+            <SummaryRow
+              label={t("precheck.wizard.summary.datasources")}
+              muted={flow === null}
+              value={
+                flow === null ? (
+                  values.datasources
+                ) : (
+                  <span
+                    className="text-muted-foreground font-normal"
+                    title={t("precheck.wizard.summary.frozenByFlow")}
+                  >
+                    {values.datasources}
+                  </span>
+                )
+              }
+            />
+          </dl>
+        </CardContent>
+        {/* Action area: one primary focus per page (owner ruling 2026-10-24).
+         * The dock is the single submission authority in both modes — in the
+         * create mode it stays honestly blocked until the implicit adoption
+         * plus a precheck unlock it. The surface lifts one step above the
+         * card body (reference ruling 2026-10-24). */}
+        <div className="bg-secondary/40 flex flex-col gap-2.5 border-t px-3.5 py-3">
+          {stepError !== null && (
+            <p role="alert" className="text-destructive text-sm" data-testid="wizard-step-error">
+              {stepError}
+            </p>
+          )}
+          {actionError !== null && (
+            <p role="alert" className="text-destructive text-sm" data-testid="wizard-action-error">
+              {actionError}
+            </p>
+          )}
+          <SubmissionDock
+            variant="panel"
+            draftState={activeDraftId !== null ? store.serverState : null}
+            phase={values.presented}
+            gate={run?.gate ?? null}
+            dirty={dirty}
+            flowUpdated={flowUpdated}
+            reviewCurrent={run === null || run.draft_revision === draft?.revision}
+            submitting={submitMutation.isPending}
+            onSubmit={() => {
+              void (async () => {
+                if (await ensureDraft() === null) return;
+                if (dirty) {
+                  // The dialog restates what submission freezes — the SQL the
+                  // user sees must be on the server before it opens.
+                  saveMutation.mutate(store.sql, {
+                    onSuccess: () => { setConfirmSubmit(true); },
+                  });
+                  return;
+                }
+                setConfirmSubmit(true);
+              })();
+            }}
+            aside={
+              /* 保存并返回 is the single secondary action (owner ruling
+               * 2026-10-24): it persists metadata + SQL, then leaves. */
+              <Button
+                variant="outline"
+                className="h-10 flex-1 rounded-full text-sm font-semibold"
+                onClick={saveDraftAndLeave}
+                disabled={
+                  metaSaveMutation.isPending ||
+                  saveMutation.isPending ||
+                  createMutation.isPending
+                }
+                data-testid="wizard-save-draft"
+              >
+                {t("precheck.wizard.saveAndReturn")}
+              </Button>
+            }
+          />
+        </div>
+      </Card>
+    );
+  }
+
+  function renderFlowSection(): ReactNode {
+    if (mode === "draft" || adopted) {
+      return (
+        <FormSection
+          title={t("precheck.wizard.section.flow")}
+          hint={t("precheck.wizard.section.flowFrozenHint")}
+        >
+          <div className="rounded-xl border p-4" data-testid="wizard-flow-frozen">
+            <p className="text-sm font-semibold">{flow?.name ?? draft?.flow_id}</p>
+            <div className="mt-2">
+              <StagePath flow={flow} />
+            </div>
           </div>
-          <MetaFields
-            title={createTitle}
-            description={createDescription}
-            onTitleChange={(value) => { setCreateTitle(value); setStepError(null); }}
-            onDescriptionChange={setCreateDescription}
-            requestedFor={createRequestedFor}
-            onRequestedForChange={(value) => { setCreateRequestedFor(value); setStepError(null); }}
-            requestedForError={
-              createRequestedFor !== "" && requestedForToIso(createRequestedFor) === null
+        </FormSection>
+      );
+    }
+    return (
+      <FormSection
+        title={t("precheck.wizard.section.flow")}
+        hint={t("precheck.wizard.section.flowHint")}
+      >
+        {flowsQuery.isPending && <LoadingState />}
+        {flowsQuery.isError && (
+          <ErrorState
+            error={flowsQuery.error}
+            operationId="listCurrentUserFlows"
+            onRetry={() => void flowsQuery.refetch()}
+          />
+        )}
+        {flowsQuery.isSuccess && flows.length === 0 && (
+          <div
+            className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-sm"
+            data-testid="wizard-flow-empty"
+          >
+            <CircleAlert className="size-4 shrink-0" aria-hidden />
+            <span>{t("precheck.new.empty")}</span>
+            {session.user?.can_access_admin === true && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 py-0"
+                onClick={() => { void navigate("/admin/flows"); }}
+              >
+                {t("precheck.wizard.manageFlows")}
+              </Button>
+            )}
+          </div>
+        )}
+        {flows.length > 0 && (
+          <FlowPicker flows={flows} selectedFlowId={selectedFlowId} onSelect={(id) => { setSelectedFlowId(id); setStepError(null); }} />
+        )}
+      </FormSection>
+    );
+  }
+
+  function renderMetaSection(): ReactNode {
+    return (
+      <FormSection
+        title={t("precheck.wizard.section.meta")}
+        hint={t("precheck.wizard.section.metaHint")}
+      >
+        <MetaFields
+          title={metaBound ? metaTitle : createTitle}
+          description={metaBound ? metaDescription : createDescription}
+          onTitleChange={metaBound ? setMetaTitle : (value) => { setCreateTitle(value); setStepError(null); }}
+          onDescriptionChange={metaBound ? setMetaDescription : setCreateDescription}
+          requestedFor={metaBound ? metaRequestedFor : createRequestedFor}
+          onRequestedForChange={
+            metaBound
+              ? (value) => { setMetaRequestedFor(value); setStepError(null); }
+              : (value) => { setCreateRequestedFor(value); setStepError(null); }
+          }
+          requestedForError={
+            metaBound
+              ? metaRequestedFor !== "" && new Date(metaRequestedFor).getTime() <= Date.now()
+                ? t("precheck.wizard.requestedSchedulePast")
+                : null
+              : createRequestedFor !== "" && requestedForToIso(createRequestedFor) === null
                 ? t("precheck.wizard.requestedScheduleInvalid")
                 : createRequestedFor !== "" && new Date(createRequestedFor).getTime() <= Date.now()
                   ? t("precheck.wizard.requestedSchedulePast")
                   : null
-            }
-          />
-        </div>
-        <Separator />
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">{t("precheck.wizard.section.flow")}</h4>
-            <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.flowHint")}</p>
-          </div>
-          {flowsQuery.isPending && <LoadingState />}
-          {flowsQuery.isError && (
-            <ErrorState
-              error={flowsQuery.error}
-              operationId="listCurrentUserFlows"
-              onRetry={() => void flowsQuery.refetch()}
-            />
-          )}
-          {flowsQuery.isSuccess && flows.length === 0 && (
-            <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-              {t("precheck.new.empty")}
-            </p>
-          )}
-          {flows.length > 0 && (
-            <FlowPicker flows={flows} selectedFlowId={selectedFlowId} onSelect={(id) => { setSelectedFlowId(id); setStepError(null); }} />
-          )}
-        </div>
-      </div>
-    );
-    return renderWizard(infoContent);
-  }
-
-  function renderWizard(infoContent?: ReactNode): ReactNode {
-    const phasePresented = mode === "draft" ? presentPhase(store.serverState, phase, dirty) : "idle";
-    const variants = {
-      initial: (dir: number) => ({ x: `${String(32 * dir)}px`, opacity: 0 }),
-      animate: { x: "0px", opacity: 1 },
-      exit: (dir: number) => ({ x: `${String(-32 * dir)}px`, opacity: 0 }),
-    };
-
-    const stepContent = (): ReactNode => {
-      if (step === 0) {
-        const errorLine = stepError !== null && mode === "create" ? (
-          <p role="alert" className="text-destructive text-sm" data-testid="wizard-step-error">
-            {stepError}
-          </p>
-        ) : null;
-        if (mode === "create") {
-          return (
-            <div className="space-y-4">
-              {infoContent}
-              {errorLine}
-            </div>
-          );
-        }
-        return (
-          <div className="space-y-6 py-2">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">{t("precheck.wizard.section.flow")}</h4>
-                <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.flowFrozenHint")}</p>
-              </div>
-              <div className="rounded-lg border p-4" data-testid="wizard-flow-frozen">
-                <p className="text-sm font-medium">{flow?.name ?? draft?.flow_id}</p>
-                <div className="mt-2">
-                  <StagePath flow={flow} />
-                </div>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-5">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">{t("precheck.wizard.section.meta")}</h4>
-                <p className="text-muted-foreground text-sm">{t("precheck.wizard.section.metaHint")}</p>
-              </div>
-              <MetaFields
-                title={metaTitle}
-                description={metaDescription}
-                onTitleChange={setMetaTitle}
-                onDescriptionChange={setMetaDescription}
-                requestedFor={metaRequestedFor}
-                onRequestedForChange={(value) => { setMetaRequestedFor(value); setStepError(null); }}
-                requestedForError={
-                  metaRequestedFor !== "" && new Date(metaRequestedFor).getTime() <= Date.now()
-                    ? t("precheck.wizard.requestedSchedulePast")
-                    : null
-                }
-                titleError={stepError}
-              />
-            </div>
-          </div>
-        );
-      }
-      if (step === 1) return renderSqlStep(phasePresented);
-      return renderConfirmStep(phasePresented);
-    };
-
-    return (
-      <div className="flex justify-center p-4" data-testid={mode === "create" ? "changes-new-page" : "draft-workspace-page"}>
-        <MotionConfig transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }} reducedMotion="user">
-          <Card className="bg-background w-full max-w-4xl overflow-hidden pt-0 shadow-none">
-            <div>
-              <CardHeader className="gap-4 border-b px-6 py-5">
-                <StepHeader step={step} />
-              </CardHeader>
-
-              <div className="relative overflow-hidden">
-                <CardContent className="relative px-6 py-4">
-                  {reducedMotion ? (
-                    <div className="w-full">{stepContent()}</div>
-                  ) : (
-                    <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-                      <motion.div
-                        key={step}
-                        variants={variants}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        className="w-full"
-                        custom={direction}
-                      >
-                        {stepContent()}
-                      </motion.div>
-                    </AnimatePresence>
-                  )}
-                </CardContent>
-              </div>
-
-              <CardFooter className="flex items-center justify-between border-t py-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => { goToStep(step - 1); }}
-                  disabled={step === 0}
-                  data-testid="wizard-back"
-                >
-                  <ChevronLeft className="size-4" aria-hidden />
-                  {t("precheck.wizard.back")}
-                </Button>
-                {step < STEP_COUNT - 1 ? (
-                  <Button
-                    onClick={continueFromInfoOrSql()}
-                    disabled={
-                      (step === 0 && mode === "create" && createMutation.isPending) ||
-                      (step === 0 && mode === "draft" && metaSaveMutation.isPending) ||
-                      (step === 1 && saveMutation.isPending)
-                    }
-                    data-testid="wizard-continue"
-                  >
-                    {t("precheck.wizard.continue")}
-                    <ChevronRight className="size-4" aria-hidden />
-                  </Button>
-                ) : (
-                  <Button variant="outline" onClick={saveDraftAndLeave} data-testid="wizard-save-draft">
-                    <Save className="size-4" aria-hidden />
-                    {t("precheck.wizard.saveDraft")}
-                  </Button>
-                )}
-              </CardFooter>
-            </div>
-          </Card>
-        </MotionConfig>
-
-        <ImportDialog
-          open={importOpen}
-          onOpenChange={setImportOpen}
-          onConfirm={handleImportConfirm}
-          uploading={saveMutation.isPending}
+          }
+          titleError={stepError}
         />
-        <EvidenceSheet
-          finding={evidenceFinding}
-          open={evidenceFinding !== null}
-          onOpenChange={(open) => {
-            if (!open) setEvidenceFinding(null);
-          }}
-        />
-      </div>
+      </FormSection>
     );
   }
 
-  function continueFromInfoOrSql(): () => void {
-    return step === 0 ? continueFromInfo : continueFromSql;
-  }
+  function renderSqlSection(): ReactNode {
+    // Pre-adoption the presented phase is honestly idle: nothing has run.
+    const draftMode = mode === "draft" || adopted;
+    const phasePresented = draftMode ? presentPhase(store.serverState, phase, dirty) : "idle";
+    const editorValue = draftMode ? store.sql : createSql;
+    const editorChange = draftMode
+      ? (sql: string) => { store.setSql(sql); }
+      : (sql: string) => { setCreateSql(sql); };
 
-  function renderSqlStep(phasePresented: RunPhase): ReactNode {
     return (
-      <div className="space-y-4 py-2">
-        {(timedOutState.timedOut && (phasePresented === "queued" || phasePresented === "running")) && (
-          <div
-            role="alert"
-            className="text-muted-foreground flex items-center gap-2 rounded-md border p-3 text-sm"
-            data-testid="review-timeout"
-          >
-            <CircleAlert className="size-4" aria-hidden />
-            <span>{t("precheck.review.timeout")}</span>
-            <Button variant="outline" size="sm" onClick={() => { void invalidateAll(); }}>
-              {t("errors.retry")}
-            </Button>
-          </div>
-        )}
-        {flowUpdated && (
-          <div
-            role="alert"
-            className="text-muted-foreground flex items-center gap-2 rounded-md border p-3 text-sm"
-            data-testid="flow-updated-banner"
-          >
-            <CircleAlert className="size-4" aria-hidden />
-            <span>{t("precheck.flowUpdated.banner")}</span>
-          </div>
-        )}
-        {actionError !== null && (
-          <p role="alert" className="text-destructive text-sm" data-testid="wizard-action-error">
-            {actionError}
-          </p>
-        )}
-        {stepError !== null && (
-          <p role="alert" className="text-destructive text-sm" data-testid="wizard-step-error">
-            {stepError}
-          </p>
-        )}
-
-        {/* Bulk mode needs a definite card height: with the auto-height
-         * card the virtualized list would grow with its content and the
-         * virtualizer would treat every row as visible. */}
-        <Card className={isBulk ? "flex h-[70vh] flex-col" : "flex min-h-[320px] flex-col"}>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <FileCode2 className="size-4" aria-hidden />
-              {t("precheck.workspace.sqlCard")}
-              {dirty && (
-                <span className="text-muted-foreground text-xs">
-                  {t("precheck.workspace.unsaved")}
-                </span>
-              )}
-            </CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setImportOpen(true); }}
-                data-testid="open-bulk-import"
-              >
-                <FileUp className="size-3.5" aria-hidden />
-                {t("precheck.bulk.import.action")}
+      <FormSection title={t("precheck.wizard.title.sql")} hint={t("precheck.wizard.description.sql")} last>
+        <div className="flex flex-col gap-3">
+          {(timedOutState.timedOut && (phasePresented === "queued" || phasePresented === "running")) && (
+            <div
+              role="alert"
+              className="text-muted-foreground flex items-center gap-2 rounded-md border p-3 text-sm"
+              data-testid="review-timeout"
+            >
+              <CircleAlert className="size-4" aria-hidden />
+              <span>{t("precheck.review.timeout")}</span>
+              <Button variant="outline" size="sm" className="text-sm font-semibold" onClick={() => { void invalidateAll(); }}>
+                {t("errors.retry")}
               </Button>
-              {draft?.has_sql && store.savedSql === null && (
+            </div>
+          )}
+          {flowUpdated && (
+            <div
+              role="alert"
+              className="text-muted-foreground flex items-center gap-2 rounded-md border p-3 text-sm"
+              data-testid="flow-updated-banner"
+            >
+              <CircleAlert className="size-4" aria-hidden />
+              <span>{t("precheck.flowUpdated.banner")}</span>
+            </div>
+          )}
+
+          {/* Bulk mode needs a definite card height: with the auto-height
+           * card the virtualized list would grow with its content and the
+           * virtualizer would treat every row as visible. */}
+          <Card className={isBulk ? "flex h-[70vh] flex-col gap-0 overflow-hidden pt-0" : "flex flex-col gap-0 overflow-hidden pt-0"}>
+            <CardHeader className="bg-muted/30 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 border-b py-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FileCode2 className="size-4" aria-hidden />
+                {t("precheck.workspace.sqlCard")}
+                {dirty && (
+                  <span className="text-muted-foreground text-xs">
+                    {t("precheck.workspace.unsaved")}
+                  </span>
+                )}
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { revealMutation.mutate(); }}
-                  disabled={revealMutation.isPending}
-                  data-testid="reveal-sql"
+                  className="text-sm font-semibold"
+                  onClick={() => { setImportOpen(true); }}
+                  data-testid="open-bulk-import"
                 >
-                  {t("precheck.workspace.loadSql")}
+                  <FileUp className="size-3.5" aria-hidden />
+                  {t("precheck.bulk.import.action")}
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { saveMutation.mutate(store.sql); }}
-                disabled={!dirty || saveMutation.isPending}
-                data-testid="save-sql"
-              >
-                <Save className="size-3.5" aria-hidden />
-                {t("precheck.workspace.saveSql")}
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleRunReview}
-                disabled={
-                  reviewMutation.isPending ||
-                  (saveMutation.isPending && dirty) ||
-                  phasePresented === "queued" ||
-                  phasePresented === "running" ||
-                  store.serverState === "submitted" ||
-                  flowUpdated
-                }
-                data-testid="run-review"
-              >
-                <Play className="size-3.5" aria-hidden />
-                {t("precheck.workspace.runReview")}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-2">
-            {isBulk ? (
-              <>
-                <CapacityBanner
-                  digest={bulkDigest}
-                  serverStatementCount={run?.statement_count ?? null}
-                  serverGroupCount={run?.fingerprint_group_count ?? null}
-                />
-                {bulkDigest === null ? (
-                  <div
-                    className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-6 text-sm"
-                    data-testid="bulk-digest-pending"
+                {draft?.has_sql && store.savedSql === null && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-sm font-semibold"
+                  onClick={() => { revealMutation.mutate(); }}
+                    disabled={revealMutation.isPending}
+                    data-testid="reveal-sql"
                   >
-                    {store.sql === ""
-                      ? t("precheck.bulk.browser.revealFirst")
-                      : t("precheck.bulk.browser.digesting")}
-                  </div>
-                ) : (
-                  <StatementBrowser
-                    sql={store.sql}
-                    digest={bulkDigest}
-                    serverGroupCount={run?.fingerprint_group_count ?? null}
-                    locate={bulkLocate}
-                  />
+                    {t("precheck.workspace.loadSql")}
+                  </Button>
                 )}
-              </>
-            ) : (
-              <SqlEditorPanel
-                value={store.sql}
-                onChange={(sql) => { store.setSql(sql); }}
-                readOnly={store.serverState === "submitted"}
-                loadValue={loadValue}
-                onLocate={locate}
-                completionCatalog={completionCatalog}
-                data-testid="sql-editor"
-              />
-            )}
-          </CardContent>
-        </Card>
+                <Button
+                  size="sm"
+                  onClick={handleRunReview}
+                  disabled={
+                    reviewMutation.isPending ||
+                    (saveMutation.isPending && dirty) ||
+                    phasePresented === "queued" ||
+                    phasePresented === "running" ||
+                    store.serverState === "submitted" ||
+                    flowUpdated
+                  }
+                  className="text-sm font-semibold"
+                  data-testid="run-review"
+                >
+                  <Play className="size-3.5" aria-hidden />
+                  {t("precheck.workspace.runReview")}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 flex-col gap-2 py-4">
+              {isBulk ? (
+                <>
+                  <CapacityBanner
+                    digest={bulkDigest}
+                    serverStatementCount={run?.statement_count ?? null}
+                    serverGroupCount={run?.fingerprint_group_count ?? null}
+                  />
+                  {bulkDigest === null ? (
+                    <div
+                      className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-6 text-sm"
+                      data-testid="bulk-digest-pending"
+                    >
+                      {store.sql === ""
+                        ? t("precheck.bulk.browser.revealFirst")
+                        : t("precheck.bulk.browser.digesting")}
+                    </div>
+                  ) : (
+                    <StatementBrowser
+                      sql={editorValue}
+                      digest={bulkDigest}
+                      serverGroupCount={run?.fingerprint_group_count ?? null}
+                      locate={bulkLocate}
+                    />
+                  )}
+                </>
+              ) : (
+                <SqlEditorPanel
+                  value={editorValue}
+                  onChange={editorChange}
+                  readOnly={store.serverState === "submitted"}
+                  loadValue={loadValue}
+                  onLocate={locate}
+                  completionCatalog={completionCatalog}
+                  className="h-[380px] min-h-[280px] rounded-none border-0"
+                  data-testid="sql-editor"
+                />
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">{t("precheck.wizard.resultsCard")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="overview">
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-semibold">{t("precheck.wizard.resultsCard")}</h3>
+            <Tabs
+              value={resultsTab}
+              onValueChange={(next) => { setResultsTab(next === "findings" ? "findings" : "overview"); }}
+            >
               <TabsList>
                 <TabsTrigger value="overview" data-testid="tab-overview">{t("precheck.tabs.overview")}</TabsTrigger>
                 <TabsTrigger value="findings" data-testid="tab-findings">{t("precheck.tabs.findings")}</TabsTrigger>
               </TabsList>
-              <TabsContent value="overview">
-                <ReviewStatusCard phase={phasePresented} run={run} />
-              </TabsContent>
-              <TabsContent value="findings">
-                <FindingList
+              <TransitionPanel
+                activeIndex={resultsTab === "findings" ? 1 : 0}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                variants={TAB_PANEL_VARIANTS}
+              >
+                <div>
+                  <ReviewStatusCard phase={phasePresented} run={run} />
+                </div>
+                <div>
+                  <FindingList
                   findings={findingsQuery.data ?? []}
                   onOpenEvidence={(finding) => { setEvidenceFinding(finding); }}
                   onLocate={
@@ -1184,56 +1315,60 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                     return store.sql.includes(snippet);
                   }}
                 />
-              </TabsContent>
+                </div>
+              </TransitionPanel>
             </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </FormSection>
     );
   }
 
-  function renderConfirmStep(phasePresented: RunPhase): ReactNode {
+  function renderPage(): ReactNode {
     return (
-      <div className="space-y-4 py-2">
-        <div className="grid gap-3 sm:grid-cols-2" data-testid="wizard-summary">
-          <div className="rounded-lg border p-4 sm:col-span-2">
-            <p className="text-muted-foreground text-xs">{t("precheck.wizard.summary.flow")}</p>
-            <p className="mt-1 text-sm font-medium">{flow?.name ?? draft?.flow_id}</p>
-            <div className="mt-2">
-              <StagePath flow={flow} />
-            </div>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-xs">{t("precheck.new.dialog.titleLabel")}</p>
-            <p className="mt-1 text-sm">{draft?.title}</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-xs">{t("precheck.wizard.summary.sql")}</p>
-            <p className="mt-1 text-sm" data-testid="wizard-summary-sql">
-              {run?.statement_count != null
-                ? t("precheck.wizard.summary.statements", { count: run.statement_count })
-                : draft?.has_sql
-                  ? t("precheck.wizard.summary.saved")
-                  : t("precheck.wizard.summary.empty")}
-            </p>
-          </div>
+      <div
+        className="flex flex-col"
+        data-testid={mode === "create" ? "changes-new-page" : "draft-workspace-page"}
+        // The implicitly adopted draft id (e2e probes it; the URL never moves).
+        data-draft-id={activeDraftId ?? undefined}
+      >
+        {/* No page title band (owner ruling 2026-10-24, same ruling as the
+         * breadcrumb removal): the form starts directly; the summary card
+         * carries the draft status. */}
+
+        {/* Left: one continuous form. Right: sticky live summary. */}
+        <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_380px]">
+          <main className="min-w-0 lg:border-r" aria-label={t("precheck.wizard.pageTitle")}>
+            {renderFlowSection()}
+            {renderMetaSection()}
+            {renderSqlSection()}
+          </main>
+          <aside
+            className="p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
+            aria-label={t("precheck.wizard.summaryTitle")}
+          >
+            {renderSummaryCard()}
+          </aside>
         </div>
 
-        <SubmissionDock
-          draftState={store.serverState}
-          phase={phasePresented}
-          gate={run?.gate ?? null}
-          dirty={dirty}
-          flowUpdated={flowUpdated}
-          reviewCurrent={run === null || run.draft_revision === draft?.revision}
-          submitting={submitMutation.isPending}
-          onSubmit={() => { setConfirmSubmit(true); }}
+        <ImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onConfirm={handleImportConfirm}
+          uploading={saveMutation.isPending}
+        />
+        <EvidenceSheet
+          finding={evidenceFinding}
+          open={evidenceFinding !== null}
+          onOpenChange={(open) => {
+            if (!open) setEvidenceFinding(null);
+          }}
         />
 
-        {/* Submit confirmation (F6 deliverable 提交确认与Gate原因): the dock
-         * mirrors the gate, the dialog restates what submission freezes and
-         * what the backend would still reject — the mutation only fires after
-         * the explicit confirm. */}
+        {/* Submit confirmation (F6 deliverable 提交确认与Gate原因): the
+         * summary card mirrors the gate, the dialog restates what submission
+         * freezes and what the backend would still reject — the mutation only
+         * fires after the explicit confirm. */}
         <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
           <DialogContent data-testid="submit-confirm-dialog">
             <DialogHeader>

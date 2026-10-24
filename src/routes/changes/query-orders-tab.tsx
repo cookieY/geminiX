@@ -86,11 +86,11 @@ export function QueryOrdersTab() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="border-b pb-3">
         <CardTitle className="text-sm">{t("orders.query.title")}</CardTitle>
         <CardDescription>{t("orders.query.description")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0!">
         {loadError !== null && (
           <ErrorState
             error={loadError}
@@ -139,7 +139,7 @@ export function QueryOrdersTab() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-72 truncate font-mono text-xs">
+                  <TableCell className="max-w-72 truncate font-mono font-medium">
                     {row.kind === "request"
                       ? row.request.datasource_ids.join(" · ")
                       : row.session.capabilities.map((capability) => capability.datasource_name).join(" · ")}
@@ -151,10 +151,10 @@ export function QueryOrdersTab() {
                         : t(`query.session.state.${row.session.state}`)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
+                  <TableCell className="text-muted-foreground">
                     {formatTimestamp(row.kind === "request" ? row.request.created_at : row.session.created_at)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
+                  <TableCell className="text-muted-foreground">
                     {row.kind === "request" && row.grant !== null
                       ? t(`query.grant.state.${row.grant.state}`)
                       : "—"}
@@ -171,9 +171,11 @@ export function QueryOrdersTab() {
             hasMore={ordersQuery.data.page.has_more}
             isFirst={pager.isFirst}
             onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
             onNext={() => { pager.pushCursor(ordersQuery.data.page.next_cursor); }}
             pageSize={pager.pageSize}
             onPageSizeChange={pager.setPageSize}
+            rowsOnPage={(ordersQuery.data.items ?? []).length}
             testIdPrefix="orders-query"
           />
         )}

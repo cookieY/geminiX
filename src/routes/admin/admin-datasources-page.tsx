@@ -908,10 +908,10 @@ function DatasourceRow({
           </Badge>
         )}
       </TableCell>
-      <TableCell className="font-mono text-xs">
+      <TableCell className="font-mono">
         {datasource.engine}/{datasource.compatibility_mode}
       </TableCell>
-      <TableCell className="font-mono text-xs">
+      <TableCell className="font-mono">
         <div className="flex flex-col items-start gap-1">
           <span>
             {datasource.host}:{datasource.port}
@@ -940,7 +940,7 @@ function DatasourceRow({
             : t("admin.datasources.credModeReadOnly")}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      <TableCell className="text-muted-foreground">
         {t("admin.datasources.referencedBy", { count: datasource.referenced_by_flow_count ?? 0 })}
       </TableCell>
       <TableCell className="text-right">
@@ -1097,7 +1097,7 @@ export default function AdminDatasourcesPage() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.datasources.title")}</CardTitle>
             <CardDescription>{t("admin.datasources.description")}</CardDescription>
@@ -1120,7 +1120,7 @@ export default function AdminDatasourcesPage() {
             <Plus /> {t("admin.datasources.createTitle")}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           {query.isPending ? (
             <LoadingState />
           ) : query.isError ? (
@@ -1130,7 +1130,7 @@ export default function AdminDatasourcesPage() {
               {t("table.emptySearch")}
             </p>
           ) : query.data.items.length === 0 ? (
-            <Empty className="rounded-xl border">
+            <Empty className="mx-4 rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Database />
@@ -1184,11 +1184,13 @@ export default function AdminDatasourcesPage() {
           hasMore={query.data.page.has_more}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => {
             pager.pushCursor(query.data.page.next_cursor);
           }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={(query.data.items ?? []).length}
           testIdPrefix="datasources"
         />
       ) : null}

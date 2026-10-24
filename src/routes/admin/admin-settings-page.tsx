@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
 import type {
@@ -48,11 +49,34 @@ export default function AdminSettingsNamespacePage() {
   if (!ROUTE_NAMESPACES.includes(namespace as SettingsRouteNamespace)) {
     return <Navigate to="/admin/settings/general" replace />;
   }
+  const current = namespace as SettingsRouteNamespace;
   // §18.47 follow-up: each namespace is an independent form. Without the
   // key, switching tabs keeps the previous namespace's draft state alive —
   // same version numbers then never trigger the re-seed and the new
   // namespace renders a fieldless card with the old namespace's assessment.
-  return <NamespaceSettings key={namespace} namespace={namespace as SettingsRouteNamespace} />;
+  // Settings-area content transition (owner ruling 2026-10-24): the tab bar
+  // header above stays static; only the namespace subtree — which remounts by
+  // key to reset its form state — fades/rises between namespaces.
+  return (
+    <div className="flex flex-col gap-4" data-testid={`admin-settings-${current}`}>
+      <header className="flex flex-row justify-end gap-4">
+        {/* Static across namespace switches (owner ruling 2026-10-24): the
+            tab bar lives outside the animated subtree. */}
+        <SettingsNavTabs current={current} />
+      </header>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={namespace}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+        >
+          <NamespaceSettings key={namespace} namespace={namespace as SettingsRouteNamespace} />
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function describeErrorText(display: { messageKey: string; requestId: string | null }): string {
@@ -134,15 +158,7 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
   };
 
   return (
-    <div className="flex flex-col gap-4" data-testid={`admin-settings-${namespace}`}>
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t(`adminSettings.${namespace}.title`)}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t(`adminSettings.${namespace}.description`)}</p>
-        </div>
-        <SettingsNavTabs current={namespace} />
-      </header>
-
+    <div className="flex flex-col gap-4">
       {settingsQuery.isPending && <LoadingState />}
       {settingsQuery.error !== null && (
         <ErrorState

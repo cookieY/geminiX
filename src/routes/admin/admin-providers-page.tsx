@@ -455,9 +455,9 @@ function ProviderRow({
         </div>
       </TableCell>
       <TableCell className="font-mono text-xs">{provider.provider_kind}</TableCell>
-      <TableCell className="max-w-48 truncate font-mono text-xs">{provider.base_url}</TableCell>
-      <TableCell className="font-mono text-xs">{provider.model_name}</TableCell>
-      <TableCell className="font-mono text-xs">{provider.selection_priority}</TableCell>
+      <TableCell className="max-w-48 truncate font-mono">{provider.base_url}</TableCell>
+      <TableCell className="font-mono">{provider.model_name}</TableCell>
+      <TableCell className="font-mono">{provider.selection_priority}</TableCell>
       <TableCell>
         <Badge
           variant={provider.enabled ? "default" : "outline"}
@@ -625,7 +625,7 @@ export default function AdminProvidersPage() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.providers.title")}</CardTitle>
             <CardDescription>{t("admin.providers.description")}</CardDescription>
@@ -648,7 +648,7 @@ export default function AdminProvidersPage() {
             <Plus /> {t("admin.providers.createTitle")}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           {query.isPending ? (
             <LoadingState />
           ) : query.isError ? (
@@ -658,7 +658,7 @@ export default function AdminProvidersPage() {
               {t("table.emptySearch")}
             </p>
           ) : providers.length === 0 ? (
-            <Empty className="rounded-xl border">
+            <Empty className="mx-4 rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <KeyRound />
@@ -704,9 +704,11 @@ export default function AdminProvidersPage() {
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}
               onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
               onNext={() => { pager.pushCursor(query.data.page.next_cursor); }}
               pageSize={pager.pageSize}
               onPageSizeChange={pager.setPageSize}
+              rowsOnPage={(query.data.items ?? []).length}
               testIdPrefix="providers"
             />
           ) : null}

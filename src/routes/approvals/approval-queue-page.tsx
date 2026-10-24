@@ -12,6 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
   TableBody,
@@ -20,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import { ArrowRight, Inbox, Stamp } from "lucide-react";
+import { ArrowRight, Inbox } from "lucide-react";
 
 /**
  * 审批Workspace queue (route /approvals/changes; migration contract §2 maps
@@ -60,9 +61,9 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
       data-testid="approval-queue-row"
       data-row-key={order.id}
     >
-      <TableCell className="font-mono text-xs">{order.display_number}</TableCell>
-      <TableCell className="max-w-56 truncate">{order.title}</TableCell>
-      <TableCell className="font-mono text-xs">
+      <TableCell className="font-mono font-medium">{order.display_number}</TableCell>
+      <TableCell className="max-w-56 truncate font-medium">{order.title}</TableCell>
+      <TableCell className="font-mono">
         {mine === null ? "—" : mine.datasourceName}
       </TableCell>
       <TableCell>
@@ -74,10 +75,10 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
           {orderStateLabel(order.state)}
         </Badge>
       </TableCell>
-      <TableCell className="text-xs">
+      <TableCell>
         {order.submitter_display_name ?? order.submitter_username ?? "—"}
       </TableCell>
-      <TableCell className="text-xs">
+      <TableCell>
         {mine === null ? (
           "—"
         ) : (
@@ -86,7 +87,7 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
           </span>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      <TableCell className="text-muted-foreground">
         {formatTimestamp(order.submitted_at)}
       </TableCell>
       <TableCell className="text-right">
@@ -115,6 +116,8 @@ export default function ApprovalQueuePage() {
   const session = useSession();
   const queueQuery = useApprovalQueue(true);
   const [search, setSearch] = useState("");
+  const [pageNo, setPageNo] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const keyword = search.trim().toLowerCase();
   // The queue matches on order number, title and stage datasource names —
   // the fields an approver uses to locate the order to work on.
@@ -125,10 +128,16 @@ export default function ApprovalQueuePage() {
       (order.title ?? "").toLowerCase().includes(keyword) ||
       order.stages.some((stage) => stage.datasource_name.toLowerCase().includes(keyword)),
   );
+  // The queue arrives as one live 200-row package (event-fed, migration
+  // contract §14.3), so paging is client-side slicing — same pattern as the
+  // query result grid. A fresh search restarts the walk at page 1.
+  const startRow = (pageNo - 1) * pageSize;
+  const visibleQueue = queue.slice(startRow, startRow + pageSize);
+  const hasMore = startRow + visibleQueue.length < queue.length;
   // 搜索是客户端过滤；同伴决策会实时把行移出队列 — 两种都是行集合变化，
   // 用 FLIP 把幸存行的位移补间掉（与 query-access 的待审表同一模式）。
   const queueBodyRef = useFlipReorder<HTMLTableSectionElement>(
-    JSON.stringify(queue.map((order) => order.id)),
+    JSON.stringify(visibleQueue.map((order) => order.id)),
   );
 
   // The shared event feed keeps the queue live against peer decisions —
@@ -141,21 +150,22 @@ export default function ApprovalQueuePage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="approval-queue-page">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Stamp className="size-5" aria-hidden />
-          <h1 className="text-xl font-semibold">{t("approvals.title")}</h1>
-        </div>
-      </div>
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Inbox className="size-4" aria-hidden />
             {t("approvals.queue.title")}
           </CardTitle>
-          <TableSearchInput value={search} onChange={setSearch} testId="approval-queue-search" />
+          <TableSearchInput
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setPageNo(1);
+            }}
+            testId="approval-queue-search"
+          />
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           {queueQuery.isPending ? (
             <LoadingState />
           ) : queueQuery.isError ? (
@@ -173,25 +183,40 @@ export default function ApprovalQueuePage() {
               {t("approvals.queue.empty")}
             </p>
           ) : (
-            <Table data-testid="approval-queue-table">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("approvals.queue.column.number")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.title")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.datasource")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.state")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.submitter")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.reviewed")}</TableHead>
-                  <TableHead>{t("approvals.queue.column.submittedAt")}</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody ref={queueBodyRef}>
-                {queue.map((order) => (
-                  <QueueRow key={order.id} order={order} userId={session.user?.id} />
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <Table data-testid="approval-queue-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("approvals.queue.column.number")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.title")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.datasource")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.state")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.submitter")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.reviewed")}</TableHead>
+                    <TableHead>{t("approvals.queue.column.submittedAt")}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody ref={queueBodyRef}>
+                  {visibleQueue.map((order) => (
+                    <QueueRow key={order.id} order={order} userId={session.user?.id} />
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                busy={queueQuery.isFetching && queueQuery.isPlaceholderData}
+                page={pageNo}
+                hasMore={hasMore}
+                isFirst={pageNo <= 1}
+                onPrev={() => { setPageNo((current) => Math.max(1, current - 1)); }}
+                onNext={() => { setPageNo((current) => current + 1); }}
+                onJumpPage={(target) => { setPageNo(target); }}
+                pageSize={pageSize}
+                onPageSizeChange={(size) => { setPageSize(size); setPageNo(1); }}
+                rowsOnPage={visibleQueue.length}
+                testIdPrefix="approval-queue-footer"
+              />
+            </>
           )}
         </CardContent>
       </Card>

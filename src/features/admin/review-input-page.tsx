@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
@@ -315,15 +316,36 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                 />
               </div>
               <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
+              {/* 出场动效 (animated-list-02, owner ruling 2026-10-24): rows
+                  slide up in and fade up out as the filter/selection changes;
+                  layout tweens the survivors' reflow. Durations sit inside the
+                  motion discipline (<=500ms, named curves) and only
+                  opacity/transform move. */}
               <div className="flex flex-col gap-3 overflow-y-auto">
+              <AnimatePresence initial={false} mode="popLayout">
                 {filtered.length === 0 ? (
-                  <p className="text-muted-foreground text-sm" data-testid="knowledge-notes-empty">
+                  <motion.p
+                    key="empty"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="text-muted-foreground text-sm"
+                    data-testid="knowledge-notes-empty"
+                  >
                     {t("admin.knowledge.emptyTitle")}
-                  </p>
+                  </motion.p>
                 ) : (
                   filtered.map((entry) => (
-                    <div
+                    <motion.div
                       key={entry.id}
+                      layout
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                    <div
                       data-testid={`review-input-row-${entry.id}`}
                       onClick={() => {
                         setSelectedKnowledgeId(entry.id);
@@ -419,8 +441,10 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                         </div>
                       </div>
                     </div>
+                    </motion.div>
                   ))
                 )}
+              </AnimatePresence>
               </div>
             </div>
             <div className="flex flex-1 flex-col">
@@ -664,7 +688,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="border-b flex flex-row items-center justify-between">
           <div>
             <CardTitle>{t("admin.skills.title")}</CardTitle>
             <CardDescription>
@@ -684,7 +708,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="px-0! flex flex-col gap-3">
           {evalErrorKey !== null ? (
             <Alert variant="destructive" data-testid="knowledge-eval-error">
               <AlertTitle>{t(evalErrorKey)}</AlertTitle>
@@ -699,7 +723,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               {t("table.emptySearch")}
             </p>
           ) : visibleSkillRows.length === 0 ? (
-            <Empty className="rounded-xl border">
+            <Empty className="mx-4 rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Puzzle />
@@ -748,7 +772,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                           </span>
                           {description ? (
                             <span
-                              className="text-muted-foreground text-xs font-normal"
+                              className="text-sm font-normal text-muted-foreground"
                               data-testid={`review-input-description-${id}`}
                             >
                               {renderSkillDescription(description, (row as PromptTool).parameters ?? {})}
@@ -793,9 +817,11 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               hasMore={toolsQuery.data.page.has_more}
               isFirst={skillPager.isFirst}
               onPrev={skillPager.goPrev}
+          onJumpPage={skillPager.goToPage}
               onNext={() => { skillPager.pushCursor(toolsQuery.data.page.next_cursor); }}
               pageSize={skillPager.pageSize}
               onPageSizeChange={skillPager.setPageSize}
+              rowsOnPage={toolsQuery.data.items.length}
               testIdPrefix="skills"
             />
           ) : null}

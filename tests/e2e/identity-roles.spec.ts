@@ -27,17 +27,18 @@ async function submitOrder(page: Page): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(TITLE);
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
+  // Implicit drafts: the acting save adopts the draft silently — the URL
+  // never moves; the adopted id rides data-draft-id on the page root.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
-  await page.getByTestId("wizard-continue").click();
+  // One-page layout: the summary card is always mounted.
   await expect(page.getByTestId("wizard-summary")).toBeVisible();
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();

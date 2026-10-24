@@ -36,9 +36,11 @@ async function createDraft(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
+  // Implicit drafts: the acting save adopts the draft silently — the URL
+  // never moves; the adopted id rides data-draft-id on the page root.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
 }
 
 /** Imports a SQL file through the real dialog and uploads it. */
@@ -165,7 +167,6 @@ test("import can be cancelled mid-read without touching the draft", async ({ pag
 
   // The draft is untouched: still editor-mode with no SQL content.
   await expect(page.getByTestId("sql-editor")).toBeVisible();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
   await expect(page.getByTestId("bulk-browser")).toHaveCount(0);
 });
 

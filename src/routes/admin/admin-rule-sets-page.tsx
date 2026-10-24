@@ -394,7 +394,7 @@ export default function AdminRuleSetsPage() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>{t("admin.ruleSets.title")}</CardTitle>
             <CardDescription>{t("admin.ruleSets.description")}</CardDescription>
@@ -417,7 +417,7 @@ export default function AdminRuleSetsPage() {
             <Plus /> {t("admin.ruleSets.createTitle")}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0!">
           {query.isPending ? (
             <LoadingState />
           ) : query.isError ? (
@@ -427,7 +427,7 @@ export default function AdminRuleSetsPage() {
               {t("table.emptySearch")}
             </p>
           ) : query.data.items.length === 0 ? (
-            <Empty className="rounded-xl border">
+            <Empty className="mx-4 rounded-xl border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Layers />
@@ -464,7 +464,7 @@ export default function AdminRuleSetsPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs" data-testid="rule-set-hash">
+                      <TableCell className="max-w-80 truncate font-mono" data-testid="rule-set-hash">
                         {ruleSet.config_hash}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs" data-testid={`rule-set-created-${ruleSet.id}`}>
@@ -516,11 +516,13 @@ export default function AdminRuleSetsPage() {
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}
               onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
               onNext={() => {
                 pager.pushCursor(query.data.page.next_cursor);
               }}
               pageSize={pager.pageSize}
               onPageSizeChange={pager.setPageSize}
+              rowsOnPage={(query.data.items ?? []).length}
               testIdPrefix="rulesets"
             />
           ) : null}

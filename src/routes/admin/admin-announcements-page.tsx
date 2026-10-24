@@ -75,11 +75,7 @@ export default function AdminAnnouncementsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-announcements-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminAnnouncements.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminAnnouncements.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-announcements-create">
           <Plus />
           {t("adminAnnouncements.create")}
@@ -116,11 +112,11 @@ export default function AdminAnnouncementsPage() {
 
       {!revisionsQuery.isPending && revisionsQuery.error === null && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="border-b pb-3">
             <CardTitle className="text-sm">{t("adminAnnouncements.revisions")}</CardTitle>
             <CardDescription>{t("adminAnnouncements.revisionsDescription")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             {revisions.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-announcements-empty">
                 {t("adminAnnouncements.empty")}
@@ -141,8 +137,8 @@ export default function AdminAnnouncementsPage() {
                   {revisions.map((revision: AnnouncementRevision) => (
                     <TableRow key={revision.id} data-testid={`admin-announcement-row-${revision.id}`} data-row-key={revision.id}>
                       <TableCell className="tabular-nums">{revision.revision_number}</TableCell>
-                      <TableCell>{revision.title}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
+                      <TableCell className="font-medium">{revision.title}</TableCell>
+                      <TableCell className="text-muted-foreground">
                         {revision.created_at.replace("T", " ").replace("Z", " UTC")}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
@@ -189,11 +185,13 @@ export default function AdminAnnouncementsPage() {
           hasMore={revisionsPage?.has_more ?? false}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => {
             pager.pushCursor(revisionsPage?.next_cursor);
           }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={revisions.length}
           testIdPrefix="announcements"
         />
       ) : null}

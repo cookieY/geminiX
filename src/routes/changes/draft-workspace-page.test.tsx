@@ -116,11 +116,12 @@ function renderWorkspace(draftId: string) {
   return { ...utils, queryClient };
 }
 
-/** The submission dock lives on wizard step 3; step 2's continue advances
- * (auto-saving dirty SQL first — a ready draft with saved SQL advances
- * directly). */
+/** One-page layout (owner ruling 2026-10-24): the summary card and its
+ * submission dock are always mounted next to the form — there is no step
+ * navigation to walk anymore. Kept as a named no-op so the tests that used
+ * to "advance to step 3" read the same at their call sites. */
 function gotoStep3(): void {
-  fireEvent.click(screen.getByTestId("wizard-continue"));
+  /* the dock is present from mount */
 }
 
 /** Forces the run query to re-read through the current MSW handlers. */

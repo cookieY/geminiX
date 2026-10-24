@@ -34,7 +34,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/badge.tsx",
-          "sha256": "af137b60d46144419d0cbbb99eea7e86a773ddf8a81e8815da5485d86bae3690"
+          "sha256": "07a7e7a01a6198252eebf5cf4999097abd05780d411524affe63fc1551a3e867"
         }
       ]
     },
@@ -232,7 +232,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/table.tsx",
-          "sha256": "d61cbadb05de1ff80c2c075f98a8d5a5d87343001539e837474edaed8c27ec44"
+          "sha256": "8b8be137f4e998b3cda99116a005756695cda4bf69735f5dc119bd361a5691de"
         }
       ]
     },
@@ -243,7 +243,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/tabs.tsx",
-          "sha256": "ac53b7d419fbf6b4d8f98eb09791e4437d80ab6939f93059cdd9943126e8d23f"
+          "sha256": "5db7b4ec1c224bb15316a4ed20927775e650fc443e8db0c76afb320d3d885ffe"
         }
       ]
     },

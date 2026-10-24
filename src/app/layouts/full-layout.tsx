@@ -1,4 +1,6 @@
-import { Outlet } from "react-router";
+import type * as React from "react";
+import { Outlet, useLocation, useOutlet } from "react-router";
+import { AnimatePresence, motion } from "motion/react";
 import { SidebarInset, SidebarProvider } from "@/shared/components/ui/sidebar";
 import { YearningSidebar } from "@/app/shell/yearning-sidebar";
 import { AppHeader } from "@/app/shell/app-header";
@@ -40,13 +42,50 @@ export function FullLayout() {
               up from 1440 through ultrawide instead of the body being capped
               while the bar kept spanning the full inset. */}
           <div className="mx-auto flex min-h-full w-full max-w-[1536px] flex-col">
-            <div className="flex flex-1 flex-col">
+            {/* Page-switch motion (owner ruling 2026-10-24): every route
+             * change — including the settings tab navigation, whose five tabs
+             * are route-level — runs a short rise+fade through a keyed
+             * AnimatePresence over the outlet. mode="wait" keeps exactly one
+             * page mounted at a time; only opacity/transform move and the
+             * exit is quicker than the enter. */}
+            <RouteTransition>
               <Outlet />
-            </div>
+            </RouteTransition>
             <AppFooter />
           </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+/**
+ * Keyed route-transition wrapper (owner ruling 2026-10-24). The outlet is
+ * captured per location so AnimatePresence can keep the leaving page
+ * rendered while it fades out; the wrapper preserves the shell's flex fill
+ * chain (page stretch down to the footer).
+ */
+function RouteTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const capturedOutlet = useOutlet();
+  // The settings area owns a static tab bar (owner ruling 2026-10-24): its
+  // five namespaces share one transition key so the shell never re-animates
+  // between them — the namespace pages animate their own content instead.
+  const transitionKey = location.pathname.startsWith("/admin/settings")
+    ? "/admin/settings"
+    : location.pathname;
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={transitionKey}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.16, ease: "easeOut" }}
+        className="flex flex-1 flex-col"
+      >
+        {capturedOutlet ?? children}
+      </motion.div>
+    </AnimatePresence>
   );
 }

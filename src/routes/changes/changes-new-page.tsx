@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import SubmissionWizard from "./submission-wizard";
 
 /**
@@ -6,17 +5,13 @@ import SubmissionWizard from "./submission-wizard";
  * wizard ruling §18.34): hosts the create mode of the submission wizard —
  * step 1 collects the review flow, title and description; continuing
  * creates the draft and the journey continues at
- * /changes/drafts/:id (step 2, SQL + review).
+ * /changes/drafts/:id (step 2, SQL + review). The page title band is gone
+ * (owner ruling 2026-10-24); the wizard carries its own step headings.
  */
 
 export default function ChangesNewPage() {
-  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("precheck.new.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("precheck.new.description")}</p>
-      </div>
       <SubmissionWizard mode="create" />
     </div>
   );

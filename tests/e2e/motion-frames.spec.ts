@@ -377,9 +377,8 @@ test("progress fill is a scaled box, never an animated width", async ({ page }) 
   await expect(page.getByTestId("changes-new-page")).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("use-flow-4f6f1a2b-0000-4000-8000-000000000001").click();
   await page.getByTestId("draft-title-input").fill("motion frames - progress");
-  await page.getByTestId("wizard-continue").click();
-  await expect(page.getByTestId("draft-workspace-page")).toBeVisible();
-
+  // Implicit drafts: bulk import adopts the draft silently; the page root
+  // carries the id and the editor swaps to the virtualized browser.
   await page.getByTestId("open-bulk-import").click();
   await expect(page.getByTestId("bulk-import-dialog")).toBeVisible();
   // ~20 MB keeps the chunk loop on screen long enough to inspect a live frame.

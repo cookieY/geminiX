@@ -94,38 +94,50 @@ beforeEach(() => {
   grantSession();
 });
 
-describe("SubmissionWizard create mode", () => {
-  it("requires a flow and a title before creating the draft", async () => {
+describe("SubmissionWizard create mode (implicit drafts)", () => {
+  it("adopts the draft silently on the first acting operation, never before", async () => {
+    let reviewRunCalls = 0;
+    server.use(
+      http.post("*/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: FIXTURE_OWNER_ID });
+      }),
+    );
     renderWizard("/changes/new");
     expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    // One-page layout: the editor is live from the start — no draft gate.
+    expect(await screen.findByTestId("sql-editor")).toBeVisible();
 
-    // No flow picked: continue is blocked with the inline error.
-    fireEvent.click(screen.getByTestId("wizard-continue"));
+    // No flow picked: the acting operation surfaces the near-field error.
+    fireEvent.click(screen.getByTestId("run-review"));
     expect(screen.getByTestId("wizard-step-error").textContent).toContain("审核流程");
 
     // Flow picked but the title is empty: the title error replaces it.
     fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
-    fireEvent.click(screen.getByTestId("wizard-continue"));
+    fireEvent.click(screen.getByTestId("run-review"));
     expect(screen.getByTestId("wizard-step-error").textContent).toContain("标题");
 
-    // Title filled: continue creates the draft and moves to the SQL step.
+    // Title + SQL: the precheck adopts the draft implicitly (in place — the
+    // URL never moves) and the local SQL travels with the adoption.
     fireEvent.change(screen.getByTestId("draft-title-input"), {
       target: { value: "向导创建草稿" },
     });
-    fireEvent.click(screen.getByTestId("wizard-continue"));
-    await waitFor(() => {
-      expect(screen.getByTestId("draft-workspace-page")).toBeVisible();
+    fireEvent.change(screen.getByTestId("sql-editor"), {
+      target: { value: "UPDATE orders SET status = 1;" },
     });
-    // The draft workspace enters at step 2 (SQL), not at the info step
-    // (findBy: the fixture's draft read carries mock latency).
-    expect(await screen.findByTestId("sql-editor")).toBeVisible();
+    fireEvent.click(screen.getByTestId("run-review"));
+    await waitFor(() => {
+      expect(reviewRunCalls).toBeGreaterThan(0);
+    });
+    expect(screen.getByTestId("changes-new-page")).toBeVisible();
     const drafts = (await (await fetch("/change-drafts")).json()) as {
-      data: { items: Array<{ title: string }> };
+      data: { items: Array<{ title: string; has_sql: boolean }> };
     };
     expect(drafts.data.items[0]?.title).toBe("向导创建草稿");
+    expect(drafts.data.items[0]?.has_sql).toBe(true);
   });
 
-  it("carries the desired execution time onto the created draft (§18.56)", async () => {
+  it("carries the desired execution time onto the implicitly created draft (§18.56)", async () => {
     renderWizard("/changes/new");
     expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
     fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
@@ -144,9 +156,10 @@ describe("SubmissionWizard create mode", () => {
     fireEvent.click(screen.getByTestId("draft-requested-for-confirm"));
     expect(screen.queryByTestId("draft-requested-for-panel")).toBeNull();
     expect(screen.getByTestId("draft-requested-for")).toHaveValue("2026-10-16 09:30".replace("2026-10-16", iso));
-    fireEvent.click(screen.getByTestId("wizard-continue"));
+    // 保存草稿 is an explicit opt-in that adopts implicitly.
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
     await waitFor(() => {
-      expect(screen.getByTestId("draft-workspace-page")).toBeVisible();
+      expect(screen.getByTestId("mine-page")).toBeVisible();
     });
     const drafts = (await (await fetch("/change-drafts")).json()) as {
       data: { items: Array<{ requested_scheduled_for: string | null }> };
@@ -241,8 +254,8 @@ describe("SubmissionWizard flow picker search", () => {
   });
 });
 
-describe("SubmissionWizard draft mode step 1", () => {
-  it("shows the frozen flow and saves metadata edits before advancing", async () => {
+describe("SubmissionWizard draft mode metadata", () => {
+  it("shows the frozen flow inline and saves metadata edits in place", async () => {
     const create = (await (
       await fetch("/change-drafts", {
         method: "POST",
@@ -252,22 +265,23 @@ describe("SubmissionWizard draft mode step 1", () => {
     ).json()) as { data: { id: string } };
 
     renderWizard(`/changes/drafts/${create.data.id}`);
+    // One-page layout: the frozen flow and the metadata fields share the
+    // page with the editor — no step navigation to reach them.
     expect(await screen.findByTestId("sql-editor")).toBeVisible();
-
-    // Back to step 1: the frozen flow card and the prefilled metadata.
-    fireEvent.click(screen.getByTestId("wizard-back"));
     expect(await screen.findByTestId("wizard-flow-frozen")).toBeVisible();
     const title = screen.getByTestId("draft-title-input");
     expect(title).toHaveValue("初始标题");
 
-    // An empty title is rejected; a real edit is persisted on continue.
+    // An empty title is rejected near-field; a real edit is persisted by
+    // 保存并返回 (owner 2026-10-24: 保存信息 folded away), which then leaves
+    // for the drafts list.
     fireEvent.change(title, { target: { value: "" } });
-    fireEvent.click(screen.getByTestId("wizard-continue"));
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
     expect(screen.getByTestId("wizard-title-error")).toBeVisible();
     fireEvent.change(title, { target: { value: "改后的标题" } });
-    fireEvent.click(screen.getByTestId("wizard-continue"));
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
     await waitFor(() => {
-      expect(screen.getByTestId("sql-editor")).toBeVisible();
+      expect(screen.getByTestId("mine-page")).toBeVisible();
     });
     const drafts = (await (await fetch("/change-drafts")).json()) as {
       data: { items: Array<{ title: string }> };
@@ -275,7 +289,7 @@ describe("SubmissionWizard draft mode step 1", () => {
     expect(drafts.data.items[0]?.title).toBe("改后的标题");
   });
 
-  it("blocks the step-2 continue until SQL exists, then advances to the confirm step", async () => {
+  it("keeps the summary dock blocked while no SQL exists, then leaves via 保存草稿", async () => {
     const create = (await (
       await fetch("/change-drafts", {
         method: "POST",
@@ -287,24 +301,24 @@ describe("SubmissionWizard draft mode step 1", () => {
     renderWizard(`/changes/drafts/${create.data.id}`);
     expect(await screen.findByTestId("sql-editor")).toBeVisible();
 
-    fireEvent.click(screen.getByTestId("wizard-continue"));
-    expect(screen.getByTestId("wizard-step-error").textContent).toContain("SQL");
+    // No step gate anymore: the summary card is always mounted and its dock
+    // is the single authority on submission readiness — no SQL, no submit.
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
+    expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    expect(screen.getByTestId("submission-readiness").textContent).not.toBe("");
 
-    // Saving the SQL unblocks the continue; the confirm step shows the summary.
+    // Editing SQL then 保存并返回: the SQL persists implicitly on the way
+    // out (owner 2026-10-24: the explicit save button is gone).
     fireEvent.change(screen.getByTestId("sql-editor"), {
       target: { value: "UPDATE orders SET status = 1 WHERE user_id = 42;" },
     });
-    fireEvent.click(screen.getByTestId("save-sql"));
-    await waitFor(() => {
-      expect(screen.getByTestId("save-sql")).toBeDisabled();
-    });
-    fireEvent.click(screen.getByTestId("wizard-continue"));
-    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
-
-    // 保存草稿 leaves the wizard for the personal drafts list.
     fireEvent.click(screen.getByTestId("wizard-save-draft"));
     await waitFor(() => {
       expect(screen.getByTestId("mine-page")).toBeVisible();
     });
+    const drafts = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ has_sql: boolean }> };
+    };
+    expect(drafts.data.items[0]?.has_sql).toBe(true);
   });
 });

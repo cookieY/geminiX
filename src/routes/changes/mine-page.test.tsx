@@ -9,6 +9,7 @@ import { server } from "@/test/msw/server";
 import { getReviewEventClient } from "@/shared/events/review-event-client";
 import "@/shared/i18n";
 import {
+  FIXTURE_FLOW_ID,
   FIXTURE_OWNER_ID,
   resetReviewFixture,
   seedFixtureOrder,
@@ -118,6 +119,41 @@ describe("MinePage", () => {
     expect(rows[0]?.textContent).toContain("YR-20260830-000012");
     expect(rows[1]?.textContent).toContain("YR-20260830-000011");
     expect(screen.getByTestId("tab-audit-orders")).toBeVisible();
+  });
+
+  it("deletes a saved draft through the confirm dialog (owner ruling 2026-10-24)", async () => {
+    const user = userEvent.setup();
+    // Seed one draft through the fixture's own POST so version/state are real.
+    const create = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "待删除草稿" }),
+      })
+    ).json()) as { data: { id: string; version: number } };
+
+    renderMine();
+    const row = await screen.findByTestId(`delete-draft-${create.data.id}`);
+    await user.click(row);
+    expect(await screen.findByTestId("delete-draft-dialog")).toBeVisible();
+
+    // Cancel keeps the draft.
+    await user.click(screen.getByTestId("delete-draft-cancel"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("delete-draft-dialog")).toBeNull();
+    });
+    expect(screen.getByTestId(`delete-draft-${create.data.id}`)).toBeVisible();
+
+    // Confirm deletes: the row disappears from the list.
+    await user.click(screen.getByTestId(`delete-draft-${create.data.id}`));
+    await user.click(screen.getByTestId("delete-draft-accept"));
+    await waitFor(() => {
+      expect(screen.queryByTestId(`delete-draft-${create.data.id}`)).toBeNull();
+    });
+    const drafts = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ id: string }> };
+    };
+    expect(drafts.data.items.some((item) => item.id === create.data.id)).toBe(false);
   });
 
   it("renders the unified query-orders tab with its empty state", async () => {

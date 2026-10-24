@@ -32,7 +32,9 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // table-01 reference: the header row is inert (no hover wash) and its
+      // own border is the card's header divider.
+      className={cn("[&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
       {...props}
     />
   )
@@ -79,7 +81,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors duration-100 ease-out hover:bg-muted/50 has-aria-expanded:bg-muted/50 active:bg-muted/70 data-[state=selected]:bg-muted",
+        "border-b transition-colors duration-100 ease-out hover:bg-muted/30 has-aria-expanded:bg-muted/50 active:bg-muted/50 data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -95,7 +97,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       // quiet — muted color, medium weight, taller band — so the rows carry
       // the data emphasis instead of a bold heading strip.
       className={cn(
-        "h-12 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        "h-auto px-4 py-3 text-left align-middle text-sm font-normal whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -110,7 +112,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
       // Comfortable rhythm (reference ruling 2026-10-24): rows breathe with
       // py-3 rather than the previous compact p-2 tile.
       className={cn(
-        "px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-4 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

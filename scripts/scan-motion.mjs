@@ -123,6 +123,12 @@ const ALLOWED_LAYOUT_TRANSITIONS = [
     why: "sidebar-container: icon mode collapses the rail's own width; offcanvas slides via translate.",
   },
   {
+    file: "src/features/review/submission-dock.tsx",
+    anchor: "bg-primary absolute top-1/2 left-3",
+    tokens: ["transition-[left,top,width,height,transform]"],
+    why: "submit-hover-dot: the button-19 hover flood (owner ruling 2026-10-24, block fidelity demanded verbatim, outline pill 黑底白字→白底黑字) grows an 8px dot into the full pill — the dot's own geometry IS the interaction, not expressible with transform against an unknown button width.",
+  },
+  {
     file: "src/shared/components/ui/sidebar.tsx",
     anchor: "transition-[width,height,padding] group-has-data-[sidebar=menu-action]",
     tokens: ["transition-[width,height,padding]"],

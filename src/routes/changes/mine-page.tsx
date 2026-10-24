@@ -39,8 +39,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { ArrowRight, FileStack, FilterX, Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
+import { ArrowRight, FileStack, FilterX, Search, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteChangeDraft } from "@/api/generated/client/change-drafts/change-drafts";
+import { describeError } from "@/shared/api/error-display";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 
 /**
  * 我的工单 (route /changes/mine; migration contract §2: 草稿和已提交工单分离;
@@ -86,14 +99,18 @@ function formatTimestamp(value: string): string {
   return value.replace("T", " ").replace("Z", " UTC");
 }
 
-function DraftRow({ draft }: { draft: ChangeDraft }) {
+function DraftRow({ draft, onDelete }: { draft: ChangeDraft; onDelete: (draft: ChangeDraft) => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => { void navigate(`/changes/drafts/${draft.id}`); }}
-      className="hover:bg-muted/50 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+      onKeyDown={(event) => {
+        if (event.key === "Enter") void navigate(`/changes/drafts/${draft.id}`);
+      }}
+      className="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
       data-testid="mine-draft-row"
     >
       <FileStack className="text-muted-foreground size-4 shrink-0" aria-hidden />
@@ -102,8 +119,24 @@ function DraftRow({ draft }: { draft: ChangeDraft }) {
       <span className="text-muted-foreground hidden text-xs sm:block">
         {formatTimestamp(draft.updated_at)}
       </span>
+      {/* 草稿删除 (owner ruling 2026-10-24): the list row carries the only
+          delete affordance; the confirm dialog lives at the card level. */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground hover:text-destructive"
+        aria-label={t("orders.list.draftsDelete")}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(draft);
+        }}
+        data-testid={`delete-draft-${draft.id}`}
+      >
+        <Trash2 className="size-4" aria-hidden />
+      </Button>
       <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
-    </button>
+    </div>
   );
 }
 
@@ -117,17 +150,17 @@ function OrderRow({ order }: { order: ChangeOrder }) {
       data-testid="mine-order-row"
       data-row-key={order.id}
     >
-      <TableCell className="font-mono text-xs">{order.display_number}</TableCell>
-      <TableCell className="max-w-56 truncate">{order.title}</TableCell>
+      <TableCell className="font-mono font-medium">{order.display_number}</TableCell>
+      <TableCell className="max-w-56 truncate font-medium">{order.title}</TableCell>
       <TableCell>
         <OrderStateBadge state={order.state} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      <TableCell className="text-muted-foreground">
         {order.current_stage_position === null
           ? "—"
           : t("orders.list.stagePosition", { position: order.current_stage_position })}
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      <TableCell className="text-muted-foreground">
         {formatTimestamp(order.submitted_at)}
       </TableCell>
       <TableCell className="text-right">
@@ -336,19 +369,40 @@ export default function MinePage() {
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
 
   const draftsError = draftsQuery.error ?? ordersQuery.error;
+
+  // 草稿删除 (owner ruling 2026-10-24): the drafts card is the surface —
+  // confirm dialog at card level, DELETE with the row's If-Match version.
+  const [pendingDelete, setPendingDelete] = useState<ChangeDraft | null>(null);
+  const queryClient = useQueryClient();
+  const deleteDraftMutation = useMutation({
+    mutationFn: (draft: ChangeDraft) =>
+      deleteChangeDraft(draft.id, {
+        headers: { "If-Match": `"${String(draft.version)}"` },
+      }),
+    onSuccess: () => {
+      toast.success(t("orders.list.draftsDeleted"));
+      setPendingDelete(null);
+      void queryClient.invalidateQueries({ queryKey: ["change-drafts", "mine"] });
+    },
+    onError: (error) => {
+      const display = describeError(error, "deleteChangeDraft");
+      toast.error(t(display.messageKey));
+    },
+  });
   const retry = (): void => {
     void draftsQuery.refetch();
     void ordersQuery.refetch();
   };
+  // tabs-02 reference (owner ruling 2026-10-24): a controlled tab pair so the
+  // content switch runs through TransitionPanel's slide+blur motion.
+  const [mineTab, setMineTab] = useState<"audit" | "query">("audit");
 
   return (
     <div className="flex flex-col gap-4" data-testid="mine-page">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("orders.list.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("orders.list.description")}</p>
-      </header>
-
-      <Tabs defaultValue="audit">
+<Tabs
+              value={mineTab}
+              onValueChange={(next) => { setMineTab(next === "query" ? "query" : "audit"); }}
+            >
         <TabsList>
           <TabsTrigger value="audit" data-testid="tab-audit-orders">
             {t("orders.list.auditTab")}
@@ -357,7 +411,12 @@ export default function MinePage() {
             {t("orders.list.queryTab")}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="audit" className="flex flex-col gap-4">
+<TransitionPanel
+              activeIndex={mineTab === "audit" ? 0 : 1}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              variants={TAB_PANEL_VARIANTS}
+            >
+            <div className="flex flex-col gap-4">
           {draftsError !== null && (
             <ErrorState error={draftsError} operationId="listChangeOrders" onRetry={retry} />
           )}
@@ -377,15 +436,52 @@ export default function MinePage() {
                     </p>
                   )}
                   {(draftsQuery.data ?? []).map((draft) => (
-                    <DraftRow key={draft.id} draft={draft} />
+                    <DraftRow key={draft.id} draft={draft} onDelete={setPendingDelete} />
                   ))}
                 </CardContent>
+                {/* Delete confirmation (owner ruling 2026-10-24): the draft,
+                 * its SQL and its review records go in one transaction — the
+                 * dialog says so before the irreversible call. */}
+                <Dialog
+                  open={pendingDelete !== null}
+                  onOpenChange={(open) => {
+                    if (!open) setPendingDelete(null);
+                  }}
+                >
+                  <DialogContent data-testid="delete-draft-dialog">
+                    <DialogHeader>
+                      <DialogTitle>{t("orders.list.draftsDeleteTitle")}</DialogTitle>
+                      <DialogDescription>
+                        {t("orders.list.draftsDeleteDescription")}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => { setPendingDelete(null); }}
+                        data-testid="delete-draft-cancel"
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          if (pendingDelete !== null) deleteDraftMutation.mutate(pendingDelete);
+                        }}
+                        disabled={deleteDraftMutation.isPending}
+                        data-testid="delete-draft-accept"
+                      >
+                        {t("orders.list.draftsDeleteAction")}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </Card>
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="border-b pb-3">
                   <CardTitle className="text-sm">{t("orders.list.ordersCard")}</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-3">
+                <CardContent className="px-0! flex flex-col gap-3">
                   <MineOrderFilters
                     filters={filters}
                     datasourceOptions={datasourceOptionsQuery.data ?? []}
@@ -428,11 +524,13 @@ export default function MinePage() {
                         onPrev={() => {
                           ordersPager.goPrev();
                         }}
+                          onJumpPage={ordersPager.goToPage}
                         onNext={() => {
                           ordersPager.pushCursor(ordersPageMeta?.next_cursor);
                         }}
                         pageSize={ordersPager.pageSize}
                         onPageSizeChange={ordersPager.setPageSize}
+                        rowsOnPage={orderItems.length}
                         testIdPrefix="mine-orders"
                       />
                     ) : null}
@@ -440,10 +538,11 @@ export default function MinePage() {
               </Card>
             </>
           )}
-        </TabsContent>
-        <TabsContent value="query">
-          <QueryOrdersTab />
-        </TabsContent>
+            </div>
+            <div>
+              <QueryOrdersTab />
+            </div>
+            </TransitionPanel>
       </Tabs>
     </div>
   );

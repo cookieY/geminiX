@@ -25,10 +25,9 @@ const SEEDED_EXECUTION_ORDER = "/changes/orders/7e6f1a2b-0000-4000-8000-00000000
 const SQL_TEXT = "UPDATE orders SET status = 1 WHERE user_id = 42;";
 
 
-/** The submission dock lives on wizard step 3; continue (auto-saving dirty
- * SQL first) advances from the SQL step to the confirm step. */
+/** One-page layout (owner ruling 2026-10-24): the summary card and its
+ * submission dock are mounted from the start — nothing to walk to. */
 async function gotoConfirmStep(page: Page): Promise<void> {
-  await page.getByTestId("wizard-continue").click();
   await expect(page.getByTestId("wizard-summary")).toBeVisible();
 }
 
@@ -54,12 +53,12 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  await page.getByTestId("wizard-continue").click();
-  await expect(page).toHaveURL(/\/changes\/drafts\//);
+  // Implicit drafts: save adopts silently; the page root carries the id.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id", /.+/
+  );
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
-  await page.getByTestId("save-sql").click();
-  await expect(page.getByTestId("save-sql")).toBeDisabled();
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,

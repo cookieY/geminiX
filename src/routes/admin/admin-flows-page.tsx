@@ -105,11 +105,7 @@ export default function AdminFlowsPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="admin-flows-page">
-      <header className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("adminFlows.title")}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t("adminFlows.description")}</p>
-        </div>
+      <header className="flex flex-row justify-end gap-4">
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => { setCreateType("change_review"); }} data-testid="admin-flows-create-change">
             <Plus />
@@ -129,7 +125,7 @@ export default function AdminFlowsPage() {
 
       {!flowsQuery.isPending && flowsQuery.error === null && (
         <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Workflow className="size-4" />
@@ -146,7 +142,7 @@ export default function AdminFlowsPage() {
               testId="admin-flows-search"
             />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0!">
             {flows.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-flows-empty">
                 {keyword !== "" ? t("table.emptySearch") : t("adminFlows.empty")}
@@ -178,11 +174,13 @@ export default function AdminFlowsPage() {
           hasMore={flowsQuery.data.page.has_more}
           isFirst={pager.isFirst}
           onPrev={pager.goPrev}
+          onJumpPage={pager.goToPage}
           onNext={() => {
             pager.pushCursor(flowsQuery.data.page.next_cursor);
           }}
           pageSize={pager.pageSize}
           onPageSizeChange={pager.setPageSize}
+          rowsOnPage={(flowsQuery.data.items ?? []).length}
           testIdPrefix="flows"
         />
       ) : null}
@@ -214,7 +212,7 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
   return (
     <>
       <TableRow data-testid={`admin-flow-row-${flow.id}`} data-row-key={flow.id}>
-        <TableCell>{flow.name}</TableCell>
+        <TableCell className="font-medium">{flow.name}</TableCell>
         <TableCell>
           <Badge variant="outline">
             {isQuery ? t("adminFlows.kind.query") : t("adminFlows.kind.change")}
@@ -225,7 +223,7 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
             {flow.enabled ? t("adminFlows.enabled") : t("adminFlows.disabled")}
           </Badge>
         </TableCell>
-        <TableCell className="text-muted-foreground text-xs">
+        <TableCell className="text-muted-foreground">
           {isQuery
             ? t("adminFlows.structure.query", {
                 datasources: flow.query_capabilities?.length ?? 0,

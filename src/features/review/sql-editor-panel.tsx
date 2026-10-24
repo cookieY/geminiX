@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+
+import { cn } from "@/shared/lib/utils";
 // editor.main (not editor.api): the api entry omits the editor
 // contributions — the suggest widget, find, etc. — which the completion
 // provider depends on. All languages ship here too; the chunk stays lazy.
@@ -111,6 +113,8 @@ export interface SqlEditorPanelProps {
   onLocate?: null | { target: string; nonce: number };
   /** Schema/table/column suggestions for the completion provider. */
   completionCatalog?: SqlCompletionCatalog;
+  /** Size overrides from the host page (default 46vh stays for other users). */
+  className?: string;
   "data-testid"?: string;
 }
 
@@ -121,6 +125,7 @@ export function SqlEditorPanel({
   loadValue = null,
   onLocate = null,
   completionCatalog = EMPTY_CATALOG,
+  className,
   "data-testid": testId,
 }: SqlEditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -186,7 +191,11 @@ export function SqlEditorPanel({
       theme: "yearning-sql",
       automaticLayout: true,
       minimap: { enabled: false },
+      // The app's registered mono face (Geist Mono variable font, global.css)
+      // keeps the editor on the same typographic system as UI mono texts.
+      fontFamily: '"Geist Mono", "SFMono-Regular", "JetBrains Mono", Menlo, monospace',
       fontSize: 14,
+      lineHeight: 22,
       scrollBeyondLastLine: false,
       wordWrap: "on",
       renderWhitespace: "none",
@@ -254,7 +263,10 @@ export function SqlEditorPanel({
   return (
     <div
       ref={containerRef}
-      className="min-h-[240px] h-[46vh] border-input rounded-md border overflow-hidden"
+      className={cn(
+        "min-h-[240px] h-[46vh] border-input rounded-md border overflow-hidden",
+        className,
+      )}
       data-testid={testId}
       data-slot="sql-editor-panel"
     />

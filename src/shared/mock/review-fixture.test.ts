@@ -221,25 +221,41 @@ describe("review fixture draft and run lifecycle", () => {
     expect(body.data?.title).toBe("改得动的标题");
   });
 
-  it("rejects a review run started from a ready draft (run_review illegal from ready)", async () => {
+  it("re-runs a review from a ready draft; the new run supersedes the old (RCP-20261024-REVIEW-RERUN-FROM-READY)", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "SELECT 1;");
+    const runIdOf = (task: { result_ref?: string } | null): string =>
+      typeof task?.result_ref === "string" ? (task.result_ref.split("/").pop() ?? "") : "";
     const first = (await (
       await fetch(`https://yearning.test/change-drafts/${draft.id}/review-runs`, {
         method: "POST",
       })
-    ).json()) as { data: { id: string } | null };
-    expect(first.data).not.toBeNull();
-    // wait for terminal: ready
+    ).json()) as { data: { result_ref?: string } | null };
+    const firstRunId = runIdOf(first.data);
+    expect(firstRunId).not.toBe("");
+    // wait for terminal: ready (fixture timeline ≈0.4s running + 1.3s terminal)
     await new Promise((resolve) => {
-      setTimeout(resolve, 1_600);
+      setTimeout(resolve, 1_800);
     });
+    // ready re-run is legal now: a new run replaces the old as the draft's
+    // review_run_id; reviewing/submitted remain rejected elsewhere.
     const second = (await (
       await fetch(`https://yearning.test/change-drafts/${draft.id}/review-runs`, {
         method: "POST",
       })
-    ).json()) as { err_code: number };
-    expect(second.err_code).toBe(1010);
+    ).json()) as { err_code: number; data: { result_ref?: string } | null };
+    expect(second.err_code).toBe(0);
+    const secondRunId = runIdOf(second.data);
+    expect(secondRunId).not.toBe("");
+    expect(secondRunId).not.toBe(firstRunId);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1_900);
+    });
+    const detail = (await (
+      await fetch(`https://yearning.test/change-drafts/${draft.id}`)
+    ).json()) as { data: { state: string; review_run_id: string } };
+    expect(detail.data.state).toBe("ready");
+    expect(detail.data.review_run_id).toBe(secondRunId);
   });
 
   it("marks a finished run born outdated when inputs moved on mid-run", async () => {

@@ -127,6 +127,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -493,30 +494,6 @@ html[data-card-shadow="false"] [data-slot="card"] {
   to {
     stroke-dashoffset: var(--ring-offset, 0);
   }
-}
-
-@keyframes flip-page-cycle {
-  0%,
-  74% {
-    transform: rotateX(0deg);
-  }
-  87% {
-    transform: rotateX(-118deg);
-  }
-  100% {
-    transform: rotateX(0deg);
-  }
-}
-
-.flip-slot {
-  @apply inline-block [perspective:520px];
-}
-
-.flip-slot > span {
-  @apply inline-block;
-  transform-origin: 50% 50%;
-  transform-style: preserve-3d;
-  animation: flip-page-cycle 5.6s ease-in-out infinite;
 }
 
 /* Accessibility + screenshot determinism: under prefers-reduced-motion every
