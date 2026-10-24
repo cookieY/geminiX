@@ -52,6 +52,12 @@ for (const pageType of KEY_PAGE_TYPES) {
           await page.setViewportSize({ width: viewport.width, height: viewport.height });
           await pageType.prepare(page);
           await page.evaluate(() => document.fonts.ready);
+          // Two frames flush the fonts/layout the ready signal does not cover:
+          // under full-suite parallelism a container can snapshot a mid-paint
+          // frame, which reads as a one-off baseline diff.
+          await page.evaluate(
+            () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+          );
           await page.waitForTimeout(150);
           await expect(page).toHaveScreenshot(
             `${pageType.name}-${viewport.name}-${locale}-${theme}.png`,

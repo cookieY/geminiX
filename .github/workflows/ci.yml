@@ -130,6 +130,14 @@ jobs:
   e2e:
     name: Playwright e2e
     runs-on: ubuntu-latest
+    # The screenshot baselines in tests/screenshots/ are produced and compared
+    # by one renderer: this image, pinned to the @playwright/test version in
+    # package.json. Running on the bare runner instead changes the font stack
+    # and text rasterisation, so a committed baseline would assert a page CI
+    # never renders. Keep the tag in sync with package.json (Docker Hub stops
+    # publishing mcr.microsoft.com/playwright per minor, not per patch).
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SEC-0025: pinned)
         with:
@@ -143,8 +151,9 @@ jobs:
           cache: pnpm
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      # Browsers ship inside the pinned image; installing them again would
+      # re-resolve a floating chromium build and re-introduce the drift the
+      # container is here to remove.
       - name: Run e2e
         run: pnpm test:e2e
       - name: Run frame budget (single worker)
@@ -153,5 +162,10 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          # test-results/ carries the actual/expected/diff PNGs for a failed
+          # screenshot assertion; without it the report names the case but the
+          # reviewer cannot see what moved.
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7

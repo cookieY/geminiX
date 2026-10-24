@@ -32,11 +32,25 @@ async function useScenario(page: Page, scenario: string): Promise<void> {
 
 /** Types SQL through the real Monaco surface (precheck.spec precedent). */
 async function typeSql(page: Page, sql: string): Promise<void> {
-  // Click the editor's top-left surface: a previous inline run error
-  // renders below the editor and would otherwise intercept the pointer.
-  await page.getByTestId("query-sql-editor").click({ position: { x: 40, y: 40 } });
+  const editor = page.getByTestId("query-sql-editor");
+  // Monaco is a lazy chunk and this build edits through a
+  // `native-edit-context` div (the `<textarea>` is only the hidden IME
+  // fallback). A wrapper-relative coordinate click lands in the line-number
+  // gutter whenever the container fonts resolve wider — on a cold container
+  // the keystrokes are dropped, the model keeps its initial "SELECT "
+  // template and the spec fails waiting for a request it never sent. Click
+  // inside the lines container, whose origin already excludes the gutter.
+  const lines = editor.locator(".monaco-editor .view-lines");
+  await expect(lines).toBeVisible({ timeout: 15_000 });
+  await lines.click({ position: { x: 200, y: 20 } });
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type(sql);
+  // Monaco tokenizes into spans and wraps long lines, so compare on
+  // whitespace-normalized text (storage-telemetry precedent).
+  const normalize = (value: string): string => value.replace(/\s+/g, " ").trim();
+  await expect
+    .poll(async () => normalize((await editor.textContent()) ?? ""), { timeout: 15_000 })
+    .toContain(normalize(sql));
 }
 
 test.beforeEach(async ({ page }) => {

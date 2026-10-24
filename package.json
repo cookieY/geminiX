@@ -18,8 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:frames": "MOTION_FRAMES_ONLY=1 playwright test tests/e2e/motion-frames.spec.ts --workers=1",
-    "screenshots": "playwright test tests/e2e/screenshots.spec.ts tests/e2e/screenshots-business.spec.ts",
-    "screenshots:update": "playwright test tests/e2e/screenshots.spec.ts tests/e2e/screenshots-business.spec.ts --update-snapshots",
+    "screenshots": "./scripts/e2e-container.sh run",
+    "screenshots:update": "./scripts/e2e-container.sh update",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:tokens": "node scripts/check-token-contrast.mjs",
     "check:colors": "node scripts/scan-raw-colors.mjs",
@@ -55,7 +55,7 @@
     "recharts": "3.8.0",
     "sonner": "2.0.8",
     "tailwind-merge": "3.6.0",
-    "zod": "4.5.2",
+    "zod": "4.6.7",
     "zustand": "5.0.15"
   },
   "devDependencies": {

@@ -18,7 +18,8 @@ pnpm dev                         # 本地开发
 pnpm build                       # 类型检查 + 生产构建
 pnpm lint / typecheck / test     # 质量门禁
 pnpm test:coverage               # 覆盖率（80% 门槛，生成目录除外）
-pnpm test:e2e                    # Playwright
+pnpm test:e2e                    # Playwright（跑当前平台；截图断言只在 pinned 镜像内有效）
+pnpm screenshots / :update       # 截图基线：在 mcr.microsoft.com/playwright:v1.62.1-noble 内断言/重录
 pnpm api:generate                # orval 生成 + 契约投影 + contract-manifest.json
 pnpm api:breaking                # OpenAPI Breaking Change 检测（merge-base 基线）
 node scripts/generate-registry-inventory.mjs --check  # 组件来源清单核对

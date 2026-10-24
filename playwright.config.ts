@@ -54,9 +54,13 @@ export default defineConfig({
   // tests/screenshots/*.yml. Nothing uses it today; scope the template before
   // adding one.
   //
-  // Platform caveat: no CI workflow runs Playwright today, so baselines are
-  // only produced and compared on macOS. If e2e is ever wired into Linux CI,
-  // this template needs a {platform} segment plus a Linux baseline set.
+  // Rendering platform: the baselines are produced *and* compared inside the
+  // pinned Playwright image (`scripts/e2e-container.sh`; the tag tracks the
+  // `@playwright/test` version above), and the CI e2e job runs that same image.
+  // A host run on macOS rasterises text with different fonts and hinting — the
+  // same page drifts by ~2 % of pixels there — so the set keeps exactly one
+  // renderer instead of a `{platform}` split: two sets would drift
+  // independently and neither would describe CI.
   expect: {
     toHaveScreenshot: {
       maxDiffPixelRatio: 0.01,

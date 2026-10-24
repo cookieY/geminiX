@@ -45,6 +45,9 @@ for (const viewport of VIEWPORTS) {
         await page.goto("/workspace");
         await page.evaluate(() => document.fonts.ready);
         await expect(page.getByTestId(READY_TESTID)).toBeVisible();
+        await page.evaluate(
+          () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+        );
         await page.waitForTimeout(150);
         await expect(page).toHaveScreenshot(`shell-${viewport.name}-${locale}-${theme}.png`, {
           fullPage: true,
@@ -60,6 +63,9 @@ for (const viewport of VIEWPORTS) {
         await page.goto("/login");
         await page.evaluate(() => document.fonts.ready);
         await expect(page.getByText(/登录 Yearning|Sign in to Yearning/)).toBeVisible();
+        await page.evaluate(
+          () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+        );
         await page.waitForTimeout(150);
         await expect(page).toHaveScreenshot(`login-${locale}-${theme}.png`, { fullPage: true });
       });
