@@ -108,6 +108,33 @@ const PRECHECK_TONE_CLASS = {
   stale: { text: "text-warning", dot: "bg-warning" },
 } as const;
 
+interface DraftMetadataSnapshot {
+  title: string;
+  description: string | undefined;
+  requested_scheduled_for: string | null;
+}
+
+function draftMetadataSnapshot(
+  title: string,
+  description: string,
+  requestedFor: string,
+): DraftMetadataSnapshot {
+  return {
+    title: title.trim(),
+    description: description === "" ? undefined : description,
+    requested_scheduled_for: requestedForToIso(requestedFor),
+  };
+}
+
+function sameDraftMetadata(
+  left: DraftMetadataSnapshot,
+  right: DraftMetadataSnapshot,
+): boolean {
+  return left.title === right.title
+    && left.description === right.description
+    && left.requested_scheduled_for === right.requested_scheduled_for;
+}
+
 
 function idempotencyKey(): string {
   return `draft-${crypto.randomUUID()}`;
@@ -407,6 +434,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [metaDescription, setMetaDescription] = useState("");
   // §18.56方案B：期望执行时间（datetime-local；空=清除）。
   const [metaRequestedFor, setMetaRequestedFor] = useState("");
+  const metadataEditRevisionRef = useRef(0);
+  const visibleMetadataRef = useRef<DraftMetadataSnapshot>(
+    draftMetadataSnapshot("", "", ""),
+  );
 
   // ---- workspace engine; lives at the page level so the run keeps polling
   // while the user scrolls the form or reads the summary. ----
@@ -440,6 +471,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // enriches metadata/version but must not masquerade as a fresh visit and
   // wipe the SQL. A component remount resets this ref, preserving Reveal.
   const sessionContentDraftId = useRef<string | null>(null);
+  // Adoption seeds the visible metadata from the local create form. Preserve
+  // edits made while POST or the first draft query is in flight instead of
+  // replacing them with the older server snapshot when that query lands.
+  const sessionMetadataDraftId = useRef<string | null>(null);
   useEffect(() => {
     if (draft === null || attachedDraftId.current === draft.id) return;
     attachedDraftId.current = draft.id;
@@ -451,10 +486,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     } else {
       store.attach({ id: draft.id, state: draft.state, version: draft.version, sql: null });
     }
-    // Metadata starts from the persisted draft (async load lands here).
-    setMetaTitle(draft.title ?? "");
-    setMetaDescription(draft.description ?? "");
-    setMetaRequestedFor(isoToRequestedFor(draft.requested_scheduled_for));
+    if (sessionMetadataDraftId.current !== draft.id) {
+      // A normal draft route starts from persisted metadata.
+      setMetaTitle(draft.title ?? "");
+      setMetaDescription(draft.description ?? "");
+      setMetaRequestedFor(isoToRequestedFor(draft.requested_scheduled_for));
+      visibleMetadataRef.current = draftMetadataSnapshot(
+        draft.title ?? "",
+        draft.description ?? "",
+        isoToRequestedFor(draft.requested_scheduled_for),
+      );
+    }
   }, [draft, store]);
 
   // The shared event feed lives for the page's lifetime in draft mode.
@@ -578,13 +620,20 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     return current.savedSql === savedSql && editorIsCurrent(savedSql);
   }, [editorIsCurrent]);
 
+  const metadataIsCurrent = useCallback(
+    (snapshot: DraftMetadataSnapshot, revision: number): boolean =>
+      metadataEditRevisionRef.current === revision
+      && sameDraftMetadata(visibleMetadataRef.current, snapshot),
+    [],
+  );
+
   const createMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (metadata: DraftMetadataSnapshot) =>
       createChangeDraft({
         flow_id: selectedFlowId as string,
-        title: createTitle.trim(),
-        description: createDescription === "" ? undefined : createDescription,
-        requested_scheduled_for: requestedForToIso(createRequestedFor) ?? undefined,
+        title: metadata.title,
+        description: metadata.description,
+        requested_scheduled_for: metadata.requested_scheduled_for ?? undefined,
       }),
     onError: (error) => { showActionError(error, "createChangeDraft"); },
   });
@@ -625,6 +674,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     }
     setStepError(null);
     setAdoptionPending(true);
+    const metadataAtCreate = visibleMetadataRef.current;
     const adoption = (async (): Promise<string | null> => {
       let created: {
         id: string;
@@ -632,7 +682,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         state: ChangeDraft["state"];
       };
       try {
-        created = (await createMutation.mutateAsync()) as unknown as {
+        created = (await createMutation.mutateAsync(metadataAtCreate)) as unknown as {
           id: string;
           version: number;
           state: ChangeDraft["state"];
@@ -648,6 +698,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       const sqlAtCreate = createSqlRef.current;
       adoptedDraftIdRef.current = created.id;
       sessionContentDraftId.current = created.id;
+      sessionMetadataDraftId.current = created.id;
+      const metadataAtAdoption = visibleMetadataRef.current;
+      setMetaTitle(metadataAtAdoption.title);
+      setMetaDescription(metadataAtAdoption.description ?? "");
+      setMetaRequestedFor(isoToRequestedFor(metadataAtAdoption.requested_scheduled_for));
       store.attach({
         id: created.id,
         state: created.state,
@@ -755,7 +810,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       // metadata edits must land before the order freezes them. Adoption in
       // the same click already carries the metadata in the create call.
       if (metaBound && activeDraftId !== null) {
-        await metaSaveMutation.mutateAsync();
+        await metaSaveMutation.mutateAsync({
+          metadata: visibleMetadataRef.current,
+          revision: metadataEditRevisionRef.current,
+        });
       }
       // §18.74：run完成在服务端异步推进行version——提交前强制重读草稿，
       // If-Match用服务端真值（种子链同款姿势），消除终态竞态。
@@ -786,13 +844,8 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   });
 
   const metaSaveMutation = useMutation({
-    mutationFn: () =>
-      updateChangeDraft(activeDraftId as string, {
-        title: metaTitle.trim(),
-        description: metaDescription === "" ? undefined : metaDescription,
-        // §18.56方案B：显式null清除（is-null语义）；值=设置。
-        requested_scheduled_for: requestedForToIso(metaRequestedFor),
-      }, { headers: liveIfMatch() }),
+    mutationFn: ({ metadata }: { metadata: DraftMetadataSnapshot; revision: number }) =>
+      updateChangeDraft(activeDraftId as string, metadata, { headers: liveIfMatch() }),
     onSuccess: () => {
       setActionError(null);
       void queryClient.invalidateQueries({ queryKey: ["change-draft", activeDraftId] });
@@ -904,6 +957,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // 保存信息 folded away) — persist SQL then metadata, then leave. ----
   const saveDraftAndLeave = (): void => {
     const leave = () => { void navigate("/changes/mine"); };
+    const metadataSnapshot = visibleMetadataRef.current;
+    const metadataRevision = metadataEditRevisionRef.current;
+    const metadataUnchanged = () => metadataIsCurrent(metadataSnapshot, metadataRevision);
     if (mode === "create" && activeDraftId === null) {
       // The one explicit opt-in to the draft: adopt implicitly, then leave.
       void (async () => {
@@ -911,12 +967,12 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         if (draftId === null) return;
         const current = useDraftEditorStore.getState();
         if (!selectDirty(current)) {
-          leave();
+          if (metadataUnchanged()) leave();
           return;
         }
         saveMutation.mutate({ draftId, sql: current.sql }, {
           onSuccess: (_saved, variables) => {
-            if (savedSqlMatchesEditor(variables.sql)) leave();
+            if (savedSqlMatchesEditor(variables.sql) && metadataUnchanged()) leave();
           },
         });
       })();
@@ -934,9 +990,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         onSuccess: (_saved, variables) => {
           if (!savedSqlMatchesEditor(variables.sql)) return;
           if (metaBound) {
-            metaSaveMutation.mutate(undefined, {
+            metaSaveMutation.mutate({ metadata: metadataSnapshot, revision: metadataRevision }, {
               onSuccess: () => {
-                if (editorIsCurrent(variables.sql)) leave();
+                if (editorIsCurrent(variables.sql) && metadataUnchanged()) leave();
               },
             });
           }
@@ -946,9 +1002,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       return;
     }
     if (metaBound) {
-      metaSaveMutation.mutate(undefined, {
+      metaSaveMutation.mutate({ metadata: metadataSnapshot, revision: metadataRevision }, {
         onSuccess: () => {
-          if (editorIsCurrent(current.sql)) leave();
+          if (editorIsCurrent(current.sql) && metadataUnchanged()) leave();
         },
       });
     }
@@ -1230,14 +1286,45 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         <MetaFields
           title={metaBound ? metaTitle : createTitle}
           description={metaBound ? metaDescription : createDescription}
-          onTitleChange={metaBound ? setMetaTitle : (value) => { setCreateTitle(value); setStepError(null); }}
-          onDescriptionChange={metaBound ? setMetaDescription : setCreateDescription}
+          onTitleChange={(value) => {
+            metadataEditRevisionRef.current += 1;
+            visibleMetadataRef.current = {
+              ...visibleMetadataRef.current,
+              title: value.trim(),
+            };
+            if (metaBound) {
+              setMetaTitle(value);
+            } else {
+              setCreateTitle(value);
+              setStepError(null);
+            }
+          }}
+          onDescriptionChange={(value) => {
+            metadataEditRevisionRef.current += 1;
+            visibleMetadataRef.current = {
+              ...visibleMetadataRef.current,
+              description: value === "" ? undefined : value,
+            };
+            if (metaBound) {
+              setMetaDescription(value);
+            } else {
+              setCreateDescription(value);
+            }
+          }}
           requestedFor={metaBound ? metaRequestedFor : createRequestedFor}
-          onRequestedForChange={
-            metaBound
-              ? (value) => { setMetaRequestedFor(value); setStepError(null); }
-              : (value) => { setCreateRequestedFor(value); setStepError(null); }
-          }
+          onRequestedForChange={(value) => {
+            metadataEditRevisionRef.current += 1;
+            visibleMetadataRef.current = {
+              ...visibleMetadataRef.current,
+              requested_scheduled_for: requestedForToIso(value),
+            };
+            if (metaBound) {
+              setMetaRequestedFor(value);
+            } else {
+              setCreateRequestedFor(value);
+            }
+            setStepError(null);
+          }}
           requestedForError={
             metaBound
               ? metaRequestedFor !== "" && new Date(metaRequestedFor).getTime() <= Date.now()

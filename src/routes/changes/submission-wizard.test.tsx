@@ -423,6 +423,155 @@ describe("SubmissionWizard in-flight SQL saves", () => {
     expect(screen.queryByTestId("mine-page")).not.toBeInTheDocument();
   });
 
+  it("does not leave when metadata changes while its patch is in flight", async () => {
+    const created = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "元数据 PATCH 快照" }),
+      })
+    ).json()) as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        has_sql: boolean;
+        [key: string]: unknown;
+      };
+    };
+    const draft = created.data;
+    const metadataStarted = gate();
+    const releaseMetadata = gate();
+    let patchedMetadata: { title?: string; description?: string | null } = {};
+    server.use(
+      http.patch("*/change-drafts/:draftId", async ({ request }) => {
+        patchedMetadata = (await request.json()) as {
+          title?: string;
+          description?: string | null;
+        };
+        metadataStarted.open();
+        await releaseMetadata.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            ...draft,
+            state: "draft",
+            version: draft.version + 1,
+            revision: draft.revision + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard(`/changes/drafts/${draft.id}`);
+    const title = await screen.findByTestId("draft-title-input");
+    await waitFor(() => {
+      expect(title).toHaveValue("元数据 PATCH 快照");
+    });
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
+
+    await metadataStarted.promise;
+    expect(patchedMetadata.title).toBe("元数据 PATCH 快照");
+    fireEvent.change(title, {
+      target: { value: "PATCH 期间的新标题" },
+    });
+    releaseMetadata.open();
+
+    await waitFor(() => {
+      expect(title).toHaveValue("PATCH 期间的新标题");
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("wizard-save-draft")).toBeEnabled();
+    });
+    expect(screen.queryByTestId("mine-page")).not.toBeInTheDocument();
+  });
+
+  it("keeps metadata edited during implicit adoption before the first draft query", async () => {
+    const created = await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flow_id: FIXTURE_FLOW_ID,
+          title: "adoption metadata 快照",
+          description: "POST 时的说明",
+        }),
+      })
+    ).json() as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        title: string;
+        description: string | null;
+        requested_scheduled_for: string | null;
+        [key: string]: unknown;
+      };
+    };
+    const createStarted = gate();
+    const releaseCreate = gate();
+    let postedMetadata: {
+      title?: string;
+      description?: string | null;
+      requested_scheduled_for?: string | null;
+    } = {};
+    server.use(
+      http.post("*/change-drafts", async ({ request }) => {
+        postedMetadata = (await request.json()) as typeof postedMetadata;
+        createStarted.open();
+        await releaseCreate.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: created.data,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "adoption metadata 快照" },
+    });
+    fireEvent.change(screen.getByTestId("draft-description-input"), {
+      target: { value: "POST 时的说明" },
+    });
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
+
+    await createStarted.promise;
+    expect(postedMetadata.title).toBe("adoption metadata 快照");
+    expect(postedMetadata.description).toBe("POST 时的说明");
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "POST 期间修改后的标题" },
+    });
+    fireEvent.change(screen.getByTestId("draft-description-input"), {
+      target: { value: "POST 期间修改后的说明" },
+    });
+    fireEvent.click(screen.getByTestId("draft-requested-for"));
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    const iso = `${String(tomorrow.getFullYear())}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+    fireEvent.click(await screen.findByRole("button", { name: iso }));
+    fireEvent.click(screen.getByTestId("draft-requested-for-time-toggle"));
+    fireEvent.click(within(screen.getByTestId("dtp-hours")).getByRole("button", { name: "09" }));
+    fireEvent.click(within(screen.getByTestId("dtp-minutes")).getByRole("button", { name: "30" }));
+    fireEvent.click(screen.getByTestId("draft-requested-for-confirm"));
+    const requestedFor = `${iso} 09:30`;
+    releaseCreate.open();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("draft-title-input")).toHaveValue("POST 期间修改后的标题");
+    });
+    expect(screen.getByTestId("draft-description-input")).toHaveValue("POST 期间修改后的说明");
+    expect(screen.getByTestId("draft-requested-for")).toHaveValue(requestedFor);
+    expect(screen.getByTestId("wizard-save-draft")).toBeEnabled();
+    expect(screen.queryByTestId("mine-page")).not.toBeInTheDocument();
+  });
+
   it("adopts an implicit draft without losing SQL typed while its first save is in flight", async () => {
     const saveStarted = gate();
     const releaseSave = gate();
