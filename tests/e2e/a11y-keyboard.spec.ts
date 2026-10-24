@@ -84,8 +84,11 @@ test("the datasource edit dialog traps focus and returns it after close", async 
   await page.goto("/admin/datasources");
   await expect(page.getByTestId(/ds-row-/).first()).toBeVisible();
 
-  const editTrigger = page.getByTestId(/ds-edit-/).first();
-  await editTrigger.click();
+  // Row actions live in the ⋯ kebab; the menu item opens the dialog and the
+  // menu hands focus back to its trigger, so focus-return asserts on it.
+  const kebab = page.getByTestId(/ds-actions-/).first();
+  await kebab.click();
+  await page.getByTestId(/ds-edit-/).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 
@@ -112,7 +115,7 @@ test("the datasource edit dialog traps focus and returns it after close", async 
 
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
-  await expect(editTrigger).toBeFocused();
+  await expect(kebab).toBeFocused();
 });
 
 test("session loss mid-dialog never traps the keyboard in a dead overlay", async ({ page }) => {
@@ -120,8 +123,8 @@ test("session loss mid-dialog never traps the keyboard in a dead overlay", async
   await page.goto("/admin/datasources");
   await expect(page.getByTestId(/ds-row-/).first()).toBeVisible();
 
-  const editTrigger = page.getByTestId(/ds-edit-/).first();
-  await editTrigger.click();
+  await page.getByTestId(/ds-actions-/).first().click();
+  await page.getByTestId(/ds-edit-/).first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
 
   await setMockAuthBehavior(page, "expired");

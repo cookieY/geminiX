@@ -34,7 +34,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/badge.tsx",
-          "sha256": "517d8756e037b30fd88ebf584e6768e0034a786f0b400a369436236c03459f99"
+          "sha256": "af137b60d46144419d0cbbb99eea7e86a773ddf8a81e8815da5485d86bae3690"
         }
       ]
     },
@@ -232,7 +232,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/table.tsx",
-          "sha256": "a52ee29e6d5c299ef4e62f57a56291905c5a32863ec9aa370a49c5863793ee12"
+          "sha256": "d61cbadb05de1ff80c2c075f98a8d5a5d87343001539e837474edaed8c27ec44"
         }
       ]
     },

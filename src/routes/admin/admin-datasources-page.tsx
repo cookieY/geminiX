@@ -63,8 +63,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/components/ui/empty";
+import {
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "@/shared/components/ui/dropdown-menu";
 import { useCursorPage } from "@/shared/lib/cursor-page";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 
 /**
@@ -843,14 +848,21 @@ function CapabilityMatrix({ datasourceId, probeKey }: { datasourceId: string; pr
   );
 }
 
-function ConnectionTestControls({
+function DatasourceRow({
   datasource,
+  onEdit,
+  onDelete,
   onTestStarted,
 }: {
   datasource: Datasource;
+  onEdit: () => void;
+  onDelete: () => void;
   onTestStarted: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
+  // Test state hoisted from the old inline-button strip: the actions live in
+  // the ⋯ menu now (spec §203 收纳), while the async feedback stays visible
+  // beside the kebab.
   const [taskId, setTaskId] = useState<string | null>(null);
   const testMutation = useTestDatasourceConnection();
   const taskQuery = useAdminTask(taskId ?? "", taskId !== null);
@@ -858,6 +870,12 @@ function ConnectionTestControls({
   // §18.76补（owner裁定沿Provider拒因透出路径）：同步拒因走meta.detail；
   // 异步Task失败走task.error.detail（Probe真实失败原因，非笼统文案）。
   const [testErrorDetail, setTestErrorDetail] = useState<string | null>(null);
+
+  const referenced = (datasource.referenced_by_flow_count ?? 0) > 0;
+  const testBusy =
+    testMutation.isPending ||
+    taskQuery.data?.state === "running" ||
+    taskQuery.data?.state === "queued";
 
   const runTest = () => {
     setTestErrorKey(null);
@@ -880,74 +898,6 @@ function ConnectionTestControls({
     );
   };
 
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={runTest}
-          disabled={testMutation.isPending || taskQuery.data?.state === "running" || taskQuery.data?.state === "queued"}
-          data-testid={`ds-test-button-${datasource.id}`}
-        >
-          <PlugZap /> {t("admin.datasources.testConnection")}
-        </Button>
-      </div>
-      {taskQuery.data?.state === "queued" || taskQuery.data?.state === "running" ? (
-        <p className="text-muted-foreground text-xs">{t("admin.datasources.testRunning")}</p>
-      ) : null}
-      {/* owner真机：测试成功此前零反馈（旧代码只画运行中/失败两态）——
-          补成功行，与新拒因渲染对称。 */}
-      {taskQuery.data?.state === "succeeded" ? (
-        <p
-          className="text-right text-xs text-[var(--risk-safe)]"
-          data-testid={`ds-test-ok-${datasource.id}`}
-        >
-          {t("admin.datasources.testOk")}
-        </p>
-      ) : null}
-      {taskQuery.data?.state === "failed" ? (
-        <div className="flex flex-col items-end text-right">
-          <p className="text-xs text-destructive">{t("admin.datasources.testFailed")}</p>
-          {taskQuery.data.error?.detail ? (
-            <p
-              className="break-all font-mono text-xs text-destructive"
-              data-testid={`ds-test-error-detail-${datasource.id}`}
-            >
-              {taskQuery.data.error.detail}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {testErrorKey !== null ? (
-        <div className="flex flex-col items-end text-right">
-          <p className="text-xs text-destructive">{t(testErrorKey)}</p>
-          {testErrorDetail !== null ? (
-            <p
-              className="break-all font-mono text-xs text-destructive"
-              data-testid={`ds-test-error-detail-${datasource.id}`}
-            >
-              {testErrorDetail}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function DatasourceRow({
-  datasource,
-  onEdit,
-  onDelete,
-  onTestStarted,
-}: {
-  datasource: Datasource;
-  onEdit: () => void;
-  onDelete: () => void;
-  onTestStarted: (taskId: string) => void;
-}) {
-  const { t } = useTranslation();
   return (
     <TableRow data-testid={`ds-row-${datasource.id}`} data-row-key={datasource.id}>
       <TableCell className="font-medium">
@@ -994,41 +944,77 @@ function DatasourceRow({
         {t("admin.datasources.referencedBy", { count: datasource.referenced_by_flow_count ?? 0 })}
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex justify-end gap-1.5">
-          <ConnectionTestControls datasource={datasource} onTestStarted={onTestStarted} />
-          <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`ds-edit-${datasource.id}`}>
-            <Pencil /> {t("common.edit")}
-          </Button>
-          {/* §18.58: a referenced datasource cannot be deleted (1107, 只能停
-              用) — the disabled button carries a Tooltip explaining why. The
-              trigger is an interactive span wrapper: disabled buttons swallow
-              pointer events, so the tooltip could never open on the button
-              itself. */}
-          {(datasource.referenced_by_flow_count ?? 0) > 0 ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <span
-                      className="inline-flex"
-                      data-testid={`ds-delete-${datasource.id}`}
-                    >
-                      <Button variant="ghost" size="sm" disabled>
-                        <Trash2 /> {t("common.delete")}
-                      </Button>
-                    </span>
-                  }
-                />
-                <TooltipContent data-testid={`ds-delete-tooltip-${datasource.id}`}>
-                  {t("admin.datasources.deleteBlockedHint")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={onDelete} data-testid={`ds-delete-${datasource.id}`}>
-              <Trash2 /> {t("common.delete")}
-            </Button>
-          )}
+        <div className="flex flex-col items-end gap-1">
+          <TableRowActions testId={`ds-actions-${datasource.id}`}>
+            <DropdownMenuItem
+              onClick={runTest}
+              disabled={testBusy}
+              data-testid={`ds-test-button-${datasource.id}`}
+            >
+              <PlugZap /> {t("admin.datasources.testConnection")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit} data-testid={`ds-edit-${datasource.id}`}>
+              <Pencil /> {t("common.edit")}
+            </DropdownMenuItem>
+            {/* §18.58: a referenced datasource cannot be deleted (1107, 只能停
+                用) — the disabled menu item carries the reason as a trailing
+                muted line (tooltips do not travel into menu portals). */}
+            {referenced ? (
+              <>
+                <DropdownMenuItem disabled data-testid={`ds-delete-${datasource.id}`}>
+                  <Trash2 /> {t("common.delete")}
+                </DropdownMenuItem>
+                <DropdownMenuGroup><DropdownMenuLabel>{t("admin.datasources.deleteBlockedHint")}</DropdownMenuLabel></DropdownMenuGroup>
+              </>
+            ) : (
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={onDelete}
+                data-testid={`ds-delete-${datasource.id}`}
+              >
+                <Trash2 /> {t("common.delete")}
+              </DropdownMenuItem>
+            )}
+          </TableRowActions>
+          {taskQuery.data?.state === "queued" || taskQuery.data?.state === "running" ? (
+            <p className="text-muted-foreground text-xs">{t("admin.datasources.testRunning")}</p>
+          ) : null}
+          {/* owner真机：测试成功此前零反馈（旧代码只画运行中/失败两态）——
+              补成功行，与新拒因渲染对称。 */}
+          {taskQuery.data?.state === "succeeded" ? (
+            <p
+              className="text-xs text-[var(--risk-safe)]"
+              data-testid={`ds-test-ok-${datasource.id}`}
+            >
+              {t("admin.datasources.testOk")}
+            </p>
+          ) : null}
+          {taskQuery.data?.state === "failed" ? (
+            <div className="flex flex-col items-end text-right">
+              <p className="text-xs text-destructive">{t("admin.datasources.testFailed")}</p>
+              {taskQuery.data.error?.detail ? (
+                <p
+                  className="break-all font-mono text-xs text-destructive"
+                  data-testid={`ds-test-error-detail-${datasource.id}`}
+                >
+                  {taskQuery.data.error.detail}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {testErrorKey !== null ? (
+            <div className="flex flex-col items-end text-right">
+              <p className="text-xs text-destructive">{t(testErrorKey)}</p>
+              {testErrorDetail !== null ? (
+                <p
+                  className="break-all font-mono text-xs text-destructive"
+                  data-testid={`ds-test-error-detail-${datasource.id}`}
+                >
+                  {testErrorDetail}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </TableCell>
     </TableRow>

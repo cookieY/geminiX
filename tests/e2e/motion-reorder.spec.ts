@@ -15,9 +15,11 @@ test("deleting a row FLIPs the rows below it", async ({ page }) => {
   await expect(rows.first()).toBeVisible({ timeout: 15_000 });
   expect(await rows.count()).toBeGreaterThan(3);
 
-  const row = rows.filter({ has: page.locator('button[data-testid^="ds-delete-"]') }).first();
+  // analytics-pg: the unreferenced row whose ⋯ delete is enabled.
+  const row = page.locator("tr", { hasText: "analytics-pg" });
   const name = (await row.locator("td").first().innerText()).trim();
-  await row.locator('button[data-testid^="ds-delete-"]').click();
+  await row.getByTestId(/ds-actions-/).click();
+  await page.getByTestId(/^ds-delete-/).first().click();
   await page.getByTestId("ds-delete-confirm").click();
 
   await page.waitForFunction(

@@ -35,6 +35,8 @@ import { renderSkillDescription } from "@/features/admin/skill-description";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
@@ -758,29 +760,25 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                         <StateBadge state={state} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        <TableRowActions testId={`review-input-actions-${id}`}>
+                          <DropdownMenuItem
                             onClick={() => {
                               setEditing(row);
                               setDialogOpen(true);
                             }}
                             data-testid={`review-input-edit-${id}`}
                           >
-                            {t("common.edit")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                            <Pencil /> {t("common.edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
                             onClick={() => { setDeleting(row); }}
                             disabled={builtin}
                             data-testid={`review-input-delete-${id}`}
                           >
                             <Trash2 /> {t("common.delete")}
-                          </Button>
-                        </div>
+                          </DropdownMenuItem>
+                        </TableRowActions>
                       </TableCell>
                     </TableRow>
                   );

@@ -130,18 +130,22 @@ function OrderRow({ order }: { order: ChangeOrder }) {
       <TableCell className="text-muted-foreground text-xs">
         {formatTimestamp(order.submitted_at)}
       </TableCell>
-      <TableCell>
+      <TableCell className="text-right">
+        {/* Reference ruling 2026-10-24: a navigation table ends with a quiet
+            right-aligned affordance, not a labeled button; the row itself
+            navigates and this echoes it. */}
         <Button
           variant="ghost"
-          size="sm"
+          size="icon-sm"
+          className="text-muted-foreground"
+          aria-label={t("orders.list.open")}
           onClick={(event) => {
             event.stopPropagation();
             void navigate(`/changes/orders/${order.id}`);
           }}
           data-testid={`open-order-${order.display_number}`}
         >
-          {t("orders.list.open")}
-          <ArrowRight className="size-3.5" aria-hidden />
+          <ArrowRight aria-hidden />
         </Button>
       </TableCell>
     </TableRow>

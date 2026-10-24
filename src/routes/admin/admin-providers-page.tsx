@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, PlugZap, Plus, Trash2 } from "lucide-react";
 import type {
   AiProvider,
   AiProviderWrite,
@@ -63,6 +63,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/shared/components/ui/empty";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * Provider 管理 (route /admin/review-engine/providers; UI spec §5.3 puts
@@ -476,63 +478,63 @@ function ProviderRow({
         </Badge>
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex justify-end gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={testMutation.isPending}
-            onClick={() => {
-              setTestOk(false);
-              setErrorKey(null);
-              setErrorDetail(null);
-              setErrorRequestId(null);
-              testMutation.mutate(
-                { id: provider.id },
-                {
-                  onSuccess: () => { setTestOk(true); },
-                  onError: (error) => {
-                    const display = describeError(error, "testAiProviderConnection");
-                    setErrorKey(display.messageKey);
-                    setErrorDetail(display.detail);
-                    setErrorRequestId(display.requestId);
+        <div className="flex flex-col items-end gap-1">
+          <TableRowActions testId={`provider-actions-${provider.id}`}>
+            <DropdownMenuItem
+              disabled={testMutation.isPending}
+              onClick={() => {
+                setTestOk(false);
+                setErrorKey(null);
+                setErrorDetail(null);
+                setErrorRequestId(null);
+                testMutation.mutate(
+                  { id: provider.id },
+                  {
+                    onSuccess: () => { setTestOk(true); },
+                    onError: (error) => {
+                      const display = describeError(error, "testAiProviderConnection");
+                      setErrorKey(display.messageKey);
+                      setErrorDetail(display.detail);
+                      setErrorRequestId(display.requestId);
+                    },
                   },
-                },
-              );
-            }}
-            data-testid={`provider-test-${provider.id}`}
-          >
-            {t("admin.datasources.testConnection")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`provider-edit-${provider.id}`}>
-            {t("common.edit")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onAskDelete} data-testid={`provider-delete-${provider.id}`}>
-            <Trash2 /> {t("common.delete")}
-          </Button>
+                );
+              }}
+              data-testid={`provider-test-${provider.id}`}
+            >
+              <PlugZap /> {t("admin.datasources.testConnection")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit} data-testid={`provider-edit-${provider.id}`}>
+              <Pencil /> {t("common.edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={onAskDelete} data-testid={`provider-delete-${provider.id}`}>
+              <Trash2 /> {t("common.delete")}
+            </DropdownMenuItem>
+          </TableRowActions>
+          {testMutation.isPending ? (
+            <p className="text-muted-foreground text-xs" data-testid={`provider-test-running-${provider.id}`}>
+              {t("admin.datasources.testRunning")}
+            </p>
+          ) : null}
+          {testOk && !testMutation.isPending ? (
+            <p className="text-xs text-[var(--risk-safe)]" data-testid={`provider-test-ok-${provider.id}`}>
+              {t("admin.providers.testOk")}
+            </p>
+          ) : null}
+          {errorKey !== null ? (
+            <div className="text-right">
+              <p className="text-xs text-destructive">{t(errorKey)}</p>
+              {errorDetail !== null ? (
+                <p className="break-all font-mono text-xs text-destructive" data-testid={`provider-test-error-detail-${provider.id}`}>
+                  {errorDetail}
+                </p>
+              ) : null}
+              {errorRequestId !== null ? (
+                <p className="text-muted-foreground text-xs">request_id: {errorRequestId}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        {testMutation.isPending ? (
-          <p className="text-muted-foreground mt-1 text-right text-xs" data-testid={`provider-test-running-${provider.id}`}>
-            {t("admin.datasources.testRunning")}
-          </p>
-        ) : null}
-        {testOk && !testMutation.isPending ? (
-          <p className="mt-1 text-right text-xs text-[var(--risk-safe)]" data-testid={`provider-test-ok-${provider.id}`}>
-            {t("admin.providers.testOk")}
-          </p>
-        ) : null}
-        {errorKey !== null ? (
-          <div className="mt-1 text-right">
-            <p className="text-xs text-destructive">{t(errorKey)}</p>
-            {errorDetail !== null ? (
-              <p className="break-all font-mono text-xs text-destructive" data-testid={`provider-test-error-detail-${provider.id}`}>
-                {errorDetail}
-              </p>
-            ) : null}
-            {errorRequestId !== null ? (
-              <p className="text-muted-foreground text-xs">request_id: {errorRequestId}</p>
-            ) : null}
-          </div>
-        ) : null}
       </TableCell>
     </TableRow>
   );

@@ -84,9 +84,12 @@ for (const theme of THEMES) {
     await mockSession(page, "admin");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/admin/datasources");
-    const trigger = page.locator('button[data-testid^="ds-delete-"]').first();
-    await expect(trigger).toBeEnabled({ timeout: 15_000 });
-    await trigger.click();
+    // analytics-pg is the unreferenced row: its ⋯ menu carries an enabled
+    // delete (referenced rows like prod-order-mysql keep a disabled one).
+    const row = page.locator("tr", { hasText: "analytics-pg" });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.getByTestId(/ds-actions-/).click();
+    await page.getByTestId(/^ds-delete-/).first().click();
     await expect(page.locator("[data-slot='dialog-content']").first()).toBeVisible();
     await page.waitForTimeout(150);
     await expect(page).toHaveScreenshot(`dialog-overlay-${theme}.png`, { fullPage: true });

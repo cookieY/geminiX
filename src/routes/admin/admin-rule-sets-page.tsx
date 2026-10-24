@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Layers, Plus, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { RuleSet, RuleSetWrite } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
@@ -55,7 +55,8 @@ import {
 } from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * Rule Set 组合管理 (route /admin/rule-sets; migration contract §2 maps the
@@ -470,52 +471,36 @@ export default function AdminRuleSetsPage() {
                         {ruleSet.created_at.replace("T", " ").replace("Z", " UTC")}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        <TableRowActions testId={`rule-set-actions-${ruleSet.id}`}>
+                          <DropdownMenuItem
                             onClick={() => {
                               setEditing(ruleSet);
                               setDialogOpen(true);
                             }}
                             data-testid={`rule-set-edit-${ruleSet.id}`}
                           >
-                            {t("common.edit")}
-                          </Button>
-                          {/* §18.59：被引用规则集删除禁用改Tooltip说明
-                              （span包裹层——disabled按钮吞pointer events）。 */}
+                            <Pencil /> {t("common.edit")}
+                          </DropdownMenuItem>
+                          {/* §18.59：被引用规则集删除禁用——原因改为菜单内
+                              跟随的muted行（tooltip不进菜单portal）。 */}
                           {boundFlows.length > 0 ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={
-                                    <span
-                                      className="inline-flex"
-                                      data-testid={`rule-set-delete-${ruleSet.id}`}
-                                    >
-                                      <Button variant="ghost" size="sm" disabled>
-                                        <Trash2 /> {t("common.delete")}
-                                      </Button>
-                                    </span>
-                                  }
-                                />
-                                <TooltipContent>
-                                  {t("admin.ruleSets.deleteBlockedHint")}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <>
+                              <DropdownMenuItem disabled data-testid={`rule-set-delete-${ruleSet.id}`}>
+                                <Trash2 /> {t("common.delete")}
+                              </DropdownMenuItem>
+                              <DropdownMenuGroup><DropdownMenuLabel>{t("admin.ruleSets.deleteBlockedHint")}</DropdownMenuLabel></DropdownMenuGroup>
+                            </>
                           ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                            <DropdownMenuItem
+                              variant="destructive"
                               disabled={deleteMutation.isPending}
                               onClick={() => { setDeleting(ruleSet); }}
                               data-testid={`rule-set-delete-${ruleSet.id}`}
                             >
                               <Trash2 /> {t("common.delete")}
-                            </Button>
+                            </DropdownMenuItem>
                           )}
-                        </div>
+                        </TableRowActions>
                       </TableCell>
                     </TableRow>
                   );

@@ -1,7 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Plus } from "lucide-react";
+import { KeyRound, Pencil, Plus, PlugZap, Trash2 } from "lucide-react";
 import type { IdentityProvider } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -24,6 +24,8 @@ import {
 } from "@/features/admin/use-admin";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * 认证Provider管理 (route /admin/identity-providers; migration contract §2
@@ -257,12 +259,10 @@ export default function AdminIdentityProvidersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => { setEditing(provider); }}>
-                              {t("common.edit")}
-                            </Button>
-                            <DeleteProviderButton provider={provider} />
-                          </div>
+                          <DeleteProviderButton
+                            provider={provider}
+                            onEdit={() => { setEditing(provider); }}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -303,7 +303,7 @@ export default function AdminIdentityProvidersPage() {
   );
 }
 
-function DeleteProviderButton({ provider }: { provider: IdentityProvider }) {
+function DeleteProviderButton({ provider, onEdit }: { provider: IdentityProvider; onEdit: () => void }) {
   const { t } = useTranslation();
   const deleteProvider = useDeleteIdentityProvider();
   const testConnection = useTestIdentityProviderConnection();
@@ -311,28 +311,36 @@ function DeleteProviderButton({ provider }: { provider: IdentityProvider }) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [testTaskId, setTestTaskId] = useState<string | null>(null);
   return (
-    <>
-      {/* Async connection test (contract §2: "连接测试异步"); the returned
-          task id is surfaced for the generic task read route. */}
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={testConnection.isPending}
-        onClick={() => { testConnection.mutate(provider.id, {
-            onSuccess: (task) => {
-              setErrorText(null);
-              setTestTaskId(task.id);
-            },
-            onError: (error) => { setErrorText(describeErrorText(describeError(error, "testIdentityProviderConnection"))); },
-          }); }
-        }
-        data-testid={`admin-idp-test-${provider.id}`}
-      >
-        {t("adminIdp.testConnection")}
-      </Button>
-      <Button size="sm" variant="destructive" disabled={provider.enabled} onClick={() => { setOpen(true); }} data-testid={`admin-idp-delete-${provider.id}`}>
-        {t("common.delete")}
-      </Button>
+    <div className="flex flex-col items-end gap-1">
+      <TableRowActions testId={`admin-idp-actions-${provider.id}`}>
+        {/* Async connection test (contract §2: "连接测试异步"); the returned
+            task id is surfaced below the kebab for the generic task read route. */}
+        <DropdownMenuItem
+          disabled={testConnection.isPending}
+          onClick={() => { testConnection.mutate(provider.id, {
+              onSuccess: (task) => {
+                setErrorText(null);
+                setTestTaskId(task.id);
+              },
+              onError: (error) => { setErrorText(describeErrorText(describeError(error, "testIdentityProviderConnection"))); },
+            }); }
+          }
+          data-testid={`admin-idp-test-${provider.id}`}
+        >
+          <PlugZap /> {t("adminIdp.testConnection")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onEdit} data-testid={`admin-idp-edit-${provider.id}`}>
+          <Pencil /> {t("common.edit")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={provider.enabled}
+          onClick={() => { setOpen(true); }}
+          data-testid={`admin-idp-delete-${provider.id}`}
+        >
+          <Trash2 /> {t("common.delete")}
+        </DropdownMenuItem>
+      </TableRowActions>
       {testTaskId !== null && (
         <span className="text-muted-foreground font-mono text-xs" data-testid={`admin-idp-test-task-${provider.id}`}>
           {t("adminIdp.testTask", { id: testTaskId })}
@@ -375,7 +383,7 @@ function DeleteProviderButton({ provider }: { provider: IdentityProvider }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
 

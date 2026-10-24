@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { openRowActions, openRowActionsAt } from "@/test/row-actions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { HttpResponse, http } from "msw";
@@ -77,6 +78,7 @@ describe("gate: 用户删除影响预览（P105）", () => {
     stubSession(true);
     renderPage(<AdminUsersPage />);
     await screen.findByTestId("admin-users-table");
+    await openRowActions(`admin-user-actions-${ADMIN_FIXTURE_USER_BLOCKED_ID}`);
     await userEvent.click(screen.getByTestId(`admin-user-delete-${ADMIN_FIXTURE_USER_BLOCKED_ID}`));
     const impact = await screen.findByTestId("admin-user-delete-impact");
     // §18.54: blocker codes render as translated sentences, not raw keys.
@@ -139,8 +141,8 @@ describe("gate: 权限组表单符合新模型（P101）", () => {
     stubSession(true);
     renderPage(<AdminPermissionGroupsPage />);
     const row = await screen.findByTestId("admin-group-row-7a1a3c4d-2222-4222-8222-00000000b101");
-    const edit = within(row).getAllByRole("button")[0];
-    await userEvent.click(edit ?? row);
+    await openRowActionsAt(within(row).getByTestId(/admin-group-actions-/));
+    await userEvent.click(screen.getByTestId(/admin-group-edit-/));
     const memberCheckboxes = await screen.findAllByTestId(/^group-member-[0-9a-f]{8}-/);
     expect(memberCheckboxes.length).toBeGreaterThan(0);
     // The legacy ddl/dml/query transfer vocabulary must not appear.
@@ -197,8 +199,8 @@ describe("gate: 流程双表单符合新模型（§3）", () => {
     renderPage(<AdminFlowsPage />);
     await screen.findByTestId("admin-flows-table");
     const queryRow = screen.getByTestId("admin-flow-row-7a1a3c4d-3333-4333-8333-00000000f002");
-    const queryEdit = within(queryRow).getAllByRole("button")[0];
-    await userEvent.click(queryEdit ?? queryRow);
+    await openRowActionsAt(within(queryRow).getByTestId(/admin-flow-actions-/));
+    await userEvent.click(screen.getByTestId(/admin-flow-edit-/));
     const masking = await screen.findByTestId("flow-masking-rules");
     expect(masking).toHaveTextContent("敏感字段词表");
     const ruleInput = await within(masking).findAllByTestId(/flow-masking-rule-/);

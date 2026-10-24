@@ -25,6 +25,7 @@ test("secrets never render: datasource credentials and provider API key stay emp
 }) => {
   await page.goto("/admin/datasources");
   await expect(page.getByTestId(/ds-row-/).first()).toBeVisible();
+  await page.getByTestId(/ds-actions-/).first().click();
   await page.getByTestId(/ds-edit-/).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -46,6 +47,7 @@ test("secrets never render: datasource credentials and provider API key stay emp
 
   await page.goto("/admin/review-engine/providers");
   await expect(page.getByTestId(/provider-row-/).first()).toBeVisible();
+  await page.getByTestId(/provider-actions-/).first().click();
   await page.getByTestId(/provider-edit-/).first().click();
   const providerDialog = page.getByRole("dialog");
   await expect(providerDialog.getByTestId("provider-api-key")).toHaveValue("");
@@ -80,6 +82,7 @@ test("config hashes and review-invalidation impact live in the edit dialog (owne
   // owner裁定：列表不展示hash与常驻说明——两者在编辑对话框内。
   await expect(page.getByTestId("review-input-outdated-note")).toHaveCount(0);
   await expect(page.getByTestId("review-input-hash")).toHaveCount(0);
+  await page.getByTestId(/review-input-actions-/).first().click();
   await page.getByTestId(/review-input-edit-/).first().click();
   await expect(page.getByTestId("review-input-outdated-note")).toContainText(
     "引用旧 Hash 的未提交预审立即失效",
@@ -89,6 +92,7 @@ test("config hashes and review-invalidation impact live in the edit dialog (owne
 
   await page.goto("/admin/rule-sets");
   await expect(page.getByTestId("rule-set-hash").first()).toBeVisible();
+  await page.getByTestId(/rule-set-actions-/).first().click();
   await page.getByTestId(/rule-set-edit-/).first().click();
   const preview = page.getByTestId("rule-set-impact-preview");
   await expect(preview).toContainText("1 个流程");
@@ -115,7 +119,8 @@ test("a datasource connection test materializes the capability matrix with expla
   // §18.61: the probe purpose is the datasource's stored test_purpose
   // (seeded review) — the table carries no purpose select anymore.
   const pgRow = page.locator("tr", { hasText: "analytics-pg" });
-  await pgRow.getByTestId(/ds-test-button-/).click();
+  await pgRow.getByTestId(/ds-actions-/).click();
+  await page.getByTestId(/ds-test-button-/).click();
   const capabilities = page.getByTestId("ds-capabilities");
   await expect(capabilities).toContainText("16.3", { timeout: 8_000 });
   await expect(capabilities.getByTestId("ds-capability-execution")).toContainText("不可用");
@@ -154,9 +159,11 @@ test("builtin skill renders the lock badge and only the state stays toggleable",
   await expect(builtinRow.getByTestId(/review-input-builtin-/)).toContainText("内置");
   // owner裁定：行内解释文字挪入编辑对话框的builtin notice。
   await expect(builtinRow.getByText(/仅状态可切换/)).toHaveCount(0);
-  await expect(builtinRow.getByTestId(/review-input-delete-/)).toBeDisabled();
-
-  await builtinRow.getByTestId(/review-input-edit-/).click();
+  await builtinRow.getByTestId(/review-input-actions-/).click();
+  await expect(page.getByTestId(/review-input-delete-/)).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await builtinRow.getByTestId(/review-input-actions-/).click();
+  await page.getByTestId(/review-input-edit-/).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByTestId("review-input-builtin-notice")).toBeVisible();
   await expect(dialog.getByTestId("review-input-name")).toBeDisabled();
@@ -176,7 +183,8 @@ test("credential rows edit in exactly one explicit mode; keep only on configured
   await expect(mysqlRow.getByTestId(/ds-tls-plaintext-/)).toContainText("明文");
 
 
-  await pgRow.getByTestId(/ds-edit-/).click();
+  await pgRow.getByTestId(/ds-actions-/).click();
+  await page.getByTestId(/ds-edit-/).click();
   const dialog = page.getByRole("dialog");
   // Configured rows open in keep mode — the storage-preserving no-op.
   await expect(dialog.getByTestId("credential-keep-note-review")).toBeVisible();

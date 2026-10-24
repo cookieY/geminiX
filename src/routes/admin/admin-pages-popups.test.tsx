@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { openRowActions, openRowActionsAt } from "@/test/row-actions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { HttpResponse, http } from "msw";
@@ -130,7 +131,8 @@ describe("admin select-popup interactions (single isolated test)", () => {
     // ---- skills: toggle the builtin state through the locked editor ----
     const skills = renderPage(<AdminReviewSkillsPage />);
     const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
-    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
     await screen.findByTestId("review-input-builtin-notice");
     await userEvent.click(screen.getByTestId("review-input-state-select"));
     await userEvent.click(await screen.findByRole("option", { name: "停用" }));
@@ -164,6 +166,7 @@ describe("admin select-popup interactions (single isolated test)", () => {
     // ---- datasources (pg edit): keep is offered only on configured rows ----
     const pg = renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
     await screen.findByTestId("credential-row-review");
     // review is configured on pg → keep is offered there.
@@ -192,6 +195,7 @@ describe("admin select-popup interactions (single isolated test)", () => {
     const captured = captureDatasourcePut();
     const mysql = renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     await screen.findByTestId("credential-row-review");
     await userEvent.click(screen.getByTestId("credential-mode-review"));
@@ -228,6 +232,7 @@ describe("admin select-popup interactions (single isolated test)", () => {
     const capturedPurpose = captureDatasourcePut();
     const purposeEdit = renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     // 预填=存储值（review）呈现为只读类别（与表格徽章同词汇）。
     expect(screen.getByTestId("ds-test-purpose")).toHaveTextContent("只读");

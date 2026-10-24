@@ -343,15 +343,17 @@ test("dialog entry stays inside the frame budget", async ({ page }) => {
   // same Radix Dialog, scroll lock and enter animation as every other modal; a
   // form-heavy dialog's first paint is app work, not motion, so it is not a
   // stable frame gate target.
-  const trigger = page.locator('button[data-testid^="ds-delete-"]').first();
-  await expect(trigger).toBeEnabled({ timeout: 15_000 });
+  // analytics-pg: the unreferenced row whose ⋯ delete is enabled.
+  const triggerRow = page.locator("tr", { hasText: "analytics-pg" });
+  await expect(triggerRow).toBeVisible({ timeout: 15_000 });
   const dialog = page.locator("[data-slot='dialog-content']").first();
   const sample = await measure(
     page,
     "dialog-enter",
     { target: dialog, animationNames: ["enter"] },
     async () => {
-      await trigger.click();
+      await triggerRow.getByTestId(/ds-actions-/).click();
+      await page.getByTestId(/^ds-delete-/).first().click();
     },
     async () => {
       await expect(dialog).toBeVisible();
@@ -461,17 +463,18 @@ test("row reorder stays inside the frame budget", async ({ page }) => {
   await mockSession(page, "admin");
   await page.goto("/admin/datasources");
 
-  const allRows = page.locator("tbody tr");
-  const rows = allRows.filter({ has: page.locator('button[data-testid^="ds-delete-"]') });
-  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
-  const row = rows.first();
+  // analytics-pg: the unreferenced row whose ⋯ delete is enabled (referenced
+  // rows keep a disabled item).
+  const row = page.locator("tr", { hasText: "analytics-pg" });
+  await expect(row).toBeVisible({ timeout: 15_000 });
   const name = (await row.locator("td").first().innerText()).trim();
   const body = page.locator("tbody").first();
 
   // Open the confirmation before the window: a Playwright click waits for the
   // post-commit work, so starting the window at the delete button would let the
   // 200ms reorder finish before the first sample.
-  await row.locator('button[data-testid^="ds-delete-"]').click();
+  await row.getByTestId(/ds-actions-/).click();
+  await page.getByTestId(/^ds-delete-/).first().click();
   const sample = await measure(
     page,
     "table-reorder",

@@ -1,7 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Megaphone, Plus } from "lucide-react";
+import { UploadCloud,  Megaphone, Plus } from "lucide-react";
 import type { AnnouncementRevision } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -19,6 +19,8 @@ import { useAnnouncementRevisions, useCreateAnnouncementRevision, usePublishAnno
 import { useCurrentAnnouncementQuery } from "@/features/announcements/use-current-announcement";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * 公告管理 (route /admin/announcements; UI spec §9.2 ruling keeps it
@@ -147,31 +149,32 @@ export default function AdminAnnouncementsPage() {
                         {revision.content_sha256.slice(0, 12)}…
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            current?.revision.id === revision.id ||
-                            publish.isPending
-                          }
-                          onClick={() => {
-                            setErrorText(null);
-                            publish.mutate(
-                              {
-                                body: { announcement_revision_id: revision.id },
-                                publicationVersion: current?.version ?? 1,
-                              },
-                              {
-                                onError: (error) => { setErrorText(
-                                    describeErrorText(describeError(error, "publishAnnouncementRevision")),
-                                  ); },
-                              },
-                            );
-                          }}
-                          data-testid={`admin-announcement-publish-${revision.id}`}
-                        >
-                          {current?.revision.id === revision.id ? t("adminAnnouncements.published") : t("adminAnnouncements.publish")}
-                        </Button>
+                        <TableRowActions testId={`admin-announcement-actions-${revision.id}`}>
+                          <DropdownMenuItem
+                            disabled={
+                              current?.revision.id === revision.id ||
+                              publish.isPending
+                            }
+                            onClick={() => {
+                              setErrorText(null);
+                              publish.mutate(
+                                {
+                                  body: { announcement_revision_id: revision.id },
+                                  publicationVersion: current?.version ?? 1,
+                                },
+                                {
+                                  onError: (error) => { setErrorText(
+                                      describeErrorText(describeError(error, "publishAnnouncementRevision")),
+                                    ); },
+                                },
+                              );
+                            }}
+                            data-testid={`admin-announcement-publish-${revision.id}`}
+                          >
+                            <UploadCloud />{" "}
+                            {current?.revision.id === revision.id ? t("adminAnnouncements.published") : t("adminAnnouncements.publish")}
+                          </DropdownMenuItem>
+                        </TableRowActions>
                       </TableCell>
                     </TableRow>
                   ))}

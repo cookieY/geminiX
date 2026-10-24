@@ -14,7 +14,9 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-xs",
+          // Reference ruling 2026-10-24: body copy at text-sm (14px), not the
+          // previous dense 12px — the reference table reads at ~13-14px.
+          "w-full caption-bottom text-sm",
           // Rows arrive with the table once the query resolves; 200ms carries
           // the swap without delaying reading.
           "animate-in fade-in-0 duration-200 ease-out",
@@ -89,8 +91,11 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      // Reference ruling 2026-10-24 (all tables ≥95% parity): the header is
+      // quiet — muted color, medium weight, taller band — so the rows carry
+      // the data emphasis instead of a bold heading strip.
       className={cn(
-        "h-10 px-2 text-left align-middle font-semibold whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-12 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -102,8 +107,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
+      // Comfortable rhythm (reference ruling 2026-10-24): rows breathe with
+      // py-3 rather than the previous compact p-2 tile.
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

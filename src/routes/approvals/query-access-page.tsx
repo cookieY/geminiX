@@ -2,7 +2,7 @@ import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Check, ShieldOff, Stamp, X } from "lucide-react";
+import { Ban, Check, ShieldOff, Stamp, X } from "lucide-react";
 import type { QueryAccessRequest, QueryGrant } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -19,6 +19,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 import {
   Table,
   TableBody,
@@ -192,21 +194,17 @@ export default function QueryAccessApprovalsPage() {
                           {formatTimestamp(row.created_at)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
+                          <TableRowActions testId={`query-access-actions-${row.id}`}>
+                            <DropdownMenuItem
                               onClick={() => {
                                 setDecision("approve");
                                 setDeciding(row);
                               }}
                               data-testid={`query-access-approve-${row.id}`}
                             >
-                              <Check />
-                              {t("approvals.queryAccess.approve")}
-                            </Button>
-                            <Button
-                              size="sm"
+                              <Check /> {t("approvals.queryAccess.approve")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               variant="destructive"
                               onClick={() => {
                                 setDecision("reject");
@@ -214,10 +212,9 @@ export default function QueryAccessApprovalsPage() {
                               }}
                               data-testid={`query-access-reject-${row.id}`}
                             >
-                              <X />
-                              {t("approvals.queryAccess.reject")}
-                            </Button>
-                          </div>
+                              <X /> {t("approvals.queryAccess.reject")}
+                            </DropdownMenuItem>
+                          </TableRowActions>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -362,17 +359,18 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
                       : formatTimestamp(grant.expires_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => {
-                        setReason("");
-                        setRevoking(grant);
-                      }}
-                      data-testid={`query-access-revoke-${grant.id}`}
-                    >
-                      {t("approvals.queryAccess.revoke")}
-                    </Button>
+                    <TableRowActions testId={`query-grant-actions-${grant.id}`}>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => {
+                          setReason("");
+                          setRevoking(grant);
+                        }}
+                        data-testid={`query-access-revoke-${grant.id}`}
+                      >
+                        <Ban /> {t("approvals.queryAccess.revoke")}
+                      </DropdownMenuItem>
+                    </TableRowActions>
                   </TableCell>
                 </TableRow>
               ))}

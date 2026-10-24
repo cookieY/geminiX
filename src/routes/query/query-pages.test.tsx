@@ -14,6 +14,7 @@ vi.mock("@/features/review/sql-editor-panel", () => ({
   ),
 }));
 import userEvent from "@testing-library/user-event";
+import { openRowActionsAt } from "@/test/row-actions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { HttpResponse, http } from "msw";
@@ -194,8 +195,8 @@ describe("gate: admin撤销用户可感知且admin不能查看查询", () => {
     stubSession(false);
     renderAt("/approvals/query-access");
     const grantsTable = await screen.findByTestId("query-access-grants-table");
-    const revoke = within(grantsTable).getByTestId(/query-access-revoke-/);
-    await userEvent.click(revoke);
+    await openRowActionsAt(within(grantsTable).getByTestId(/query-grant-actions-/));
+    await userEvent.click(screen.getByTestId(/query-access-revoke-/));
     const dialog = await screen.findByTestId("query-access-revoke-dialog");
     expect(dialog).toHaveTextContent("终止该授权下全部查询会话");
     // Revocation is terminating access, never reading it.
@@ -293,9 +294,9 @@ describe("review R1 fixes", () => {
       </QueryClientProvider>,
     );
     const oidcRow = await screen.findByTestId(`admin-idp-row-${seeded.data.id}`);
-    // OIDC table rows: [edit, test, delete] — edit is first.
-    const editButton = within(oidcRow).getAllByRole("button")[0];
-    await userEvent.click(editButton ?? oidcRow);
+    // Row actions collapsed into the ⋯ kebab; edit opens the provider form.
+    await openRowActionsAt(within(oidcRow).getByTestId(/admin-idp-actions-/));
+    await userEvent.click(screen.getByTestId(`admin-idp-edit-${seeded.data.id}`));
     const secret = await screen.findByTestId("idp-secret");
     expect((secret as HTMLInputElement).value).toBe("");
     // Save without retyping the secret: the replace payload omits
@@ -343,7 +344,8 @@ describe("review R1 fixes", () => {
     window.localStorage.setItem("yearning-mock-auth", "default");
     renderAt("/approvals/query-access");
     const row = await screen.findByTestId("query-access-pending-qar-fixture-pending");
-    await userEvent.click(within(row).getByTestId("query-access-approve-qar-fixture-pending"));
+    await openRowActionsAt(within(row).getByTestId("query-access-actions-qar-fixture-pending"));
+    await userEvent.click(screen.getByTestId("query-access-approve-qar-fixture-pending"));
     await userEvent.click(screen.getByTestId("query-access-decision-confirm"));
     // The invalidated list re-reads: the pending row disappears without a
     // remount (the invalidation prefix matches the actor-scoped read key).

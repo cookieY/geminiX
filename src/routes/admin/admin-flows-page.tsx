@@ -2,7 +2,7 @@ import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Database, EyeOff, Plus, Trash2, Workflow } from "lucide-react";
+import { ArrowDown, ArrowUp, Database, EyeOff, Pencil, Plus, Trash2, Workflow } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, FlowMaskingRule, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
@@ -33,6 +33,8 @@ import {
 } from "@/features/admin/use-admin";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * 流程管理 (route /admin/flows; migration contract §2 maps legacy
@@ -234,12 +236,11 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
               })}
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={onEdit} data-testid={`admin-flow-edit-${flow.id}`}>
-              {t("common.edit")}
-            </Button>
-            <Button
-              size="sm"
+          <TableRowActions testId={`admin-flow-actions-${flow.id}`}>
+            <DropdownMenuItem onClick={onEdit} data-testid={`admin-flow-edit-${flow.id}`}>
+              <Pencil /> {t("common.edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
               variant="destructive"
               onClick={() => {
                 setErrorText(null);
@@ -247,9 +248,9 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
               }}
               data-testid={`admin-flow-delete-${flow.id}`}
             >
-              {t("common.delete")}
-            </Button>
-          </div>
+              <Trash2 /> {t("common.delete")}
+            </DropdownMenuItem>
+          </TableRowActions>
         </TableCell>
       </TableRow>
 

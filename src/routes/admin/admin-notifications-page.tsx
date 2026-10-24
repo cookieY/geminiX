@@ -1,7 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bell, FlaskConical, Plus } from "lucide-react";
+import { Bell, FlaskConical, Pencil, Plus, Trash2 } from "lucide-react";
 import type {
   DingTalkNotificationConfig as DingTalkConfig,
   EmailNotificationConfig as EmailConfig,
@@ -29,6 +29,8 @@ import {
 } from "@/features/admin/use-admin";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * 通知设置 (route /admin/settings/notifications; S003). Channels are the
@@ -239,10 +241,8 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
           </Badge>
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
+          <TableRowActions testId={`admin-channel-actions-${channel.id}`}>
+            <DropdownMenuItem
               disabled={testDelivery.isPending}
               onClick={() => { testDelivery.mutate(
                   { channelId: channel.id, body: {} },
@@ -253,16 +253,15 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
               }
               data-testid={`admin-channel-test-${channel.id}`}
             >
-              <FlaskConical />
-              {t("adminNotifications.test")}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onEdit}>
-              {t("common.edit")}
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => { setConfirmOpen(true); }} data-testid={`admin-channel-delete-${channel.id}`}>
-              {t("common.delete")}
-            </Button>
-          </div>
+              <FlaskConical /> {t("adminNotifications.test")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit} data-testid={`admin-channel-edit-${channel.id}`}>
+              <Pencil /> {t("common.edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => { setConfirmOpen(true); }} data-testid={`admin-channel-delete-${channel.id}`}>
+              <Trash2 /> {t("common.delete")}
+            </DropdownMenuItem>
+          </TableRowActions>
         </TableCell>
       </TableRow>
       {errorText !== null && (

@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { openRowActions, openRowActionsAt } from "@/test/row-actions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { HttpResponse, http } from "msw";
@@ -103,6 +104,7 @@ describe("gate: Secret永不回填", () => {
   it("leaves every datasource credential field empty when editing a configured row", async () => {
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     await screen.findByTestId("ds-form-error", {}, { timeout: 100 }).catch(() => undefined);
     await screen.findByTestId("credential-row-review");
@@ -119,6 +121,7 @@ describe("gate: Secret永不回填", () => {
   it("never prefills the provider API key and shows the configured state instead", async () => {
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     const apiKey = await screen.findByTestId("provider-api-key");
     expect(apiKey).toHaveValue("");
@@ -129,6 +132,7 @@ describe("gate: Secret永不回填", () => {
   it("offers no contract-hash inputs — both fingerprints are platform-derived", async () => {
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     await screen.findByTestId("provider-api-key");
     // §18.67：隐私契约/输出Schema指纹由系统派生（provider contract_hash.go），
@@ -177,7 +181,8 @@ describe("gate: 配置Hash与Review失效影响明确（owner裁定：列表不�
     // 编辑对话框承载两者：说明常驻、hash仅编辑态（存量行必有值）。
     const row = rows[0];
     if (row === undefined) throw new Error("expected a seeded skill row");
-    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
     expect(await screen.findByTestId("review-input-outdated-note")).toBeInTheDocument();
     expect(screen.getByTestId("review-input-hash").textContent).toMatch(/^[0-9a-f]{16}$/);
   });
@@ -186,6 +191,7 @@ describe("gate: 配置Hash与Review失效影响明确（owner裁定：列表不�
     renderPage(<AdminRuleSetsPage />);
     const row = await screen.findByTestId(/rule-set-row-/);
     expect(within(row).getByTestId("rule-set-hash")).toBeInTheDocument();
+    await openRowActions(/rule-set-actions-/);
     await userEvent.click(screen.getByTestId(/rule-set-edit-/));
     const preview = await screen.findByTestId("rule-set-impact-preview");
     expect(within(preview).getByText(/1 个流程/)).toBeInTheDocument();
@@ -286,6 +292,7 @@ describe("admin page flows", () => {
   it("confirms a provider delete before executing it", async () => {
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-delete-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("删除 Provider")).toBeInTheDocument();
@@ -302,6 +309,7 @@ describe("admin page flows", () => {
 
   it("marks draft skills as not bindable in the rule-set editor", async () => {
     renderPage(<AdminRuleSetsPage />);
+    await openRowActionsAt(await screen.findByTestId(/rule-set-actions-/));
     await userEvent.click(await screen.findByTestId(/rule-set-edit-/));
     await screen.findByTestId("rule-set-tools");
     expect(screen.getByText("Draft 不可绑定")).toBeInTheDocument();
@@ -309,6 +317,7 @@ describe("admin page flows", () => {
 
   it("composes skills by description with search and select-all (§18.80)", async () => {
     renderPage(<AdminRuleSetsPage />);
+    await openRowActionsAt(await screen.findByTestId(/rule-set-actions-/));
     await userEvent.click(await screen.findByTestId(/rule-set-edit-/));
     await screen.findByTestId("rule-set-tools");
     // hash展示换成技能说明：对话框内不再渲染64位hash，改渲染说明文案。
@@ -341,7 +350,8 @@ describe("admin page flows", () => {
   it("tunes builtin parameter values without touching the system-owned rule text (§18.81)", async () => {
     renderPage(<AdminReviewSkillsPage />);
     const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
-    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
     const section = await screen.findByTestId("review-input-params");
     // 规则正文锁定不动（owner裁定：提示词不可改），参数控件可用。
     const ruleText = screen.getByTestId("review-input-knowledge-text");
@@ -358,7 +368,8 @@ describe("admin page flows", () => {
     await userEvent.click(screen.getByTestId("review-input-submit"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     // 重开回显新值；规则正文仍是系统原文。
-    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
     const reopened = await screen.findByTestId("review-input-params");
     expect(within(reopened).getByTestId("review-input-param-max_in_items")).toHaveValue(2000);
     expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
@@ -400,7 +411,8 @@ describe("review-input dialog flows", () => {
     const rows = await screen.findAllByTestId(/review-input-row-/);
     const secondRow = rows.at(1);
     if (secondRow === undefined) throw new Error("expected two seeded skills");
-    const editButton = within(secondRow).getByTestId(/review-input-edit-/);
+    await openRowActionsAt(within(secondRow).getByTestId(/review-input-actions-/));
+    const editButton = screen.getByTestId(/review-input-edit-/);
     await userEvent.click(editButton);
     await screen.findByTestId("review-input-knowledge-text");
     await userEvent.click(screen.getByTestId("review-input-submit"));
@@ -413,18 +425,20 @@ describe("review-input dialog flows", () => {
     // draft tool is unreferenced → delete succeeds
     const secondRow = rows.at(1);
     if (secondRow === undefined) throw new Error("expected seeded skills");
-    await userEvent.click(within(secondRow).getByTestId(/review-input-delete-/));
+    await openRowActionsAt(within(secondRow).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-delete-/));
     await userEvent.click(screen.getByTestId("review-input-delete-confirm"));
     await waitFor(() => {
       // two rows remain: the bound enabled tool and the undeletable built-in
       expect(screen.queryAllByTestId(/review-input-row-/)).toHaveLength(2);
     });
-    // enabled tool is referenced by the seeded rule set → 1006 error
+    // enabled tool is referenced by the seeded rule set → 1006 error; the
+    // delete affordance lives in the row's ⋯ menu (portal, screen-scoped)
     const boundRow = (await screen.findAllByTestId(/review-input-row-/))
-      .map((row) => ({ row, button: within(row).queryByTestId(/review-input-delete-/) }))
-      .find(({ row }) => row.textContent.includes("dml-where-guard"))?.button;
-    if (boundRow === undefined || boundRow === null) throw new Error("bound row not rendered");
-    await userEvent.click(boundRow);
+      .find((row) => row.textContent.includes("dml-where-guard"));
+    if (boundRow === undefined) throw new Error("bound row not rendered");
+    await openRowActionsAt(within(boundRow).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-delete-/));
     await userEvent.click(screen.getByTestId("review-input-delete-confirm"));
     await screen.findByTestId("review-input-delete-error");
   });
@@ -453,10 +467,11 @@ describe("review-input dialog flows", () => {
 describe("connection test flow", () => {
   it("runs the test on the pg datasource and renders the capability matrix with unavailable badges", async () => {
     renderPage(<AdminDatasourcesPage />);
-    const pgRow = await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
     // Expanding the matrix is a user-event side effect; the capabilities
     // query polls until the async probe task materializes the facts.
-    await userEvent.click(within(pgRow).getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await userEvent.click(screen.getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
     const capabilities = await screen.findByTestId("ds-capabilities", {}, { timeout: 4000 });
     await waitFor(() => expect(capabilities).toHaveTextContent("16.3"), { timeout: 4000 });
     await waitFor(() => expect(screen.getByTestId("ds-capability-execution")).toHaveTextContent("不可用"), { timeout: 4000 });
@@ -470,6 +485,7 @@ describe("connection test flow", () => {
     renderPage(<AdminDatasourcesPage />);
     const row = await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     expect(within(row).queryAllByTestId(/ds-test-purpose-/)).toHaveLength(0);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     // 预填=存储值（review）呈现为只读类别。
     expect(await screen.findByTestId("ds-test-purpose")).toHaveTextContent("只读");
@@ -481,6 +497,7 @@ describe("connection test flow", () => {
     const captured = captureDatasourcePut();
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     await screen.findByTestId("credential-row-review");
     await userEvent.click(screen.getByTestId("credential-include-review"));
@@ -643,13 +660,16 @@ describe("gate: 内置技能锁徽章与定义面锁定", () => {
     );
     // 行内不再有说明文字（挪入编辑对话框的builtin notice承担解释）。
     expect(within(row).queryByText(/仅状态可切换/)).not.toBeInTheDocument();
-    expect(within(row).getByTestId(/review-input-delete-/)).toBeDisabled();
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    // Base UI menu items disable via aria-disabled (divs carry no native disabled attr)
+    expect(screen.getByTestId(/review-input-delete-/)).toHaveAttribute("aria-disabled", "true");
   });
 
   it("locks the definition face in the editor and keeps the state select active", async () => {
     renderPage(<AdminReviewSkillsPage />);
     const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_BUILTIN_ID}`);
-    await userEvent.click(within(row).getByTestId(/review-input-edit-/));
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
     expect(await screen.findByTestId("review-input-builtin-notice")).toBeInTheDocument();
     expect(screen.getByTestId("review-input-name")).toBeDisabled();
     expect(screen.getByTestId("review-input-engine")).toBeDisabled();
@@ -669,6 +689,7 @@ describe("gate: 凭据表单三模式（keep仅已配置行可选）", () => {
     const captured = captureDatasourcePut();
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     await screen.findByTestId("credential-row-review");
     // Configured rows open in keep mode: neither input is even rendered.
@@ -716,6 +737,7 @@ describe("gate: 凭据表单三模式（keep仅已配置行可选）", () => {
     const captured = captureDatasourcePut();
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     await screen.findByTestId("credential-row-review");
     // Unchecking execution removes it: the write is a full replacement.
@@ -743,6 +765,7 @@ describe("gate: TLS材料永不回显且tls_verified可见", () => {
     const captured = captureDatasourcePut();
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
     expect(screen.getByTestId("ds-tls-enabled")).toBeChecked();
     // Write-only: opening a verified row leaves every textarea empty.
@@ -766,6 +789,7 @@ describe("gate: TLS材料永不回显且tls_verified可见", () => {
     const captured = captureDatasourcePut();
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`);
     await userEvent.click(screen.getByTestId(`ds-edit-${ADMIN_FIXTURE_DATASOURCE_PG_ID}`));
     await screen.findByTestId("ds-tls-enabled");
     await userEvent.click(screen.getByTestId("ds-tls-enabled"));
@@ -871,6 +895,7 @@ describe("gate: §18.76-B 模型目录联想", () => {
     );
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     await screen.findByTestId("provider-model");
     await waitFor(() => {
@@ -886,6 +911,7 @@ describe("gate: 连接测试同步结果反馈（RCP-20261017 #019对齐）", ()
   it("shows the ok line after a synchronous successful connection test", async () => {
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-test-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     expect(await screen.findByTestId(`provider-test-ok-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`)).toBeInTheDocument();
   });
@@ -905,6 +931,7 @@ describe("gate: 连接测试同步结果反馈（RCP-20261017 #019对齐）", ()
     );
     renderPage(<AdminProvidersPage />);
     await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
     await userEvent.click(screen.getByTestId(`provider-test-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
     expect(
       await screen.findByTestId(`provider-test-error-detail-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`),
@@ -930,6 +957,7 @@ describe("gate: 数据源连接测试拒因透出（§18.76补）", () => {
     );
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     expect(
       await screen.findByTestId(`ds-test-error-detail-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),
@@ -980,6 +1008,7 @@ describe("gate: 数据源连接测试成功反馈", () => {
     );
     renderPage(<AdminDatasourcesPage />);
     await screen.findByTestId(`ds-row-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
+    await openRowActions(`ds-actions-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`);
     await userEvent.click(screen.getByTestId(`ds-test-button-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`));
     expect(
       await screen.findByTestId(`ds-test-ok-${ADMIN_FIXTURE_DATASOURCE_MYSQL_ID}`),

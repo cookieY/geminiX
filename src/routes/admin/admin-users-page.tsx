@@ -2,7 +2,7 @@ import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Plus, ShieldCheck, UserRound } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import type { User, UserDeletionImpact } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
@@ -26,6 +26,8 @@ import {
 } from "@/features/admin/use-admin";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
+import { TableRowActions } from "@/shared/components/table-row-actions";
 
 /**
  * 用户管理 (route /admin/users; migration contract §2 maps legacy
@@ -180,13 +182,12 @@ function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
           )}
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={onEdit} data-testid={`admin-user-edit-${user.id}`}>
-              {t("common.edit")}
-            </Button>
+          <TableRowActions testId={`admin-user-actions-${user.id}`}>
+            <DropdownMenuItem onClick={onEdit} data-testid={`admin-user-edit-${user.id}`}>
+              <Pencil /> {t("common.edit")}
+            </DropdownMenuItem>
             {!user.is_builtin_admin && (
-              <Button
-                size="sm"
+              <DropdownMenuItem
                 variant="destructive"
                 onClick={() => {
                   setErrorText(null);
@@ -194,10 +195,10 @@ function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
                 }}
                 data-testid={`admin-user-delete-${user.id}`}
               >
-                {t("common.delete")}
-              </Button>
+                <Trash2 /> {t("common.delete")}
+              </DropdownMenuItem>
             )}
-          </div>
+          </TableRowActions>
         </TableCell>
       </TableRow>
 
