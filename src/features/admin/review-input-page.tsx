@@ -6,7 +6,7 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent } from "@/shared/components/ui/sheet";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
-import { Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
+import { BookOpenText, Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type {
   KnowledgeEntry,
@@ -40,18 +40,15 @@ import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -77,13 +74,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/shared/components/ui/input-group";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * Shared lifecycle page for the two governed review inputs (migration
@@ -231,11 +224,11 @@ function formForEntry(entry: KnowledgeEntry): ReviewInputFormState {
 
 function StateBadge({ state }: { state: string }) {
   const { t } = useTranslation();
-  const variant = state === "enabled" ? "default" : state === "draft" ? "secondary" : "outline";
+  const tone = state === "enabled" ? "emerald" : state === "draft" ? "amber" : "stone";
   return (
-    <Badge variant={variant} data-testid="review-input-state">
+    <StatusBadge tone={tone} data-testid="review-input-state">
       {t(`admin.reviewInput.state_${state}`)}
-    </Badge>
+    </StatusBadge>
   );
 }
 
@@ -262,6 +255,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
   const [editing, setEditing] = useState<PromptTool | KnowledgeEntry | null>(null);
   const [deleting, setDeleting] = useState<PromptTool | KnowledgeEntry | null>(null);
   const [evaluating, setEvaluating] = useState<KnowledgeEntry | null>(null);
+  const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
   const [evalResult, setEvalResult] = useState<KnowledgeEntryEvaluation | null>(null);
   const [evalErrorKey, setEvalErrorKey] = useState<string | null>(null);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
@@ -296,26 +290,44 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
     const formatDate = (value: string): string =>
       value.replace("T", " ").replace("Z", " UTC");
     return (
-      <div className="flex flex-col gap-4">
+      <PageLayout>
+        <PageHeader
+          title={t("admin.knowledge.title")}
+          description={t("admin.knowledge.description")}
+          icon={BookOpenText}
+          actions={
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
+              data-testid="review-input-create"
+            >
+              <Plus /> {t("admin.knowledge.createTitle")}
+            </Button>
+          }
+        />
         <Card className="overflow-hidden">
           <div className="flex min-h-[600px]">
             <div className="hidden w-80 shrink-0 flex-col gap-4 border-e border-border p-6 lg:flex">
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <Input
+              <InputGroup>
+                <InputGroupAddon>
+                  <Search aria-hidden />
+                </InputGroupAddon>
+                <InputGroupInput
                   value={knowledgeSearch}
                   onChange={(event) => { setKnowledgeSearch(event.target.value); }}
                   placeholder={t("admin.knowledge.searchPlaceholder")}
-                  className="pl-9"
                   aria-label={t("admin.knowledge.searchPlaceholder")}
                   data-testid="knowledge-search"
                 />
+              </InputGroup>
+              <div className="flex min-h-5 items-center justify-between gap-2">
+                <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
+                {entriesQuery.isFetching && !entriesQuery.isPending ? (
+                  <LoadingState variant="inline" label={t("states.refreshing")} />
+                ) : null}
               </div>
-              <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
               {/* 出场动效 (animated-list-02, owner ruling 2026-10-24): rows
                   slide up in and fade up out as the filter/selection changes;
                   layout tweens the survivors' reflow. Durations sit inside the
@@ -323,18 +335,30 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   opacity/transform move. */}
               <div className="flex flex-col gap-3 overflow-y-auto">
               <AnimatePresence initial={false} mode="popLayout">
-                {filtered.length === 0 ? (
-                  <motion.p
+                {loading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <LoadingState variant="panel" />
+                  </motion.div>
+                ) : filtered.length === 0 ? (
+                  <motion.div
                     key="empty"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -16 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="text-muted-foreground text-sm"
-                    data-testid="knowledge-notes-empty"
                   >
-                    {t("admin.knowledge.emptyTitle")}
-                  </motion.p>
+                    <EmptyState
+                      title={knowledgeSearch.trim() === "" ? t("admin.knowledge.emptyTitle") : t("table.emptySearch")}
+                      filtered={knowledgeSearch.trim() !== ""}
+                      testId="knowledge-notes-empty"
+                    />
+                  </motion.div>
                 ) : (
                   filtered.map((entry) => (
                     <motion.div
@@ -381,26 +405,31 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                             : `${entry.database_name ?? "?"}.${entry.table_name ?? "?"}`}
                       </p>
                       <div className="mt-2 flex items-center justify-between">
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-muted-foreground text-xs tabular-nums">
                           {formatDate(entry.updated_at)}
                         </p>
                         <div className="flex items-center gap-1">
-                          <Button
+                          <PendingButton
                             type="button"
                             variant="ghost"
                             size="sm"
+                            pending={evaluateMutation.isPending && evaluatingId === entry.id}
+                            disabled={evaluateMutation.isPending && evaluatingId !== entry.id}
                             onClick={(event) => {
                               event.stopPropagation();
                               setEvalErrorKey(null);
+                              setEvaluatingId(entry.id);
                               evaluateMutation.mutate(
                                 { id: entry.id },
                                 {
                                   onSuccess: (result) => {
+                                    setEvaluatingId(null);
                                     setEvaluating(entry);
                                     setEvalResult(result);
                                     setSelectedKnowledgeId(entry.id);
                                   },
                                   onError: (error) => {
+                                    setEvaluatingId(null);
                                     const display = describeError(error, "evaluateKnowledgeEntry");
                                     setEvalErrorKey(display.messageKey);
                                   },
@@ -410,7 +439,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                             data-testid={`review-input-evaluate-${entry.id}`}
                           >
                             <Play /> {t("admin.knowledge.evaluate")}
-                          </Button>
+                          </PendingButton>
                           <Button
                             type="button"
                             variant="ghost"
@@ -463,15 +492,6 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   </Button>
                   <h6 className="text-base">{t("admin.knowledge.editHeader")}</h6>
                 </div>
-                <Button
-                  onClick={() => {
-                    setEditing(null);
-                    setDialogOpen(true);
-                  }}
-                  data-testid="review-input-create"
-                >
-                  <Plus /> {t("admin.knowledge.createTitle")}
-                </Button>
               </div>
               <div className="flex flex-1 flex-col gap-4 p-6">
                 {evalErrorKey !== null ? (
@@ -480,11 +500,23 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   </Alert>
                 ) : null}
                 {loading ? (
-                  <LoadingState />
+                  <LoadingState variant="panel" />
                 ) : errored ? (
                   <ErrorState error={entriesQuery.error} operationId="listKnowledgeEntries" onRetry={() => void refetch()} />
                 ) : selected === null ? (
-                  <p className="text-muted-foreground text-sm">{t("admin.knowledge.emptyTitle")}</p>
+                  <EmptyState
+                    title={
+                      knowledgeSearch.trim() === ""
+                        ? t("admin.knowledge.emptyTitle")
+                        : t("table.emptySearch")
+                    }
+                    description={
+                      knowledgeSearch.trim() === ""
+                        ? t("admin.knowledge.emptyDescription")
+                        : undefined
+                    }
+                    filtered={knowledgeSearch.trim() !== ""}
+                  />
                 ) : (
                   <div className="flex flex-col gap-4" data-testid="knowledge-detail">
                     <div className="flex items-start justify-between gap-3">
@@ -513,7 +545,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                       <Badge variant="secondary">
                         {t(`admin.knowledge.provenance_${selected.provenance}`)}
                       </Badge>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-muted-foreground text-xs tabular-nums">
                         {formatDate(selected.updated_at)}
                       </span>
                     </div>
@@ -559,14 +591,14 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                             aria-label={t("admin.knowledge.editHeader")}
                           />
                           {dirty ? (
-                            <Button
+                              <PendingButton
                               size="sm"
+                                pending={replaceEntry.isPending}
                               onClick={save}
-                              disabled={replaceEntry.isPending}
                               data-testid="knowledge-notes-save"
                             >
-                              {replaceEntry.isPending ? t("states.loading") : t("admin.knowledge.save")}
-                            </Button>
+                                {t("admin.knowledge.save")}
+                              </PendingButton>
                           ) : null}
                         </div>
                       );
@@ -578,20 +610,17 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
           </div>
           <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
             <SheetContent side="left" className="w-80 gap-4 overflow-y-auto p-6" data-testid="knowledge-notes-sheet">
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <Input
+              <InputGroup>
+                <InputGroupAddon>
+                  <Search aria-hidden />
+                </InputGroupAddon>
+                <InputGroupInput
                   value={knowledgeSearch}
                   onChange={(event) => { setKnowledgeSearch(event.target.value); }}
                   placeholder={t("admin.knowledge.searchPlaceholder")}
-                  className="pl-9"
                   aria-label={t("admin.knowledge.searchPlaceholder")}
                 />
-              </div>
+              </InputGroup>
               <h6 className="text-base">{t("admin.knowledge.allTitle")}</h6>
               <div className="flex flex-col gap-3">
                 {filtered.map((entry) => (
@@ -606,7 +635,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                     )}
                   >
                     <p className="truncate font-medium">{entry.name}</p>
-                    <p className="text-muted-foreground mt-1 text-xs">
+                    <p className="text-muted-foreground mt-1 text-xs tabular-nums">
                       {entry.updated_at.replace("T", " ").replace("Z", " UTC")}
                     </p>
                   </div>
@@ -681,22 +710,17 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="border-b flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{t("admin.skills.title")}</CardTitle>
-            <CardDescription>
-              {t("admin.skills.description")}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-3">
-            <TableSearchInput value={skillSearch} onChange={setSkillSearch} testId="admin-skills-search" />
+    <PageLayout>
+      <PageHeader
+        title={t("admin.skills.title")}
+        description={t("admin.skills.description")}
+        icon={Puzzle}
+        actions={
             <Button
               onClick={() => {
                 setEditing(null);
@@ -706,8 +730,15 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             >
               <Plus /> {t("admin.skills.createTitle")}
             </Button>
-          </div>
-        </CardHeader>
+        }
+      />
+      <Card>
+        <ListToolbar
+          busy={toolsQuery.isFetching && !toolsQuery.isPending}
+          search={
+            <TableSearchInput value={skillSearch} onChange={setSkillSearch} testId="admin-skills-search" />
+          }
+        />
         <CardContent className="px-0! flex flex-col gap-3">
           {evalErrorKey !== null ? (
             <Alert variant="destructive" data-testid="knowledge-eval-error">
@@ -715,27 +746,20 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
             </Alert>
           ) : null}
           {loading ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={3} />
           ) : errored ? (
             <ErrorState error={toolsQuery.error} operationId="listPromptTools" onRetry={() => void refetch()} />
           ) : visibleSkillRows.length === 0 && skillSearch.trim() !== "" ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-skills-search-empty">
-              {t("table.emptySearch")}
-            </p>
+            <EmptyState
+              title={t("table.emptySearch")}
+              filtered
+              testId="admin-skills-search-empty"
+            />
           ) : visibleSkillRows.length === 0 ? (
-            <Empty className="mx-4 rounded-xl border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Puzzle />
-                </EmptyMedia>
-                <EmptyTitle>
-                  {t("admin.skills.emptyTitle")}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {t("admin.skills.emptyDescription")}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <EmptyState
+              title={t("admin.skills.emptyTitle")}
+              description={t("admin.skills.emptyDescription")}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -757,7 +781,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   const description = (row as PromptTool).description;
                   return (
                     <TableRow key={id} data-row-key={id} data-testid={`review-input-row-${id}`}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-semibold text-foreground">
                         {/* §18.80：名称下方浅灰展示技能说明，用户不用进
                             编辑弹窗即可知道每个技能的用途；说明中的
                             {{参数}}占位按行内当前值动态渲染（补记1）。 */}
@@ -893,7 +917,7 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }
 
@@ -1269,9 +1293,9 @@ function ReviewInputDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={mutation.isPending} data-testid="review-input-submit">
-            {mutation.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+          <PendingButton pending={mutation.isPending} onClick={submit} data-testid="review-input-submit">
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1312,9 +1336,9 @@ function DeleteReviewInputDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             variant="destructive"
-            disabled={mutation.isPending}
+            pending={mutation.isPending}
             onClick={() => { mutation.mutate(
                 { id: target.id, version: target.version },
                 {
@@ -1329,7 +1353,7 @@ function DeleteReviewInputDialog({
             data-testid="review-input-delete-confirm"
           >
             {t("common.delete")}
-          </Button>
+          </PendingButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

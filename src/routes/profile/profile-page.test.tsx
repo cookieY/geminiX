@@ -72,6 +72,8 @@ describe("profile security tab password change (§18.52)", () => {
   it("blocks submit until the fields satisfy the client policy", async () => {
     meOverride(undefined);
     renderProfile();
+    expect(await screen.findByRole("heading", { level: 1, name: "个人中心" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     await openSecurityTab();
 
     const submit = screen.getByTestId("profile-change-password-submit");

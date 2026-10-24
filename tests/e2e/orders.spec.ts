@@ -26,24 +26,14 @@ test.beforeEach(async ({ page }) => {
   await mockSession(page, "admin");
 });
 
-async function createDraft(page: Page, title: string): Promise<string> {
+async function openDraftComposer(page: Page, title: string): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  // Implicit drafts: the acting save adopts the draft silently — the URL
-  // never moves; the adopted id rides data-draft-id on the page root.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
-  await expect(page.getByTestId("changes-new-page")).toBeVisible();
-  return await page
-    .getByTestId("changes-new-page")
-    .getAttribute("data-draft-id")
-    .then((value) => value ?? "");
 }
 
-/** Types SQL, saves, runs the review explicitly and waits for Ready. */
+/** Types SQL, runs the review explicitly and waits for Ready. */
 async function reviewToReady(page: Page): Promise<void> {
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
@@ -53,6 +43,10 @@ async function reviewToReady(page: Page): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
 }
 
 
@@ -63,7 +57,7 @@ async function gotoConfirmStep(page: Page): Promise<void> {
 }
 
 test("a draft without a passing gate cannot be submitted from the UI", async ({ page }) => {
-  await createDraft(page, "未预审草稿");
+  await openDraftComposer(page, "未预审草稿");
   // One-page layout: with no SQL the dock itself blocks submission.
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
   // Even with saved SQL, only a Ready gate unlocks submission.
@@ -77,7 +71,7 @@ test("a racing backend rejection keeps the dialog open without faking success", 
   page,
 }) => {
   test.setTimeout(30_000);
-  await createDraft(page, "并发撤回草稿");
+  await openDraftComposer(page, "并发撤回草稿");
   await reviewToReady(page);
   await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
@@ -118,7 +112,7 @@ test("a racing backend rejection keeps the dialog open without faking success", 
 
 test("the personal order list updates in place without duplicate rows", async ({ page }) => {
   test.setTimeout(30_000);
-  await createDraft(page, "列表去重草稿");
+  await openDraftComposer(page, "列表去重草稿");
   await reviewToReady(page);
   await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
@@ -193,7 +187,7 @@ test("server-side filters narrow the personal list without losing event freshnes
   page,
 }) => {
   test.setTimeout(30_000);
-  await createDraft(page, "筛选验收草稿");
+  await openDraftComposer(page, "筛选验收草稿");
   await reviewToReady(page);
   await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
@@ -258,7 +252,7 @@ test("the order gallery scenario serves 40 demo orders across every state", asyn
   await page.goto("/changes/mine");
   // Default rows-per-page is 20: page 1 of 2, with Next available.
   await expect(page.getByTestId("mine-order-row")).toHaveCount(20, { timeout: 10_000 });
-  await expect(page.getByTestId("mine-orders-pagination").getByText("下一页")).toBeEnabled();
+  await expect(page.getByTestId("mine-orders-next")).toBeEnabled();
   await expect(page.getByText("演示工单 · completed").first()).toBeVisible();
   await expect(page.getByText("演示工单 · rejected").first()).toBeVisible();
 });

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
+import { SlidersHorizontal } from "lucide-react";
 import type {
   ExecutionWindowDaysOfWeekItem,
   SettingsImpactAssessment,
@@ -12,11 +13,15 @@ import { useSession } from "@/features/auth/session-provider";
 import { BusinessError } from "@/shared/api/mutator";
 import i18next from "@/shared/i18n";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
@@ -46,6 +51,7 @@ const ROUTE_NAMESPACES: SettingsRouteNamespace[] = ["general", "query", "executi
 
 export default function AdminSettingsNamespacePage() {
   const { namespace = "" } = useParams();
+  const { t } = useTranslation();
   if (!ROUTE_NAMESPACES.includes(namespace as SettingsRouteNamespace)) {
     return <Navigate to="/admin/settings/general" replace />;
   }
@@ -58,12 +64,13 @@ export default function AdminSettingsNamespacePage() {
   // header above stays static; only the namespace subtree — which remounts by
   // key to reset its form state — fades/rises between namespaces.
   return (
-    <div className="flex flex-col gap-4" data-testid={`admin-settings-${current}`}>
-      <header className="flex flex-row justify-end gap-4">
-        {/* Static across namespace switches (owner ruling 2026-10-24): the
-            tab bar lives outside the animated subtree. */}
-        <SettingsNavTabs current={current} />
-      </header>
+    <PageLayout data-testid={`admin-settings-${current}`}>
+      <PageHeader
+        title={t(`adminSettings.${current}.title`)}
+        description={t(`adminSettings.${current}.description`)}
+        icon={SlidersHorizontal}
+        actions={<SettingsNavTabs current={current} />}
+      />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={namespace}
@@ -75,7 +82,7 @@ export default function AdminSettingsNamespacePage() {
           <NamespaceSettings key={namespace} namespace={namespace as SettingsRouteNamespace} />
         </motion.div>
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }
 
@@ -158,8 +165,8 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {settingsQuery.isPending && <LoadingState />}
+    <div className="flex flex-col gap-5">
+      {settingsQuery.isPending && <LoadingState variant="panel" columns={2} />}
       {settingsQuery.error !== null && (
         <ErrorState
           error={settingsQuery.error}
@@ -213,10 +220,11 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
               </Alert>
             )}
 
-            <div className="flex items-center gap-2">
-              <Button
+            <div className="flex flex-wrap items-center gap-2">
+              <PendingButton
                 variant="outline"
                 disabled={!dirty || assessMutation.isPending}
+                pending={assessMutation.isPending}
                 onClick={() => {
                   assessMutation.mutate(
                     { namespace, settings: draft },
@@ -231,14 +239,15 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
                 data-testid="settings-assess"
               >
                 {t("adminSettings.assess")}
-              </Button>
-              <Button
+              </PendingButton>
+              <PendingButton
                 disabled={!dirty || replaceMutation.isPending || assessMutation.isPending}
+                pending={replaceMutation.isPending}
                 onClick={() => { save(assessment !== null && highImpact ? assessment.impact_token : null); }}
                 data-testid="settings-save"
               >
-                {replaceMutation.isPending ? t("common.saving") : t("common.save")}
-              </Button>
+                {t("common.save")}
+              </PendingButton>
             </div>
           </CardContent>
         </Card>
@@ -254,15 +263,17 @@ function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Dr
   if (!("registration_enabled" in draft)) return null;
   return (
     <>
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="settings-general-registration"
           checked={draft.registration_enabled}
-          onChange={(event) => { setDraft({ ...draft, registration_enabled: event.target.checked }); }}
+          onCheckedChange={(checked) => { setDraft({ ...draft, registration_enabled: checked }); }}
           data-testid="settings-general-registration"
         />
-        {t("adminSettings.general.registration")}
-      </label>
+        <Label htmlFor="settings-general-registration" className="cursor-pointer">
+          {t("adminSettings.general.registration")}
+        </Label>
+      </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-general-timezone">{t("adminSettings.general.timezone")}</Label>
         <Input
@@ -274,17 +285,26 @@ function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Dr
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label>{t("adminSettings.general.locale")}</Label>
-        <select
+        <Label htmlFor="settings-general-locale">{t("adminSettings.general.locale")}</Label>
+        <Select
           value={draft.default_locale}
-          onChange={(event) => { setDraft({ ...draft, default_locale: event.target.value as "zh-CN" | "en-US" }); }
-          }
-          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-          data-testid="settings-general-locale"
+          onValueChange={(value) => {
+            if (value !== "zh-CN" && value !== "en-US") return;
+            setDraft({ ...draft, default_locale: value });
+          }}
         >
-          <option value="zh-CN">zh-CN</option>
-          <option value="en-US">en-US</option>
-        </select>
+          <SelectTrigger
+            id="settings-general-locale"
+            className="w-48"
+            data-testid="settings-general-locale"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="zh-CN">zh-CN</SelectItem>
+            <SelectItem value="en-US">en-US</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </>
   );
@@ -295,16 +315,20 @@ function QueryFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Draf
   if (!("approval_enabled" in draft)) return null;
   return (
     <>
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={draft.approval_enabled}
-          onChange={(event) => { setDraft({ ...draft, approval_enabled: event.target.checked }); }}
-          data-testid="settings-query-approval"
-        />
-        {t("adminSettings.query.approval")}
-      </label>
-      <p className="text-muted-foreground text-xs">{t("adminSettings.query.approvalHint")}</p>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="settings-query-approval"
+            checked={draft.approval_enabled}
+            onCheckedChange={(checked) => { setDraft({ ...draft, approval_enabled: checked }); }}
+            data-testid="settings-query-approval"
+          />
+          <Label htmlFor="settings-query-approval" className="cursor-pointer">
+            {t("adminSettings.query.approval")}
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">{t("adminSettings.query.approvalHint")}</p>
+      </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-query-timeout">{t("adminSettings.query.timeout")}</Label>
         <Input
@@ -361,16 +385,20 @@ function ExecutionFields({ draft, setDraft }: { draft: SettingsValue; setDraft: 
   }
   return (
     <>
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={draft.restriction_enabled}
-          onChange={(event) => { setDraft({ ...draft, restriction_enabled: event.target.checked }); }}
-          data-testid="settings-execution-restriction"
-        />
-        {t("adminSettings.execution.restriction")}
-      </label>
-      <p className="text-muted-foreground text-xs">{t("adminSettings.execution.restrictionHint")}</p>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="settings-execution-restriction"
+            checked={draft.restriction_enabled}
+            onCheckedChange={(checked) => { setDraft({ ...draft, restriction_enabled: checked }); }}
+            data-testid="settings-execution-restriction"
+          />
+          <Label htmlFor="settings-execution-restriction" className="cursor-pointer">
+            {t("adminSettings.execution.restriction")}
+          </Label>
+        </div>
+        <p className="text-muted-foreground text-xs">{t("adminSettings.execution.restrictionHint")}</p>
+      </div>
       <div className="flex flex-col gap-2">
         <Label>{t("adminSettings.execution.windows")}</Label>
         <p className="text-muted-foreground text-xs">{t("adminSettings.execution.windowsHint")}</p>

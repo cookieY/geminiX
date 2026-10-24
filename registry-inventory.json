@@ -34,7 +34,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/badge.tsx",
-          "sha256": "07a7e7a01a6198252eebf5cf4999097abd05780d411524affe63fc1551a3e867"
+          "sha256": "447567d09cfe5c5be337742d69d923a302d16b0031026c1056424af2e8a19644"
         }
       ]
     },
@@ -45,7 +45,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/button.tsx",
-          "sha256": "d046ed370f91dbbbf00742ccab3c01ea2db623d50ee298ebf6a52a280c547c07"
+          "sha256": "eb5172fbe042b3731353818419167d575eb1ee544eeeb848a35b5e48e6fb92cd"
         }
       ]
     },
@@ -56,7 +56,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/card.tsx",
-          "sha256": "571ccba2300c101e2c71c04901463b08965c36edf5a1c5dc955256e48909c310"
+          "sha256": "30ec7126a8d54eb22233574ab6313b453d765e134a7626639e91558c5606efe2"
         }
       ]
     },
@@ -101,6 +101,17 @@
         {
           "path": "src/shared/components/ui/input.tsx",
           "sha256": "d81716b6fa7e6dbb48ffcb0303e6e5ae1c4c9c0fe75d456c3d67fa660041cde1"
+        }
+      ]
+    },
+    {
+      "name": "input-group",
+      "registry_type": "registry:ui",
+      "content_sha256": "f217c64b060feb10206a4a43d0b0fa459a10736274ed1b8018f1be46d79cb04b",
+      "files": [
+        {
+          "path": "src/shared/components/ui/input-group.tsx",
+          "sha256": "13d6069787c6740fe2aa792fe8f97d403bf1d97656d3efb2030d8a4c26d616fe"
         }
       ]
     },
@@ -232,7 +243,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/table.tsx",
-          "sha256": "8b8be137f4e998b3cda99116a005756695cda4bf69735f5dc119bd361a5691de"
+          "sha256": "580331ce90a66d6b1309465e6813879d7aae8a40c7d7c21610d12b4cb95e2091"
         }
       ]
     },

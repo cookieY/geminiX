@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, RefreshCw, Search, Tags } from "lucide-react";
 import { SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { Button } from "@/shared/components/ui/button";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { useLatestReleaseQuery } from "@/features/releases/use-latest-release";
 import { BrandLogo } from "./brand-logo";
-import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { UserMenu } from "./user-menu";
+
+const CommandMenu = lazy(() => import("./command-menu").then((module) => ({ default: module.CommandMenu })));
 
 /**
  * Shell header. Owner ruling 2026-10-23: the bar is a separate surface from
@@ -23,6 +25,15 @@ export function AppHeader() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [commandOpen, setCommandOpen] = useState(false);
+  const [commandRequested, setCommandRequested] = useState(false);
+  const commandReturnFocus = useRef<HTMLElement | null>(null);
+  // Defer the popup code until first use, then retain its mounted dialog so
+  // close transitions and focus restoration stay owned by Base UI.
+  const openCommandMenu = (trigger: HTMLElement) => {
+    commandReturnFocus.current = trigger;
+    setCommandRequested(true);
+    setCommandOpen(true);
+  };
 
   // Release status lives in the bar, left of the theme toggle (owner request
   // 2026-10-23), so the workspace pages no longer repeat a version row of
@@ -57,16 +68,18 @@ export function AppHeader() {
       if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
       event.preventDefault();
       if (event.repeat) return;
+      if (!commandOpen) commandReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setCommandRequested(true);
       setCommandOpen((open) => !open);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
+  }, [commandOpen]);
 
   return (
-    <header className="bg-card mx-auto mt-1 mb-0 w-[calc(100%-2rem)] max-w-[1536px] rounded-xl border border-border">
+    <header className="bg-card relative mx-auto mt-1 mb-0 w-[calc(100%-2rem)] max-w-[1536px] rounded-xl border border-border">
       {/* Floating card (restored 2026-10-23): the shell canvas is flush, the
           bar itself stays a rounded card. `calc(100%-2rem)` + the shared
           1536px cap keep it on the same band as the body column below, so the
@@ -92,8 +105,8 @@ export function AppHeader() {
             steals a keystroke the page below is using. */}
         <Button
           variant="ghost"
-          onClick={() => {
-            setCommandOpen(true);
+          onClick={(event) => {
+            openCommandMenu(event.currentTarget);
           }}
           aria-label={t("shell.command.open")}
           aria-keyshortcuts="Control+K Meta+K"
@@ -111,8 +124,8 @@ export function AppHeader() {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => {
-              setCommandOpen(true);
+            onClick={(event) => {
+              openCommandMenu(event.currentTarget);
             }}
             aria-label={t("shell.command.open")}
             className="md:hidden"
@@ -171,7 +184,11 @@ export function AppHeader() {
           <UserMenu />
         </div>
       </nav>
-      <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
+      {commandRequested && (
+        <Suspense fallback={<Spinner role="status" aria-label={t("states.loading")} className="absolute top-4 right-4" />}>
+          <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} returnFocusRef={commandReturnFocus} />
+        </Suspense>
+      )}
     </header>
   );
 }

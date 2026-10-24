@@ -1,3 +1,4 @@
+import { LoadingState } from "@/shared/components/status/loading-state";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, Database, EyeOff, Table2 } from "lucide-react";
@@ -45,7 +46,7 @@ export function MetadataTree({ session, activeDatasourceId, onTableSelected, onI
         data-testid="query-tree-filter"
       />
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        {schemasQuery.isPending && <p className="text-muted-foreground px-2 py-4 text-xs">{t("common.loading")}</p>}
+        {schemasQuery.isPending && <LoadingState variant="inline" />}
         {schemasQuery.error !== null && (
           <p className="text-destructive px-2 py-4 text-xs">{t("query.tree.loadFailed")}</p>
         )}
@@ -134,7 +135,7 @@ function SchemaNode({
       </button>
       {expanded && (
         <div className="ml-4">
-          {tablesQuery.isPending && <p className="text-muted-foreground px-2 py-1 text-xs">{t("common.loading")}</p>}
+          {tablesQuery.isPending && <LoadingState variant="inline" />}
           {visibleTables.map((table) => {
             const key = `${schemaName}.${table.table_name}`;
             const tableExpanded = expandedTables.has(key);
@@ -204,7 +205,7 @@ function ColumnList({
   const columns = columnsQuery.data ?? [];
   return (
     <div className="ml-6 border-l pl-2" data-testid={`query-tree-columns-${schemaName}-${tableName}`}>
-      {columnsQuery.isPending && <p className="text-muted-foreground py-1 text-xs">{t("common.loading")}</p>}
+      {columnsQuery.isPending && <LoadingState variant="inline" />}
       {columns.map((column) => (
         <div key={column.column_name} className="flex items-center gap-1 py-0.5">
           <span className="text-muted-foreground truncate font-mono text-[11px]">{column.column_name}</span>

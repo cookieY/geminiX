@@ -163,7 +163,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Approved global adoption of the workspace brand (UI spec §7.8). */
+  --primary: var(--chart-brand);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -181,7 +182,7 @@
   --destructive: oklch(0.46 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: var(--chart-brand);
   /* Light-theme series (owner ruling 2026-10-23: dark and light must not
      share one palette). On white paper the inks sit deep and slightly
      desaturated — teal leads, amber/orange second, indigo third — which is
@@ -202,12 +203,12 @@
   --radius: 8px;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: var(--ring);
 
   /* Yearning business semantic tokens (spec §4). Text-safe values verified
      against --card by scripts/check-token-contrast.mjs in both themes. */
@@ -258,7 +259,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: var(--chart-brand);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -270,7 +271,7 @@
   --success: oklch(0.72 0.17 149.214);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: var(--chart-brand);
   /* Dark-mode counterparts of the brand chart accents (see :root). */
   --chart-brand: oklch(0.71 0.16 298);
   --chart-brand-soft: oklch(0.73 0.13 265);
@@ -284,12 +285,12 @@
   --chart-5: oklch(0.7 0.18 18);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: var(--ring);
 
   /* Yearning business semantic tokens, dark-surface variants. */
   --risk-critical: oklch(0.72 0.19 22.216);

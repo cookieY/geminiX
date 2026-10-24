@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreateOrderComment, useOrderComments } from "@/features/orders/use-approvals";
 import { describeError } from "@/shared/api/error-display";
-import { Button } from "@/shared/components/ui/button";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { MessageSquare } from "lucide-react";
 
@@ -39,7 +41,7 @@ export function OrderCommentsCard({ orderId }: { orderId: string }) {
   return (
     <Card data-testid="order-comments">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <MessageSquare className="size-4" aria-hidden />
           {t("orders.detail.comments")}
         </CardTitle>
@@ -55,15 +57,15 @@ export function OrderCommentsCard({ orderId }: { orderId: string }) {
             data-testid="order-comment-input"
           />
           <div className="flex items-center gap-3">
-            <Button
+            <PendingButton
               size="sm"
               onClick={submit}
-              disabled={content.trim() === "" || createComment.isPending}
+              pending={createComment.isPending}
+              disabled={content.trim() === ""}
               data-testid="order-comment-submit"
             >
-              {createComment.isPending && <Spinner className="size-3.5" />}
               {t("orders.detail.commentSubmit")}
-            </Button>
+            </PendingButton>
             {error !== null && (
               <p role="alert" className="text-destructive text-xs" data-testid="order-comment-error">
                 {error}
@@ -71,14 +73,16 @@ export function OrderCommentsCard({ orderId }: { orderId: string }) {
             )}
           </div>
         </div>
-        {commentsQuery.isPending ? null : commentsQuery.isError ? (
-          <p role="alert" className="text-destructive text-sm">
-            {t("errors.generic.safe")}
-          </p>
+        {commentsQuery.isPending ? (
+          <LoadingState variant="inline" />
+        ) : commentsQuery.isError ? (
+          <ErrorState
+            error={commentsQuery.error}
+            operationId="listChangeOrderComments"
+            onRetry={() => void commentsQuery.refetch()}
+          />
         ) : commentsQuery.data.length === 0 ? (
-          <p className="text-muted-foreground text-sm" data-testid="order-comments-empty">
-            {t("orders.detail.commentsEmpty")}
-          </p>
+          <EmptyState title={t("orders.detail.commentsEmpty")} testId="order-comments-empty" />
         ) : (
           <ol className="flex flex-col gap-3" data-testid="order-comments-list">
             {commentsQuery.data.map((comment) => (

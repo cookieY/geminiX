@@ -150,6 +150,8 @@ describe("ApprovalQueuePage", () => {
     );
     renderQueue();
     const table = await screen.findByTestId("approval-queue-table");
+    expect(screen.getByRole("heading", { level: 1, name: "待我审批" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(table.textContent).toContain("YR-20260830-000081");
     // 已审工单保留 + 新列（工单状态/提交人/是否已审批）呈现。
     expect(table.textContent).toContain("YR-20260830-000082");

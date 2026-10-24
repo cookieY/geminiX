@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Search } from "lucide-react";
@@ -37,14 +37,17 @@ interface Entry {
 export function CommandMenu({
   open,
   onOpenChange,
+  returnFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        finalFocus={returnFocusRef}
         showCloseButton={false}
         className="gap-0 rounded-xl! p-2! sm:max-w-2xl"
         aria-describedby={undefined}

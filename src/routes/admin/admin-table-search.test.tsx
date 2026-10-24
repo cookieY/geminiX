@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
-import { HttpResponse, http } from "msw";
+import { HttpResponse, delay, http } from "msw";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/test/msw/server";
@@ -12,6 +12,7 @@ import AdminDatasourcesPage from "@/routes/admin/admin-datasources-page";
 import AdminFlowsPage from "@/routes/admin/admin-flows-page";
 import AdminPermissionGroupsPage from "@/routes/admin/admin-permission-groups-page";
 import AdminProvidersPage from "@/routes/admin/admin-providers-page";
+import AdminReviewKnowledgePage from "@/routes/admin/admin-review-knowledge-page";
 import AdminReviewSkillsPage from "@/routes/admin/admin-review-skills-page";
 import AdminRuleSetsPage from "@/routes/admin/admin-rule-sets-page";
 import AdminUsersPage from "@/routes/admin/admin-users-page";
@@ -66,7 +67,7 @@ function grantSession(): void {
   );
 }
 
-function renderPage(ui: React.ReactElement): void {
+function renderPage(ui: React.ReactElement): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -77,6 +78,7 @@ function renderPage(ui: React.ReactElement): void {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 function typeSearch(testId: string, value: string): void {
@@ -93,6 +95,7 @@ beforeEach(() => {
 describe("admin table search (§18.37)", () => {
   it("users: filters by username/display name/email with a search empty state", async () => {
     renderPage(<AdminUsersPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "用户" })).toBeVisible();
     // Row testids carry the user id (uuid), not the username — assert on
     // visible text and row counts.
     expect(await screen.findByText("dba-anne")).toBeVisible();
@@ -109,6 +112,7 @@ describe("admin table search (§18.37)", () => {
 
   it("flows: filters by flow name", async () => {
     renderPage(<AdminFlowsPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "流程" })).toBeVisible();
     expect((await screen.findAllByTestId(/admin-flow-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-flows-search", "在线只读");
     await waitFor(() => {
@@ -120,6 +124,7 @@ describe("admin table search (§18.37)", () => {
 
   it("permission groups: filters by group name", async () => {
     renderPage(<AdminPermissionGroupsPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "权限组" })).toBeVisible();
     expect((await screen.findAllByTestId(/admin-group-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-groups-search", "变更发布组");
     expect(screen.getAllByTestId(/^admin-group-row-/).length).toBe(1);
@@ -129,6 +134,7 @@ describe("admin table search (§18.37)", () => {
 
   it("datasources: filters by name and host", async () => {
     renderPage(<AdminDatasourcesPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "数据源管理" })).toBeVisible();
     expect((await screen.findAllByTestId(/ds-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-datasources-search", "订单主库");
     await waitFor(() => {
@@ -145,6 +151,7 @@ describe("admin table search (§18.37)", () => {
 
   it("providers: filters by name, base url and model", async () => {
     renderPage(<AdminProvidersPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "Provider 管理" })).toBeVisible();
     expect((await screen.findAllByTestId(/provider-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-providers-search", "backup");
     await waitFor(() => {
@@ -160,6 +167,7 @@ describe("admin table search (§18.37)", () => {
 
   it("rule sets: filters by rule set name", async () => {
     renderPage(<AdminRuleSetsPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "规则集" })).toBeVisible();
     expect((await screen.findAllByTestId(/rule-set-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-rule-sets-search", "change-review");
     expect(screen.getAllByTestId(/^rule-set-row-/).length).toBe(1);
@@ -169,6 +177,7 @@ describe("admin table search (§18.37)", () => {
 
   it("review skills: filters the prompt tool table", async () => {
     renderPage(<AdminReviewSkillsPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "审核技能（Prompt Tool）" })).toBeVisible();
     expect((await screen.findAllByTestId(/review-input-row-/)).length).toBeGreaterThan(0);
     typeSearch("admin-skills-search", "dml");
     await waitFor(() => {
@@ -176,5 +185,48 @@ describe("admin table search (§18.37)", () => {
     });
     typeSearch("admin-skills-search", "不存在");
     expect(await screen.findByTestId("admin-skills-search-empty")).toBeVisible();
+  });
+
+  it("knowledge: exposes one page title above the existing master-detail layout", async () => {
+    renderPage(<AdminReviewKnowledgePage />);
+    expect(screen.getByRole("heading", { level: 1, name: "内部经验（知识库）" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect((await screen.findAllByTestId(/review-input-row-/))[0]).toBeInTheDocument();
+  });
+
+  it("keeps the page controls and table-shaped loading state during first load", () => {
+    server.use(
+      http.get("*/admin/datasources", async () => {
+        await delay("infinite");
+        return HttpResponse.json(null);
+      }),
+    );
+    renderPage(<AdminDatasourcesPage />);
+
+    expect(screen.getByRole("heading", { level: 1, name: "数据源管理" })).toBeVisible();
+    expect(screen.getByTestId("admin-datasources-search")).toBeVisible();
+    expect(screen.getByRole("status", { name: "加载中" })).toHaveAttribute(
+      "data-loading-variant",
+      "table",
+    );
+  });
+
+  it("keeps existing rows while a background refresh is announced in the toolbar", async () => {
+    const queryClient = renderPage(<AdminUsersPage />);
+    expect(await screen.findByText("dba-anne")).toBeVisible();
+    expect(screen.getByText("Administrator")).toBeVisible();
+
+    server.use(
+      http.get("*/admin/users", async () => {
+        await delay("infinite");
+        return HttpResponse.json(null);
+      }),
+    );
+    void queryClient.refetchQueries({ queryKey: ["admin", "users"] });
+
+    expect(await screen.findByRole("status", { name: "正在刷新" })).toBeVisible();
+    expect(screen.getByText("dba-anne")).toBeVisible();
+    expect(screen.getByText("Administrator")).toBeVisible();
+    expect(screen.queryByRole("status", { name: "加载中" })).not.toBeInTheDocument();
   });
 });

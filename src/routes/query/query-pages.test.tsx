@@ -194,6 +194,8 @@ describe("gate: admin撤销用户可感知且admin不能查看查询", () => {
     seedQueryScenario("query-session");
     stubSession(false);
     renderAt("/approvals/query-access");
+    expect(await screen.findByRole("heading", { level: 1, name: "查询访问审批" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const grantsTable = await screen.findByTestId("query-access-grants-table");
     await openRowActionsAt(within(grantsTable).getByTestId(/query-grant-actions-/));
     await userEvent.click(screen.getByTestId(/query-access-revoke-/));
@@ -227,6 +229,8 @@ describe("query entry mode branches (server-driven)", () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderAt("/query");
+    expect(await screen.findByRole("heading", { level: 1, name: "查询" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const flow = await screen.findByTestId(/query-flow-enter-/);
     await userEvent.click(flow);
     expect(await screen.findByTestId("query-needs-access-hint")).toHaveTextContent("需要访问审批");

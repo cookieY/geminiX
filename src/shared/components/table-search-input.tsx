@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Search, X } from "lucide-react";
-import { Input } from "@/shared/components/ui/input";
+import { useRef } from "react";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/shared/components/ui/input-group";
 
 /**
  * Shared table search box (owner request 2026-09-04, §18.37): filters the
@@ -19,30 +20,29 @@ export function TableSearchInput({
   testId: string;
 }) {
   const { t } = useTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="relative w-full max-w-xs">
-      <Search
-        className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        aria-hidden
-      />
-      <Input
+    <InputGroup className="w-full min-w-0 max-w-xs">
+      <InputGroupAddon><Search aria-hidden /></InputGroupAddon>
+      <InputGroupInput
+        ref={inputRef}
+        aria-label={placeholder ?? t("table.searchPlaceholder")}
         value={value}
         onChange={(event) => { onChange(event.target.value); }}
         placeholder={placeholder ?? t("table.searchPlaceholder")}
-        className="pr-8 pl-9"
         data-testid={testId}
       />
       {value !== "" && (
-        <button
+        <InputGroupAddon align="inline-end"><InputGroupButton
           type="button"
           aria-label={t("common.clear")}
-          onClick={() => { onChange(""); }}
-          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+          onClick={() => { onChange(""); inputRef.current?.focus(); }}
+          size="icon-xs"
           data-testid={`${testId}-clear`}
         >
-          <X className="size-4" aria-hidden />
-        </button>
+          <X aria-hidden />
+        </InputGroupButton></InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   );
 }

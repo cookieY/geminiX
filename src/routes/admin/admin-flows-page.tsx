@@ -7,14 +7,17 @@ import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, FlowMaskingRule, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -35,6 +38,8 @@ import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * 流程管理 (route /admin/flows; migration contract §2 maps legacy
@@ -104,9 +109,13 @@ export default function AdminFlowsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-flows-page">
-      <header className="flex flex-row justify-end gap-4">
-        <div className="flex gap-2">
+    <PageLayout data-testid="admin-flows-page">
+      <PageHeader
+        title={t("adminFlows.title")}
+        description={t("adminFlows.description")}
+        icon={Workflow}
+        actions={
+          <>
           <Button variant="outline" onClick={() => { setCreateType("change_review"); }} data-testid="admin-flows-create-change">
             <Plus />
             {t("adminFlows.createChange")}
@@ -115,24 +124,14 @@ export default function AdminFlowsPage() {
             <Plus />
             {t("adminFlows.createQuery")}
           </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
-      {flowsQuery.isPending && <LoadingState />}
-      {flowsQuery.error !== null && (
-        <ErrorState error={flowsQuery.error} operationId="listFlows" onRetry={() => void flowsQuery.refetch()} />
-      )}
-
-      {!flowsQuery.isPending && flowsQuery.error === null && (
-        <Card>
-          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Workflow className="size-4" />
-                {t("adminFlows.card")}
-              </CardTitle>
-              <CardDescription>{t("adminFlows.cardDescription")}</CardDescription>
-            </div>
+      <Card>
+        <ListToolbar
+          busy={flowsQuery.isFetching && !flowsQuery.isPending}
+          search={
             <TableSearchInput
               value={search}
               onChange={(value) => {
@@ -141,14 +140,22 @@ export default function AdminFlowsPage() {
               }}
               testId="admin-flows-search"
             />
-          </CardHeader>
-          <CardContent className="px-0!">
-            {flows.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-flows-empty">
-                {keyword !== "" ? t("table.emptySearch") : t("adminFlows.empty")}
-              </p>
-            ) : (
-              <>
+          }
+        />
+        <CardContent className="px-0!">
+          {flowsQuery.isPending ? (
+            <LoadingState variant="table" columns={5} />
+          ) : flowsQuery.error !== null ? (
+            <ErrorState error={flowsQuery.error} operationId="listFlows" onRetry={() => void flowsQuery.refetch()} />
+          ) : (
+            <>
+              {flows.length === 0 ? (
+                <EmptyState
+                  title={keyword !== "" ? t("table.emptySearch") : t("adminFlows.empty")}
+                  filtered={keyword !== ""}
+                  testId="admin-flows-empty"
+                />
+              ) : (
               <Table data-testid="admin-flows-table">
                 <TableHeader>
                   <TableRow>
@@ -165,28 +172,28 @@ export default function AdminFlowsPage() {
                   ))}
                 </TableBody>
               </Table>
-              </>
-            )}
-      {flowsLoaded ? (
-        <TablePagination
-          busy={flowsQuery.isFetching && flowsQuery.isPlaceholderData}
-          page={pager.pageNo}
-          hasMore={flowsQuery.data.page.has_more}
-          isFirst={pager.isFirst}
-          onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
-          onNext={() => {
-            pager.pushCursor(flowsQuery.data.page.next_cursor);
-          }}
-          pageSize={pager.pageSize}
-          onPageSizeChange={pager.setPageSize}
-          rowsOnPage={(flowsQuery.data.items ?? []).length}
-          testIdPrefix="flows"
-        />
-      ) : null}
-          </CardContent>
-        </Card>
-      )}
+              )}
+              {flowsLoaded ? (
+                <TablePagination
+                  busy={flowsQuery.isFetching && flowsQuery.isPlaceholderData}
+                  page={pager.pageNo}
+                  hasMore={flowsQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onJumpPage={pager.goToPage}
+                  onNext={() => {
+                    pager.pushCursor(flowsQuery.data.page.next_cursor);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={flowsQuery.data.items.length}
+                  testIdPrefix="flows"
+                />
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <FlowFormDialog
         open={createType !== null || editing !== null}
@@ -197,7 +204,7 @@ export default function AdminFlowsPage() {
           setCreateType(null);
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -212,18 +219,18 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
   return (
     <>
       <TableRow data-testid={`admin-flow-row-${flow.id}`} data-row-key={flow.id}>
-        <TableCell className="font-medium">{flow.name}</TableCell>
+        <TableCell className="font-semibold text-foreground">{flow.name}</TableCell>
         <TableCell>
           <Badge variant="outline">
             {isQuery ? t("adminFlows.kind.query") : t("adminFlows.kind.change")}
           </Badge>
         </TableCell>
         <TableCell>
-          <Badge variant={flow.enabled ? "secondary" : "outline"}>
+          <StatusBadge tone={flow.enabled ? "emerald" : "stone"}>
             {flow.enabled ? t("adminFlows.enabled") : t("adminFlows.disabled")}
-          </Badge>
+          </StatusBadge>
         </TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="text-muted-foreground tabular-nums">
           {isQuery
             ? t("adminFlows.structure.query", {
                 datasources: flow.query_capabilities?.length ?? 0,
@@ -267,9 +274,9 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
             <Button variant="outline" onClick={() => { setConfirmOpen(false); }}>
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant="destructive"
-              disabled={deleteFlow.isPending}
+              pending={deleteFlow.isPending}
               onClick={() => {
                 deleteFlow.mutate(
                   { flowId: flow.id, version: flow.version },
@@ -281,8 +288,8 @@ function FlowRow({ flow, onEdit }: { flow: Flow; onEdit: () => void }) {
               }}
               data-testid="admin-flow-delete-confirm"
             >
-              {deleteFlow.isPending ? t("common.saving") : t("adminFlows.delete.confirm")}
-            </Button>
+              {t("adminFlows.delete.confirm")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -788,9 +795,14 @@ function FlowFormDialog({
               <AlertDescription>{t("adminFlows.engineMismatch")}</AlertDescription>
             </Alert>
           )}
-          <Button disabled={!valid || createFlow.isPending || replaceFlow.isPending} onClick={() => void submit()} data-testid="flow-form-submit">
-            {createFlow.isPending || replaceFlow.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+          <PendingButton
+            pending={createFlow.isPending || replaceFlow.isPending}
+            disabled={!valid}
+            onClick={() => void submit()}
+            data-testid="flow-form-submit"
+          >
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -848,7 +860,7 @@ function ApprovalStepsEditor({
                   data-testid={`${testIdPrefix}-step-${String(stepIndex)}-select-all`}
                 />
                 {t("adminFlows.selectAll")}
-                <span data-testid={`${testIdPrefix}-step-${String(stepIndex)}-select-all-count`}>
+                <span className="tabular-nums" data-testid={`${testIdPrefix}-step-${String(stepIndex)}-select-all-count`}>
                   {String(step.actorIds.length)}/{String(users.length)}
                 </span>
               </label>
@@ -937,7 +949,7 @@ function ActorPicker({
             data-testid={`${testIdPrefix}-select-all`}
           />
           {t("adminFlows.selectAll")}
-          <span data-testid={`${testIdPrefix}-select-all-count`}>
+          <span className="tabular-nums" data-testid={`${testIdPrefix}-select-all-count`}>
             {String(selected.length)}/{String(users.length)}
           </span>
         </label>
@@ -998,7 +1010,7 @@ function MaskingRulesSection({ flow }: { flow: Flow }) {
         <Label>{t("adminFlows.maskingRules")}</Label>
       </div>
       <p className="text-muted-foreground text-xs">{t("adminFlows.maskingRulesHint")}</p>
-      {rulesQuery.isPending && <p className="text-muted-foreground text-xs">{t("common.loading")}</p>}
+      {rulesQuery.isPending && <LoadingState variant="inline" />}
       {rules.map((rule) => {
         const value = draft[rule.datasource_id] ?? rule.sensitive_columns.join(", ");
         const savedValue = savedFor[rule.datasource_id] ?? rule.sensitive_columns.join(", ");
@@ -1013,10 +1025,11 @@ function MaskingRulesSection({ flow }: { flow: Flow }) {
                 className="min-h-8 text-xs"
                 data-testid={`flow-masking-rule-${rule.datasource_id}`}
               />
-              <Button
+              <PendingButton
                 size="sm"
                 variant="outline"
-                disabled={!dirty || replaceRule.isPending}
+                pending={replaceRule.isPending}
+                disabled={!dirty}
                 onClick={() => {
                   setErrorText(null);
                   const columns = value
@@ -1034,7 +1047,7 @@ function MaskingRulesSection({ flow }: { flow: Flow }) {
                 data-testid={`flow-masking-save-${rule.datasource_id}`}
               >
                 {t("common.save")}
-              </Button>
+              </PendingButton>
             </div>
           </div>
         );

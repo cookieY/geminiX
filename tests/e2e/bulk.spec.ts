@@ -31,20 +31,15 @@ function buildBulkSql(statementCount: number, padding = ""): string {
   return parts.join("");
 }
 
-async function createDraft(page: Page, title: string): Promise<void> {
+async function openDraftComposer(page: Page, title: string): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  // Implicit drafts: the acting save adopts the draft silently — the URL
-  // never moves; the adopted id rides data-draft-id on the page root.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
 }
 
 /** Imports a SQL file through the real dialog and uploads it. */
-async function importSqlFile(page: Page, sql: string, name: string): Promise<void> {
+async function importSqlFile(page: Page, sql: string, name: string): Promise<string> {
   await page.getByTestId("open-bulk-import").click();
   await expect(page.getByTestId("bulk-import-dialog")).toBeVisible();
   await page.getByTestId("bulk-import-input").setInputFiles({
@@ -54,8 +49,16 @@ async function importSqlFile(page: Page, sql: string, name: string): Promise<voi
   });
   await expect(page.getByTestId("bulk-import-ok")).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("bulk-import-confirm").click();
-  // No transient editor mount between confirm and the draft refetch.
-  expect(await page.locator(".monaco-editor").count()).toBe(0);
+  // Import confirmation is the first acting operation that adopts the
+  // implicit draft; its id then appears on the page root.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+    { timeout: 15_000 },
+  );
+  const draftId = await page.getByTestId("changes-new-page").getAttribute("data-draft-id");
+  if (draftId === null) throw new Error("bulk import did not adopt a draft");
+  return draftId;
 }
 
 function visibleRowCount(page: Page): Promise<number> {
@@ -76,7 +79,7 @@ test("100k-statement draft stays interactive in the virtualized browser", async 
   page,
 }) => {
   test.setTimeout(120_000);
-  await createDraft(page, "十万语句批量草稿");
+  await openDraftComposer(page, "十万语句批量草稿");
   await importSqlFile(page, buildBulkSql(100000), "bulk-100k.sql");
 
   // The draft is bulk: the Monaco editor must not exist anywhere in the DOM.
@@ -121,7 +124,7 @@ test("the single anomaly is visible outside the aggregate and jumpable", async (
   page,
 }) => {
   test.setTimeout(120_000);
-  await createDraft(page, "异常可见性草稿");
+  await openDraftComposer(page, "异常可见性草稿");
   await importSqlFile(page, buildBulkSql(100000), "bulk-anomaly.sql");
   await expect(page.getByTestId("capacity-statements")).toHaveText("100000", {
     timeout: 15_000,
@@ -147,7 +150,7 @@ test("the single anomaly is visible outside the aggregate and jumpable", async (
 
 test("import can be cancelled mid-read without touching the draft", async ({ page }) => {
   test.setTimeout(60_000);
-  await createDraft(page, "取消导入草稿");
+  await openDraftComposer(page, "取消导入草稿");
   await page.getByTestId("open-bulk-import").click();
   await expect(page.getByTestId("bulk-import-dialog")).toBeVisible();
   // ~30 MiB of SQL → ~30 chunk iterations, each yielding to the event loop,
@@ -168,12 +171,16 @@ test("import can be cancelled mid-read without touching the draft", async ({ pag
   // The draft is untouched: still editor-mode with no SQL content.
   await expect(page.getByTestId("sql-editor")).toBeVisible();
   await expect(page.getByTestId("bulk-browser")).toHaveCount(0);
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
 });
 
 test("leaving and returning recovers the frozen review without re-running", async ({ page }) => {
   test.setTimeout(120_000);
-  await createDraft(page, "断线恢复草稿");
-  await importSqlFile(page, buildBulkSql(100000), "bulk-recovery.sql");
+  await openDraftComposer(page, "断线恢复草稿");
+  const draftId = await importSqlFile(page, buildBulkSql(100000), "bulk-recovery.sql");
   await expect(page.getByTestId("capacity-statements")).toHaveText("100000", {
     timeout: 15_000,
   });
@@ -190,21 +197,28 @@ test("leaving and returning recovers the frozen review without re-running", asyn
   await expect(page.getByTestId("review-status")).toContainText(/已阻断|运行中|队列中/, {
     timeout: 15_000,
   });
-  // Disconnect equivalent: leave the workspace and return. The page unmounts
-  // (event feed stops), and on return it re-subscribes from the client's
-  // resume point and re-fetches the frozen run from the server. (A full
+  // Disconnect equivalent: leave the workspace through the real list and
+  // reopen the adopted draft. The URL stayed on /changes/new during implicit
+  // adoption, so browser back cannot return to this draft. The page unmounts
+  // (event feed stops), and on re-entry it re-subscribes and re-fetches the
+  // frozen run from the server. (A full
   // browser reload resets the in-memory mock world — documented mock-layer
   // limitation, migration contract §11.4; run-recovery across real reloads
   // is covered by the component suite.)
-  await page.getByRole("link", { name: "工单提交" }).click();
-  await expect(page.getByTestId("changes-new-page")).toBeVisible();
-  await page.goBack();
+  await page.getByRole("link", { name: "我的工单" }).click();
+  const draftRow = page.getByTestId("mine-draft-row").filter({ hasText: "断线恢复草稿" });
+  await expect(draftRow).toBeVisible({ timeout: 15_000 });
+  await draftRow.click();
+  await expect(page).toHaveURL(new RegExp(`/changes/drafts/${draftId}$`));
   await expect(page.getByTestId("review-status")).toContainText("已阻断", { timeout: 60_000 });
-  await expect(page.getByTestId("capacity-statements")).toHaveText("100000", { timeout: 30_000 });
 
-  // The virtualized browser rebuilds after an explicit reveal of the SQL.
+  // Re-entry starts without session plaintext: the browser is rebuilt only
+  // after an explicit, audited SQL reveal.
+  await expect(page.getByTestId("bulk-digest-pending")).toBeVisible();
+  await expect(page.getByTestId("bulk-browser")).toHaveCount(0);
   await page.getByTestId("reveal-sql").click();
   await expect(page.getByTestId("bulk-browser")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("capacity-statements")).toHaveText("100000", { timeout: 30_000 });
   await page.getByTestId("tab-findings").click();
   await expect(
     page.getByTestId("finding-item").filter({ hasText: "无 WHERE 条件的批量 DML" }),

@@ -1,15 +1,19 @@
+import { StatusBadge } from "@/shared/components/status/status-badge";
+import type { StatusTone } from "@/shared/lib/status-tone";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Lock, ScrollText } from "lucide-react";
+import { ScrollText } from "lucide-react";
 import { listAuditEvents } from "@/api/generated/client/administration/administration";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import type { AuditEvent } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
-import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { Card, CardContent, CardDescription, CardTitle } from "@/shared/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -19,7 +23,6 @@ import {
 } from "@/shared/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import { useState } from "react";
 
 /**
@@ -33,11 +36,7 @@ import { useState } from "react";
  * append-only (90-day retention shown per row via expires_at).
  */
 
-const OUTCOME_VARIANT: Record<string, "secondary" | "destructive" | "outline"> = {
-  succeeded: "secondary",
-  denied: "destructive",
-  failed: "destructive",
-};
+const OUTCOME_TONE: Record<string, StatusTone> = { succeeded: "emerald", denied: "amber", failed: "red" };
 
 function formatTimestamp(value: string): string {
   return value.replace("T", " ").replace("Z", " UTC");
@@ -95,105 +94,114 @@ export default function AuditRecordsPage() {
   const auditHasMore = eventsQuery.data?.hasMore ?? false;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="records-page">
-            {!isAdmin && (
-        <Empty className="rounded-xl border" data-testid="records-no-scope">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Lock />
-            </EmptyMedia>
-            <EmptyTitle>{t("records.noScopeTitle")}</EmptyTitle>
-            <EmptyDescription>{t("records.noScopeDescription")}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+    <PageLayout data-testid="records-page">
+      <PageHeader
+        icon={ScrollText}
+        title={t("records.title")}
+        description={t("records.description")}
+      />
+
+      {!isAdmin && (
+        <div className="rounded-xl border">
+          <EmptyState
+            title={t("records.noScopeTitle")}
+            description={t("records.noScopeDescription")}
+            testId="records-no-scope"
+          />
+        </div>
       )}
 
-      {isAdmin && eventsQuery.isPending && <LoadingState />}
-      {isAdmin && eventsQuery.error !== null && (
-        <ErrorState
-          error={eventsQuery.error}
-          operationId="listAuditEvents"
-          onRetry={() => void eventsQuery.refetch()}
-        />
-      )}
-
-      {isAdmin && !eventsQuery.isPending && eventsQuery.error === null && (
+      {isAdmin && (
         <Card>
-          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <ScrollText className="size-4" />
+          <ListToolbar
+            busy={eventsQuery.isFetching && eventsQuery.isPlaceholderData}
+            search={<TableSearchInput value={search} onChange={setSearch} testId="records-search" />}
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <CardTitle className="flex items-center gap-2">
+                <ScrollText aria-hidden />
                 {t("records.card")}
               </CardTitle>
               <CardDescription>{t("records.cardDescription")}</CardDescription>
             </div>
-            <TableSearchInput value={search} onChange={setSearch} testId="records-search" />
-          </CardHeader>
+          </ListToolbar>
           <CardContent className="px-0!">
-            {auditItems.length === 0 && (
-              <p className="text-muted-foreground py-6 text-center text-sm" data-testid="records-empty">
-                {keyword !== "" ? t("table.emptySearch") : t("records.empty")}
-              </p>
+            {eventsQuery.isPending && <LoadingState variant="table" columns={5} />}
+            {eventsQuery.error !== null && (
+              <div className="p-5">
+                <ErrorState
+                  error={eventsQuery.error}
+                  operationId="listAuditEvents"
+                  onRetry={() => void eventsQuery.refetch()}
+                />
+              </div>
             )}
-            {auditItems.length > 0 && (
-              <Table data-testid="records-table">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("records.column.time")}</TableHead>
-                    <TableHead>{t("records.column.actor")}</TableHead>
-                    <TableHead>{t("records.column.action")}</TableHead>
-                    <TableHead>{t("records.column.resource")}</TableHead>
-                    <TableHead>{t("records.column.outcome")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody ref={auditBodyRef} stale={eventsQuery.isFetching && eventsQuery.isPlaceholderData}>
-                  {auditItems.map((event) => (
-                    <TableRow
-                      key={event.id}
-                      data-row-key={event.id}
-                      className="cursor-pointer"
-                      onClick={() => { setDetail(event); }}
-                      data-testid={`records-row-${event.id}`}
-                    >
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {formatTimestamp(event.occurred_at)}
-                      </TableCell>
-                      <TableCell>
-                        {event.actor_username_snapshot ?? event.actor_kind}
-                      </TableCell>
-                      <TableCell className="font-mono">{event.action}</TableCell>
-                      <TableCell className="font-mono">
-                        {event.resource_type}
-                        {event.resource_id == null ? "" : ` \u00b7 ${event.resource_id.slice(0, 8)}`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={OUTCOME_VARIANT[event.outcome] ?? "outline"}>
-                          {t(`records.outcome.${event.outcome}`)}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            {(
-              <TablePagination
-                busy={eventsQuery.isFetching && eventsQuery.isPlaceholderData}
-                page={pager.pageNo}
-                hasMore={auditHasMore}
-                isFirst={pager.pageNo === 1}
-                onPrev={() => {
-                  pager.goPrev();
-                }}
-                          onJumpPage={pager.goToPage}
-                onNext={() => {
-                  pager.pushCursor(auditNext);
-                }}
-                pageSize={pager.pageSize}
-                onPageSizeChange={pager.setPageSize}
-                rowsOnPage={auditItems.length}
-                testIdPrefix="audit"
+            {!eventsQuery.isPending && eventsQuery.error === null && auditItems.length === 0 && (
+              <EmptyState
+                filtered={keyword !== ""}
+                title={keyword !== "" ? t("table.emptySearch") : t("records.empty")}
+                testId="records-empty"
               />
+            )}
+            {!eventsQuery.isPending && eventsQuery.error === null && auditItems.length > 0 && (
+              <>
+                <Table data-testid="records-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("records.column.time")}</TableHead>
+                      <TableHead>{t("records.column.actor")}</TableHead>
+                      <TableHead>{t("records.column.action")}</TableHead>
+                      <TableHead>{t("records.column.resource")}</TableHead>
+                      <TableHead>{t("records.column.outcome")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody ref={auditBodyRef} stale={eventsQuery.isFetching && eventsQuery.isPlaceholderData}>
+                    {auditItems.map((event) => (
+                      <TableRow
+                        key={event.id}
+                        data-row-key={event.id}
+                        className="cursor-pointer"
+                        onClick={() => { setDetail(event); }}
+                        data-testid={`records-row-${event.id}`}
+                      >
+                        <TableCell className="text-muted-foreground whitespace-nowrap tabular-nums">
+                          {formatTimestamp(event.occurred_at)}
+                        </TableCell>
+                        <TableCell className="font-semibold text-foreground">
+                          {event.actor_username_snapshot ?? event.actor_kind}
+                        </TableCell>
+                        <TableCell className="font-mono">{event.action}</TableCell>
+                        <TableCell className="font-mono">
+                          {event.resource_type}
+                          {event.resource_id == null ? "" : ` \u00b7 ${event.resource_id.slice(0, 8)}`}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge tone={OUTCOME_TONE[event.outcome] ?? "stone"}>
+                            {t(`records.outcome.${event.outcome}`)}
+                          </StatusBadge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  busy={eventsQuery.isFetching && eventsQuery.isPlaceholderData}
+                  page={pager.pageNo}
+                  hasMore={auditHasMore}
+                  isFirst={pager.pageNo === 1}
+                  onPrev={() => {
+                    pager.goPrev();
+                  }}
+                  onJumpPage={pager.goToPage}
+                  onNext={() => {
+                    pager.pushCursor(auditNext);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={auditItems.length}
+                  testIdPrefix="audit"
+                />
+              </>
             )}
           </CardContent>
         </Card>
@@ -227,7 +235,7 @@ export default function AuditRecordsPage() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </PageLayout>
   );
 }
 

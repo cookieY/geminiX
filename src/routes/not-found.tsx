@@ -1,14 +1,21 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { FileQuestion } from "lucide-react";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { Button } from "@/shared/components/ui/button";
 
 export default function NotFoundPage() {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-2xl font-semibold">{t("errors.notFound")}</h1>
-      <p className="text-sm text-muted-foreground">{t("errors.notFoundDesc")}</p>
-      <Button render={<Link to="/" />}>{t("errors.backHome")}</Button>
-    </div>
+    <PageLayout className="min-h-screen items-center justify-center p-6">
+      <div className="flex w-full max-w-xl flex-col gap-5">
+        <PageHeader icon={FileQuestion} title={t("errors.notFound")} />
+        <EmptyState
+          title={t("errors.notFoundDesc")}
+          action={<Button render={<Link to="/" />}>{t("errors.backHome")}</Button>}
+        />
+      </div>
+    </PageLayout>
   );
 }

@@ -1,3 +1,5 @@
+import { StatusBadge } from "@/shared/components/status/status-badge";
+import { QUERY_REQUEST_TONE, QUERY_SESSION_TONE, QUERY_GRANT_TONE } from "@/features/query/query-state-tone";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck, Terminal } from "lucide-react";
@@ -7,8 +9,11 @@ import { useMyGrants, useQueryOrders } from "@/features/query/use-query-domain";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { ListToolbar } from "@/shared/components/page-layout";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardDescription, CardTitle } from "@/shared/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -86,10 +91,12 @@ export function QueryOrdersTab() {
 
   return (
     <Card>
-      <CardHeader className="border-b pb-3">
-        <CardTitle className="text-sm">{t("orders.query.title")}</CardTitle>
-        <CardDescription>{t("orders.query.description")}</CardDescription>
-      </CardHeader>
+      <ListToolbar busy={ordersStale}>
+        <div className="flex min-w-0 flex-col gap-1">
+          <CardTitle>{t("orders.query.title")}</CardTitle>
+          <CardDescription>{t("orders.query.description")}</CardDescription>
+        </div>
+      </ListToolbar>
       <CardContent className="px-0!">
         {loadError !== null && (
           <ErrorState
@@ -102,12 +109,10 @@ export function QueryOrdersTab() {
           />
         )}
         {loadError === null && ordersQuery.isPending && (
-          <p className="text-muted-foreground py-6 text-center text-sm">{t("common.loading")}</p>
+          <LoadingState variant="table" columns={5} />
         )}
         {loadError === null && !ordersQuery.isPending && rows.length === 0 && (
-          <p className="text-muted-foreground py-6 text-center text-sm" data-testid="orders-query-empty">
-            {t("orders.query.empty")}
-          </p>
+          <EmptyState title={t("orders.query.empty")} testId="orders-query-empty" />
         )}
         {loadError === null && !ordersQuery.isPending && rows.length > 0 && (
           <Table data-testid="orders-query-table">
@@ -139,24 +144,24 @@ export function QueryOrdersTab() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-72 truncate font-mono font-medium">
+                  <TableCell className="max-w-72 truncate font-mono font-semibold text-foreground">
                     {row.kind === "request"
                       ? row.request.datasource_ids.join(" · ")
                       : row.session.capabilities.map((capability) => capability.datasource_name).join(" · ")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <StatusBadge tone={row.kind === "request" ? QUERY_REQUEST_TONE[row.request.state] : QUERY_SESSION_TONE[row.session.state]}>
                       {row.kind === "request"
                         ? t(`query.request.state.${row.request.state}`)
                         : t(`query.session.state.${row.session.state}`)}
-                    </Badge>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatTimestamp(row.kind === "request" ? row.request.created_at : row.session.created_at)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.kind === "request" && row.grant !== null
-                      ? t(`query.grant.state.${row.grant.state}`)
+                      ? <StatusBadge tone={QUERY_GRANT_TONE[row.grant.state]}>{t(`query.grant.state.${row.grant.state}`)}</StatusBadge>
                       : "—"}
                   </TableCell>
                 </TableRow>
@@ -175,7 +180,7 @@ export function QueryOrdersTab() {
             onNext={() => { pager.pushCursor(ordersQuery.data.page.next_cursor); }}
             pageSize={pager.pageSize}
             onPageSizeChange={pager.setPageSize}
-            rowsOnPage={(ordersQuery.data.items ?? []).length}
+            rowsOnPage={ordersQuery.data.items.length}
             testIdPrefix="orders-query"
           />
         )}
@@ -219,7 +224,7 @@ export function QueryOrdersTab() {
                               {t("orders.query.detail.revoked")}
                             </div>
                             <p className="text-muted-foreground mt-1">{detail.grant.revoked_reason}</p>
-                            <p className="text-muted-foreground/70 mt-1">{t("orders.query.detail.revokedMetaPending")}</p>
+                            <p className="text-muted-foreground mt-1">{t("orders.query.detail.revokedMetaPending")}</p>
                           </div>
                         )}
                       </>

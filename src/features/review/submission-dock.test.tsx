@@ -79,4 +79,25 @@ describe("SubmissionDock", () => {
     renderDock({ draftState: "submitted", gate: null });
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
+
+  it("keeps the submit label and exposes progress while a submission is pending", () => {
+    render(
+      <SubmissionDock
+        draftState="ready"
+        phase="ready"
+        gate={READY_GATE}
+        dirty={false}
+        flowUpdated={false}
+        reviewCurrent={true}
+        submitting
+        onSubmit={() => {}}
+      />,
+    );
+
+    const submit = screen.getByTestId("submit-draft");
+    expect(submit).toBeDisabled();
+    expect(submit).toHaveAttribute("aria-busy", "true");
+    expect(submit).toHaveTextContent("提交审批");
+    expect(submit.querySelector('[data-slot="spinner"]')).not.toBeNull();
+  });
 });

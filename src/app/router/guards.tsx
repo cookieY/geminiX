@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useSession } from "@/features/auth/session-provider";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { PageLoadingState } from "@/shared/components/status/page-loading-state";
 
 /**
  * Route guards (frontend PRD §10.3). Authorization stays server-side: the
@@ -34,7 +35,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
   const status = useGuardSession();
   const location = useLocation();
   if (status === "loading") {
-    return <LoadingState />;
+    return <PageLoadingState />;
   }
   if (status === "unavailable") {
     return <SessionUnavailable />;
@@ -50,7 +51,7 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user } = useSession();
   if (status === "loading") {
-    return <LoadingState />;
+    return <PageLoadingState />;
   }
   if (status === "unavailable") {
     return <SessionUnavailable />;
@@ -76,7 +77,7 @@ export function RequireAdminCapability({ children }: { children: ReactNode }) {
   const status = useGuardSession();
   const location = useLocation();
   if (status === "loading") {
-    return <LoadingState />;
+    return <PageLoadingState />;
   }
   if (status === "unavailable") {
     return <SessionUnavailable />;

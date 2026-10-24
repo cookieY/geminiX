@@ -1,3 +1,5 @@
+import { StatusBadge } from "@/shared/components/status/status-badge";
+import type { StatusTone } from "@/shared/lib/status-tone";
 import { useTranslation } from "react-i18next";
 import type { ReviewRun } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { Badge } from "@/shared/components/ui/badge";
@@ -16,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { CheckCircle2, CircleDashed, Loader2, OctagonAlert, TriangleAlert } from "lucide-react";
 import type { RunPhase } from "./run-state";
 
@@ -36,6 +39,8 @@ const PHASE_BADGE: Record<RunPhase, { key: string; icon: typeof Loader2; classNa
   failed: { key: "precheck.phase.failed", icon: OctagonAlert, className: "text-[var(--exec-failed)]", spin: false },
   outdated: { key: "precheck.phase.outdated", icon: TriangleAlert, className: "text-[var(--exec-partial-failed)]", spin: false },
 };
+
+const STAGE_TONE: Record<string, StatusTone> = { pending: "stone", running: "indigo", passed: "emerald", blocked: "red", partial: "orange", failed: "red" };
 
 const STAGE_BADGE: Record<string, { key: string; className: string }> = {
   pending: { key: "precheck.stage.pending", className: "text-muted-foreground" },
@@ -60,7 +65,7 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
   return (
     <Card data-testid="review-status">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Icon className={`size-4 ${badge.spin ? "animate-spin" : ""}`} aria-hidden />
           {t("precheck.review.title")}
           <Badge variant="outline" className={badge.className}>
@@ -69,7 +74,7 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
         </CardTitle>
         <CardDescription>{t("precheck.review.description")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-3">
         {run !== null && (
           <>
             <div className="text-sm" data-testid="review-counts">
@@ -100,14 +105,14 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
                   const stageBadge = stageBadgeOf(stage.state);
                   return (
                     <TableRow key={stage.stage_position}>
-                      <TableCell>{t("precheck.stagePath.stage", { position: stage.stage_position })}</TableCell>
+                      <TableCell className="font-semibold text-foreground">{t("precheck.stagePath.stage", { position: stage.stage_position })}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center gap-1 ${stageBadge.className}`}>
+                        <StatusBadge tone={STAGE_TONE[stage.state] ?? "stone"}>
                           {t(stageBadge.key)}
-                        </span>
+                        </StatusBadge>
                       </TableCell>
-                      <TableCell>{stage.finding_count}</TableCell>
-                      <TableCell>{stage.evidence_count}</TableCell>
+                      <TableCell className="font-semibold text-foreground">{stage.finding_count}</TableCell>
+                      <TableCell className="font-semibold text-foreground">{stage.evidence_count}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -120,7 +125,7 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
             )}
           </>
         )}
-        {run === null && <p className="text-muted-foreground text-sm">{t("precheck.review.noRun")}</p>}
+        {run === null && <EmptyState title={t("precheck.review.noRun")} />}
       </CardContent>
     </Card>
   );

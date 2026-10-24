@@ -4,7 +4,8 @@ import type { ReviewFinding } from "@/api/generated/client/yearningV4HTTPAPI.sch
 import { useOrderReviewFindings } from "@/features/orders/use-approvals";
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
 import { FindingList } from "@/features/review/finding-list";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { FileSearch } from "lucide-react";
 
@@ -27,7 +28,7 @@ export function FrozenReviewCard({ orderId }: { orderId: string }) {
   return (
     <Card data-testid="frozen-review-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <FileSearch className="size-4" aria-hidden />
           {t("orders.detail.frozenReview")}
         </CardTitle>

@@ -85,6 +85,24 @@ function renderWizard(initialEntry: string) {
   );
 }
 
+function pickImportFile(content: string): void {
+  const input = screen.getByTestId("bulk-import-input");
+  const file = new File([content], "bulk.sql", { type: "text/plain" });
+  Object.defineProperty(input, "files", {
+    value: [file],
+    configurable: true,
+  });
+  fireEvent.change(input);
+}
+
+function gate(): { promise: Promise<void>; open: () => void } {
+  let open!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
+}
+
 beforeEach(() => {
   server.resetHandlers();
   resetReviewFixture();
@@ -96,10 +114,10 @@ beforeEach(() => {
 
 describe("SubmissionWizard create mode (implicit drafts)", () => {
   it("adopts the draft silently on the first acting operation, never before", async () => {
-    let reviewRunCalls = 0;
+    const reviewDraftIds: string[] = [];
     server.use(
-      http.post("*/review-runs", () => {
-        reviewRunCalls += 1;
+      http.post("*/change-drafts/:draftId/review-runs", ({ params }) => {
+        reviewDraftIds.push(String(params.draftId));
         return HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: FIXTURE_OWNER_ID });
       }),
     );
@@ -125,16 +143,62 @@ describe("SubmissionWizard create mode (implicit drafts)", () => {
     fireEvent.change(screen.getByTestId("sql-editor"), {
       target: { value: "UPDATE orders SET status = 1;" },
     });
-    fireEvent.click(screen.getByTestId("run-review"));
+    const runReview = screen.getByTestId("run-review");
+    fireEvent.click(runReview);
+    fireEvent.click(runReview);
     await waitFor(() => {
-      expect(reviewRunCalls).toBeGreaterThan(0);
+      expect(reviewDraftIds).toHaveLength(1);
     });
     expect(screen.getByTestId("changes-new-page")).toBeVisible();
     const drafts = (await (await fetch("/change-drafts")).json()) as {
-      data: { items: Array<{ title: string; has_sql: boolean }> };
+      data: { items: Array<{ id: string; title: string; has_sql: boolean }> };
     };
     expect(drafts.data.items[0]?.title).toBe("向导创建草稿");
     expect(drafts.data.items[0]?.has_sql).toBe(true);
+    expect(drafts.data.items.filter((draft) => draft.title === "向导创建草稿")).toHaveLength(1);
+    expect(reviewDraftIds).toEqual([drafts.data.items[0]?.id]);
+  });
+
+  it("imports bulk SQL against the adopted draft and keeps plaintext for this session", async () => {
+    const view = renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "批量导入草稿" },
+    });
+
+    fireEvent.click(screen.getByTestId("open-bulk-import"));
+    expect(await screen.findByTestId("bulk-import-dialog")).toBeVisible();
+    pickImportFile("SELECT 1;\n".repeat(1001));
+    expect(await screen.findByTestId("bulk-import-ok")).toBeVisible();
+    fireEvent.click(screen.getByTestId("bulk-import-confirm"));
+
+    // The first draft query may arrive after adoption, but it must enrich
+    // the attached draft without discarding the import still held in memory.
+    await waitFor(() => {
+      expect(screen.getByTestId("draft-title-input")).toHaveValue("批量导入草稿");
+    });
+    expect(await screen.findByTestId("bulk-browser")).toBeVisible();
+    await waitFor(() => {
+      expect(screen.getByTestId("capacity-statements")).toHaveTextContent("1001");
+    });
+    expect(screen.queryByTestId("sql-editor")).not.toBeInTheDocument();
+
+    // The save must target the newly adopted draft, not the pre-adoption
+    // render closure whose active id was still null.
+    const drafts = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ id: string; has_sql: boolean }> };
+    };
+    const draft = drafts.data.items[0];
+    expect(draft?.has_sql).toBe(true);
+
+    // A later visit starts without session plaintext and still requires the
+    // audited reveal before the virtualized browser can be reconstructed.
+    view.unmount();
+    renderWizard(`/changes/drafts/${draft?.id ?? ""}`);
+    expect(await screen.findByTestId("bulk-digest-pending")).toBeVisible();
+    expect(screen.getByTestId("reveal-sql")).toBeVisible();
+    expect(screen.queryByTestId("bulk-browser")).not.toBeInTheDocument();
   });
 
   it("carries the desired execution time onto the implicitly created draft (§18.56)", async () => {
@@ -165,6 +229,422 @@ describe("SubmissionWizard create mode (implicit drafts)", () => {
       data: { items: Array<{ requested_scheduled_for: string | null }> };
     };
     expect(drafts.data.items[0]?.requested_scheduled_for).not.toBeNull();
+  });
+});
+
+describe("SubmissionWizard in-flight SQL saves", () => {
+  it("does not review SQL that was replaced in the editor while saving", async () => {
+    const created = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "保存竞态" }),
+      })
+    ).json()) as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        has_sql: boolean;
+        [key: string]: unknown;
+      };
+    };
+    const draft = created.data;
+    const saveStarted = gate();
+    const releaseSave = gate();
+    let reviewRunCalls = 0;
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request }) => {
+        await request.json();
+        saveStarted.open();
+        await releaseSave.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            ...draft,
+            state: "draft",
+            version: draft.version + 1,
+            revision: draft.revision + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard(`/changes/drafts/${draft.id}`);
+    const editor = await screen.findByTestId("sql-editor");
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+
+    await saveStarted.promise;
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 2;" },
+    });
+    releaseSave.open();
+
+    await waitFor(() => {
+      expect(editor).toHaveValue("UPDATE orders SET status = 2;");
+    });
+    expect(reviewRunCalls).toBe(0);
+    await waitFor(() => {
+      expect(screen.getByTestId("run-review")).toBeEnabled();
+    });
+  });
+
+  it("does not leave the editor when SQL changes while save-and-return is in flight", async () => {
+    const created = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "保存并返回竞态" }),
+      })
+    ).json()) as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        has_sql: boolean;
+        [key: string]: unknown;
+      };
+    };
+    const draft = created.data;
+    const saveStarted = gate();
+    const releaseSave = gate();
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request }) => {
+        await request.json();
+        saveStarted.open();
+        await releaseSave.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            ...draft,
+            state: "draft",
+            version: draft.version + 1,
+            revision: draft.revision + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard(`/changes/drafts/${draft.id}`);
+    const editor = await screen.findByTestId("sql-editor");
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
+
+    await saveStarted.promise;
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 2;" },
+    });
+    releaseSave.open();
+
+    await waitFor(() => {
+      expect(editor).toHaveValue("UPDATE orders SET status = 2;");
+    });
+    expect(screen.queryByTestId("mine-page")).not.toBeInTheDocument();
+  });
+
+  it("does not leave while metadata is saving if the editor changes again", async () => {
+    const created = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "元数据保存竞态" }),
+      })
+    ).json()) as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        has_sql: boolean;
+        [key: string]: unknown;
+      };
+    };
+    const draft = created.data;
+    const metadataStarted = gate();
+    const releaseMetadata = gate();
+    server.use(
+      http.patch("*/change-drafts/:draftId", async ({ request }) => {
+        await request.json();
+        metadataStarted.open();
+        await releaseMetadata.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            ...draft,
+            state: "draft",
+            version: draft.version + 2,
+            revision: draft.revision + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard(`/changes/drafts/${draft.id}`);
+    const editor = await screen.findByTestId("sql-editor");
+    await waitFor(() => {
+      expect(screen.getByTestId("draft-title-input")).toHaveValue("元数据保存竞态");
+    });
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("wizard-save-draft"));
+
+    await metadataStarted.promise;
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 2;" },
+    });
+    releaseMetadata.open();
+
+    await waitFor(() => {
+      expect(editor).toHaveValue("UPDATE orders SET status = 2;");
+    });
+    expect(screen.queryByTestId("mine-page")).not.toBeInTheDocument();
+  });
+
+  it("adopts an implicit draft without losing SQL typed while its first save is in flight", async () => {
+    const saveStarted = gate();
+    const releaseSave = gate();
+    const savedBodies: string[] = [];
+    let reviewRunCalls = 0;
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request, params }) => {
+        const body = (await request.json()) as { sql: string };
+        savedBodies.push(body.sql);
+        if (savedBodies.length === 1) {
+          saveStarted.open();
+          await releaseSave.promise;
+        }
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: String(params.draftId),
+            state: "draft",
+            version: savedBodies.length + 1,
+            revision: savedBodies.length + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "隐式创建竞态" },
+    });
+    const editor = await screen.findByTestId("sql-editor");
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+
+    await saveStarted.promise;
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 2;" },
+    });
+    releaseSave.open();
+
+    await waitFor(() => {
+      expect(reviewRunCalls).toBe(1);
+    });
+    expect(savedBodies).toEqual([
+      "UPDATE orders SET status = 1;",
+      "UPDATE orders SET status = 2;",
+    ]);
+    expect(editor).toHaveValue("UPDATE orders SET status = 2;");
+  });
+
+  it("blocks adoption-dependent actions while the first SQL PUT is in flight", async () => {
+    const saveStarted = gate();
+    const releaseSave = gate();
+    let reviewRunCalls = 0;
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request, params }) => {
+        const body = (await request.json()) as { sql: string };
+        saveStarted.open();
+        await releaseSave.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: String(params.draftId),
+            owner_user_id: FIXTURE_OWNER_ID,
+            flow_id: FIXTURE_FLOW_ID,
+            title: "阻断 adoption 并发动作",
+            description: null,
+            requested_scheduled_for: null,
+            revision: 2,
+            state: "draft",
+            has_sql: true,
+            sql_size_bytes: body.sql.length,
+            statement_count: 1,
+            review_run_id: null,
+            version: 2,
+            created_at: "2026-08-28T08:00:00Z",
+            updated_at: "2026-08-28T08:00:00Z",
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "阻断 adoption 并发动作" },
+    });
+    fireEvent.change(await screen.findByTestId("sql-editor"), {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+
+    await saveStarted.promise;
+    expect(screen.getByTestId("run-review")).toBeDisabled();
+    expect(screen.getByTestId("wizard-save-draft")).toBeDisabled();
+    expect(screen.getByTestId("open-bulk-import")).toBeDisabled();
+    expect(screen.getByTestId("submit-draft")).toHaveAttribute("aria-busy", "true");
+
+    releaseSave.open();
+    await waitFor(() => {
+      expect(reviewRunCalls).toBe(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("run-review")).toBeEnabled();
+    });
+  });
+
+  it("retries a failed first SQL PUT against the adopted draft instead of creating another", async () => {
+    let putCalls = 0;
+    const reviewDraftIds: string[] = [];
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request, params }) => {
+        putCalls += 1;
+        if (putCalls === 1) {
+          return HttpResponse.json(
+            {
+              err_code: 5030,
+              message: "temporary save failure",
+              data: null,
+              request_id: FIXTURE_OWNER_ID,
+            },
+            { status: 500 },
+          );
+        }
+        const body = (await request.json()) as { sql: string };
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: String(params.draftId),
+            owner_user_id: FIXTURE_OWNER_ID,
+            flow_id: FIXTURE_FLOW_ID,
+            title: "adoption PUT 重试",
+            description: null,
+            requested_scheduled_for: null,
+            revision: 2,
+            state: "draft",
+            has_sql: true,
+            sql_size_bytes: body.sql.length,
+            statement_count: 1,
+            review_run_id: null,
+            version: 2,
+            created_at: "2026-08-28T08:00:00Z",
+            updated_at: "2026-08-28T08:00:00Z",
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", ({ params }) => {
+        reviewDraftIds.push(String(params.draftId));
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "adoption PUT 重试" },
+    });
+    fireEvent.change(await screen.findByTestId("sql-editor"), {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+    expect(await screen.findByTestId("wizard-action-error")).toBeVisible();
+
+    const page = screen.getByTestId("changes-new-page");
+    const adoptedId = page.getAttribute("data-draft-id");
+    expect(adoptedId).not.toBeNull();
+    const drafts = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ id: string; title: string }> };
+    };
+    expect(drafts.data.items).toHaveLength(1);
+    expect(drafts.data.items[0]).toMatchObject({
+      id: adoptedId,
+      title: "adoption PUT 重试",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-review")).toBeEnabled();
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+    await waitFor(() => {
+      expect(reviewDraftIds).toEqual([adoptedId]);
+    });
+    expect(putCalls).toBe(2);
+    const afterRetry = (await (await fetch("/change-drafts")).json()) as {
+      data: { items: Array<{ id: string }> };
+    };
+    expect(afterRetry.data.items).toHaveLength(1);
   });
 });
 

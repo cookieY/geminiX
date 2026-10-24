@@ -8,7 +8,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80 active:bg-primary/70",
+        default: "bg-primary text-primary-foreground hover:bg-primary/95 active:bg-primary",
         // Flat: one hairline plus one fill, no second dark-mode wash, so an
         // outlined button reads as a line on the surface rather than a
         // tinted panel (owner ruling 2026-10-23 "全部扁平化").

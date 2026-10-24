@@ -109,7 +109,8 @@
     "waitingForAdminTitle": "Waiting for administrator configuration",
     "waitingForAdminDesc": "Your account is active but has no workflow permissions yet. Ask an administrator to add you to a permission group.",
     "notDeliveredTitle": "Page not delivered yet",
-    "notDeliveredDesc": "This administration page arrives in a later work package."
+    "notDeliveredDesc": "This administration page arrives in a later work package.",
+    "refreshing": "Refreshing"
   },
   "errors": {
     "notFound": "Page not found",

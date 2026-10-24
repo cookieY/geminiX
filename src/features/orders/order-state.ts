@@ -1,3 +1,4 @@
+import { STATUS_TONE_CLASS } from "@/shared/lib/status-tone";
 import type {
   ChangeOrder,
   ChangeOrderState,
@@ -113,18 +114,7 @@ export function orderStateTone(state: ChangeOrderState): OrderStateTone {
 
 /** Chip surface per tone: a 12% wash of the same hue plus a 30% hairline, so
  * the chip stays flat (no gradient, no shadow) and the hue does the talking. */
-export const ORDER_STATE_TONE_CLASS: Record<OrderStateTone, string> = {
-  emerald: "border-tone-emerald/30 bg-tone-emerald/12 text-tone-emerald",
-  teal: "border-tone-teal/30 bg-tone-teal/12 text-tone-teal",
-  sky: "border-tone-sky/30 bg-tone-sky/12 text-tone-sky",
-  indigo: "border-tone-indigo/30 bg-tone-indigo/12 text-tone-indigo",
-  violet: "border-tone-violet/30 bg-tone-violet/12 text-tone-violet",
-  amber: "border-tone-amber/30 bg-tone-amber/12 text-tone-amber",
-  orange: "border-tone-orange/30 bg-tone-orange/12 text-tone-orange",
-  rose: "border-tone-rose/30 bg-tone-rose/12 text-tone-rose",
-  red: "border-tone-red/30 bg-tone-red/12 text-tone-red",
-  stone: "border-border bg-muted text-muted-foreground",
-};
+export const ORDER_STATE_TONE_CLASS: Record<OrderStateTone, string> = STATUS_TONE_CLASS;
 
 /** Solid dot/fill variant of the same tones (status strips, legends). */
 export const ORDER_STATE_TONE_DOT: Record<OrderStateTone, string> = {

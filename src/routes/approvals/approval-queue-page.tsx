@@ -6,12 +6,15 @@ import { useApprovalQueue } from "@/features/orders/use-approvals";
 import { myApprovalStepFor, ORDER_STATE_TONE_CLASS, orderStateTone } from "@/features/orders/order-state";
 import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import {
   Table,
@@ -61,8 +64,8 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
       data-testid="approval-queue-row"
       data-row-key={order.id}
     >
-      <TableCell className="font-mono font-medium">{order.display_number}</TableCell>
-      <TableCell className="max-w-56 truncate font-medium">{order.title}</TableCell>
+      <TableCell className="font-semibold text-foreground">{order.display_number}</TableCell>
+      <TableCell className="max-w-56 truncate font-semibold text-foreground">{order.title}</TableCell>
       <TableCell className="font-mono">
         {mine === null ? "—" : mine.datasourceName}
       </TableCell>
@@ -149,13 +152,12 @@ export default function ApprovalQueuePage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4" data-testid="approval-queue-page">
+    <PageLayout data-testid="approval-queue-page">
+      <PageHeader icon={Inbox} title={t("approvals.queue.title")} />
       <Card>
-        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Inbox className="size-4" aria-hidden />
-            {t("approvals.queue.title")}
-          </CardTitle>
+        <ListToolbar
+          busy={queueQuery.isFetching && queueQuery.isPlaceholderData}
+          search={
           <TableSearchInput
             value={search}
             onChange={(value) => {
@@ -164,10 +166,11 @@ export default function ApprovalQueuePage() {
             }}
             testId="approval-queue-search"
           />
-        </CardHeader>
+          }
+        />
         <CardContent className="px-0!">
           {queueQuery.isPending ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={8} />
           ) : queueQuery.isError ? (
             <ErrorState
               error={queueQuery.error}
@@ -175,13 +178,9 @@ export default function ApprovalQueuePage() {
               onRetry={() => void queueQuery.refetch()}
             />
           ) : queue.length === 0 && keyword !== "" ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="approval-queue-search-empty">
-              {t("table.emptySearch")}
-            </p>
+            <EmptyState filtered title={t("table.emptySearch")} testId="approval-queue-search-empty" />
           ) : queueQuery.data.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="approval-queue-empty">
-              {t("approvals.queue.empty")}
-            </p>
+            <EmptyState title={t("approvals.queue.empty")} testId="approval-queue-empty" />
           ) : (
             <>
               <Table data-testid="approval-queue-table">
@@ -221,6 +220,6 @@ export default function ApprovalQueuePage() {
         </CardContent>
       </Card>
       <p className="text-muted-foreground text-xs">{t("approvals.queue.frozenNote")}</p>
-    </div>
+    </PageLayout>
   );
 }

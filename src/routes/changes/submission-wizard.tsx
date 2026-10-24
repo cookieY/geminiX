@@ -52,7 +52,12 @@ import {
 } from "@/features/review/use-draft-workspace";
 import { describeError } from "@/shared/api/error-display";
 import { useSession } from "@/features/auth/session-provider";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -73,7 +78,6 @@ import {
   FileCode2,
   FileUp,
   Play,
-  Search,
 } from "lucide-react";
 
 /**
@@ -97,7 +101,7 @@ import {
 const REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 
 const PRECHECK_TONE_CLASS = {
-  idle: { text: "text-muted-foreground/80", dot: "bg-muted-foreground/50" },
+  idle: { text: "text-muted-foreground", dot: "bg-muted-foreground/50" },
   busy: { text: "text-foreground", dot: "bg-foreground/60" },
   pass: { text: "text-success", dot: "bg-success" },
   fail: { text: "text-destructive", dot: "bg-destructive" },
@@ -237,24 +241,23 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
   const keyword = query.trim().toLowerCase();
   const visible = keyword === "" ? flows : flows.filter((flow) => flow.name.toLowerCase().includes(keyword));
   return (
-    <div className="space-y-3" data-testid="wizard-flow-picker">
-      <div className="relative max-w-64">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
+    <div className="flex flex-col gap-3" data-testid="wizard-flow-picker">
+      <div className="max-w-64">
+        <TableSearchInput
           value={query}
-          onChange={(event) => { setQuery(event.target.value); }}
+          onChange={setQuery}
           placeholder={t("precheck.wizard.searchPlaceholder")}
-          className="pl-9 text-sm md:text-sm"
-          data-testid="wizard-flow-search"
+          testId="wizard-flow-search"
         />
       </div>
       {visible.length === 0 ? (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm" data-testid="wizard-flow-search-empty">
-          {t("precheck.wizard.searchEmpty")}
-        </p>
+        <div className="rounded-lg border border-dashed">
+          <EmptyState
+            filtered
+            title={t("precheck.wizard.searchEmpty")}
+            testId="wizard-flow-search-empty"
+          />
+        </div>
       ) : (
         <div className="grid max-h-[380px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((flow) => {
@@ -342,7 +345,7 @@ function SummaryRow({
       <dd
         className={
           muted
-            ? "text-muted-foreground/80 min-w-0 truncate text-right"
+            ? "text-muted-foreground min-w-0 truncate text-right"
             : "min-w-0 truncate text-right font-medium"
         }
         data-testid={testId}
@@ -372,7 +375,12 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // Until adoption the SQL lives in plain local state; after adoption the
   // page behaves exactly like the draft mode, in place.
   const [localDraftId, setLocalDraftId] = useState<string | null>(null);
+  const adoptedDraftIdRef = useRef<string | null>(null);
+  const [adoptionPending, setAdoptionPending] = useState(false);
   const [createSql, setCreateSql] = useState("");
+  const createSqlRef = useRef(createSql);
+  const ensureDraftPromiseRef = useRef<Promise<string | null> | null>(null);
+  const reviewStartInFlightRef = useRef(false);
   const adopted = mode === "create" && localDraftId !== null;
   /** Route drafts and adopted implicit drafts share the persisted metadata
    * state; create-before-adoption keeps metadata in plain local state and
@@ -427,10 +435,22 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // plaintext (it never does), so the editor starts empty until an explicit
   // reveal loads it.
   const attachedDraftId = useRef<string | null>(null);
+  // The implicit-adoption path has just put the current session's plaintext
+  // into the store. Its first draft query may land afterwards; that response
+  // enriches metadata/version but must not masquerade as a fresh visit and
+  // wipe the SQL. A component remount resets this ref, preserving Reveal.
+  const sessionContentDraftId = useRef<string | null>(null);
   useEffect(() => {
     if (draft === null || attachedDraftId.current === draft.id) return;
     attachedDraftId.current = draft.id;
-    store.attach({ id: draft.id, state: draft.state, version: draft.version, sql: null });
+    const preserveSessionContent =
+      sessionContentDraftId.current === draft.id &&
+      useDraftEditorStore.getState().draftId === draft.id;
+    if (preserveSessionContent) {
+      store.markVersioned(draft.version, draft.state);
+    } else {
+      store.attach({ id: draft.id, state: draft.state, version: draft.version, sql: null });
+    }
     // Metadata starts from the persisted draft (async load lands here).
     setMetaTitle(draft.title ?? "");
     setMetaDescription(draft.description ?? "");
@@ -535,16 +555,28 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   }, [t]);
 
   const saveMutation = useMutation({
-    mutationFn: (sql: string) =>
-      replaceDraftSql(activeDraftId as string, { sql }, { headers: liveIfMatch() }),
-    onSuccess: (saved) => {
+    mutationFn: ({ draftId, sql }: { draftId: string; sql: string }) =>
+      replaceDraftSql(draftId, { sql }, { headers: liveIfMatch() }),
+    onSuccess: (saved, { draftId, sql }) => {
       const savedDraft = saved as unknown as ChangeDraft;
-      store.markSaved(savedDraft.version, savedDraft.state, store.sql);
+      store.markSaved(savedDraft.version, savedDraft.state, sql);
       setActionError(null);
-      void invalidateAll();
+      void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
     },
     onError: (error) => { showActionError(error, "replaceDraftSql"); },
   });
+
+  const editorIsCurrent = useCallback((expectedSql: string): boolean => {
+    const current = useDraftEditorStore.getState();
+    return current.draftId !== null
+      && current.sql === expectedSql
+      && !selectDirty(current);
+  }, []);
+
+  const savedSqlMatchesEditor = useCallback((savedSql: string): boolean => {
+    const current = useDraftEditorStore.getState();
+    return current.savedSql === savedSql && editorIsCurrent(savedSql);
+  }, [editorIsCurrent]);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -566,7 +598,15 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
    * adoption so the editor never blanks.
    */
   const ensureDraft = useCallback(async (): Promise<string | null> => {
+    if (ensureDraftPromiseRef.current !== null) return ensureDraftPromiseRef.current;
     if (activeDraftId !== null) return activeDraftId;
+    const adoptedDraftId = adoptedDraftIdRef.current;
+    if (adoptedDraftId !== null) return adoptedDraftId;
+    const rejectDraft = (message: string): null => {
+      setStepError(message);
+      reviewStartInFlightRef.current = false;
+      return null;
+    };
     const requestedIssue = (value: string): string | null => {
       if (value === "") return null;
       if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
@@ -574,43 +614,78 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       return null;
     };
     if (selectedFlowId === null) {
-      setStepError(t("precheck.wizard.error.needFlow"));
-      return null;
+      return rejectDraft(t("precheck.wizard.error.needFlow"));
     }
     if (createTitle.trim() === "") {
-      setStepError(t("precheck.wizard.error.needTitle"));
-      return null;
+      return rejectDraft(t("precheck.wizard.error.needTitle"));
     }
     const issue = requestedIssue(createRequestedFor);
     if (issue !== null) {
-      setStepError(issue);
-      return null;
+      return rejectDraft(issue);
     }
     setStepError(null);
-    try {
-      const created = (await createMutation.mutateAsync()) as unknown as {
+    setAdoptionPending(true);
+    const adoption = (async (): Promise<string | null> => {
+      let created: {
         id: string;
         version: number;
         state: ChangeDraft["state"];
       };
-      let version = created.version;
-      if (createSql !== "") {
-        const saved = (await replaceDraftSql(created.id, { sql: createSql }, {
-          headers: ifMatch(created.version),
-        })) as unknown as ChangeDraft;
-        version = saved.version;
+      try {
+        created = (await createMutation.mutateAsync()) as unknown as {
+          id: string;
+          version: number;
+          state: ChangeDraft["state"];
+        };
+      } catch (error) {
+        showActionError(error, "createChangeDraft");
+        return null;
       }
-      store.attach({ id: created.id, state: created.state, version, sql: createSql });
-      if (createSql !== "") store.markSaved(version, "draft", createSql);
+
+      // The POST is now authoritative: keep this page attached to the created
+      // row even if the following SQL PUT fails. Retrying the first action must
+      // update this draft, never create an orphan replacement.
+      const sqlAtCreate = createSqlRef.current;
+      adoptedDraftIdRef.current = created.id;
+      sessionContentDraftId.current = created.id;
+      store.attach({
+        id: created.id,
+        state: created.state,
+        version: created.version,
+        sql: null,
+      });
+      if (sqlAtCreate !== "") store.setSql(sqlAtCreate);
       setLocalDraftId(created.id);
-      // Editor continuity: the value the user typed stays on screen.
-      setLoadValue({ text: createSql, nonce: Date.now() });
+      setLoadValue({ text: sqlAtCreate, nonce: Date.now() });
+
+      if (sqlAtCreate !== "") {
+        try {
+          const saved = (await replaceDraftSql(created.id, { sql: sqlAtCreate }, {
+            headers: ifMatch(created.version),
+          })) as unknown as ChangeDraft;
+          store.markSaved(saved.version, saved.state, sqlAtCreate);
+        } catch (error) {
+          showActionError(error, "replaceDraftSql");
+          return null;
+        }
+      }
+
+      // The create or SQL PUT can span user typing. markSaved acknowledges only
+      // the submitted text, so any later input remains visible and dirty.
+      const sqlAfterSave = createSqlRef.current;
+      if (sqlAfterSave !== sqlAtCreate) store.setSql(sqlAfterSave);
       return created.id;
-    } catch (error) {
-      showActionError(error, "createChangeDraft");
-      return null;
+    })();
+    ensureDraftPromiseRef.current = adoption;
+    try {
+      return await adoption;
+    } finally {
+      if (ensureDraftPromiseRef.current === adoption) {
+        ensureDraftPromiseRef.current = null;
+        setAdoptionPending(false);
+      }
     }
-  }, [activeDraftId, createMutation, createRequestedFor, createSql, createTitle, selectedFlowId, showActionError, store, t]);
+  }, [activeDraftId, createMutation, createRequestedFor, createTitle, selectedFlowId, showActionError, store, t]);
 
   const handleImportConfirm = useCallback((text: string, digest: SqlDigest) => {
     setImportOpen(false);
@@ -619,9 +694,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     setBulkLocate(null);
     void (async () => {
       // Bulk import always lands SQL on the server: adopt implicitly first.
-      if (await ensureDraft() === null) return;
+      const draftId = await ensureDraft();
+      if (draftId === null) return;
       store.setSql(text);
-      saveMutation.mutate(text);
+      saveMutation.mutate({ draftId, sql: text });
     })();
   }, [store, saveMutation, ensureDraft]);
 
@@ -643,16 +719,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   });
 
   const reviewMutation = useMutation({
-    mutationFn: () =>
-      runDraftReview(activeDraftId as string, {
+    mutationFn: ({ draftId }: { draftId: string }) =>
+      runDraftReview(draftId, {
         headers: {
           ...liveIfMatch(),
           "Idempotency-Key": idempotencyKey(),
         },
       }),
-    onSuccess: (task) => {
+    onSuccess: (task, { draftId }) => {
       setActionError(null);
-      void invalidateAll();
+      void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
+      void queryClient.invalidateQueries({ queryKey: ["review-run"] });
       // BUG-003：POST与草稿行写入review_run_id之间存在竞态——首次invalidate
       // 读回的草稿可能仍是review_run_id=null，此后无任何触发器，UI永远停在
       // "未预审"。result_ref携带Run引用，短轮询草稿直到它带上run id，
@@ -664,7 +741,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         let tries = 0;
         const timer = setInterval(() => {
           tries += 1;
-          void queryClient.invalidateQueries({ queryKey: ["change-draft", activeDraftId] });
+          void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
           if (tries >= 10) clearInterval(timer);
         }, 600);
       }
@@ -792,17 +869,36 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   }, [flow, metadataQueries]);
 
   const handleRunReview = useCallback(() => {
+    if (reviewStartInFlightRef.current) return;
+    reviewStartInFlightRef.current = true;
+    const finish = () => {
+      reviewStartInFlightRef.current = false;
+    };
     void (async () => {
       // Implicit adoption first: precheck needs the server envelope.
-      if (await ensureDraft() === null) return;
-      if (dirty) {
-        // Save first: the run must freeze the exact SQL the user sees.
-        saveMutation.mutate(store.sql, { onSuccess: () => { reviewMutation.mutate(); } });
+      const draftId = await ensureDraft();
+      if (draftId === null) {
+        finish();
         return;
       }
-      reviewMutation.mutate();
+      const current = useDraftEditorStore.getState();
+      if (selectDirty(current)) {
+        // Save first: the run must freeze the exact SQL the user sees.
+        saveMutation.mutate({ draftId, sql: current.sql }, {
+          onSuccess: (_saved, variables) => {
+            if (!savedSqlMatchesEditor(variables.sql)) {
+              finish();
+              return;
+            }
+            reviewMutation.mutate({ draftId }, { onSettled: finish });
+          },
+          onError: finish,
+        });
+        return;
+      }
+      reviewMutation.mutate({ draftId }, { onSettled: finish });
     })();
-  }, [dirty, ensureDraft, saveMutation, reviewMutation, store.sql]);
+  }, [ensureDraft, saveMutation, reviewMutation, savedSqlMatchesEditor]);
 
   // ---- 保存并返回: the single secondary action (owner ruling 2026-10-24,
   // 保存信息 folded away) — persist SQL then metadata, then leave. ----
@@ -811,7 +907,18 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     if (mode === "create" && activeDraftId === null) {
       // The one explicit opt-in to the draft: adopt implicitly, then leave.
       void (async () => {
-        if (await ensureDraft() !== null) leave();
+        const draftId = await ensureDraft();
+        if (draftId === null) return;
+        const current = useDraftEditorStore.getState();
+        if (!selectDirty(current)) {
+          leave();
+          return;
+        }
+        saveMutation.mutate({ draftId, sql: current.sql }, {
+          onSuccess: (_saved, variables) => {
+            if (savedSqlMatchesEditor(variables.sql)) leave();
+          },
+        });
       })();
       return;
     }
@@ -819,18 +926,32 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       setStepError(t("precheck.wizard.error.needTitle"));
       return;
     }
-    if (dirty) {
+    const current = useDraftEditorStore.getState();
+    if (selectDirty(current)) {
       // SQL first: markSaved keeps the store version chain monotonic for the
       // metadata PUT that follows.
-      saveMutation.mutate(store.sql, {
-        onSuccess: () => {
-          if (metaBound) metaSaveMutation.mutate(undefined, { onSuccess: leave });
+      saveMutation.mutate({ draftId: activeDraftId as string, sql: current.sql }, {
+        onSuccess: (_saved, variables) => {
+          if (!savedSqlMatchesEditor(variables.sql)) return;
+          if (metaBound) {
+            metaSaveMutation.mutate(undefined, {
+              onSuccess: () => {
+                if (editorIsCurrent(variables.sql)) leave();
+              },
+            });
+          }
           else leave();
         },
       });
       return;
     }
-    if (metaBound) metaSaveMutation.mutate(undefined, { onSuccess: leave });
+    if (metaBound) {
+      metaSaveMutation.mutate(undefined, {
+        onSuccess: () => {
+          if (editorIsCurrent(current.sql)) leave();
+        },
+      });
+    }
     else leave();
   };
 
@@ -840,20 +961,20 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   }
   if (draftQuery.isPending) {
     return (
-      <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
-        <LoadingState />
-      </div>
+      <PageLayout data-testid="draft-workspace-page">
+        <LoadingState variant="page" />
+      </PageLayout>
     );
   }
   if (draftQuery.isError) {
     return (
-      <div className="flex flex-col gap-4" data-testid="draft-workspace-page">
+      <PageLayout data-testid="draft-workspace-page">
         <ErrorState
           error={draftQuery.error}
           operationId="getChangeDraft"
           onRetry={() => void draftQuery.refetch()}
         />
-      </div>
+      </PageLayout>
     );
   }
   if (draft === null) return null;
@@ -908,7 +1029,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     return (
       <Card className="gap-0 overflow-hidden py-0" data-testid="wizard-summary">
         <CardHeader className="border-b py-4">
-          <CardTitle className="text-base">{t("precheck.wizard.summaryTitle")}</CardTitle>
+          <CardTitle>{t("precheck.wizard.summaryTitle")}</CardTitle>
           <p className="text-muted-foreground text-[13px] leading-relaxed">{t("precheck.wizard.summaryHint")}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-2.5 py-3.5">
@@ -923,7 +1044,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             />
             {flow !== null && (
               <div className="flex justify-end">
-                <StagePath flow={flow} />
+                <dt className="sr-only">{t("precheck.wizard.summary.flow")}</dt>
+                <dd className="m-0">
+                  <StagePath flow={flow} />
+                </dd>
               </div>
             )}
             <SummaryRow
@@ -1000,15 +1124,19 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             dirty={dirty}
             flowUpdated={flowUpdated}
             reviewCurrent={run === null || run.draft_revision === draft?.revision}
-            submitting={submitMutation.isPending}
+            submitting={submitMutation.isPending || adoptionPending}
             onSubmit={() => {
               void (async () => {
-                if (await ensureDraft() === null) return;
-                if (dirty) {
+                const draftId = await ensureDraft();
+                if (draftId === null) return;
+                const current = useDraftEditorStore.getState();
+                if (selectDirty(current)) {
                   // The dialog restates what submission freezes — the SQL the
                   // user sees must be on the server before it opens.
-                  saveMutation.mutate(store.sql, {
-                    onSuccess: () => { setConfirmSubmit(true); },
+                  saveMutation.mutate({ draftId, sql: current.sql }, {
+                    onSuccess: (_saved, variables) => {
+                      if (savedSqlMatchesEditor(variables.sql)) setConfirmSubmit(true);
+                    },
                   });
                   return;
                 }
@@ -1018,19 +1146,20 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             aside={
               /* 保存并返回 is the single secondary action (owner ruling
                * 2026-10-24): it persists metadata + SQL, then leaves. */
-              <Button
+              <PendingButton
                 variant="outline"
                 className="h-10 flex-1 rounded-full text-sm font-semibold"
-                onClick={saveDraftAndLeave}
-                disabled={
+                pending={
+                  adoptionPending ||
                   metaSaveMutation.isPending ||
                   saveMutation.isPending ||
                   createMutation.isPending
                 }
+                onClick={saveDraftAndLeave}
                 data-testid="wizard-save-draft"
               >
                 {t("precheck.wizard.saveAndReturn")}
-              </Button>
+              </PendingButton>
             }
           />
         </div>
@@ -1059,7 +1188,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         title={t("precheck.wizard.section.flow")}
         hint={t("precheck.wizard.section.flowHint")}
       >
-        {flowsQuery.isPending && <LoadingState />}
+        {flowsQuery.isPending && <LoadingState variant="table" columns={3} />}
         {flowsQuery.isError && (
           <ErrorState
             error={flowsQuery.error}
@@ -1068,22 +1197,21 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           />
         )}
         {flowsQuery.isSuccess && flows.length === 0 && (
-          <div
-            className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-sm"
-            data-testid="wizard-flow-empty"
-          >
-            <CircleAlert className="size-4 shrink-0" aria-hidden />
-            <span>{t("precheck.new.empty")}</span>
-            {session.user?.can_access_admin === true && (
-              <Button
+          <div className="rounded-lg border">
+            <EmptyState
+              title={t("precheck.new.empty")}
+              testId="wizard-flow-empty"
+              action={session.user?.can_access_admin === true ? (
+                <Button
                 variant="link"
                 size="sm"
                 className="h-auto px-1 py-0"
                 onClick={() => { void navigate("/admin/flows"); }}
               >
                 {t("precheck.wizard.manageFlows")}
-              </Button>
-            )}
+                </Button>
+              ) : undefined}
+            />
           </div>
         )}
         {flows.length > 0 && (
@@ -1134,7 +1262,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     const editorValue = draftMode ? store.sql : createSql;
     const editorChange = draftMode
       ? (sql: string) => { store.setSql(sql); }
-      : (sql: string) => { setCreateSql(sql); };
+      : (sql: string) => {
+          createSqlRef.current = sql;
+          setCreateSql(sql);
+        };
 
     return (
       <FormSection title={t("precheck.wizard.title.sql")} hint={t("precheck.wizard.description.sql")} last>
@@ -1167,9 +1298,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
            * card the virtualized list would grow with its content and the
            * virtualizer would treat every row as visible. */}
           <Card className={isBulk ? "flex h-[70vh] flex-col gap-0 overflow-hidden pt-0" : "flex flex-col gap-0 overflow-hidden pt-0"}>
-            <CardHeader className="bg-muted/30 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 border-b py-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <FileCode2 className="size-4" aria-hidden />
+            <CardHeader className="bg-muted/30 flex flex-row flex-wrap items-center justify-between gap-2 border-b py-3">
+              <CardTitle className="flex items-center gap-2">
+                <FileCode2 aria-hidden />
                 {t("precheck.workspace.sqlCard")}
                 {dirty && (
                   <span className="text-muted-foreground text-xs">
@@ -1182,6 +1313,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   variant="outline"
                   size="sm"
                   className="text-sm font-semibold"
+                  disabled={adoptionPending}
                   onClick={() => { setImportOpen(true); }}
                   data-testid="open-bulk-import"
                 >
@@ -1189,23 +1321,29 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   {t("precheck.bulk.import.action")}
                 </Button>
                 {draft?.has_sql && store.savedSql === null && (
-                  <Button
+                  <PendingButton
                     variant="outline"
                     size="sm"
                     className="text-sm font-semibold"
-                  onClick={() => { revealMutation.mutate(); }}
-                    disabled={revealMutation.isPending}
+                    pending={revealMutation.isPending}
+                    onClick={() => { revealMutation.mutate(); }}
                     data-testid="reveal-sql"
                   >
                     {t("precheck.workspace.loadSql")}
-                  </Button>
+                  </PendingButton>
                 )}
-                <Button
+                <PendingButton
                   size="sm"
+                  pending={
+                    reviewMutation.isPending ||
+                    createMutation.isPending ||
+                    adoptionPending
+                  }
                   onClick={handleRunReview}
                   disabled={
-                    reviewMutation.isPending ||
                     (saveMutation.isPending && dirty) ||
+                    adoptionPending ||
+                    createMutation.isPending ||
                     phasePresented === "queued" ||
                     phasePresented === "running" ||
                     store.serverState === "submitted" ||
@@ -1214,9 +1352,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   className="text-sm font-semibold"
                   data-testid="run-review"
                 >
-                  <Play className="size-3.5" aria-hidden />
+                  <Play aria-hidden />
                   {t("precheck.workspace.runReview")}
-                </Button>
+                </PendingButton>
               </div>
             </CardHeader>
             <CardContent className="flex min-h-0 flex-1 flex-col gap-2 py-4">
@@ -1326,8 +1464,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
   function renderPage(): ReactNode {
     return (
-      <div
-        className="flex flex-col"
+      <PageLayout
         data-testid={mode === "create" ? "changes-new-page" : "draft-workspace-page"}
         // The implicitly adopted draft id (e2e probes it; the URL never moves).
         data-draft-id={activeDraftId ?? undefined}
@@ -1375,7 +1512,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               <DialogTitle>{t("precheck.submit.confirmTitle")}</DialogTitle>
               <DialogDescription>{t("precheck.submit.confirmDescription")}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 text-sm">
+            <div className="flex flex-col gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">{t("precheck.wizard.summary.flow")}</p>
                 <p className="mt-1">{flow?.name ?? draft?.flow_id}</p>
@@ -1401,17 +1538,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               <Button variant="outline" onClick={() => { setConfirmSubmit(false); }} data-testid="submit-confirm-cancel">
                 {t("common.cancel")}
               </Button>
-              <Button
+              <PendingButton
+                pending={submitMutation.isPending}
                 onClick={() => { submitMutation.mutate(); }}
-                disabled={submitMutation.isPending}
                 data-testid="submit-confirm-accept"
               >
                 {t("precheck.submit.confirmAction")}
-              </Button>
+              </PendingButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageLayout>
     );
   }
 }

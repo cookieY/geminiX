@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, RotateCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { describeError } from "@/shared/api/error-display";
 
 /**
@@ -12,16 +11,6 @@ import { describeError } from "@/shared/api/error-display";
  * err_code name is never rendered. The request_id is the only opaque value
  * displayed, so users can quote it to operators without telemetry being sent.
  */
-
-export function LoadingState({ label }: { label?: string }) {
-  const { t } = useTranslation();
-  return (
-    <div role="status" className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
-      <Spinner className="size-5" />
-      <span>{label ?? t("states.loading")}</span>
-    </div>
-  );
-}
 
 export interface ErrorStateProps {
   error: unknown;

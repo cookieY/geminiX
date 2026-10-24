@@ -17,7 +17,10 @@ import {
 } from "@/features/admin/use-admin";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -57,13 +60,6 @@ import {
   TableRow,
 } from "@/shared/components/ui/table";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/components/ui/empty";
-import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -71,6 +67,8 @@ import {
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TableRowActions } from "@/shared/components/table-row-actions";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * 数据源管理（route /admin/datasources；migration contract §2 maps the
@@ -794,9 +792,9 @@ function DatasourceFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={submitting || !formValid} data-testid="ds-submit">
-            {submitting ? t("common.saving") : t("common.save")}
-          </Button>
+          <PendingButton pending={submitting} disabled={!formValid} onClick={submit} data-testid="ds-submit">
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -819,7 +817,7 @@ function CapabilityMatrix({ datasourceId, probeKey }: { datasourceId: string; pr
   return (
     <Card data-testid="ds-capabilities">
       <CardHeader>
-        <CardTitle className="text-sm">{t("admin.datasources.capabilitiesTitle")}</CardTitle>
+        <CardTitle>{t("admin.datasources.capabilitiesTitle")}</CardTitle>
         <CardDescription className="font-mono text-xs">
           {t("admin.datasources.detectedVersion", { version: capabilities.detected_version })} ·{" "}
           {t("admin.datasources.identityFingerprint")}: {capabilities.identity_fingerprint}
@@ -900,12 +898,12 @@ function DatasourceRow({
 
   return (
     <TableRow data-testid={`ds-row-${datasource.id}`} data-row-key={datasource.id}>
-      <TableCell className="font-medium">
+      <TableCell className="font-semibold text-foreground">
         {datasource.name}
         {datasource.enabled ? null : (
-          <Badge variant="outline" className="ml-2">
+          <StatusBadge tone="stone" className="ml-2">
             {t("admin.datasources.disabled")}
-          </Badge>
+          </StatusBadge>
         )}
       </TableCell>
       <TableCell className="font-mono">
@@ -916,14 +914,14 @@ function DatasourceRow({
           <span>
             {datasource.host}:{datasource.port}
           </span>
-          <Badge
-            variant={datasource.tls_verified ? "secondary" : "outline"}
+          <StatusBadge
+            tone={datasource.tls_verified ? "emerald" : "amber"}
             data-testid={`ds-tls-${datasource.tls_verified ? "verified" : "plaintext"}-${datasource.id}`}
           >
             {datasource.tls_verified
               ? t("admin.datasources.tlsVerifiedBadge")
               : t("admin.datasources.tlsPlaintextBadge")}
-          </Badge>
+          </StatusBadge>
         </div>
       </TableCell>
       <TableCell>
@@ -940,7 +938,7 @@ function DatasourceRow({
             : t("admin.datasources.credModeReadOnly")}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground">
+      <TableCell className="text-muted-foreground tabular-nums">
         {t("admin.datasources.referencedBy", { count: datasource.referenced_by_flow_count ?? 0 })}
       </TableCell>
       <TableCell className="text-right">
@@ -1048,9 +1046,9 @@ function DeleteConfirmDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             variant="destructive"
-            disabled={deleteMutation.isPending}
+            pending={deleteMutation.isPending}
             onClick={() => { deleteMutation.mutate(
                 { id: datasource.id, version: datasource.version },
                 {
@@ -1065,7 +1063,7 @@ function DeleteConfirmDialog({
             data-testid="ds-delete-confirm"
           >
             {t("common.delete")}
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1095,21 +1093,12 @@ export default function AdminDatasourcesPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>{t("admin.datasources.title")}</CardTitle>
-            <CardDescription>{t("admin.datasources.description")}</CardDescription>
-          </div>
-          <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
-              }}
-              testId="admin-datasources-search"
-            />
+    <PageLayout>
+      <PageHeader
+        title={t("admin.datasources.title")}
+        description={t("admin.datasources.description")}
+        icon={Database}
+        actions={
           <Button
             onClick={() => {
               setEditing(null);
@@ -1119,28 +1108,39 @@ export default function AdminDatasourcesPage() {
           >
             <Plus /> {t("admin.datasources.createTitle")}
           </Button>
-        </CardHeader>
+        }
+      />
+      <Card>
+        <ListToolbar
+          busy={query.isFetching && !query.isPending}
+          search={
+            <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-datasources-search"
+            />
+          }
+        />
         <CardContent className="px-0!">
           {query.isPending ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={6} />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listDatasources" onRetry={() => void query.refetch()} />
           ) : datasources.length === 0 && keyword !== "" ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-datasources-search-empty">
-              {t("table.emptySearch")}
-            </p>
+            <EmptyState
+              title={t("table.emptySearch")}
+              filtered
+              testId="admin-datasources-search-empty"
+            />
           ) : query.data.items.length === 0 ? (
-            <Empty className="mx-4 rounded-xl border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Database />
-                </EmptyMedia>
-                <EmptyTitle>{t("admin.datasources.emptyTitle")}</EmptyTitle>
-                <EmptyDescription>{t("admin.datasources.emptyDescription")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <EmptyState
+              title={t("admin.datasources.emptyTitle")}
+              description={t("admin.datasources.emptyDescription")}
+            />
           ) : (
-            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1175,25 +1175,24 @@ export default function AdminDatasourcesPage() {
                 ))}
               </TableBody>
             </Table>
-            </>
           )}
-      {!query.isPending && !query.isError ? (
-        <TablePagination
-          busy={query.isFetching && query.isPlaceholderData}
-          page={pager.pageNo}
-          hasMore={query.data.page.has_more}
-          isFirst={pager.isFirst}
-          onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
-          onNext={() => {
-            pager.pushCursor(query.data.page.next_cursor);
-          }}
-          pageSize={pager.pageSize}
-          onPageSizeChange={pager.setPageSize}
-          rowsOnPage={(query.data.items ?? []).length}
-          testIdPrefix="datasources"
-        />
-      ) : null}
+          {!query.isPending && !query.isError ? (
+            <TablePagination
+              busy={query.isFetching && query.isPlaceholderData}
+              page={pager.pageNo}
+              hasMore={query.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onJumpPage={pager.goToPage}
+              onNext={() => {
+                pager.pushCursor(query.data.page.next_cursor);
+              }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              rowsOnPage={query.data.items.length}
+              testIdPrefix="datasources"
+            />
+          ) : null}
         </CardContent>
       </Card>
       {dialogOpen ? (
@@ -1213,6 +1212,6 @@ export default function AdminDatasourcesPage() {
           onClose={() => { setDeleting(null); }}
         />
       ) : null}
-    </div>
+    </PageLayout>
   );
 }

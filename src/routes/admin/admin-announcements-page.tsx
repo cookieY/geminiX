@@ -1,17 +1,22 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { UploadCloud,  Megaphone, Plus } from "lucide-react";
+import { Megaphone, Plus, UploadCloud } from "lucide-react";
 import type { AnnouncementRevision } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -74,18 +79,23 @@ export default function AdminAnnouncementsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-announcements-page">
-      <header className="flex flex-row justify-end gap-4">
-        <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-announcements-create">
-          <Plus />
-          {t("adminAnnouncements.create")}
-        </Button>
-      </header>
+    <PageLayout data-testid="admin-announcements-page">
+      <PageHeader
+        title={t("adminAnnouncements.title")}
+        description={t("adminAnnouncements.description")}
+        icon={Megaphone}
+        actions={
+          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-announcements-create">
+            <Plus />
+            {t("adminAnnouncements.create")}
+          </Button>
+        }
+      />
 
       {current !== null && (
         <Card data-testid="admin-announcements-current">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <Megaphone className="size-4" />
               {t("adminAnnouncements.current")}
             </CardTitle>
@@ -105,7 +115,7 @@ export default function AdminAnnouncementsPage() {
         </Card>
       )}
 
-      {revisionsQuery.isPending && <LoadingState />}
+      {revisionsQuery.isPending && <LoadingState variant="table" columns={5} />}
       {revisionsQuery.error !== null && (
         <ErrorState error={revisionsQuery.error} operationId="listAnnouncementRevisions" onRetry={() => void revisionsQuery.refetch()} />
       )}
@@ -113,14 +123,12 @@ export default function AdminAnnouncementsPage() {
       {!revisionsQuery.isPending && revisionsQuery.error === null && (
         <Card>
           <CardHeader className="border-b pb-3">
-            <CardTitle className="text-sm">{t("adminAnnouncements.revisions")}</CardTitle>
+            <CardTitle>{t("adminAnnouncements.revisions")}</CardTitle>
             <CardDescription>{t("adminAnnouncements.revisionsDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="px-0!">
             {revisions.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-announcements-empty">
-                {t("adminAnnouncements.empty")}
-              </p>
+              <EmptyState title={t("adminAnnouncements.empty")} testId="admin-announcements-empty" />
             ) : (
               <>
               <Table data-testid="admin-announcements-table">
@@ -136,8 +144,10 @@ export default function AdminAnnouncementsPage() {
                 <TableBody ref={revisionsBodyRef} stale={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}>
                   {revisions.map((revision: AnnouncementRevision) => (
                     <TableRow key={revision.id} data-testid={`admin-announcement-row-${revision.id}`} data-row-key={revision.id}>
-                      <TableCell className="tabular-nums">{revision.revision_number}</TableCell>
-                      <TableCell className="font-medium">{revision.title}</TableCell>
+                      <TableCell className="text-base font-semibold tabular-nums text-foreground">
+                        {revision.revision_number}
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground">{revision.title}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {revision.created_at.replace("T", " ").replace("Z", " UTC")}
                       </TableCell>
@@ -151,6 +161,7 @@ export default function AdminAnnouncementsPage() {
                               current?.revision.id === revision.id ||
                               publish.isPending
                             }
+                            aria-busy={publish.isPending || undefined}
                             onClick={() => {
                               setErrorText(null);
                               publish.mutate(
@@ -167,7 +178,7 @@ export default function AdminAnnouncementsPage() {
                             }}
                             data-testid={`admin-announcement-publish-${revision.id}`}
                           >
-                            <UploadCloud />{" "}
+                            {publish.isPending ? <Spinner aria-hidden /> : <UploadCloud />}
                             {current?.revision.id === revision.id ? t("adminAnnouncements.published") : t("adminAnnouncements.publish")}
                           </DropdownMenuItem>
                         </TableRowActions>
@@ -240,16 +251,17 @@ export default function AdminAnnouncementsPage() {
             <Button variant="outline" onClick={() => { setCreateOpen(false); }}>
               {t("common.cancel")}
             </Button>
-            <Button
-              disabled={title.trim() === "" || markdown.trim() === "" || createRevision.isPending}
+            <PendingButton
+              pending={createRevision.isPending}
+              disabled={title.trim() === "" || markdown.trim() === ""}
               onClick={() => void submitCreate()}
               data-testid="announcement-create-submit"
             >
-              {createRevision.isPending ? t("common.saving") : t("adminAnnouncements.create")}
-            </Button>
+              {t("adminAnnouncements.create")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

@@ -2,7 +2,7 @@ import * as React from "react"
 
 import { cn } from "@/shared/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({ className, density = "comfortable", ...props }: React.ComponentProps<"table"> & { density?: "comfortable" | "compact" }) {
   return (
     <div
       data-slot="table-container"
@@ -13,13 +13,14 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
+        data-density={density}
         className={cn(
-          // Reference ruling 2026-10-24: body copy at text-sm (14px), not the
-          // previous dense 12px — the reference table reads at ~13-14px.
-          "w-full caption-bottom text-sm",
+          // Owner table reference: readable 14px body with 24px status capsules.
+          "w-full caption-bottom text-sm leading-5 [&_[data-slot=badge]]:h-6 [&_[data-slot=badge]]:px-2.5 [&_[data-slot=badge]]:text-[13px] [&_[data-slot=badge]]:font-semibold",
           // Rows arrive with the table once the query resolves; 200ms carries
           // the swap without delaying reading.
           "animate-in fade-in-0 duration-200 ease-out",
+          density === "compact" && "[&_[data-slot=table-row]]:h-9 [&_[data-slot=table-head]]:h-9 [&_[data-slot=table-head]]:px-3 [&_[data-slot=table-cell]]:px-3 [&_[data-slot=table-cell]]:py-2 [&_[data-slot=badge]]:h-5 [&_[data-slot=badge]]:px-2 [&_[data-slot=badge]]:text-xs",
           className
         )}
         {...props}
@@ -34,7 +35,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
       data-slot="table-header"
       // table-01 reference: the header row is inert (no hover wash) and its
       // own border is the card's header divider.
-      className={cn("[&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn("bg-muted/25 [&_tr]:h-12 [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
       {...props}
     />
   )
@@ -81,7 +82,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors duration-100 ease-out hover:bg-muted/30 has-aria-expanded:bg-muted/50 active:bg-muted/50 data-[state=selected]:bg-muted",
+        "h-16 border-b border-border/70 transition-colors duration-100 ease-out hover:bg-muted/30 has-aria-expanded:bg-muted/50 active:bg-muted/50 data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -94,10 +95,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       // Reference ruling 2026-10-24 (all tables ≥95% parity): the header is
-      // quiet — muted color, medium weight, taller band — so the rows carry
-      // the data emphasis instead of a bold heading strip.
+      // quiet: muted color, medium weight and a 48px band.
       className={cn(
-        "h-auto px-4 py-3 text-left align-middle text-sm font-normal whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        "h-12 px-5 py-3 text-left align-middle text-[13px] font-medium tracking-wide whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -109,10 +109,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
-      // Comfortable rhythm (reference ruling 2026-10-24): rows breathe with
-      // py-3 rather than the previous compact p-2 tile.
+      // Primary identifiers opt into foreground/semibold at the column;
+      // supporting values inherit the quiet tone and aligned digits.
       className={cn(
-        "px-4 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-5 py-4 align-middle text-muted-foreground whitespace-nowrap tabular-nums [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

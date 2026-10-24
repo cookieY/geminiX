@@ -55,7 +55,13 @@ export const useDraftEditorStore = create<DraftEditorState>((set) => ({
       sql: typeof sql === "string" ? sql : "",
     }); },
   setSql: (sql) => { set({ sql }); },
-  markSaved: (version, state, sql) => { set({ savedVersion: version, serverState: state, savedSql: sql, sql }); },
+  /** Acknowledge the revision that was saved without replacing what the user
+   * typed after the request started. Equal text becomes clean; later edits
+   * remain dirty and can be saved by the next explicit action. */
+  markSaved: (version, state, sql) => { set((current) =>
+    current.savedVersion !== null && version < current.savedVersion
+      ? current
+      : { savedVersion: version, serverState: state, savedSql: sql }); },
   markServerState: (state) => { set({ serverState: state }); },
   markVersioned: (version, state) => { set((current) =>
     current.savedVersion !== null && version <= current.savedVersion

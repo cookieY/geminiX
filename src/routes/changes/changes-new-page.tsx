@@ -10,9 +10,5 @@ import SubmissionWizard from "./submission-wizard";
  */
 
 export default function ChangesNewPage() {
-  return (
-    <div className="flex flex-col gap-4">
-      <SubmissionWizard mode="create" />
-    </div>
-  );
+  return <SubmissionWizard mode="create" />;
 }

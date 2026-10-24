@@ -19,7 +19,11 @@ import {
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -82,29 +86,26 @@ function TimelineCard({ orderId }: { orderId: string }) {
   const stateLabel = useTimelineStateLabel();
   const timelineQuery = useChangeOrderTimeline(orderId, true);
 
-  if (timelineQuery.isPending) return <LoadingState />;
-  if (timelineQuery.isError) {
-    return (
-      <ErrorState
-        error={timelineQuery.error}
-        operationId="listChangeOrderTimeline"
-        onRetry={() => void timelineQuery.refetch()}
-      />
-    );
-  }
-
-  const entries = timelineQuery.data;
+  const entries = timelineQuery.data ?? [];
   return (
     <Card data-testid="order-timeline">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <History className="size-4" aria-hidden />
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <History aria-hidden />
           {t("orders.detail.timeline")}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {entries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("orders.detail.timelineEmpty")}</p>
+        {timelineQuery.isPending ? (
+          <LoadingState variant="table" columns={2} />
+        ) : timelineQuery.isError ? (
+          <ErrorState
+            error={timelineQuery.error}
+            operationId="listChangeOrderTimeline"
+            onRetry={() => void timelineQuery.refetch()}
+          />
+        ) : entries.length === 0 ? (
+          <EmptyState title={t("orders.detail.timelineEmpty")} />
         ) : (
           <ol className="flex flex-col gap-3" data-testid="order-timeline-list">
             {entries.map((entry) => (
@@ -198,20 +199,30 @@ export default function OrderDetailPage() {
 
   if (orderQuery.isPending) {
     return (
-      <div className="flex flex-col gap-4" data-testid="order-detail-page">
-        <LoadingState />
-      </div>
+      <PageLayout data-testid="order-detail-page">
+        <PageHeader
+          icon={FileCode2}
+          title={t("orders.detail.title")}
+          description={t("orders.detail.frozenNote")}
+        />
+        <LoadingState variant="page" />
+      </PageLayout>
     );
   }
   if (orderQuery.isError) {
     return (
-      <div className="flex flex-col gap-4" data-testid="order-detail-page">
+      <PageLayout data-testid="order-detail-page">
+        <PageHeader
+          icon={FileCode2}
+          title={t("orders.detail.title")}
+          description={t("orders.detail.frozenNote")}
+        />
         <ErrorState
           error={orderQuery.error}
           operationId="getChangeOrder"
           onRetry={() => void orderQuery.refetch()}
         />
-      </div>
+      </PageLayout>
     );
   }
   if (order === null) return null;
@@ -219,37 +230,45 @@ export default function OrderDetailPage() {
   const pending = withdrawMutation.isPending || voidMutation.isPending;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="order-detail-page">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-xl font-semibold">{order.display_number}</h1>
-          <OrderStateBadge state={order.state} />
-        </div>
-        <div className="flex items-center gap-2">
+    <PageLayout data-testid="order-detail-page">
+      <PageHeader
+        icon={FileCode2}
+        title={<span className="font-mono">{order.display_number}</span>}
+        description={
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{order.title}</span>
+            <OrderStateBadge state={order.state} />
+          </span>
+        }
+        actions={
+          <>
           {isSubmitter && outcome !== null && (
-            <Button
+            <PendingButton
               variant="outline"
+              pending={withdrawMutation.isPending}
+              disabled={voidMutation.isPending}
               onClick={() => { setDialog("withdraw"); setDialogError(null); }}
-              disabled={pending}
               data-testid="withdraw-order"
             >
-              <Undo2 className="size-4" aria-hidden />
+              <Undo2 aria-hidden />
               {t("orders.detail.withdraw")}
-            </Button>
+            </PendingButton>
           )}
           {isSubmitter && canVoid(order.state) && (
-            <Button
+            <PendingButton
               variant="destructive"
+              pending={voidMutation.isPending}
+              disabled={withdrawMutation.isPending}
               onClick={() => { setDialog("void"); setDialogError(null); }}
-              disabled={pending}
               data-testid="void-order"
             >
-              <Ban className="size-4" aria-hidden />
+              <Ban aria-hidden />
               {t("orders.detail.void")}
-            </Button>
+            </PendingButton>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {order.state === "invalid" && (
         <Alert data-testid="invalid-order-alert">
@@ -275,8 +294,8 @@ export default function OrderDetailPage() {
           return (
             <Card data-testid="execution-wait-note">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Clock className="size-4" aria-hidden />
+                <CardTitle className="flex items-center gap-2">
+                  <Clock aria-hidden />
                   {t("orders.execution.waitTitle")}
                 </CardTitle>
                 <CardDescription>{t("orders.execution.waitNote", { names })}</CardDescription>
@@ -294,8 +313,8 @@ export default function OrderDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card data-testid="order-stages">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <FileCode2 className="size-4" aria-hidden />
+            <CardTitle className="flex items-center gap-2">
+              <FileCode2 aria-hidden />
               {t("orders.detail.stages")}
             </CardTitle>
           </CardHeader>
@@ -342,7 +361,7 @@ export default function OrderDetailPage() {
 
         <Card data-testid="order-facts">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">{t("orders.detail.facts")}</CardTitle>
+            <CardTitle>{t("orders.detail.facts")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2 text-sm">
             <p className="flex justify-between gap-3">
@@ -401,7 +420,7 @@ export default function OrderDetailPage() {
               <AlertDescription>{t("orders.detail.partialWarningDescription")}</AlertDescription>
             </Alert>
           )}
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="order-action-reason">{t("orders.detail.reasonLabel")}</Label>
             <Textarea
               id="order-action-reason"
@@ -421,17 +440,18 @@ export default function OrderDetailPage() {
             <Button variant="outline" onClick={closeDialog} data-testid="order-action-cancel">
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant={dialog === "void" ? "destructive" : "default"}
               onClick={confirmAction}
-              disabled={reason.trim() === "" || pending}
+              pending={pending}
+              disabled={reason.trim() === ""}
               data-testid="order-action-confirm"
             >
               {dialog === "withdraw" ? t("orders.detail.withdraw") : t("orders.detail.void")}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

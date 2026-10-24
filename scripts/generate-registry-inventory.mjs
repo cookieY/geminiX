@@ -24,6 +24,7 @@ const COMPONENTS = [
   "dropdown-menu",
   "empty",
   "input",
+  "input-group",
   "label",
   "popover",
   "progress",

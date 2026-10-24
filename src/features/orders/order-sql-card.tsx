@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRecordOrderSqlCopy, useRevealOrderSql, type OrderSqlReveal } from "@/features/orders/use-approvals";
 import { describeError } from "@/shared/api/error-display";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -81,7 +82,7 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
   return (
     <Card data-testid="order-sql-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <FileCode2 className="size-4" aria-hidden />
           {t("orders.sql.title")}
         </CardTitle>
@@ -94,17 +95,16 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
         )}
         {revealed === null ? (
           <div className="flex items-center gap-3">
-            <Button
+            <PendingButton
               size="sm"
               variant="outline"
               onClick={revealNow}
-              disabled={reveal.isPending}
+              pending={reveal.isPending}
               data-testid="reveal-order-sql"
             >
-              {reveal.isPending && <Spinner className="size-3.5" />}
               <Eye className="size-3.5" aria-hidden />
               {t("orders.sql.reveal")}
-            </Button>
+            </PendingButton>
             <p className="text-muted-foreground text-xs">{t("orders.sql.revealNote")}</p>
           </div>
         ) : (
@@ -127,10 +127,16 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
               <SqlReadOnlyViewer value={revealed.sql} data-testid="order-sql-readonly" />
             </Suspense>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={copyRevealed} data-testid="copy-order-sql">
+              <PendingButton
+                variant="outline"
+                size="sm"
+                pending={copyAudit.isPending}
+                onClick={copyRevealed}
+                data-testid="copy-order-sql"
+              >
                 <ClipboardCopy className="size-3.5" aria-hidden />
                 {t("orders.sql.copy")}
-              </Button>
+              </PendingButton>
               <Button variant="ghost" size="sm" onClick={closeReveal} data-testid="close-order-sql">
                 {t("orders.sql.close")}
               </Button>

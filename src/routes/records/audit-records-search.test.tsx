@@ -76,6 +76,8 @@ function renderPage(): void {
 describe("AuditRecordsPage search (§18.39)", () => {
   it("narrows the loaded events by action and actor substrings", async () => {
     renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "审计记录" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     // The seeded world logs an admin login and datasource maintenance.
     await waitFor(() => {
       expect(document.querySelectorAll("[data-testid^='records-row-']").length).toBeGreaterThan(0);

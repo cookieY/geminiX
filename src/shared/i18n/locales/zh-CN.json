@@ -109,7 +109,8 @@
     "waitingForAdminTitle": "等待管理员配置权限",
     "waitingForAdminDesc": "你的账号已激活，但还没有任何流程权限。请联系管理员将你加入权限组。",
     "notDeliveredTitle": "页面尚未交付",
-    "notDeliveredDesc": "该管理页面将在后续工作包中提供。"
+    "notDeliveredDesc": "该管理页面将在后续工作包中提供。",
+    "refreshing": "正在刷新"
   },
   "errors": {
     "notFound": "页面不存在",

@@ -18,7 +18,10 @@ import {
 import type { QueryGrant, QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError, type ErrorDisplay } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -297,34 +300,55 @@ export default function QueryWorkspacePage() {
 
   if (sessionQuery.isPending) {
     return (
-      <div className="flex flex-col gap-4">
-        <LoadingState />
-      </div>
+      <PageLayout>
+        <PageHeader
+          icon={Database}
+          title={t("query.workspace.title", { name: t("query.entry.title") })}
+        />
+        <LoadingState variant="page" />
+      </PageLayout>
     );
   }
 
   if (sessionQuery.error !== null) {
     return (
-      <div className="flex flex-col gap-4" data-testid="query-workspace-error">
+      <PageLayout data-testid="query-workspace-error">
+        <PageHeader
+          icon={Database}
+          title={t("query.workspace.title", { name: t("query.entry.title") })}
+        />
         <ErrorState
           error={sessionQuery.error}
           operationId="getQuerySession"
           onRetry={() => void sessionQuery.refetch()}
         />
-      </div>
+      </PageLayout>
     );
   }
 
   if (row === null) {
     return (
-      <div className="flex flex-col gap-4">
+      <PageLayout>
+        <PageHeader
+          icon={Database}
+          title={t("query.workspace.title", { name: t("query.entry.title") })}
+        />
         <ErrorState error={new Error("session not found")} operationId="getQuerySession" onRetry={() => { void navigate("/query"); }} />
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] min-h-0 flex-col gap-3" data-testid="query-workspace">
+    <PageLayout
+      className="h-[max(calc(100vh-7rem),40rem)] min-h-0 gap-3"
+      data-testid="query-workspace"
+    >
+      <PageHeader
+        icon={Database}
+        title={t("query.workspace.title", {
+          name: capability?.datasource_name ?? row.capabilities[0]?.datasource_name ?? t("query.entry.title"),
+        })}
+      />
 
       {row.state === "revoked" && (
         <Alert variant="destructive" data-testid="query-revoked-notice">
@@ -463,15 +487,16 @@ export default function QueryWorkspacePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
+              <PendingButton
                 size="sm"
+                pending={running}
                 onClick={() => void run()}
-                disabled={running || blocked || capability === null || capabilityBlocked}
+                disabled={blocked || capability === null || capabilityBlocked}
                 data-testid="query-run"
               >
                 <Play />
-                {running ? t("query.run.running") : t("query.run.execute")}
-              </Button>
+                {t("query.run.execute")}
+              </PendingButton>
               <span className="text-muted-foreground text-xs">{t("query.run.singleSelectHint")}</span>
               <div className="ml-auto flex items-center gap-2">
                 {capability?.can_export === true && sql.trim() !== "" && (
@@ -502,8 +527,8 @@ export default function QueryWorkspacePage() {
             {/* Fixed-height chain (F5 virtualization lesson): Monaco must
                 measure a stable box or its overlays spill over the result
                 area once results render and the flex space shrinks. */}
-            <div className="h-[34vh] min-h-[240px] shrink-0">
-              <SqlEditorPanel value={sql} onChange={setSql} loadValue={loadValue} readOnly={blocked} data-testid="query-sql-editor" />
+            <div className="h-[clamp(180px,30vh,280px)] shrink-0">
+              <SqlEditorPanel className="h-full min-h-0" value={sql} onChange={setSql} loadValue={loadValue} readOnly={blocked} data-testid="query-sql-editor" />
             </div>
 
             {runError !== null && (
@@ -578,10 +603,10 @@ export default function QueryWorkspacePage() {
             <DialogDescription>{t("query.structure.description")}</DialogDescription>
           </DialogHeader>
           <div className="max-h-96 overflow-y-auto" data-testid="query-table-structure">
-            {structureQuery.isPending && <p className="text-muted-foreground p-2 text-xs">{t("common.loading")}</p>}
+            {structureQuery.isPending && <LoadingState variant="table" columns={8} />}
             {structureQuery.error !== null && <p className="text-destructive p-2 text-xs">{t("query.tree.loadFailed")}</p>}
             {structureQuery.data !== undefined && (
-              <Table>
+              <Table density="compact">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">#</TableHead>
@@ -646,7 +671,7 @@ export default function QueryWorkspacePage() {
       />
 
       <ExportDialog context={exportContext} sessionId={sessionId} onClose={() => { setExportContext(null); }} />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -687,14 +712,14 @@ function CloseSessionDialog({
           <Button variant="outline" onClick={onCancel}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             variant="destructive"
-            disabled={submitting}
+            pending={submitting}
             onClick={() => { onSubmit(); }}
             data-testid="query-exit-confirm"
           >
-            {submitting ? t("common.saving") : t("query.exit.confirm")}
-          </Button>
+            {t("query.exit.confirm")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -815,7 +840,7 @@ function ExportDialog({
             </p>
           )}
           {done === null && progress === null && (
-            <p className="text-muted-foreground text-xs">{t("common.loading")}</p>
+            <LoadingState variant="inline" />
           )}
           {failure !== null && (
             <Alert variant="destructive" data-testid="query-export-failure">

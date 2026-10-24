@@ -53,16 +53,18 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(title);
-  // Implicit drafts: save adopts silently; the page root carries the id.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
+  // The first acting operation adopts the implicit draft silently; the page
+  // root carries its id once precheck has created and reviewed that draft.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
   await gotoConfirmStep(page);
   await page.getByTestId("submit-draft").click();
   await page.getByTestId("submit-confirm-accept").click();

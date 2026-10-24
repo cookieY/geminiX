@@ -5,14 +5,22 @@ import { KeyRound, Pencil, Plus, PlugZap, Trash2 } from "lucide-react";
 import type { IdentityProvider } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
@@ -114,10 +122,10 @@ function LdapConnectionTest({ providerId }: { providerId: string }) {
     <div className="flex flex-col gap-0.5">
       {/* Async connection test (contract §2: "连接测试异步") — the same
           hook the OIDC table rows use. */}
-      <Button
+      <PendingButton
         size="sm"
         variant="outline"
-        disabled={testConnection.isPending}
+        pending={testConnection.isPending}
         onClick={() => {
           testConnection.mutate(providerId, {
             onSuccess: (task) => {
@@ -132,7 +140,7 @@ function LdapConnectionTest({ providerId }: { providerId: string }) {
         data-testid={`admin-idp-test-${providerId}`}
       >
         {t("adminIdp.testConnection")}
-      </Button>
+      </PendingButton>
       {taskId !== null && (
         <span className="text-muted-foreground font-mono text-xs" data-testid={`admin-idp-test-task-${providerId}`}>
           {t("adminIdp.testTask", { id: taskId })}
@@ -167,21 +175,26 @@ export default function AdminIdentityProvidersPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-idp-page">
-      <header className="flex flex-row justify-end gap-4">
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={ldap !== null} onClick={() => { setCreateKind("ldap"); }} data-testid="admin-idp-create-ldap">
-            <Plus />
-            {t("adminIdp.createLdap")}
-          </Button>
-          <Button onClick={() => { setCreateKind("oidc"); }} data-testid="admin-idp-create-oidc">
-            <Plus />
-            {t("adminIdp.createOidc")}
-          </Button>
-        </div>
-      </header>
+    <PageLayout data-testid="admin-idp-page">
+      <PageHeader
+        title={t("adminIdp.title")}
+        description={t("adminIdp.description")}
+        icon={KeyRound}
+        actions={
+          <>
+            <Button variant="outline" disabled={ldap !== null} onClick={() => { setCreateKind("ldap"); }} data-testid="admin-idp-create-ldap">
+              <Plus />
+              {t("adminIdp.createLdap")}
+            </Button>
+            <Button onClick={() => { setCreateKind("oidc"); }} data-testid="admin-idp-create-oidc">
+              <Plus />
+              {t("adminIdp.createOidc")}
+            </Button>
+          </>
+        }
+      />
 
-      {providersQuery.isPending && <LoadingState />}
+      {providersQuery.isPending && <LoadingState variant="page" />}
       {providersQuery.error !== null && (
         <ErrorState error={providersQuery.error} operationId="listIdentityProviders" onRetry={() => void providersQuery.refetch()} />
       )}
@@ -190,23 +203,21 @@ export default function AdminIdentityProvidersPage() {
         <>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">{t("adminIdp.ldapCard")}</CardTitle>
+              <CardTitle>{t("adminIdp.ldapCard")}</CardTitle>
               <CardDescription>{t("adminIdp.ldapDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               {ldap === null ? (
-                <p className="text-muted-foreground py-4 text-center text-sm" data-testid="admin-idp-ldap-empty">
-                  {t("adminIdp.ldapEmpty")}
-                </p>
+                <EmptyState title={t("adminIdp.ldapEmpty")} testId="admin-idp-ldap-empty" />
               ) : (
-                <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" data-testid={`admin-idp-row-${ldap.id}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2" data-testid={`admin-idp-row-${ldap.id}`}>
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">{ldap.display_name}</span>
                     <span className="text-muted-foreground truncate font-mono text-xs">
                       {`${String((ldap.configuration as unknown as { host?: string }).host)}:${String((ldap.configuration as unknown as { port?: number }).port)} · ${String((ldap.configuration as unknown as { transport?: string }).transport)}`}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={ldap.enabled ? "secondary" : "outline"}>
                       {ldap.enabled ? t("adminIdp.enabled") : t("adminIdp.disabled")}
                     </Badge>
@@ -223,14 +234,12 @@ export default function AdminIdentityProvidersPage() {
 
           <Card>
             <CardHeader className="border-b pb-3">
-              <CardTitle className="text-sm">{t("adminIdp.oidcCard")}</CardTitle>
+              <CardTitle>{t("adminIdp.oidcCard")}</CardTitle>
               <CardDescription>{t("adminIdp.oidcDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="px-0!">
               {oidcProviders.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm" data-testid="admin-idp-oidc-empty">
-                  {t("adminIdp.oidcEmpty")}
-                </p>
+                <EmptyState title={t("adminIdp.oidcEmpty")} testId="admin-idp-oidc-empty" />
               ) : (
                 <>
                 <Table data-testid="admin-idp-oidc-table">
@@ -245,14 +254,14 @@ export default function AdminIdentityProvidersPage() {
                   <TableBody ref={oidcBodyRef} stale={providersQuery.isFetching && providersQuery.isPlaceholderData}>
                     {oidcProviders.map((provider) => (
                       <TableRow key={provider.id} data-testid={`admin-idp-row-${provider.id}`} data-row-key={provider.id}>
-                        <TableCell className="font-mono font-medium">{provider.provider_key}</TableCell>
+                        <TableCell className="font-mono font-semibold text-foreground">{provider.provider_key}</TableCell>
                         <TableCell className="max-w-72 truncate font-mono">
                           {(provider.configuration as { issuer_url?: string }).issuer_url ?? ""}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={provider.enabled ? "secondary" : "outline"}>
+                          <StatusBadge tone={provider.enabled ? "emerald" : "stone"}>
                             {provider.enabled ? t("adminIdp.enabled") : t("adminIdp.disabled")}
-                          </Badge>
+                          </StatusBadge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DeleteProviderButton
@@ -279,7 +288,7 @@ export default function AdminIdentityProvidersPage() {
                   }}
                   pageSize={pager.pageSize}
                   onPageSizeChange={pager.setPageSize}
-                  rowsOnPage={(providersQuery.data.items ?? []).length}
+                  rowsOnPage={providersQuery.data.items.length}
                   testIdPrefix="idp"
                 />
               ) : null}
@@ -297,7 +306,7 @@ export default function AdminIdentityProvidersPage() {
           setCreateKind(null);
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -315,6 +324,7 @@ function DeleteProviderButton({ provider, onEdit }: { provider: IdentityProvider
             task id is surfaced below the kebab for the generic task read route. */}
         <DropdownMenuItem
           disabled={testConnection.isPending}
+          aria-busy={testConnection.isPending || undefined}
           onClick={() => { testConnection.mutate(provider.id, {
               onSuccess: (task) => {
                 setErrorText(null);
@@ -325,7 +335,8 @@ function DeleteProviderButton({ provider, onEdit }: { provider: IdentityProvider
           }
           data-testid={`admin-idp-test-${provider.id}`}
         >
-          <PlugZap /> {t("adminIdp.testConnection")}
+          {testConnection.isPending ? <Spinner aria-hidden /> : <PlugZap />}
+          {t("adminIdp.testConnection")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onEdit} data-testid={`admin-idp-edit-${provider.id}`}>
           <Pencil /> {t("common.edit")}
@@ -364,9 +375,9 @@ function DeleteProviderButton({ provider, onEdit }: { provider: IdentityProvider
             <Button variant="outline" onClick={() => { setOpen(false); }}>
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant="destructive"
-              disabled={deleteProvider.isPending}
+              pending={deleteProvider.isPending}
               onClick={() => { deleteProvider.mutate(
                   { providerId: provider.id, version: provider.version },
                   {
@@ -376,8 +387,8 @@ function DeleteProviderButton({ provider, onEdit }: { provider: IdentityProvider
                 ); }
               }
             >
-              {deleteProvider.isPending ? t("common.saving") : t("common.delete")}
-            </Button>
+              {t("common.delete")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -565,16 +576,26 @@ function ProviderFormDialog({
                 <Input id="idp-ldap-port" type="number" min={1} max={65535} value={ldapDraft.port} onChange={(event) => { setLdapDraft({ ...ldapDraft, port: Number(event.target.value) }); }} data-testid="idp-ldap-port" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>{t("adminIdp.field.transport")}</Label>
-                <select
+                <Label htmlFor="idp-ldap-transport">{t("adminIdp.field.transport")}</Label>
+                <Select
                   value={ldapDraft.transport}
-                  onChange={(event) => { setLdapDraft({ ...ldapDraft, transport: event.target.value as "ldaps" | "starttls" }); }}
-                  className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                  data-testid="idp-ldap-transport"
+                  onValueChange={(value) => {
+                    if (value !== "ldaps" && value !== "starttls") return;
+                    setLdapDraft({ ...ldapDraft, transport: value });
+                  }}
                 >
-                  <option value="ldaps">ldaps</option>
-                  <option value="starttls">starttls</option>
-                </select>
+                  <SelectTrigger
+                    id="idp-ldap-transport"
+                    className="w-48"
+                    data-testid="idp-ldap-transport"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ldaps">ldaps</SelectItem>
+                    <SelectItem value="starttls">starttls</SelectItem>
+                  </SelectContent>
+                </Select>
                 <p className="text-muted-foreground text-xs">{t("adminIdp.field.transportHint")}</p>
               </div>
               <TextField label={t("adminIdp.field.serverName")} value={ldapDraft.server_name} onChange={(value) => { setLdapDraft({ ...ldapDraft, server_name: value }); }} testId="idp-ldap-server-name" />
@@ -599,19 +620,23 @@ function ProviderFormDialog({
             </>
           )}
 
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="idp-enabled"
               checked={kind === "ldap" ? ldapDraft.enabled : oidcDraft.enabled}
-              onChange={(event) => {
-                if (kind === "ldap") setLdapDraft({ ...ldapDraft, enabled: event.target.checked });
-                else setOidcDraft({ ...oidcDraft, enabled: event.target.checked });
-              }
-              }
+              onCheckedChange={(checked) => {
+                if (kind === "ldap") {
+                  setLdapDraft({ ...ldapDraft, enabled: checked });
+                } else {
+                  setOidcDraft({ ...oidcDraft, enabled: checked });
+                }
+              }}
               data-testid="idp-enabled"
             />
-            {t("adminIdp.field.enabled")}
-          </label>
+            <Label htmlFor="idp-enabled" className="cursor-pointer">
+              {t("adminIdp.field.enabled")}
+            </Label>
+          </div>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="idp-secret">{t("adminIdp.field.secret")}</Label>
@@ -644,17 +669,14 @@ function ProviderFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={
-              createProvider.isPending ||
-              replaceProvider.isPending ||
-              (editing === null && (kind === "ldap" ? ldapDraft.secret : oidcDraft.secret) === "")
-            }
+          <PendingButton
+            pending={createProvider.isPending || replaceProvider.isPending}
+            disabled={editing === null && (kind === "ldap" ? ldapDraft.secret : oidcDraft.secret) === ""}
             onClick={() => void submit()}
             data-testid="idp-form-submit"
           >
-            {createProvider.isPending || replaceProvider.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

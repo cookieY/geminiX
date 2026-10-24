@@ -7,7 +7,10 @@ import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, PermissionGroup, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -30,6 +33,8 @@ import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * 权限组管理 (route /admin/permission-groups; migration contract §2 maps
@@ -91,32 +96,23 @@ export default function AdminPermissionGroupsPage() {
   const loadError = groupsQuery.error ?? usersQuery.error ?? flowsQuery.error;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-groups-page">
-      <header className="flex flex-row justify-end gap-4">
-        <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-groups-create">
-          <Plus />
-          {t("adminGroups.create")}
-        </Button>
-      </header>
-
-      {loadError !== null && (
-        <ErrorState
-          error={loadError}
-          operationId="listPermissionGroups"
-          onRetry={() => {
-            void groupsQuery.refetch();
-            void usersQuery.refetch();
-            void flowsQuery.refetch();
-          }}
-        />
-      )}
-      {loadError === null && groupsQuery.isPending && <LoadingState />}
+    <PageLayout data-testid="admin-groups-page">
+      <PageHeader
+        title={t("adminGroups.title")}
+        description={t("adminGroups.description")}
+        icon={ShieldCheck}
+        actions={
+          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-groups-create">
+            <Plus />
+            {t("adminGroups.create")}
+          </Button>
+        }
+      />
 
       {loadError === null && !groupsQuery.isPending && (
-        <>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">{t("adminGroups.preview.title")}</CardTitle>
+              <CardTitle>{t("adminGroups.preview.title")}</CardTitle>
               <CardDescription>{t("adminGroups.preview.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
@@ -165,17 +161,13 @@ export default function AdminPermissionGroupsPage() {
               )}
             </CardContent>
           </Card>
+      )}
 
-          <Card>
-            <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <ShieldCheck className="size-4" />
-                  {t("adminGroups.card")}
-                </CardTitle>
-                <CardDescription>{t("adminGroups.cardDescription")}</CardDescription>
-              </div>
-              <TableSearchInput
+      <Card>
+        <ListToolbar
+          busy={groupsQuery.isFetching && !groupsQuery.isPending}
+          search={
+            <TableSearchInput
               value={groupSearch}
               onChange={(value) => {
                 setGroupSearch(value);
@@ -183,14 +175,30 @@ export default function AdminPermissionGroupsPage() {
               }}
               testId="admin-groups-search"
             />
-            </CardHeader>
-            <CardContent className="px-0!">
+          }
+        />
+        <CardContent className="px-0!">
+          {loadError !== null ? (
+            <ErrorState
+              error={loadError}
+              operationId="listPermissionGroups"
+              onRetry={() => {
+                void groupsQuery.refetch();
+                void usersQuery.refetch();
+                void flowsQuery.refetch();
+              }}
+            />
+          ) : groupsQuery.isPending ? (
+            <LoadingState variant="table" columns={5} />
+          ) : (
+            <>
               {groups.length === 0 ? (
-                <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-groups-empty">
-                  {groupKeyword !== "" ? t("table.emptySearch") : t("adminGroups.empty")}
-                </p>
+                <EmptyState
+                  title={groupKeyword !== "" ? t("table.emptySearch") : t("adminGroups.empty")}
+                  filtered={groupKeyword !== ""}
+                  testId="admin-groups-empty"
+                />
               ) : (
-              <>
                 <Table data-testid="admin-groups-table">
                   <TableHeader>
                     <TableRow>
@@ -207,29 +215,28 @@ export default function AdminPermissionGroupsPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </>
               )}
-      {groupsLoaded ? (
-        <TablePagination
-          busy={groupsQuery.isFetching && groupsQuery.isPlaceholderData}
-          page={pager.pageNo}
-          hasMore={groupsQuery.data.page.has_more}
-          isFirst={pager.isFirst}
-          onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
-          onNext={() => {
-            pager.pushCursor(groupsQuery.data.page.next_cursor);
-          }}
-          pageSize={pager.pageSize}
-          onPageSizeChange={pager.setPageSize}
-          rowsOnPage={(groupsQuery.data.items ?? []).length}
-          testIdPrefix="groups"
-        />
-      ) : null}
-            </CardContent>
-          </Card>
-        </>
-      )}
+              {groupsLoaded ? (
+                <TablePagination
+                  busy={groupsQuery.isFetching && groupsQuery.isPlaceholderData}
+                  page={pager.pageNo}
+                  hasMore={groupsQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onJumpPage={pager.goToPage}
+                  onNext={() => {
+                    pager.pushCursor(groupsQuery.data.page.next_cursor);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={groupsQuery.data.items.length}
+                  testIdPrefix="groups"
+                />
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <GroupFormDialog
         open={createOpen}
@@ -245,7 +252,7 @@ export default function AdminPermissionGroupsPage() {
         flows={flows}
         onClose={() => { setEditing(null); }}
       />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -268,11 +275,11 @@ function GroupRow({
   return (
     <>
       <TableRow data-testid={`admin-group-row-${group.id}`} data-row-key={group.id}>
-        <TableCell className="font-medium">{group.name}</TableCell>
+        <TableCell className="font-semibold text-foreground">{group.name}</TableCell>
         <TableCell>
-          <Badge variant={group.enabled ? "secondary" : "outline"}>
+          <StatusBadge tone={group.enabled ? "emerald" : "stone"}>
             {group.enabled ? t("adminGroups.enabled") : t("adminGroups.disabled")}
-          </Badge>
+          </StatusBadge>
         </TableCell>
         <TableCell className="text-muted-foreground max-w-56 truncate text-xs">
           {group.member_user_ids
@@ -318,9 +325,9 @@ function GroupRow({
             <Button variant="outline" onClick={() => { setConfirmOpen(false); }}>
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant="destructive"
-              disabled={deleteGroup.isPending}
+              pending={deleteGroup.isPending}
               onClick={() => {
                 deleteGroup.mutate(
                   { groupId: group.id, version: group.version },
@@ -332,8 +339,8 @@ function GroupRow({
               }}
               data-testid="admin-group-delete-confirm"
             >
-              {deleteGroup.isPending ? t("common.saving") : t("adminGroups.delete.confirm")}
-            </Button>
+              {t("adminGroups.delete.confirm")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -482,7 +489,7 @@ function GroupFormDialog({
                 data-testid="group-member-select-all"
               />
               {t("adminGroups.selectAll")}
-              <span className="text-muted-foreground text-xs" data-testid="group-member-select-all-count">
+              <span className="text-muted-foreground text-xs tabular-nums" data-testid="group-member-select-all-count">
                 {String(selectedVisibleMembers)}/{String(visibleMemberIds.length)}
               </span>
             </label>
@@ -523,7 +530,7 @@ function GroupFormDialog({
                 data-testid="group-flow-select-all"
               />
               {t("adminGroups.selectAll")}
-              <span className="text-muted-foreground text-xs" data-testid="group-flow-select-all-count">
+              <span className="text-muted-foreground text-xs tabular-nums" data-testid="group-flow-select-all-count">
                 {String(selectedVisibleFlows)}/{String(visibleFlowIds.length)}
               </span>
             </label>
@@ -560,13 +567,14 @@ function GroupFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={form.name.trim() === "" || createGroup.isPending || replaceGroup.isPending}
+          <PendingButton
+            pending={createGroup.isPending || replaceGroup.isPending}
+            disabled={form.name.trim() === ""}
             onClick={() => void submit()}
             data-testid="group-form-submit"
           >
-            {createGroup.isPending || replaceGroup.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

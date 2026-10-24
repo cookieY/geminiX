@@ -113,6 +113,8 @@ describe("MinePage", () => {
     });
     renderMine();
     expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "我的工单" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const rows = screen.getAllByTestId("mine-order-row");
     expect(rows).toHaveLength(2);
     // Newest submission first.
@@ -163,7 +165,9 @@ describe("MinePage", () => {
     // §5.2): no server query objects exist for the default session, so the
     // honest empty state renders.
     await user.click(await screen.findByTestId("tab-query-orders"));
-    expect(await screen.findByTestId("orders-query-empty")).toBeVisible();
+    await waitFor(() => {
+      expect(screen.getByTestId("orders-query-empty")).toBeVisible();
+    });
     expect(screen.getByTestId("orders-query-empty")).toHaveTextContent("暂无查询工单记录。");
   });
 

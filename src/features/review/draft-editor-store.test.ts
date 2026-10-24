@@ -48,6 +48,25 @@ describe("draft editor store", () => {
     expect(selectDirty(state)).toBe(false);
   });
 
+  it("preserves text typed while a save response is in flight", () => {
+    useDraftEditorStore.getState().attach({
+      id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",
+      state: "draft",
+      version: 1,
+      sql: null,
+    });
+    useDraftEditorStore.getState().setSql("UPDATE t SET a = 1");
+    useDraftEditorStore.getState().setSql("UPDATE t SET a = 2");
+
+    useDraftEditorStore.getState().markSaved(2, "draft", "UPDATE t SET a = 1");
+
+    const state = useDraftEditorStore.getState();
+    expect(state.savedVersion).toBe(2);
+    expect(state.savedSql).toBe("UPDATE t SET a = 1");
+    expect(state.sql).toBe("UPDATE t SET a = 2");
+    expect(selectDirty(state)).toBe(true);
+  });
+
   it("server state updates arrive without touching the editor text", () => {
     useDraftEditorStore.getState().attach({
       id: "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac",

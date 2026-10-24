@@ -21,7 +21,9 @@ esac
 image="${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.62.1-noble}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 update_flag=""
-if [ "$mode" = "update" ]; then update_flag="--update-snapshots"; fi
+# Explicit re-recording must replace even images whose small structural
+# changes still fall below the normal comparison tolerance.
+if [ "$mode" = "update" ]; then update_flag="--update-snapshots=all"; fi
 
 # The repository is mounted read-only and copied inside the container so the
 # host node_modules (native macOS binaries) can never be reused by the Linux
@@ -32,7 +34,7 @@ docker run --rm \
   -v "$repo_root/test-results":"/out/test-results" \
   -e CI=1 \
   -e UPDATE_FLAG="$update_flag" \
-  -w /work "$image" bash -euo pipefail -lc '
+  -w /work "$image" bash --noprofile --norc -euo pipefail -c '
     corepack enable >/dev/null 2>&1 || true
     corepack prepare pnpm@10.20.0 --activate >/dev/null 2>&1 || npm i -g pnpm@10.20.0 >/dev/null 2>&1
     mkdir -p /work

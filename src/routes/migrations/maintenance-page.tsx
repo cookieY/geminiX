@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Construction } from "lucide-react";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 
 /**
  * Maintenance page for the migration-mode router (migration contract §8:
@@ -13,21 +14,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 export default function MigrationMaintenancePage() {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-screen items-center justify-center p-6" data-testid="migration-maintenance">
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Construction className="size-5" />
-            {t("migrationMode.maintenanceTitle")}
-          </CardTitle>
-          <CardDescription>{t("migrationMode.maintenanceDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => { window.location.href = "/admin/migrations"; }} data-testid="migration-maintenance-goto">
-            {t("migrationMode.gotoWorkbench")}
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <PageLayout className="min-h-screen items-center justify-center p-6" data-testid="migration-maintenance">
+      <div className="flex w-full max-w-xl flex-col gap-5">
+        <PageHeader
+          icon={Construction}
+          title={t("migrationMode.maintenanceTitle")}
+          description={t("migrationMode.maintenanceDescription")}
+        />
+        <Card>
+          <CardContent>
+            <Button onClick={() => { window.location.href = "/admin/migrations"; }} data-testid="migration-maintenance-goto">
+              {t("migrationMode.gotoWorkbench")}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </PageLayout>
   );
 }

@@ -1,15 +1,12 @@
 import { Suspense, type LazyExoticComponent, type ComponentType } from "react";
+import { PageLoadingState } from "@/shared/components/status/page-loading-state";
 
-/** Lazy-route suspense shell; the visual skeleton arrives with FE-F2. */
+/** Route chunks use the same accessible page skeleton as data reads. */
 export function Loadable(component: LazyExoticComponent<ComponentType>) {
   const Component = component;
   return (
     <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center" aria-busy="true">
-          <div className="size-6 animate-spin rounded-full border-2 border-border border-t-primary" />
-        </div>
-      }
+      fallback={<PageLoadingState />}
     >
       <Component />
     </Suspense>

@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { Crosshair, FileSearch } from "lucide-react";
 import { useSeverityFilter } from "./use-draft-workspace";
 
@@ -55,8 +56,8 @@ export function FindingList({ findings, onOpenEvidence, onLocate, locateInEditor
 
   return (
     <Card data-testid="finding-list">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">{t("precheck.findings.title")}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <CardTitle>{t("precheck.findings.title")}</CardTitle>
         <Select
           value={severity}
           onValueChange={(value) => { setSeverity(value as "all" | "low" | "medium" | "high" | "critical"); }
@@ -81,11 +82,13 @@ export function FindingList({ findings, onOpenEvidence, onLocate, locateInEditor
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-3">
         {visibleFindings.length === 0 && (
-          <p className="text-muted-foreground text-sm" data-testid="findings-empty">
-            {t("precheck.findings.empty")}
-          </p>
+          <EmptyState
+            filtered={severity !== "all"}
+            title={t("precheck.findings.empty")}
+            testId="findings-empty"
+          />
         )}
         {visibleFindings.map((finding) => {
           const badge = SEVERITY_BADGE[finding.severity];

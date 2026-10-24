@@ -142,16 +142,16 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
           style={{ maxHeight: "100%" }}
         >
           <table
-            className="w-full text-xs"
+            className="w-full text-xs tabular-nums"
             style={{ tableLayout: "fixed", minWidth: `${String(tableWidth)}px` }}
             data-testid={`query-result-table-${tab.executionId}`}
           >
-            <thead className="bg-muted/50 sticky top-0 z-10">
+            <thead className="bg-muted/50 sticky top-0 z-10 text-muted-foreground">
               <tr>
                 {tab.columns.map((column) => (
                   <th
                     key={column.name}
-                    className="relative border-r px-3 py-1 text-left font-medium"
+                    className="relative border-r px-3 py-1 text-left font-medium tracking-wide"
                     style={{ width: `${String(widthOf(column.name))}px` }}
                     title={column.type}
                   >

@@ -15,19 +15,16 @@ import {
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
 import { renderSkillDescription } from "@/features/admin/skill-description";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,17 +43,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * Rule Set 组合管理 (route /admin/rule-sets; migration contract §2 maps the
@@ -240,7 +232,7 @@ function RuleSetFormDialog({
           <div className="flex flex-col gap-2">
             <Label>{t("admin.ruleSets.toolsTitle")}</Label>
             {toolsQuery.isPending ? (
-              <LoadingState />
+              <LoadingState variant="inline" />
             ) : (
               <>
                 {/* §18.80：全选（半选态沿用§18.70渲染）+客户端搜索；
@@ -255,7 +247,7 @@ function RuleSetFormDialog({
                       data-testid="rule-set-tools-select-all"
                     />
                     {t("admin.ruleSets.selectAll")}
-                    <span className="text-muted-foreground text-xs" data-testid="rule-set-tools-select-all-count">
+                    <span className="text-muted-foreground text-xs tabular-nums" data-testid="rule-set-tools-select-all-count">
                       {selectedVisibleCount}/{bindableVisibleIds.length}
                     </span>
                   </label>
@@ -268,9 +260,7 @@ function RuleSetFormDialog({
                 </div>
                 <div className="flex flex-col gap-1.5" data-testid="rule-set-tools">
                   {visibleTools.length === 0 ? (
-                    <p className="text-muted-foreground py-2 text-center text-sm" data-testid="rule-set-tools-search-empty">
-                      {t("table.emptySearch")}
-                    </p>
+                    <EmptyState title={t("table.emptySearch")} filtered testId="rule-set-tools-search-empty" />
                   ) : (
                     visibleTools.map((tool) => {
                       const bindable = tool.state === "enabled" || tool.state === "disabled";
@@ -358,9 +348,9 @@ function RuleSetFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={mutation.isPending} data-testid="rule-set-submit">
-            {mutation.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+          <PendingButton pending={mutation.isPending} onClick={submit} data-testid="rule-set-submit">
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -392,21 +382,12 @@ export default function AdminRuleSetsPage() {
 
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>{t("admin.ruleSets.title")}</CardTitle>
-            <CardDescription>{t("admin.ruleSets.description")}</CardDescription>
-          </div>
-          <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
-              }}
-              testId="admin-rule-sets-search"
-            />
+    <PageLayout>
+      <PageHeader
+        title={t("admin.ruleSets.title")}
+        description={t("admin.ruleSets.description")}
+        icon={Layers}
+        actions={
           <Button
             onClick={() => {
               setEditing(null);
@@ -416,28 +397,39 @@ export default function AdminRuleSetsPage() {
           >
             <Plus /> {t("admin.ruleSets.createTitle")}
           </Button>
-        </CardHeader>
+        }
+      />
+      <Card>
+        <ListToolbar
+          busy={query.isFetching && !query.isPending}
+          search={
+            <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-rule-sets-search"
+            />
+          }
+        />
         <CardContent className="px-0!">
           {query.isPending ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={4} />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listRuleSets" onRetry={() => void query.refetch()} />
           ) : query.data.items.length === 0 && keyword !== "" ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-rule-sets-search-empty">
-              {t("table.emptySearch")}
-            </p>
+            <EmptyState
+              title={t("table.emptySearch")}
+              filtered
+              testId="admin-rule-sets-search-empty"
+            />
           ) : query.data.items.length === 0 ? (
-            <Empty className="mx-4 rounded-xl border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Layers />
-                </EmptyMedia>
-                <EmptyTitle>{t("admin.ruleSets.emptyTitle")}</EmptyTitle>
-                <EmptyDescription>{t("admin.ruleSets.emptyDescription")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <EmptyState
+              title={t("admin.ruleSets.emptyTitle")}
+              description={t("admin.ruleSets.emptyDescription")}
+            />
           ) : (
-            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -456,18 +448,18 @@ export default function AdminRuleSetsPage() {
                   );
                   return (
                     <TableRow key={ruleSet.id} data-testid={`rule-set-row-${ruleSet.id}`} data-row-key={ruleSet.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-semibold text-foreground">
                         {ruleSet.name}
                         {ruleSet.enabled ? null : (
-                          <Badge variant="outline" className="ml-2">
+                          <StatusBadge tone="stone" className="ml-2">
                             {t("admin.ruleSets.disabled")}
-                          </Badge>
+                          </StatusBadge>
                         )}
                       </TableCell>
                       <TableCell className="max-w-80 truncate font-mono" data-testid="rule-set-hash">
                         {ruleSet.config_hash}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs" data-testid={`rule-set-created-${ruleSet.id}`}>
+                      <TableCell className="text-muted-foreground text-xs tabular-nums" data-testid={`rule-set-created-${ruleSet.id}`}>
                         {ruleSet.created_at.replace("T", " ").replace("Z", " UTC")}
                       </TableCell>
                       <TableCell className="text-right">
@@ -507,7 +499,6 @@ export default function AdminRuleSetsPage() {
                 })}
               </TableBody>
             </Table>
-            </>
           )}
           {!query.isPending && !query.isError ? (
             <TablePagination
@@ -516,13 +507,13 @@ export default function AdminRuleSetsPage() {
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}
               onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
+              onJumpPage={pager.goToPage}
               onNext={() => {
                 pager.pushCursor(query.data.page.next_cursor);
               }}
               pageSize={pager.pageSize}
               onPageSizeChange={pager.setPageSize}
-              rowsOnPage={(query.data.items ?? []).length}
+              rowsOnPage={query.data.items.length}
               testIdPrefix="rulesets"
             />
           ) : null}
@@ -557,9 +548,9 @@ export default function AdminRuleSetsPage() {
               <Button variant="outline" onClick={() => { setDeleting(null); }}>
                 {t("common.cancel")}
               </Button>
-              <Button
+              <PendingButton
                 variant="destructive"
-                disabled={deleteMutation.isPending}
+                pending={deleteMutation.isPending}
                 onClick={() => { deleteMutation.mutate(
                     { id: deleting.id, version: deleting.version },
                     {
@@ -574,11 +565,11 @@ export default function AdminRuleSetsPage() {
                 data-testid="rule-set-delete-confirm"
               >
                 {t("common.delete")}
-              </Button>
+              </PendingButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       ) : null}
-    </div>
+    </PageLayout>
   );
 }

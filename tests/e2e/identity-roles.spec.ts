@@ -27,17 +27,16 @@ async function submitOrder(page: Page): Promise<void> {
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill(TITLE);
-  // Implicit drafts: the acting save adopts the draft silently — the URL
-  // never moves; the adopted id rides data-draft-id on the page root.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
   // One-page layout: the summary card is always mounted.
   await expect(page.getByTestId("wizard-summary")).toBeVisible();
   await page.getByTestId("submit-draft").click();
@@ -138,6 +137,9 @@ test("the default world seeds both pending queues for the reviewer (§18.44 foll
   // 工单审批: the seeded henry-submitted orders await reviewer-a's decision.
   await page.goto("/approvals/changes");
   await expect(page.getByTestId("approval-queue-table")).toBeVisible();
+  // The gallery intentionally fills page 1; the default demo rows live in the
+  // same client-side queue and remain discoverable through its toolbar.
+  await page.getByTestId("approval-queue-search").fill("订单表新增归档状态字段");
   const seededRow = page
     .getByTestId("approval-queue-row")
     .filter({ hasText: "订单表新增归档状态字段" });

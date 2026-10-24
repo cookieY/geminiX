@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,16 +7,18 @@ import { Ban, Check, ShieldOff, Stamp, X } from "lucide-react";
 import type { QueryAccessRequest, QueryGrant } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
@@ -86,6 +89,7 @@ export default function QueryAccessApprovalsPage() {
   const pending = requestsQuery.data.items;
   const grants = grantsQuery.data ?? [];
   const activeGrants = grants.filter((row) => row.state === "active");
+  const anyLoading = requestsQuery.isPending || grantsQuery.isPending;
   // Decisions remove a row from this list, so every row below it shifts up.
   // The ids give the body something to follow; the plain table is the visual
   // result of a decision, not a decorative entrance.
@@ -116,8 +120,12 @@ export default function QueryAccessApprovalsPage() {
   const loadError = requestsQuery.error ?? grantsQuery.error;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="query-access-approvals">
-      <header className="flex flex-row justify-end gap-4">
+    <PageLayout data-testid="query-access-approvals">
+      <PageHeader
+        icon={Stamp}
+        title={t("approvals.queryAccess.title")}
+        description={t("approvals.queryAccess.description")}
+        actions={
         <Tabs defaultValue="query-access">
           <TabsList>
             <TabsTrigger
@@ -132,7 +140,8 @@ export default function QueryAccessApprovalsPage() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-      </header>
+        }
+      />
 
       {loadError !== null && (
         <ErrorState
@@ -144,23 +153,28 @@ export default function QueryAccessApprovalsPage() {
           }}
         />
       )}
-      {loadError === null && requestsQuery.isPending && <LoadingState />}
+      {loadError === null && anyLoading && (
+        <Card>
+          <LoadingState variant="table" columns={5} />
+        </Card>
+      )}
 
-      {loadError === null && !requestsQuery.isPending && (
+      {loadError === null && !anyLoading && (
         <>
           <Card>
-            <CardHeader className="border-b pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Stamp className="size-4" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Stamp aria-hidden />
                 {t("approvals.queryAccess.pendingCard")}
               </CardTitle>
               <CardDescription>{t("approvals.queryAccess.pendingDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="px-0!">
               {pending.length === 0 ? (
-                <p className="text-muted-foreground py-6 text-center text-sm" data-testid="query-access-pending-empty">
-                  {t("approvals.queryAccess.pendingEmpty")}
-                </p>
+                <EmptyState
+                  title={t("approvals.queryAccess.pendingEmpty")}
+                  testId="query-access-pending-empty"
+                />
               ) : (
                 <Table data-testid="query-access-pending-table">
                   <TableHeader>
@@ -179,12 +193,12 @@ export default function QueryAccessApprovalsPage() {
                         data-row-key={row.id}
                         data-testid={`query-access-pending-${row.id}`}
                       >
-                        <TableCell className="font-mono font-medium">{row.applicant_name ?? row.requester_user_id}</TableCell>
+                        <TableCell className="font-mono font-semibold text-foreground">{row.applicant_name ?? row.requester_user_id}</TableCell>
                         <TableCell className="max-w-72 truncate font-mono">
                           {(row.datasource_names?.length ? row.datasource_names : row.datasource_ids).join(" · ")}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{t("query.request.state.access_pending")}</Badge>
+                          <StatusBadge tone="violet">{t("query.request.state.access_pending")}</StatusBadge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {formatTimestamp(row.created_at)}
@@ -228,7 +242,7 @@ export default function QueryAccessApprovalsPage() {
                   onNext={() => { pager.pushCursor(requestsQuery.data.page.next_cursor); }}
                   pageSize={pager.pageSize}
                   onPageSizeChange={pager.setPageSize}
-                  rowsOnPage={(requestsQuery.data.items ?? []).length}
+                  rowsOnPage={requestsQuery.data.items.length}
                   testIdPrefix="query-access-approvals"
                 />
               ) : null}
@@ -273,22 +287,20 @@ export default function QueryAccessApprovalsPage() {
             <Button variant="outline" onClick={() => { setDeciding(null); }}>
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant={decision === "reject" ? "destructive" : "default"}
-              disabled={decide.isPending}
+              pending={decide.isPending}
               onClick={() => void submitDecision()}
               data-testid="query-access-decision-confirm"
             >
-              {decide.isPending
-                ? t("common.saving")
-                : decision === "approve"
-                  ? t("approvals.queryAccess.approve")
-                  : t("approvals.queryAccess.reject")}
-            </Button>
+              {decision === "approve"
+                ? t("approvals.queryAccess.approve")
+                : t("approvals.queryAccess.reject")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }
 
@@ -316,24 +328,19 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
 
   return (
     <Card>
-      <CardHeader className="border-b pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <ShieldOff className="size-4" />
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldOff aria-hidden />
           {t("approvals.queryAccess.grantsCard")}
         </CardTitle>
         <CardDescription>{t("approvals.queryAccess.grantsDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="px-0!">
         {grants.length === 0 ? (
-          <Empty className="border-none">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <ShieldOff />
-              </EmptyMedia>
-              <EmptyTitle>{t("approvals.queryAccess.grantsEmpty")}</EmptyTitle>
-              <EmptyDescription>{t("approvals.queryAccess.grantsEmptyDescription")}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <EmptyState
+            title={t("approvals.queryAccess.grantsEmpty")}
+            description={t("approvals.queryAccess.grantsEmptyDescription")}
+          />
         ) : (
           <Table data-testid="query-access-grants-table">
             <TableHeader>
@@ -347,9 +354,9 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
             <TableBody ref={grantsBodyRef}>
               {grants.map((grant) => (
                 <TableRow key={grant.id} data-row-key={grant.id} data-testid={`query-access-grant-${grant.id}`}>
-                  <TableCell className="font-mono text-xs">{grant.holder_name ?? grant.requester_user_id}</TableCell>
+                  <TableCell className="font-mono font-semibold text-foreground">{grant.holder_name ?? grant.requester_user_id}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{t("query.grant.state.active")}</Badge>
+                    <StatusBadge tone="emerald">{t("query.grant.state.active")}</StatusBadge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {grant.expires_at === null || grant.expires_at === undefined
@@ -402,14 +409,15 @@ function GrantRevocationCard({ grants }: { grants: QueryGrant[] }) {
             <Button variant="outline" onClick={() => { setRevoking(null); }}>
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant="destructive"
-              disabled={reason.trim() === "" || revoke.isPending}
+              disabled={reason.trim() === ""}
+              pending={revoke.isPending}
               onClick={() => void submit()}
               data-testid="query-access-revoke-confirm"
             >
-              {revoke.isPending ? t("common.saving") : t("approvals.queryAccess.revoke")}
-            </Button>
+              {t("approvals.queryAccess.revoke")}
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

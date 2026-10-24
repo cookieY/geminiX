@@ -1,9 +1,10 @@
 import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import type { SubmissionGate } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
-import { ArrowRight, Loader2, Send, ShieldAlert } from "lucide-react";
+import { ArrowRight, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import {
   gateBlockers,
@@ -89,31 +90,32 @@ export function SubmissionDock(props: SubmissionDockProps) {
          * left/top/width/height (reviewed layout-transition exception in
          * scan-motion.mjs); variant="outline" is the block's own surface. */
         <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={props.onSubmit}
-          disabled={!decision.submitEnabled || props.submitting}
-          className="group relative h-10 flex-1 overflow-hidden rounded-full text-sm font-semibold"
-          data-testid="submit-draft"
-        >
-          {/* The resting label does NOT slide out (owner 2026-10-24: 原字体
-              不应有向右的动画) — the flooding dot simply covers it. */}
-          <span className="inline-block pl-2">
-            {props.submitting ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : null}
-            {t("precheck.submit.action")}
-          </span>
-          <span
-            aria-hidden
-            className="text-primary-foreground absolute top-0 z-10 flex h-full w-full translate-x-full items-center justify-start gap-2 pl-6 opacity-0 transition-[transform,opacity] duration-300 group-hover:translate-x-0 group-hover:opacity-100"
+          <Button
+            variant="outline"
+            onClick={props.onSubmit}
+            disabled={!decision.submitEnabled || props.submitting}
+            aria-busy={props.submitting}
+            className="group relative h-10 flex-1 overflow-hidden rounded-full text-sm font-semibold"
+            data-testid="submit-draft"
           >
-            {t("precheck.submit.action")}
-            <ArrowRight className="size-4" aria-hidden />
-          </span>
-          <span
-            aria-hidden
-            className="bg-primary absolute top-1/2 left-3 h-2 w-2 -translate-y-1/2 scale-100 rounded-full transition-[left,top,width,height,transform] duration-300 group-hover:left-0 group-hover:top-0 group-hover:h-full group-hover:w-full group-hover:translate-y-0 group-hover:scale-[1.8]"
+            {/* The resting label does NOT slide out (owner 2026-10-24: 原字体
+                不应有向右的动画) — the flooding dot simply covers it. */}
+            <span className="inline-block pl-2">
+              {props.submitting ? (
+                <Spinner data-icon="inline-start" aria-hidden />
+              ) : null}
+              {t("precheck.submit.action")}
+            </span>
+            <span
+              aria-hidden
+              className="text-primary-foreground absolute top-0 z-10 flex h-full w-full translate-x-full items-center justify-start gap-2 pl-6 opacity-0 transition-[transform,opacity] duration-300 group-hover:translate-x-0 group-hover:opacity-100"
+            >
+              {t("precheck.submit.action")}
+              <ArrowRight data-icon="inline-end" aria-hidden />
+            </span>
+            <span
+              aria-hidden
+              className="bg-primary absolute top-1/2 left-3 h-2 w-2 -translate-y-1/2 scale-100 rounded-full transition-[left,top,width,height,transform] duration-300 group-hover:left-0 group-hover:top-0 group-hover:h-full group-hover:w-full group-hover:translate-y-0 group-hover:scale-[1.8]"
             />
           </Button>
           {props.aside}
@@ -122,12 +124,13 @@ export function SubmissionDock(props: SubmissionDockProps) {
         <Button
           onClick={props.onSubmit}
           disabled={!decision.submitEnabled || props.submitting}
+          aria-busy={props.submitting}
           data-testid="submit-draft"
         >
           {props.submitting ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
+            <Spinner data-icon="inline-start" aria-hidden />
           ) : (
-            <Send className="size-4" aria-hidden />
+            <Send data-icon="inline-start" aria-hidden />
           )}
           {t("precheck.submit.action")}
         </Button>
@@ -181,9 +184,14 @@ export function SubmissionDock(props: SubmissionDockProps) {
           <Button
             onClick={props.onSubmit}
             disabled={!decision.submitEnabled || props.submitting}
+            aria-busy={props.submitting}
             data-testid="submit-draft"
           >
-            <Send className="size-4" aria-hidden />
+            {props.submitting ? (
+              <Spinner data-icon="inline-start" aria-hidden />
+            ) : (
+              <Send data-icon="inline-start" aria-hidden />
+            )}
             {t("precheck.submit.action")}
           </Button>
         </div>

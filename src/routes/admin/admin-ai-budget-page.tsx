@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
-import { History, ShieldAlert } from "lucide-react";
+import { CircleDollarSign, History, ShieldAlert } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type {
   AiBudgetSettings,
@@ -19,7 +19,11 @@ import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { describeError } from "@/shared/api/error-display";
 import { SettingsNavTabs } from "@/routes/admin/settings-tabs";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -121,7 +125,7 @@ function AiBudgetPanel({
 
 
   return (
-    <CardContent className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Alert data-testid="ai-budget-r008-note">
         <ShieldAlert />
         <AlertTitle>{t("admin.aiBudget.r008Title")}</AlertTitle>
@@ -223,10 +227,15 @@ function AiBudgetPanel({
         </Alert>
       ) : null}
       {assessment === null ? (
-        <div className="flex items-center gap-2">
-          <Button onClick={assess} disabled={!dirty || assessMutation.isPending} data-testid="ai-budget-assess">
+        <div className="flex flex-wrap items-center gap-2">
+          <PendingButton
+            onClick={assess}
+            pending={assessMutation.isPending}
+            disabled={!dirty}
+            data-testid="ai-budget-assess"
+          >
             {t("admin.aiBudget.assess")}
-          </Button>
+          </PendingButton>
           {dirty ? <p className="text-muted-foreground text-xs">{t("admin.aiBudget.dirtyHint")}</p> : null}
         </div>
       ) : (
@@ -256,32 +265,32 @@ function AiBudgetPanel({
                 ))}
               </ul>
               <p className="text-muted-foreground text-xs">{t("admin.aiBudget.confirmHint")}</p>
-              <div className="flex gap-2">
-                <Button
+              <div className="flex flex-wrap gap-2">
+                <PendingButton
                   onClick={() => {
                     void onSave(form, assessment.impact_token).then((ok) => {
                       if (!ok) setAssessment(null);
                     });
                   }}
-                  disabled={saving}
+                  pending={saving}
                   data-testid="ai-budget-confirm"
                 >
                   {t("admin.aiBudget.confirmSave")}
-                </Button>
+                </PendingButton>
                 <Button variant="outline" onClick={() => { setAssessment(null); }}>
                   {t("common.cancel")}
                 </Button>
               </div>
             </>
           ) : (
-            <div className="flex gap-2">
-              <Button
+            <div className="flex flex-wrap gap-2">
+              <PendingButton
                 onClick={() => { void onSave(form, null); }}
-                disabled={saving}
+                pending={saving}
                 data-testid="ai-budget-save-low"
               >
                 {t("common.save")}
-              </Button>
+              </PendingButton>
               <Button variant="outline" onClick={() => { setAssessment(null); }}>
                 {t("common.cancel")}
               </Button>
@@ -289,7 +298,7 @@ function AiBudgetPanel({
           )}
         </div>
       )}
-    </CardContent>
+    </div>
   );
 }
 
@@ -337,33 +346,32 @@ export default function AdminAiBudgetPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-settings-ai-budget">
-      {/* §18.47: the shared settings tabs — the bar no longer disappears on
-          this standalone page. */}
-      <header className="flex flex-row items-end justify-end gap-4">
-        <SettingsNavTabs current="ai-budget" />
-      </header>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16, ease: "easeOut" }}
-        className="flex flex-col gap-4"
-      >
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {t("admin.aiBudget.title")}
+    <PageLayout data-testid="admin-settings-ai-budget">
+      <PageHeader
+        title={t("admin.aiBudget.title")}
+        description={t("admin.aiBudget.description")}
+        icon={CircleDollarSign}
+        actions={
+          <>
+            <SettingsNavTabs current="ai-budget" />
             {query.data !== undefined ? (
               <Badge variant="outline" data-testid="ai-budget-version">
                 {t("admin.aiBudget.version", { version: query.data.version })}
               </Badge>
             ) : null}
-          </CardTitle>
-          <CardDescription>{t("admin.aiBudget.description")}</CardDescription>
-        </CardHeader>
+          </>
+        }
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16, ease: "easeOut" }}
+        className="flex flex-col gap-5"
+      >
+      <Card>
         {query.isPending ? (
           <CardContent>
-            <LoadingState />
+            <LoadingState variant="panel" />
           </CardContent>
         ) : query.isError ? (
           <CardContent>
@@ -403,14 +411,14 @@ export default function AdminAiBudgetPage() {
       </Card>
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <History className="size-4" /> {t("admin.aiBudget.revisionsTitle")}
           </CardTitle>
           <CardDescription>{t("admin.aiBudget.revisionsDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="px-0!">
           {revisionsQuery.isPending ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={4} />
           ) : revisionsQuery.isError ? (
             <ErrorState
               error={revisionsQuery.error}
@@ -418,7 +426,7 @@ export default function AdminAiBudgetPage() {
               onRetry={() => void revisionsQuery.refetch()}
             />
           ) : revisionsQuery.data.items.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("admin.aiBudget.revisionsEmpty")}</p>
+            <EmptyState title={t("admin.aiBudget.revisionsEmpty")} />
           ) : (
             <Table>
               <TableHeader>
@@ -432,7 +440,7 @@ export default function AdminAiBudgetPage() {
               <TableBody stale={revisionsQuery.isFetching && revisionsQuery.isPlaceholderData}>
                 {revisionsQuery.data.items.map((revision) => (
                   <TableRow key={revision.version} data-testid={`ai-budget-revision-${String(revision.version)}`}>
-                    <TableCell className="font-mono">v{revision.version}</TableCell>
+                    <TableCell className="font-semibold tabular-nums text-foreground">v{revision.version}</TableCell>
                     <TableCell className="font-mono">{revision.changed_by}</TableCell>
                     <TableCell>{revision.changed_at}</TableCell>
                     <TableCell className="max-w-72 truncate font-mono">{revision.changed_paths.join(", ")}</TableCell>
@@ -458,7 +466,8 @@ export default function AdminAiBudgetPage() {
           ) : null}
         </CardContent>
       </Card>
-      </motion.div>    </div>
+      </motion.div>
+    </PageLayout>
   );
 }
 

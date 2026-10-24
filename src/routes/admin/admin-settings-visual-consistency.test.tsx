@@ -1,0 +1,292 @@
+import type { ReactElement } from "react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HttpResponse, delay, http } from "msw";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { SessionProvider } from "@/features/auth/session-provider";
+import AdminAiBudgetPage from "@/routes/admin/admin-ai-budget-page";
+import AdminAnnouncementsPage from "@/routes/admin/admin-announcements-page";
+import AdminIdentityProvidersPage from "@/routes/admin/admin-identity-providers-page";
+import AdminNotificationsPage from "@/routes/admin/admin-notifications-page";
+import AdminSettingsNamespacePage from "@/routes/admin/admin-settings-page";
+import { resetAdminFixture } from "@/shared/mock/admin-fixture";
+import { server } from "@/test/msw/server";
+import "@/shared/i18n";
+
+const SESSION_USER_ID = "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac";
+
+function stubAdminSession(): void {
+  server.use(
+    http.get("*/users/me", () =>
+      HttpResponse.json({
+        err_code: 0,
+        message: "ok",
+        data: {
+          id: SESSION_USER_ID,
+          username: "henry",
+          display_name: "henry",
+          email: null,
+          is_builtin_admin: true,
+          version: 1,
+          created_at: "2026-08-28T08:00:00Z",
+          updated_at: "2026-08-28T08:00:00Z",
+          can_access_admin: true,
+        },
+        request_id: SESSION_USER_ID,
+      }),
+    ),
+  );
+}
+
+function renderPage(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <SessionProvider>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </SessionProvider>
+    </QueryClientProvider>,
+  );
+}
+
+function renderSettingsNamespace(namespace: string) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <SessionProvider>
+        <MemoryRouter initialEntries={[`/admin/settings/${namespace}`]}>
+          <Routes>
+            <Route path="/admin/settings/:namespace" element={<AdminSettingsNamespacePage />} />
+          </Routes>
+        </MemoryRouter>
+      </SessionProvider>
+    </QueryClientProvider>,
+  );
+}
+
+beforeAll(() => {
+  Object.defineProperty(Element.prototype, "hasPointerCapture", {
+    value: () => false,
+    configurable: true,
+  });
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    value: () => undefined,
+    configurable: true,
+  });
+  Object.defineProperty(Element.prototype, "releasePointerCapture", {
+    value: () => undefined,
+    configurable: true,
+  });
+});
+
+beforeEach(() => {
+  window.localStorage.setItem("yearning-mock-auth", "admin");
+  resetAdminFixture();
+});
+
+describe("admin settings visual consistency", () => {
+  it("uses the shadcn checkbox and select primitives in the general namespace", async () => {
+    stubAdminSession();
+    renderSettingsNamespace("general");
+
+    const page = await screen.findByTestId("admin-settings-general");
+    expect(page).toHaveAttribute("data-slot", "page-layout");
+    expect(screen.getByRole("heading", { level: 1, name: "通用设置" })).toBeVisible();
+    const registration = await screen.findByTestId("settings-general-registration");
+    expect(screen.getByRole("checkbox", { name: "开放用户注册" })).toBe(registration);
+    expect(registration).toHaveAttribute("data-slot", "checkbox");
+    expect(registration.tagName).not.toBe("INPUT");
+    expect(registration).not.toBeChecked();
+    await userEvent.click(registration);
+    await waitFor(() => expect(registration).toBeChecked());
+
+    const locale = screen.getByTestId("settings-general-locale");
+    expect(screen.getByRole("combobox", { name: "默认语言" })).toBe(locale);
+    expect(locale).toHaveAttribute("data-slot", "select-trigger");
+    expect(locale.tagName).not.toBe("SELECT");
+    await userEvent.click(locale);
+    await userEvent.click(await screen.findByRole("option", { name: "en-US" }));
+    expect(locale).toHaveTextContent("en-US");
+  });
+
+  it("uses the structural page loading state on first load", async () => {
+    stubAdminSession();
+    server.use(
+      http.get("*/admin/identity-providers*", async () => {
+        await delay(300);
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: [],
+            page: { has_more: false, next_cursor: null },
+          },
+          request_id: "req-idp-loading",
+        });
+      }),
+    );
+    renderPage(<AdminIdentityProvidersPage />);
+
+    const loading = await screen.findByRole("status");
+    expect(loading).toHaveAttribute("data-loading-variant", "page");
+    expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+  });
+
+  it("keeps the save label and exposes a spinner while a save is pending", async () => {
+    stubAdminSession();
+    renderSettingsNamespace("general");
+
+    const registration = await screen.findByTestId("settings-general-registration");
+    await userEvent.click(registration);
+    server.use(
+      http.put("*/admin/settings/general", async ({ request }) => {
+        const body = (await request.json()) as { settings: Record<string, unknown> };
+        await delay(300);
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            namespace: "general",
+            schema_version: 1,
+            settings: body.settings,
+            version: 2,
+            updated_by: SESSION_USER_ID,
+            updated_at: "2026-10-24T10:00:00Z",
+          },
+          request_id: "req-settings-save",
+        });
+      }),
+    );
+
+    const save = screen.getByTestId("settings-save");
+    await userEvent.click(save);
+    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute("aria-busy", "true");
+    expect(save).toHaveTextContent("保存");
+    expect(save.querySelector('[data-slot="spinner"]')).not.toBeNull();
+    await waitFor(
+      () => { expect(save.querySelector('[data-slot="spinner"]')).toBeNull(); },
+      { timeout: 4000 },
+    );
+  });
+
+  it("uses an Empty composition for an empty announcement revision list", async () => {
+    stubAdminSession();
+    server.use(
+      http.get("*/admin/announcement-revisions*", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: [],
+            page: { has_more: false, next_cursor: null },
+          },
+          request_id: "req-announcements-empty",
+        }),
+      ),
+      http.get("*/announcements/current", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: "req-current-empty",
+        }),
+      ),
+    );
+    renderPage(<AdminAnnouncementsPage />);
+
+    const empty = await screen.findByTestId("admin-announcements-empty");
+    expect(empty.closest('[data-slot="empty"]')).not.toBeNull();
+    expect(within(empty).getByText("暂无公告修订。")).toHaveAttribute(
+      "data-slot",
+      "empty-title",
+    );
+  });
+});
+
+describe("settings-related pages use one page heading", () => {
+  it.each([
+    ["identity providers", <AdminIdentityProvidersPage />, "认证Provider"],
+    ["notifications", <AdminNotificationsPage />, "通知"],
+    ["announcements", <AdminAnnouncementsPage />, "公告管理"],
+    ["AI budget", <AdminAiBudgetPage />, "AI 预算"],
+  ] as const)("renders a single level-one heading on %s", async (_name, page, title) => {
+    stubAdminSession();
+    const view = renderPage(page);
+    expect(await screen.findByRole("heading", { level: 1, name: title })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    view.unmount();
+  });
+});
+
+describe("provider and channel dialogs use shadcn form controls", () => {
+  it("renders the LDAP transport and enabled state through shared primitives", async () => {
+    stubAdminSession();
+    renderPage(<AdminIdentityProvidersPage />);
+
+    const ldapRow = await screen.findByTestId(/^admin-idp-row-/);
+    await userEvent.click(within(ldapRow).getByTestId(/^admin-idp-edit-/));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByTestId("idp-ldap-transport")).toHaveAttribute(
+      "data-slot",
+      "select-trigger",
+    );
+    const transport = within(dialog).getByTestId("idp-ldap-transport");
+    expect(transport.tagName).not.toBe("SELECT");
+    await userEvent.click(transport);
+    await userEvent.click(await screen.findByRole("option", { name: "starttls" }));
+    expect(transport).toHaveTextContent("starttls");
+
+    const enabled = within(dialog).getByTestId("idp-enabled");
+    expect(enabled).toHaveAttribute("data-slot", "checkbox");
+    expect(enabled.tagName).not.toBe("INPUT");
+    const initialChecked = enabled.getAttribute("aria-checked");
+    await userEvent.click(enabled);
+    await waitFor(() => {
+      expect(enabled.getAttribute("aria-checked")).not.toBe(initialChecked);
+    });
+  });
+
+  it("renders channel kind, TLS and enabled through shared primitives", async () => {
+    stubAdminSession();
+    renderPage(<AdminNotificationsPage />);
+    await screen.findByTestId("admin-notifications-create");
+    await userEvent.click(screen.getByTestId("admin-notifications-create"));
+    const dialog = await screen.findByRole("dialog");
+
+    const kind = within(dialog).getByTestId("channel-kind");
+    expect(kind).toHaveAttribute("data-slot", "select-trigger");
+    expect(kind.tagName).not.toBe("SELECT");
+    expect(within(dialog).getByTestId("channel-tls")).toHaveAttribute(
+      "data-slot",
+      "select-trigger",
+    );
+    expect(within(dialog).getByTestId("channel-enabled")).toHaveAttribute(
+      "data-slot",
+      "checkbox",
+    );
+    const enabled = within(dialog).getByTestId("channel-enabled");
+    const initialChecked = enabled.getAttribute("aria-checked");
+    await userEvent.click(enabled);
+    await waitFor(() => {
+      expect(enabled.getAttribute("aria-checked")).not.toBe(initialChecked);
+    });
+
+    await userEvent.click(kind);
+    await userEvent.click(await screen.findByRole("option", { name: "dingtalk" }));
+    expect(within(dialog).queryByTestId("channel-host")).not.toBeInTheDocument();
+  });
+});

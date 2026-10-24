@@ -5,6 +5,7 @@ import { useApprovalDecision } from "@/features/orders/use-approvals";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
+import { PendingButton } from "@/shared/components/pending-button";
 import {
   Alert,
   AlertDescription,
@@ -90,7 +91,7 @@ export function ApprovalDecisionCard({
   return (
     <Card data-testid="approval-decision-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <ShieldCheck className="size-4" aria-hidden />
           {t("approvals.decision.cardTitle")}
         </CardTitle>
@@ -137,7 +138,7 @@ export function ApprovalDecisionCard({
                 : t("approvals.decision.rejectDescription")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="approval-decision-comment">{t("approvals.decision.commentLabel")}</Label>
             <Textarea
               id="approval-decision-comment"
@@ -163,16 +164,17 @@ export function ApprovalDecisionCard({
             <Button variant="outline" onClick={closeDialog} data-testid="approval-decision-cancel">
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant={dialog === "reject" ? "destructive" : "default"}
               onClick={confirmDecision}
-              disabled={decision.isPending || (dialog === "reject" && comment.trim() === "")}
+              pending={decision.isPending}
+              disabled={dialog === "reject" && comment.trim() === ""}
               data-testid="approval-decision-confirm"
             >
               {dialog === "approve"
                 ? t("approvals.decision.approve")
                 : t("approvals.decision.reject")}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

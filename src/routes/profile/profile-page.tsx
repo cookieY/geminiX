@@ -9,9 +9,10 @@ import { changeMyPassword } from "@/api/generated/client/authentication/authenti
 import { SESSION_EXPIRED_EVENT } from "@/shared/api/mutator";
 import { businessErrCodeByName, describeError } from "@/shared/api/error-display";
 import { setLocale as persistLocale, type Locale } from "@/shared/i18n";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -40,8 +41,13 @@ export default function ProfilePage() {
   const locale = i18n.resolvedLanguage ?? "zh-CN";
 
   return (
-    <div className="flex flex-col gap-4" data-testid="profile-page">
-            <Tabs defaultValue="identity" className="gap-4">
+    <PageLayout data-testid="profile-page">
+      <PageHeader
+        icon={UserRound}
+        title={t("profile.title")}
+        description={t("profile.description")}
+      />
+      <Tabs defaultValue="identity" className="gap-5">
         <TabsList>
           <TabsTrigger value="identity" data-testid="profile-tab-identity">
             <UserRound className="size-3.5" />
@@ -64,7 +70,7 @@ export default function ProfilePage() {
         <TabsContent value="identity">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">{t("profile.identity.title")}</CardTitle>
+              <CardTitle>{t("profile.identity.title")}</CardTitle>
               <CardDescription>{t("profile.identity.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -88,7 +94,7 @@ export default function ProfilePage() {
         <TabsContent value="security">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">{t("profile.security.title")}</CardTitle>
+              <CardTitle>{t("profile.security.title")}</CardTitle>
               <CardDescription>{t("profile.security.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -113,7 +119,7 @@ export default function ProfilePage() {
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">{t("profile.appearance.title")}</CardTitle>
+              <CardTitle>{t("profile.appearance.title")}</CardTitle>
               <CardDescription>{t("profile.appearance.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-between gap-4">
@@ -126,7 +132,7 @@ export default function ProfilePage() {
         <TabsContent value="display">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">{t("profile.display.title")}</CardTitle>
+              <CardTitle>{t("profile.display.title")}</CardTitle>
               <CardDescription>{t("profile.display.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
@@ -143,7 +149,7 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageLayout>
   );
 }
 
@@ -297,9 +303,14 @@ function PasswordChangeForm() {
         </Alert>
       )}
       <div>
-        <Button type="submit" disabled={changeMutation.isPending || clientInvalid} data-testid="profile-change-password-submit">
-          {changeMutation.isPending ? t("profile.security.submitting") : t("profile.security.submit")}
-        </Button>
+        <PendingButton
+          type="submit"
+          pending={changeMutation.isPending}
+          disabled={clientInvalid}
+          data-testid="profile-change-password-submit"
+        >
+          {t("profile.security.submit")}
+        </PendingButton>
       </div>
     </form>
   );

@@ -18,19 +18,16 @@ import { useSession } from "@/features/auth/session-provider";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -56,15 +53,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/components/ui/empty";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 
 /**
  * Provider 管理 (route /admin/review-engine/providers; UI spec §5.3 puts
@@ -414,9 +406,9 @@ function ProviderFormDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={mutation.isPending} data-testid="provider-submit">
-            {mutation.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+          <PendingButton pending={mutation.isPending} onClick={submit} data-testid="provider-submit">
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -451,31 +443,31 @@ function ProviderRow({
           <Badge variant={ordinal === 0 ? "default" : "outline"} data-testid={`provider-role-${provider.id}`}>
             {ordinal === 0 ? t("admin.providers.primary") : t("admin.providers.backup")}
           </Badge>
-          <span className="font-medium">{provider.name}</span>
+          <span className="font-semibold text-foreground">{provider.name}</span>
         </div>
       </TableCell>
       <TableCell className="font-mono text-xs">{provider.provider_kind}</TableCell>
       <TableCell className="max-w-48 truncate font-mono">{provider.base_url}</TableCell>
       <TableCell className="font-mono">{provider.model_name}</TableCell>
-      <TableCell className="font-mono">{provider.selection_priority}</TableCell>
+      <TableCell className="font-mono tabular-nums">{provider.selection_priority}</TableCell>
       <TableCell>
-        <Badge
-          variant={provider.enabled ? "default" : "outline"}
+        <StatusBadge
+          tone={provider.enabled ? "emerald" : "stone"}
           data-testid={`provider-enabled-${provider.id}`}
         >
           {provider.enabled ? t("admin.providers.enabled") : t("admin.providers.disabled")}
-        </Badge>
+        </StatusBadge>
       </TableCell>
       <TableCell>
-        <Badge
-          variant={provider.api_key_configured ? "secondary" : "destructive"}
+        <StatusBadge
+          tone={provider.api_key_configured ? "emerald" : "red"}
           data-testid={`provider-apikey-${provider.id}`}
         >
           <KeyRound className="mr-1 size-3" />
           {provider.api_key_configured
             ? t("admin.providers.configured")
             : t("admin.providers.notConfigured")}
-        </Badge>
+        </StatusBadge>
       </TableCell>
       <TableCell className="text-right">
         <div className="flex flex-col items-end gap-1">
@@ -572,9 +564,9 @@ function ProviderDeleteDialog({
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             variant="destructive"
-            disabled={deleteMutation.isPending}
+            pending={deleteMutation.isPending}
             onClick={() => {
               deleteMutation.mutate(
                 { id: provider.id, version: provider.version },
@@ -590,7 +582,7 @@ function ProviderDeleteDialog({
             data-testid="provider-delete-confirm"
           >
             {t("common.delete")}
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -623,21 +615,12 @@ export default function AdminProvidersPage() {
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>{t("admin.providers.title")}</CardTitle>
-            <CardDescription>{t("admin.providers.description")}</CardDescription>
-          </div>
-          <TableSearchInput
-            value={search}
-            onChange={(value) => {
-              setSearch(value);
-              pager.reset();
-            }}
-            testId="admin-providers-search"
-          />
+    <PageLayout>
+      <PageHeader
+        title={t("admin.providers.title")}
+        description={t("admin.providers.description")}
+        icon={KeyRound}
+        actions={
           <Button
             onClick={() => {
               setEditing(null);
@@ -647,26 +630,38 @@ export default function AdminProvidersPage() {
           >
             <Plus /> {t("admin.providers.createTitle")}
           </Button>
-        </CardHeader>
+        }
+      />
+      <Card>
+        <ListToolbar
+          busy={query.isFetching && !query.isPending}
+          search={
+            <TableSearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pager.reset();
+              }}
+              testId="admin-providers-search"
+            />
+          }
+        />
         <CardContent className="px-0!">
           {query.isPending ? (
-            <LoadingState />
+            <LoadingState variant="table" columns={8} />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listAiProviders" onRetry={() => void query.refetch()} />
           ) : providers.length === 0 && keyword !== "" ? (
-            <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-providers-search-empty">
-              {t("table.emptySearch")}
-            </p>
+            <EmptyState
+              title={t("table.emptySearch")}
+              filtered
+              testId="admin-providers-search-empty"
+            />
           ) : providers.length === 0 ? (
-            <Empty className="mx-4 rounded-xl border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <KeyRound />
-                </EmptyMedia>
-                <EmptyTitle>{t("admin.providers.emptyTitle")}</EmptyTitle>
-                <EmptyDescription>{t("admin.providers.emptyDescription")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <EmptyState
+              title={t("admin.providers.emptyTitle")}
+              description={t("admin.providers.emptyDescription")}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -704,11 +699,11 @@ export default function AdminProvidersPage() {
               hasMore={query.data.page.has_more}
               isFirst={pager.isFirst}
               onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
+              onJumpPage={pager.goToPage}
               onNext={() => { pager.pushCursor(query.data.page.next_cursor); }}
               pageSize={pager.pageSize}
               onPageSizeChange={pager.setPageSize}
-              rowsOnPage={(query.data.items ?? []).length}
+              rowsOnPage={query.data.items.length}
               testIdPrefix="providers"
             />
           ) : null}
@@ -731,6 +726,6 @@ export default function AdminProvidersPage() {
           }}
         />
       ) : null}
-    </div>
+    </PageLayout>
   );
 }

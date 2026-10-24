@@ -52,6 +52,17 @@ for (const pageType of KEY_PAGE_TYPES) {
           await page.setViewportSize({ width: viewport.width, height: viewport.height });
           await pageType.prepare(page);
           await page.evaluate(() => document.fonts.ready);
+          if (pageType.name === "query") {
+            // Monaco lays out asynchronously; capture only when its painted
+            // surface fits the host allocation instead of accepting overlap
+            // with the result grid as a new baseline.
+            await expect.poll(() => page.getByTestId("query-sql-editor").evaluate((editor) => {
+              const host = editor.parentElement?.getBoundingClientRect();
+              const painted = editor.querySelector(".monaco-editor")?.getBoundingClientRect();
+              if (host === undefined || painted === undefined) return Number.POSITIVE_INFINITY;
+              return Math.max(Math.abs(editor.getBoundingClientRect().height - host.height), painted.bottom - host.bottom);
+            })).toBeLessThanOrEqual(1);
+          }
           // Two frames flush the fonts/layout the ready signal does not cover:
           // under full-suite parallelism a container can snapshot a mid-paint
           // frame, which reads as a one-off baseline diff.

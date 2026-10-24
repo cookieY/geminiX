@@ -15,11 +15,15 @@ import {
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { OrderStateBadge } from "@/features/orders/order-state-badge";
 import { QueryOrdersTab } from "@/routes/changes/query-orders-tab";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
+import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -41,7 +45,7 @@ import {
 } from "@/shared/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
-import { ArrowRight, FileStack, FilterX, Search, Trash2 } from "lucide-react";
+import { ArrowRight, FileStack, FilterX, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteChangeDraft } from "@/api/generated/client/change-drafts/change-drafts";
 import { describeError } from "@/shared/api/error-display";
@@ -150,8 +154,8 @@ function OrderRow({ order }: { order: ChangeOrder }) {
       data-testid="mine-order-row"
       data-row-key={order.id}
     >
-      <TableCell className="font-mono font-medium">{order.display_number}</TableCell>
-      <TableCell className="max-w-56 truncate font-medium">{order.title}</TableCell>
+      <TableCell className="font-semibold text-foreground">{order.display_number}</TableCell>
+      <TableCell className="max-w-56 truncate font-semibold text-foreground">{order.title}</TableCell>
       <TableCell>
         <OrderStateBadge state={order.state} />
       </TableCell>
@@ -229,23 +233,9 @@ function MineOrderFilters({
   const { t } = useTranslation();
   return (
     <div
-      className="flex flex-wrap items-center justify-end gap-2"
+      className="flex flex-wrap items-center gap-2"
       data-testid="mine-order-filters"
     >
-      <div className="relative">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
-          value={filters.keywordInput}
-          onChange={(event) => { onChange({ keywordInput: event.target.value }); }}
-          placeholder={t("orders.list.filter.searchPlaceholder")}
-          className="w-48 pl-8"
-          aria-label={t("orders.list.filter.searchPlaceholder")}
-          data-testid="filter-keyword"
-        />
-      </div>
       <Select
         value={filters.state}
         onValueChange={(value) => { onChange({ state: value ?? ALL_STATES }); }}
@@ -398,42 +388,48 @@ export default function MinePage() {
   const [mineTab, setMineTab] = useState<"audit" | "query">("audit");
 
   return (
-    <div className="flex flex-col gap-4" data-testid="mine-page">
-<Tabs
-              value={mineTab}
-              onValueChange={(next) => { setMineTab(next === "query" ? "query" : "audit"); }}
-            >
-        <TabsList>
-          <TabsTrigger value="audit" data-testid="tab-audit-orders">
-            {t("orders.list.auditTab")}
-          </TabsTrigger>
-          <TabsTrigger value="query" data-testid="tab-query-orders">
-            {t("orders.list.queryTab")}
-          </TabsTrigger>
-        </TabsList>
-<TransitionPanel
-              activeIndex={mineTab === "audit" ? 0 : 1}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              variants={TAB_PANEL_VARIANTS}
-            >
-            <div className="flex flex-col gap-4">
+    <PageLayout data-testid="mine-page">
+      <PageHeader
+        icon={FileStack}
+        title={t("orders.list.title")}
+        description={t("orders.list.description")}
+        actions={
+          <Tabs
+            value={mineTab}
+            onValueChange={(next) => { setMineTab(next === "query" ? "query" : "audit"); }}
+          >
+            <TabsList>
+              <TabsTrigger value="audit" data-testid="tab-audit-orders">
+                {t("orders.list.auditTab")}
+              </TabsTrigger>
+              <TabsTrigger value="query" data-testid="tab-query-orders">
+                {t("orders.list.queryTab")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
+      <TransitionPanel
+        activeIndex={mineTab === "audit" ? 0 : 1}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        variants={TAB_PANEL_VARIANTS}
+      >
+        <div className="flex flex-col gap-5">
           {draftsError !== null && (
             <ErrorState error={draftsError} operationId="listChangeOrders" onRetry={retry} />
           )}
           {draftsError === null && (draftsQuery.isPending || ordersQuery.isPending) && (
-            <LoadingState />
+            <LoadingState variant="table" columns={6} />
           )}
           {draftsError === null && !draftsQuery.isPending && !ordersQuery.isPending && (
             <>
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">{t("orders.list.draftsCard")}</CardTitle>
+                <CardHeader>
+                  <CardTitle>{t("orders.list.draftsCard")}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-1">
                   {(draftsQuery.data ?? []).length === 0 && (
-                    <p className="text-muted-foreground px-3 py-2 text-sm">
-                      {t("orders.list.draftsEmpty")}
-                    </p>
+                    <EmptyState title={t("orders.list.draftsEmpty")} />
                   )}
                   {(draftsQuery.data ?? []).map((draft) => (
                     <DraftRow key={draft.id} draft={draft} onDelete={setPendingDelete} />
@@ -463,39 +459,52 @@ export default function MinePage() {
                       >
                         {t("common.cancel")}
                       </Button>
-                      <Button
+                      <PendingButton
                         variant="destructive"
+                        pending={deleteDraftMutation.isPending}
                         onClick={() => {
                           if (pendingDelete !== null) deleteDraftMutation.mutate(pendingDelete);
                         }}
-                        disabled={deleteDraftMutation.isPending}
                         data-testid="delete-draft-accept"
                       >
                         {t("orders.list.draftsDeleteAction")}
-                      </Button>
+                      </PendingButton>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </Card>
               <Card>
-                <CardHeader className="border-b pb-3">
-                  <CardTitle className="text-sm">{t("orders.list.ordersCard")}</CardTitle>
-                </CardHeader>
-                <CardContent className="px-0! flex flex-col gap-3">
+                <ListToolbar
+                  busy={ordersStale}
+                  search={
+                    <TableSearchInput
+                      value={filters.keywordInput}
+                      onChange={(value) => { patchFilters({ keywordInput: value }); }}
+                      placeholder={t("orders.list.filter.searchPlaceholder")}
+                      testId="filter-keyword"
+                    />
+                  }
+                >
+                  <CardTitle>{t("orders.list.ordersCard")}</CardTitle>
                   <MineOrderFilters
                     filters={filters}
                     datasourceOptions={datasourceOptionsQuery.data ?? []}
                     onChange={patchFilters}
                     onReset={() => { setFilters(INITIAL_FILTERS); }}
                   />
+                </ListToolbar>
+                <CardContent className="flex flex-col gap-3 px-0!">
                   {(ordersQuery.data?.items ?? []).length === 0 ? (
-                    <p className="text-muted-foreground py-6 text-center text-sm" data-testid="orders-empty">
-                      {hasActiveFilters(filters)
-                        ? t("orders.list.filter.emptyFiltered")
-                        : t("orders.list.ordersEmpty")}
-                    </p>
+                    <EmptyState
+                      filtered={hasActiveFilters(filters)}
+                      title={
+                        hasActiveFilters(filters)
+                          ? t("orders.list.filter.emptyFiltered")
+                          : t("orders.list.ordersEmpty")
+                      }
+                      testId="orders-empty"
+                    />
                   ) : (
-                    <>
                     <Table data-testid="mine-orders-table">
                       <TableHeader>
                         <TableRow>
@@ -513,37 +522,35 @@ export default function MinePage() {
                         ))}
                       </TableBody>
                     </Table>
-                    </>
                   )}
-                    {ordersLoaded ? (
-                      <TablePagination
-                        busy={ordersStale}
-                        page={ordersPager.pageNo}
-                        hasMore={ordersPageMeta?.has_more ?? false}
-                        isFirst={ordersPager.pageNo === 1}
-                        onPrev={() => {
-                          ordersPager.goPrev();
-                        }}
-                          onJumpPage={ordersPager.goToPage}
-                        onNext={() => {
-                          ordersPager.pushCursor(ordersPageMeta?.next_cursor);
-                        }}
-                        pageSize={ordersPager.pageSize}
-                        onPageSizeChange={ordersPager.setPageSize}
-                        rowsOnPage={orderItems.length}
-                        testIdPrefix="mine-orders"
-                      />
-                    ) : null}
+                  {ordersLoaded ? (
+                    <TablePagination
+                      busy={ordersStale}
+                      page={ordersPager.pageNo}
+                      hasMore={ordersPageMeta?.has_more ?? false}
+                      isFirst={ordersPager.pageNo === 1}
+                      onPrev={() => {
+                        ordersPager.goPrev();
+                      }}
+                      onJumpPage={ordersPager.goToPage}
+                      onNext={() => {
+                        ordersPager.pushCursor(ordersPageMeta?.next_cursor);
+                      }}
+                      pageSize={ordersPager.pageSize}
+                      onPageSizeChange={ordersPager.setPageSize}
+                      rowsOnPage={orderItems.length}
+                      testIdPrefix="mine-orders"
+                    />
+                  ) : null}
                 </CardContent>
               </Card>
             </>
           )}
-            </div>
-            <div>
-              <QueryOrdersTab />
-            </div>
-            </TransitionPanel>
-      </Tabs>
-    </div>
+        </div>
+        <div>
+          <QueryOrdersTab />
+        </div>
+      </TransitionPanel>
+    </PageLayout>
   );
 }

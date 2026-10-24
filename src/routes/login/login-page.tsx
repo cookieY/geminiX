@@ -8,9 +8,11 @@ import {
 } from "@/api/generated/client/authentication/authentication";
 import type { LoginRequest } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { businessErrCodeByName, describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
+import { PendingButton } from "@/shared/components/pending-button";
 import {
   Card,
   CardContent,
@@ -270,13 +272,14 @@ export default function LoginPage() {
                 ) : (
                   <ErrorState error={error} operationId={operationId} />
                 ))}
-              <Button
+              <PendingButton
                 type="submit"
                 className="rounded-lg"
+                pending={loginMutation.isPending}
                 disabled={loginMutation.isPending || username === "" || password === ""}
               >
-                {loginMutation.isPending ? t("states.loading") : t("login.submit")}
-              </Button>
+                {t("login.submit")}
+              </PendingButton>
             </form>
           )}
           {providers !== undefined && !credentialFormVisible && providers.oidc.length === 0 && (

@@ -82,4 +82,20 @@ describe("ImportDialog", () => {
     });
     expect(screen.getByTestId("bulk-import-confirm")).toBeEnabled();
   });
+
+  it("uses the shared pending button while the import is uploading", async () => {
+    render(
+      <ImportDialog open onOpenChange={() => {}} onConfirm={vi.fn()} uploading />,
+    );
+    pickFile(sqlFile("SELECT 1;\n"));
+
+    const confirm = await screen.findByTestId("bulk-import-confirm");
+    await waitFor(() => {
+      expect(screen.getByTestId("bulk-import-ok")).toBeInTheDocument();
+    });
+    expect(confirm).toBeDisabled();
+    expect(confirm).toHaveAttribute("aria-busy", "true");
+    expect(confirm.querySelector('[data-slot="spinner"]')).toBeInTheDocument();
+    expect(confirm).toHaveTextContent("上传并保存");
+  });
 });

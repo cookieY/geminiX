@@ -32,16 +32,12 @@ async function typeSql(page: Page, sql: string): Promise<void> {
   await page.keyboard.type(sql);
 }
 
-/** Creates a draft, saves SQL and runs the review through the real UI. */
+/** Opens the composer, submits SQL and runs the review through the real UI. */
 async function runReviewThroughUi(page: Page): Promise<void> {
   await page.goto("/changes/new");
   await expect(page.getByTestId("changes-new-page")).toBeVisible();
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  // Implicit drafts: save adopts silently; the page root carries the id.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
 
   // 打开编辑不自动Review: no run may exist until the explicit action.
   await typeSql(page, SQL_TEXT);
@@ -51,6 +47,12 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText(/审核结果完整|已阻断|部分完成|预审失败/, {
     timeout: 8_000,
   });
+  // Running the review is the acting operation that adopts the implicit
+  // draft and exposes its id on the page root.
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
 }
 
 
@@ -84,12 +86,8 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await page.goto("/changes/new");
   await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
   await page.getByTestId("draft-title-input").fill("E2E预审草稿");
-  // Implicit drafts: save adopts silently; the page root carries the id.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-    "data-draft-id", /.+/
-  );
 
-  // Editing, saving and waiting produce zero review-run creations.
+  // Editing and waiting produce zero review-run creations.
   await typeSql(page, SQL_TEXT);
   await page.waitForTimeout(2_000);
   expect(reviewRunCalls).toEqual([]);
@@ -99,6 +97,10 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
+  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+    "data-draft-id",
+    /.+/,
+  );
   expect(reviewRunCalls).toHaveLength(1);
   await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeEnabled();
@@ -163,10 +165,10 @@ test("Provider failure shows honest failure copy and keeps submit disabled", asy
 test("revealed raw evidence stays out of web storage and copies only through audit", async ({
   page,
 }) => {
-  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://localhost:4173",
-  });
   await runReviewThroughUi(page);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
   await page.getByTestId("tab-findings").click();
   await page.getByRole("button", { name: "查看审核证据" }).first().click();
   await expect(page.getByTestId("evidence-sheet")).toBeVisible();

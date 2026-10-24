@@ -26,6 +26,9 @@ import {
 import { useCopyOrderToDraft } from "@/features/orders/use-orders";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
+import { PendingButton } from "@/shared/components/pending-button";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -65,6 +68,7 @@ import {
   Gauge,
   ListChecks,
   Play,
+  RotateCw,
   ShieldQuestion,
   XCircle,
 } from "lucide-react";
@@ -221,7 +225,7 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
   return (
     <Card data-testid="execution-action-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <Play className="size-4" aria-hidden />
           {t("orders.execution.actionTitle")}
         </CardTitle>
@@ -256,15 +260,16 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
                 placeholder={t("orders.execution.schedulePlaceholder")}
                 testId="execution-schedule-input"
               />
-              <Button
+              <PendingButton
                 variant="outline"
                 onClick={runSchedule}
+                pending={schedule.isPending}
                 disabled={pending || !dueInRange}
                 data-testid="execution-schedule-submit"
               >
                 <CalendarClock className="size-4" aria-hidden />
                 {t("orders.execution.scheduleSubmit")}
-              </Button>
+              </PendingButton>
             </div>
             {scheduleNote !== null && (
               <p className="text-xs text-muted-foreground" data-testid="execution-schedule-note">{scheduleNote}</p>
@@ -301,9 +306,9 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
             <Button variant="outline" onClick={() => { setConfirmOpen(false); setActionError(null); }} data-testid="execution-confirm-cancel">
               {t("common.cancel")}
             </Button>
-            <Button onClick={runExecute} disabled={create.isPending} data-testid="execution-confirm-run">
+            <PendingButton pending={create.isPending} onClick={runExecute} data-testid="execution-confirm-run">
               {t("orders.execution.start")}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -318,12 +323,17 @@ function StatementLedger({ attemptId, live }: { attemptId: string; live: boolean
   const { t } = useTranslation();
   const statementsQuery = useExecutionStatements(attemptId, true, live);
 
-  if (statementsQuery.isPending) return null;
+  if (statementsQuery.isPending) return <LoadingState variant="table" columns={6} />;
   if (statementsQuery.isError) {
     return (
-      <p role="alert" className="text-destructive text-sm">
-        {t("orders.execution.statementsError")}
-      </p>
+      <Alert variant="destructive">
+        <CircleAlert aria-hidden />
+        <AlertTitle>{t("orders.execution.statementsError")}</AlertTitle>
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => void statementsQuery.refetch()}>
+          <RotateCw aria-hidden />
+          {t("errors.retry")}
+        </Button>
+      </Alert>
     );
   }
   const items = statementsQuery.data;
@@ -429,7 +439,7 @@ function VerificationCard({ order, attempt, onRecover }: {
   }
 
   const evidenceComplete = evidence.every((entry) => entry.content.trim() !== "");
-  const canSubmit = result !== "" && reason.trim() !== "" && evidenceComplete && !verify.isPending;
+  const canSubmit = result !== "" && reason.trim() !== "" && evidenceComplete;
 
   const submit = (): void => {
     verify.mutate(
@@ -478,7 +488,7 @@ function VerificationCard({ order, attempt, onRecover }: {
           </Button>
         ))}
       </div>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <Label htmlFor="verification-reason">{t("orders.execution.verifyReason")}</Label>
         <Textarea
           id="verification-reason"
@@ -546,9 +556,9 @@ function VerificationCard({ order, attempt, onRecover }: {
       {dialogError !== null && (
         <p role="alert" className="text-destructive text-sm" data-testid="verification-error">{dialogError}</p>
       )}
-      <Button onClick={submit} disabled={!canSubmit} data-testid="verification-submit">
+      <PendingButton pending={verify.isPending} onClick={submit} disabled={!canSubmit} data-testid="verification-submit">
         {t("orders.execution.verifySubmit")}
-      </Button>
+      </PendingButton>
     </div>
   );
 }
@@ -568,7 +578,40 @@ function ExecutionAttemptCard({ order, attemptId, onRecover }: {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  if (attemptQuery.isPending || attemptQuery.isError) return null;
+  if (attemptQuery.isPending) {
+    return (
+      <Card data-testid="execution-attempt-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <ListChecks className="size-4" aria-hidden />
+            {t("orders.execution.attemptTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LoadingState variant="table" columns={6} />
+        </CardContent>
+      </Card>
+    );
+  }
+  if (attemptQuery.isError) {
+    return (
+      <Card data-testid="execution-attempt-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <ListChecks className="size-4" aria-hidden />
+            {t("orders.execution.attemptTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            error={attemptQuery.error}
+            operationId="getExecutionAttempt"
+            onRetry={() => void attemptQuery.refetch()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
   const attempt: ExecutionAttempt = attemptQuery.data;
   const live = !ATTEMPT_TERMINAL_STATES.has(attempt.state);
   const stageOfAttempt = order.stages.find((candidate) => candidate.id === attempt.stage_id) ?? null;
@@ -594,7 +637,7 @@ function ExecutionAttemptCard({ order, attemptId, onRecover }: {
   return (
     <Card data-testid="execution-attempt-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2">
           <ListChecks className="size-4" aria-hidden />
           {t("orders.execution.attemptTitle")}
           <StateBadge state={attempt.state} labelRoot="orders.attemptState" tone={executionAttemptTone} />
@@ -634,7 +677,7 @@ function ExecutionAttemptCard({ order, attemptId, onRecover }: {
             <DialogTitle>{t("orders.execution.cancelTitle")}</DialogTitle>
             <DialogDescription>{t("orders.execution.cancelDescription")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="execution-cancel-reason">{t("orders.execution.cancelReason")}</Label>
             <Textarea
               id="execution-cancel-reason"
@@ -652,14 +695,15 @@ function ExecutionAttemptCard({ order, attemptId, onRecover }: {
             <Button variant="outline" onClick={() => { setCancelOpen(false); setCancelError(null); }} data-testid="execution-cancel-cancel">
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               variant="destructive"
               onClick={submitCancel}
-              disabled={cancelReason.trim() === "" || cancel.isPending}
+              pending={cancel.isPending}
+              disabled={cancelReason.trim() === ""}
               data-testid="execution-cancel-confirm"
             >
               {t("orders.execution.cancel")}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -680,6 +724,7 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
   const [error, setError] = useState<string | null>(null);
   const [flows, setFlows] = useState<Array<{ id: string; name: string }>>([]);
   const [flowsLoaded, setFlowsLoaded] = useState(false);
+  const [flowsPending, setFlowsPending] = useState(false);
 
   if (!COPY_ONLY_STATES.has(order.state)) return null;
 
@@ -687,6 +732,7 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
     setOpen(true);
     setError(null);
     if (flowsLoaded) return;
+    setFlowsPending(true);
     try {
       const { listCurrentUserFlows } = await import("@/api/generated/client/change-drafts/change-drafts");
       const page = (await listCurrentUserFlows({ flow_type: "change_review" })) as unknown as {
@@ -697,6 +743,8 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
       setFlowsLoaded(true);
     } catch {
       setFlows([]);
+    } finally {
+      setFlowsPending(false);
     }
   };
 
@@ -722,16 +770,21 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
     <>
       <Card data-testid="copy-draft-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
+          <CardTitle className="flex items-center gap-2">
             <Copy className="size-4" aria-hidden />
             {t("orders.execution.copyTitle")}
           </CardTitle>
           <CardDescription>{t("orders.execution.copyDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={() => { void openDialog(); }} data-testid="copy-draft-open">
+          <PendingButton
+            variant="outline"
+            pending={flowsPending}
+            onClick={() => { void openDialog(); }}
+            data-testid="copy-draft-open"
+          >
             {t("orders.execution.copyOpen")}
-          </Button>
+          </PendingButton>
         </CardContent>
       </Card>
 
@@ -742,7 +795,7 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
             <DialogDescription>{t("orders.execution.copyDialogDescription")}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               <Label htmlFor="copy-draft-flow">{t("orders.execution.copyFlow")}</Label>
               <Select value={flowId} onValueChange={(value) => { if (value !== null) setFlowId(value); }}>
                 <SelectTrigger data-testid="copy-draft-flow">
@@ -755,7 +808,7 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               <Label htmlFor="copy-draft-title">{t("orders.execution.copyTitleLabel")}</Label>
               <Input
                 id="copy-draft-title"
@@ -773,13 +826,14 @@ function CopyDraftCard({ order }: { order: ChangeOrder }) {
             <Button variant="outline" onClick={() => { setOpen(false); setError(null); }} data-testid="copy-draft-cancel">
               {t("common.cancel")}
             </Button>
-            <Button
+            <PendingButton
               onClick={runCopy}
-              disabled={flowId === "" || title.trim() === "" || copy.isPending}
+              pending={copy.isPending}
+              disabled={flowId === "" || title.trim() === ""}
               data-testid="copy-draft-confirm"
             >
               {t("orders.execution.copyOpen")}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -7,17 +7,21 @@ import type { Flow, QueryAccessRequest, QueryGrant } from "@/api/generated/clien
 import { useSession } from "@/features/auth/session-provider";
 import { describeError, businessErrCodeByName } from "@/shared/api/error-display";
 import { BusinessError } from "@/shared/api/mutator";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
+import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Label } from "@/shared/components/ui/label";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 import {
   useCreateAccessRequest,
   useCreateSession,
@@ -95,19 +99,25 @@ export default function QueryEntryPage() {
   // appears for flows the server answered QUERY_GRANT_REQUIRED for. With
   // query approval disabled (Q002 direct path) it never shows.
   const [needsAccessFlows, setNeedsAccessFlows] = useState<Set<string>>(new Set());
+  const [enteringFlowId, setEnteringFlowId] = useState<string | null>(null);
 
   const flows = flowsQuery.data ?? [];
   const requests = requestsQuery.data.items;
-  const grants = grantsQuery.data ?? [];
   const sessions = (sessionsQuery.data.items).filter((row) => row.state === "active");
   const matches = useMemo(
-    () => new Map(flows.map((flow) => [flow.id, matchGrantForFlow(flow, requests, grants)])),
-    [flows, grants, requests],
+    () => new Map(
+      (flowsQuery.data ?? []).map((flow) => [
+        flow.id,
+        matchGrantForFlow(flow, requests, grantsQuery.data ?? []),
+      ]),
+    ),
+    [flowsQuery.data, grantsQuery.data, requests],
   );
 
   const enter = async (flow: Flow, match: FlowGrantMatch | null): Promise<void> => {
     setEntryError(null);
     setNeedsAccessHint(null);
+    setEnteringFlowId(flow.id);
     try {
       const created = await createSession.mutateAsync({
         flow_id: flow.id,
@@ -128,6 +138,8 @@ export default function QueryEntryPage() {
         return;
       }
       setEntryError(describeErrorText(describeError(error, "createQuerySession")));
+    } finally {
+      setEnteringFlowId(null);
     }
   };
 
@@ -135,8 +147,13 @@ export default function QueryEntryPage() {
   const loadError = flowsQuery.error ?? requestsQuery.error ?? grantsQuery.error;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="query-entry">
-            {entryError !== null && (
+    <PageLayout data-testid="query-entry">
+      <PageHeader
+        icon={Database}
+        title={t("query.entry.title")}
+        description={t("query.entry.description")}
+      />
+      {entryError !== null && (
         <Alert variant="destructive" data-testid="query-entry-error">
           <AlertTitle>{t("query.entry.failed")}</AlertTitle>
           <AlertDescription>{entryError}</AlertDescription>
@@ -166,29 +183,24 @@ export default function QueryEntryPage() {
           }}
         />
       )}
-      {loadError === null && anyLoading && <LoadingState />}
+      {loadError === null && anyLoading && <LoadingState variant="page" />}
 
       {loadError === null && !anyLoading && (
         <>
           {flows.length === 0 && sessions.length === 0 && (
-            <Empty className="rounded-xl border" data-testid="query-entry-empty">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Database />
-                </EmptyMedia>
-                {/* §18.48: grants apply to the builtin admin exactly as to
-                    regular users — the generic waiting-for-grants copy is
-                    accurate for every ungranted identity. */}
-                <EmptyTitle>{t("query.entry.emptyTitle")}</EmptyTitle>
-                <EmptyDescription>{t("query.entry.emptyDescription")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <div className="rounded-xl border">
+              <EmptyState
+                title={t("query.entry.emptyTitle")}
+                description={t("query.entry.emptyDescription")}
+                testId="query-entry-empty"
+              />
+            </div>
           )}
 
           {flows.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">{t("query.entry.flowsCard")}</CardTitle>
+                <CardTitle>{t("query.entry.flowsCard")}</CardTitle>
                 <CardDescription>{t("query.entry.flowsDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
@@ -224,10 +236,16 @@ export default function QueryEntryPage() {
                             {t("query.entry.applyAccess")}
                           </Button>
                         )}
-                        <Button size="sm" onClick={() => { void enter(flow, match); }} data-testid={`query-flow-enter-${flow.id}`}>
+                        <PendingButton
+                          size="sm"
+                          pending={createSession.isPending && enteringFlowId === flow.id}
+                          disabled={createSession.isPending && enteringFlowId !== flow.id}
+                          onClick={() => { void enter(flow, match); }}
+                          data-testid={`query-flow-enter-${flow.id}`}
+                        >
                           {t("query.entry.enter")}
                           <ChevronRight />
-                        </Button>
+                        </PendingButton>
                       </div>
                     </div>
                   );
@@ -239,7 +257,7 @@ export default function QueryEntryPage() {
           {sessions.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">{t("query.entry.sessionsCard")}</CardTitle>
+                <CardTitle>{t("query.entry.sessionsCard")}</CardTitle>
                 <CardDescription>{t("query.entry.sessionsDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
@@ -266,7 +284,7 @@ export default function QueryEntryPage() {
       )}
 
       <AccessRequestDialog flow={requestFlow} onClose={() => { setRequestFlow(null); }} />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -319,21 +337,26 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
           <div className="flex flex-col gap-2">
             <Label>{t("query.apply.datasources")}</Label>
             <p className="text-muted-foreground text-xs">{t("query.apply.datasourcesHint")}</p>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               {capabilities.map((capability) => (
-                <label
+                <div
                   key={capability.datasource_id}
-                  className="flex cursor-pointer flex-row items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                  className="flex flex-row items-center gap-3 rounded-lg border px-3 py-2 text-sm"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    id={`query-apply-ds-${capability.datasource_id}`}
                     checked={selected.includes(capability.datasource_id)}
-                    onChange={() => { toggle(capability.datasource_id); }}
+                    onCheckedChange={() => { toggle(capability.datasource_id); }}
                     data-testid={`query-apply-ds-${capability.datasource_id}`}
                   />
-                  <span className="truncate font-mono text-xs">{capability.datasource_name}</span>
-                  {capability.can_export && <Badge variant="secondary">{t("query.entry.exportable")}</Badge>}
-                </label>
+                  <Label
+                    htmlFor={`query-apply-ds-${capability.datasource_id}`}
+                    className="min-w-0 flex-1 cursor-pointer justify-between gap-3 text-xs font-normal"
+                  >
+                    <span className="truncate font-mono">{capability.datasource_name}</span>
+                    {capability.can_export && <Badge variant="secondary">{t("query.entry.exportable")}</Badge>}
+                  </Label>
+                </div>
               ))}
             </div>
           </div>
@@ -378,13 +401,14 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             onClick={() => { void submit(); }}
-            disabled={!valid || createRequest.isPending}
+            pending={createRequest.isPending}
+            disabled={!valid}
             data-testid="query-apply-submit"
           >
-            {createRequest.isPending ? t("common.saving") : t("query.apply.submit")}
-          </Button>
+            {t("query.apply.submit")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -107,6 +107,15 @@ const problems = [];
 for (const [theme, selector] of [["light", ":root"], ["dark", ".dark"]]) {
   const declarations = parseDeclarations(extractBlock(selector));
   const card = oklchToLuminance(resolveValue(declarations, "--card"));
+  // Primary now carries the workspace brand across the product. Check actual
+  // text/background pairs, including the stock Button hover blend.
+  const primary = oklchToLuminance(resolveValue(declarations, "--primary"));
+  const primaryText = oklchToLuminance(resolveValue(declarations, "--primary-foreground"));
+  for (const [state, background] of [["rest", primary], ["hover", primary * 0.95 + card * 0.05], ["active", primary]]) {
+    const ratio = contrast(primaryText, background);
+    if (ratio < 4.5) problems.push(`${theme} primary ${state}: ${ratio.toFixed(2)}:1 (needs 4.5:1)`);
+    else console.log(`${theme} primary ${state}: ${ratio.toFixed(2)}:1`);
+  }
   for (const token of BUSINESS_TEXT_TOKENS) {
     const value = resolveValue(declarations, `--${token}`);
     const ratio = contrast(oklchToLuminance(value), card);

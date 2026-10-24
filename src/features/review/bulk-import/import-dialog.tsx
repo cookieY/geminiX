@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SqlDigest } from "@/features/review/bulk-import/sql-digest";
 import { useBulkImport } from "@/features/review/bulk-import/use-bulk-import";
+import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -209,15 +210,14 @@ export function ImportDialog({ open, onOpenChange, onConfirm, uploading = false 
               {t("precheck.bulk.import.pickAgain")}
             </Button>
           )}
-          <Button
+          <PendingButton
+            pending={uploading}
             onClick={confirm}
             disabled={phase.kind !== "ready" || uploading}
             data-testid="bulk-import-confirm"
           >
-            {uploading
-              ? t("precheck.bulk.import.uploading")
-              : t("precheck.bulk.import.confirm")}
-          </Button>
+            {t("precheck.bulk.import.confirm")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -6,16 +6,20 @@ import { Pencil, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import type { User, UserDeletionImpact } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { ErrorState, LoadingState } from "@/shared/components/status/status-components";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { EmptyState } from "@/shared/components/status/empty-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PendingButton } from "@/shared/components/pending-button";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   useCreateUser,
@@ -75,26 +79,23 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4" data-testid="admin-users-page">
-      <header className="flex flex-row justify-end gap-4">
-        <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-users-create">
-          <Plus />
-          {t("adminUsers.create")}
-        </Button>
-      </header>
+    <PageLayout data-testid="admin-users-page">
+      <PageHeader
+        title={t("adminUsers.title")}
+        description={t("adminUsers.description")}
+        icon={UserRound}
+        actions={
+          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-users-create">
+            <Plus />
+            {t("adminUsers.create")}
+          </Button>
+        }
+      />
 
-      {usersQuery.isPending && <LoadingState />}
-      {usersQuery.error !== null && (
-        <ErrorState error={usersQuery.error} operationId="listUsers" onRetry={() => void usersQuery.refetch()} />
-      )}
-
-      {!usersQuery.isPending && usersQuery.error === null && (
-        <Card>
-          <CardHeader className="border-b flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
-            <div className="space-y-1">
-              <CardTitle className="text-sm">{t("adminUsers.card")}</CardTitle>
-              <CardDescription>{t("adminUsers.cardDescription")}</CardDescription>
-            </div>
+      <Card>
+        <ListToolbar
+          busy={usersQuery.isFetching && !usersQuery.isPending}
+          search={
             <TableSearchInput
               value={search}
               onChange={(value) => {
@@ -103,14 +104,22 @@ export default function AdminUsersPage() {
               }}
               testId="admin-users-search"
             />
-          </CardHeader>
-          <CardContent className="px-0!">
-            {users.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm" data-testid="admin-users-empty">
-                {keyword !== "" ? t("table.emptySearch") : t("adminUsers.empty")}
-              </p>
-            ) : (
-              <>
+          }
+        />
+        <CardContent className="px-0!">
+          {usersQuery.isPending ? (
+            <LoadingState variant="table" columns={5} />
+          ) : usersQuery.error !== null ? (
+            <ErrorState error={usersQuery.error} operationId="listUsers" onRetry={() => void usersQuery.refetch()} />
+          ) : (
+            <>
+              {users.length === 0 ? (
+                <EmptyState
+                  title={keyword !== "" ? t("table.emptySearch") : t("adminUsers.empty")}
+                  filtered={keyword !== ""}
+                  testId="admin-users-empty"
+                />
+              ) : (
               <Table data-testid="admin-users-table">
                 <TableHeader>
                   <TableRow>
@@ -127,32 +136,32 @@ export default function AdminUsersPage() {
                   ))}
                 </TableBody>
               </Table>
-              </>
-            )}
-      {usersLoaded ? (
-        <TablePagination
-          busy={usersQuery.isFetching && usersQuery.isPlaceholderData}
-          page={pager.pageNo}
-          hasMore={usersQuery.data.page.has_more}
-          isFirst={pager.isFirst}
-          onPrev={pager.goPrev}
-          onJumpPage={pager.goToPage}
-          onNext={() => {
-            pager.pushCursor(usersQuery.data.page.next_cursor);
-          }}
-          pageSize={pager.pageSize}
-          onPageSizeChange={pager.setPageSize}
-          rowsOnPage={(usersQuery.data.items ?? []).length}
-          testIdPrefix="users"
-        />
-      ) : null}
-          </CardContent>
-        </Card>
-      )}
+              )}
+              {usersLoaded ? (
+                <TablePagination
+                  busy={usersQuery.isFetching && usersQuery.isPlaceholderData}
+                  page={pager.pageNo}
+                  hasMore={usersQuery.data.page.has_more}
+                  isFirst={pager.isFirst}
+                  onPrev={pager.goPrev}
+                  onJumpPage={pager.goToPage}
+                  onNext={() => {
+                    pager.pushCursor(usersQuery.data.page.next_cursor);
+                  }}
+                  pageSize={pager.pageSize}
+                  onPageSizeChange={pager.setPageSize}
+                  rowsOnPage={usersQuery.data.items.length}
+                  testIdPrefix="users"
+                />
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <CreateUserDialog open={createOpen} onClose={() => { setCreateOpen(false); }} />
       <EditUserDialog user={editing} onClose={() => { setEditing(null); }} />
-    </div>
+    </PageLayout>
   );
 }
 
@@ -166,8 +175,8 @@ function UserRow({ user, onEdit }: { user: User; onEdit: () => void }) {
   return (
     <>
       <TableRow data-testid={`admin-user-row-${user.id}`} data-row-key={user.id}>
-        <TableCell className="font-mono font-medium">{user.username}</TableCell>
-        <TableCell className="font-medium">{user.display_name}</TableCell>
+        <TableCell className="font-semibold text-foreground">{user.username}</TableCell>
+        <TableCell className="font-semibold text-foreground">{user.display_name}</TableCell>
         <TableCell className="text-muted-foreground">{user.email ?? "—"}</TableCell>
         <TableCell>
           {user.is_builtin_admin ? (
@@ -249,7 +258,7 @@ function DeleteUserDialog({
           <DialogTitle>{t("adminUsers.delete.title", { name: user.username })}</DialogTitle>
           <DialogDescription>{t("adminUsers.delete.description")}</DialogDescription>
         </DialogHeader>
-        {loading && <p className="text-muted-foreground text-sm">{t("common.loading")}</p>}
+        {loading && <LoadingState variant="inline" />}
         {impact !== null && (
           <div className="flex flex-col gap-2 text-sm" data-testid="admin-user-delete-impact">
             <ImpactRow label={t("adminUsers.delete.flowReferences")} value={impact.flow_actor_references} />
@@ -289,14 +298,15 @@ function DeleteUserDialog({
           <Button variant="outline" onClick={onCancel}>
             {t("common.cancel")}
           </Button>
-          <Button
+          <PendingButton
             variant="destructive"
+            pending={submitting}
             disabled={loading || submitting || (impact !== null && !impact.can_delete)}
             onClick={() => void onConfirm()}
             data-testid="admin-user-delete-confirm"
           >
-            {submitting ? t("common.saving") : t("adminUsers.delete.confirm")}
-          </Button>
+            {t("adminUsers.delete.confirm")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -440,9 +450,9 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button disabled={!valid || createUser.isPending} onClick={() => void submit()} data-testid="user-create-submit">
-            {createUser.isPending ? t("common.saving") : t("adminUsers.create")}
-          </Button>
+          <PendingButton pending={createUser.isPending} disabled={!valid} onClick={() => void submit()} data-testid="user-create-submit">
+            {t("adminUsers.create")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -523,13 +533,14 @@ function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => v
           <Button variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={displayName.trim() === "" || updateUser.isPending}
+          <PendingButton
+            pending={updateUser.isPending}
+            disabled={displayName.trim() === ""}
             onClick={() => void submit()}
             data-testid="user-edit-submit"
           >
-            {updateUser.isPending ? t("common.saving") : t("common.save")}
-          </Button>
+            {t("common.save")}
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
