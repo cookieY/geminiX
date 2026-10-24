@@ -154,8 +154,13 @@ jobs:
       # Browsers ship inside the pinned image; installing them again would
       # re-resolve a floating chromium build and re-introduce the drift the
       # container is here to remove.
+      # Two workers, not the runner's core count: the motion gate measures a
+      # 100ms feedback budget, and CPU starvation on a shared 4-core runner
+      # stretches the frame cadence past that budget even when the transition
+      # itself is instant. Two workers keep the measurement about the page
+      # instead of about how many suites are competing for a core.
       - name: Run e2e
-        run: pnpm test:e2e
+        run: pnpm test:e2e -- --workers=2
       - name: Run frame budget (single worker)
         run: pnpm test:frames
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2 (SEC-0025: pinned)

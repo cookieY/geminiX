@@ -162,13 +162,16 @@ test("the active sidebar item renders as a white pill with black text", async ({
   await expect(page).toHaveURL(/\/query$/);
   const active = page.locator("[data-sidebar='menu-button'][data-active]").first();
   await expect(active).toBeVisible();
-  const styles = await active.evaluate((element) => {
-    const computed = getComputedStyle(element);
-    return { bg: computed.backgroundColor, fg: computed.color };
-  });
-  // Chromium reports the oklch token values as authored: pure white bg, black text.
-  expect(styles.bg).toBe("oklch(1 0 0)");
-  expect(styles.fg).toBe("oklch(0 0 0)");
+  // Chromium reports the oklch token values as authored: pure white bg, black
+  // text. The pill cross-fades when the active row moves, so poll until the
+  // transition lands instead of sampling one frame of it.
+  const readStyles = (): Promise<{ bg: string; fg: string }> =>
+    active.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { bg: computed.backgroundColor, fg: computed.color };
+    });
+  await expect.poll(async () => (await readStyles()).bg, { timeout: 3_000 }).toBe("oklch(1 0 0)");
+  expect((await readStyles()).fg).toBe("oklch(0 0 0)");
 });
 
 test("the theme toggle switches the document class", async ({ page }) => {

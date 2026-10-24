@@ -38,40 +38,50 @@ async function armPressProbe(page: Page, selector: string): Promise<void> {
       transitions: [] as { property: string; duration: number }[],
       beforeColor: "",
       framesAfterChange: 0,
+      settled: false,
     };
     (window as unknown as { __press: typeof state }).__press = state;
     (window as unknown as { __pressDone: Promise<typeof state> }).__pressDone = new Promise((resolve) => {
-      el.addEventListener("pointerdown", () => {
+      el.addEventListener("pointerdown", (event) => {
         // Sample the pre-active colour at the real pointerdown, not at arm
         // time: the pointer arrived after a hover transition, and comparing
         // against the base colour would let the hover tail satisfy firstColor.
         state.beforeColor = getComputedStyle(el).backgroundColor;
-        state.pressStart = performance.now();
+        // `event.timeStamp` shares the document timeline origin with
+        // `Animation.startTime`, so the measured latency is "when the
+        // transition began", not "when the next frame happened to paint".
+        // On a loaded runner frames can be 100ms apart; sampling the first
+        // changed frame measured the frame cadence, not the feedback.
+        state.pressStart = event.timeStamp;
       }, { capture: true, once: true });
       const tick = (): void => {
         const now = performance.now();
         const scale = getComputedStyle(el).scale;
-        const color = getComputedStyle(el).backgroundColor;
         state.endScale = scale;
         if (state.pressStart !== null) {
-          const elapsed = now - state.pressStart;
-          if (state.firstScale < 0 && Number.parseFloat(scale) < 1) state.firstScale = elapsed;
-          if (state.firstColor < 0 && color !== state.beforeColor) state.firstColor = elapsed;
-          if (state.firstScale >= 0 || state.firstColor >= 0) {
-            state.transitions = el
-              .getAnimations()
-              .filter((animation): animation is CSSTransition => animation instanceof CSSTransition)
-              .map((animation) => ({
-                property: animation.transitionProperty,
-                duration: Number(animation.effect?.getTiming().duration ?? 0),
-              }));
+          const running = el
+            .getAnimations()
+            .filter((animation): animation is CSSTransition => animation instanceof CSSTransition);
+          if (!state.settled) {
+            state.transitions = running.map((animation) => ({
+              property: animation.transitionProperty,
+              duration: Number(animation.effect?.getTiming().duration ?? 0),
+            }));
+            const scaleTransition = running.find((animation) => animation.transitionProperty === "scale");
+            const colorTransition = running.find((animation) => animation.transitionProperty === "background-color");
+            if (scaleTransition !== undefined && typeof scaleTransition.startTime === "number" && state.firstScale < 0) {
+              state.firstScale = scaleTransition.startTime - state.pressStart;
+            }
+            if (colorTransition !== undefined && typeof colorTransition.startTime === "number" && state.firstColor < 0) {
+              state.firstColor = colorTransition.startTime - state.pressStart;
+            }
           }
-          if (state.firstScale >= 0 || state.firstColor >= 0) state.framesAfterChange += 1;
-          if (state.framesAfterChange >= 3 || elapsed > 2000) {
-            resolve(state);
-            return;
-          }
-          if (elapsed > 2000) {
+          const changed = state.firstScale >= 0 || state.firstColor >= 0;
+          if (changed) state.framesAfterChange += 1;
+          // Release the promise once the feedback has been observed for a few
+          // frames (the transition list is captured in the first of them).
+          if (state.framesAfterChange >= 3 || now - state.pressStart > 2000) {
+            state.settled = true;
             resolve(state);
             return;
           }
