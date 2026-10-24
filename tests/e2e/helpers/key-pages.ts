@@ -94,9 +94,14 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await page.getByTestId("run-review").click();
       // The run button disables while queued/running and re-enables exactly
       // when the terminal state lands — a locale-neutral terminal signal
-      // (fixture timeline ≈1.3s).
+      // (fixture timeline ≈1.3s). The result card is fed by a follow-up read
+      // that can land a frame or two later, so also wait for the verdict
+      // itself: on a loaded CI runner the capture otherwise catches the empty
+      // results card and reads as a one-off baseline diff.
       await expect(page.getByTestId("run-review")).toBeDisabled({ timeout: 5_000 });
       await expect(page.getByTestId("run-review")).toBeEnabled({ timeout: 10_000 });
+      await expect(page.getByTestId("review-status")).toBeVisible();
+      await expect(page.getByTestId("review-counts")).toBeVisible({ timeout: 10_000 });
     },
   },
   {
