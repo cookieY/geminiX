@@ -88,6 +88,17 @@ async function idleMedianDelta(page: Page): Promise<number> {
   return percentile(deltas, 0.5);
 }
 
+async function settleFinitePageAnimations(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const finite = document.getAnimations().filter((animation) => {
+      if (animation.playState !== "running") return false;
+      const endTime = animation.effect?.getComputedTiming().endTime;
+      return typeof endTime === "number" && Number.isFinite(endTime);
+    });
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 interface MotionRun {
   /** Animations on the target that match the expectation and are running. */
   count: number;
@@ -163,6 +174,11 @@ async function measure(
   action: () => Promise<void>,
   assertTargetReached: () => Promise<void>,
 ): Promise<FrameSample> {
+  // Page-entry charts and counts can still be compositing when data renders.
+  // They are not the interaction under test; sampling through them turns the
+  // gate into a generic load test and produced 33-50ms outliers in CI. Wait
+  // only for finite animations so intentional infinite spinners never hang it.
+  await settleFinitePageAnimations(page);
   const idleMedian = await idleMedianDelta(page);
   const budget = Math.min(MAX_BUDGET_MS, Math.max(FLOOR_BUDGET_MS, idleMedian * 2));
   const refreshHz = Math.round(1000 / Math.max(idleMedian, 1));

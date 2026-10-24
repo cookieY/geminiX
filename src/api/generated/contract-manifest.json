@@ -15,7 +15,7 @@
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
-      "sha256": "05ebb9fbe0463c9a575e97e8428a34b236b985ad8700080c62130b6cebe46e55"
+      "sha256": "88b6e46e33b75a7a1a8929935930681a908e5c99a9f4113e92958c337eb259cc"
     }
   },
   "generator": {
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-10-24T04:12:04.210Z"
+  "generated_at": "2026-10-24T15:29:32.951Z"
 }
