@@ -24,6 +24,7 @@ interface PressProbe {
   firstColor: number;
   endScale: string;
   transitions: { property: string; duration: number }[];
+  declared: { property: string; duration: number }[];
 }
 
 async function armPressProbe(page: Page, selector: string): Promise<void> {
@@ -36,6 +37,20 @@ async function armPressProbe(page: Page, selector: string): Promise<void> {
       firstColor: -1,
       endScale: "",
       transitions: [] as { property: string; duration: number }[],
+      declared: (() => {
+        // The declared transition is the contract; the live animation list is
+        // only an observation. A loaded runner can paint its first frame after
+        // a 100ms transition has already finished, so the live list comes back
+        // empty even though the CSS is correct.
+        const computed = getComputedStyle(el);
+        const properties = computed.transitionProperty.split(",").map((entry) => entry.trim());
+        const durations = computed.transitionDuration.split(",").map((entry) => entry.trim());
+        return properties.map((property, index) => {
+          const raw = durations[index] ?? "0s";
+          const value = Number.parseFloat(raw);
+          return { property, duration: raw.endsWith("ms") ? value : value * 1000 };
+        });
+      })(),
       beforeColor: "",
       framesAfterChange: 0,
       settled: false,
@@ -63,10 +78,15 @@ async function armPressProbe(page: Page, selector: string): Promise<void> {
             .getAnimations()
             .filter((animation): animation is CSSTransition => animation instanceof CSSTransition);
           if (!state.settled) {
-            state.transitions = running.map((animation) => ({
-              property: animation.transitionProperty,
-              duration: Number(animation.effect?.getTiming().duration ?? 0),
-            }));
+            // Freeze the list the first time a transition is visible: the
+            // 100ms transition is over well before the settle window closes,
+            // so re-reading it every frame ends with an empty list.
+            if (state.transitions.length === 0) {
+              state.transitions = running.map((animation) => ({
+                property: animation.transitionProperty,
+                duration: Number(animation.effect?.getTiming().duration ?? 0),
+              }));
+            }
             const scaleTransition = running.find((animation) => animation.transitionProperty === "scale");
             const colorTransition = running.find((animation) => animation.transitionProperty === "background-color");
             if (scaleTransition !== undefined && typeof scaleTransition.startTime === "number" && state.firstScale < 0) {
@@ -155,7 +175,9 @@ test("press feedback starts and settles within 100ms", async ({ page }) => {
 
   expect(probe.firstScale, "scale feedback never started").toBeGreaterThanOrEqual(0);
   expect(probe.firstScale).toBeLessThan(100);
-  const scaleTransition = probe.transitions.find((entry) => entry.property === "scale");
+  const scaleTransition =
+    probe.transitions.find((entry) => entry.property === "scale") ??
+    probe.declared.find((entry) => entry.property === "scale");
   expect(scaleTransition, "pressed state must be a scale transition").toBeDefined();
   expect(scaleTransition?.duration).toBeLessThanOrEqual(100);
 });
