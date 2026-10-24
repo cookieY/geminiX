@@ -15,7 +15,7 @@
 9. `../api/contracts/requirement-evidence-matrix.json`
 10. `../api/development/work-packages.json`中的当前Frontend Package及相关机器契约
 
-如果父目录中的YearningX权威文件不存在，只能检查本仓库，不得开始正式Work Package。旧前端参考仓库通过父仓库的`scripts/development/prepare_legacy_repositories.sh`发现或下载，禁止写死绝对路径或复制旧源码。
+如果父目录中的YearningX权威文件不存在，只能检查本仓库，不得开始正式Work Package。旧前端参考仓库不是开发或门禁的前置条件：其冻结坐标（Commit 与源码树 Hash）记录在父仓`api/contracts/legacy-source-inventory.json`，追踪矩阵在父仓`docs/contracts/source-behavior-traceability.md`。需要现场核对旧实现时，再用父仓库的`scripts/development/prepare_legacy_repositories.sh`取一份冻结 Commit 的独立副本（不修改、不加入构建）；禁止写死绝对路径，也不得把旧源码复制进本仓库。
 
 UI基线前置：开始任何前端UI实现前，必须读取`../docs/frontend/yearning-ui-design-spec.md`，安装并启用官方Shadcn Dashboard Agent Skill与上游最新`shadcndashboard-mcp`服务（不钉死版本，安装时记录实际解析来源与版本），验证`listBlocks`、`listComponents`、`searchBlocks`、`getBlockInstall`、`listInstalledBlocks`和`get_audit_checklist`六件工具；运行`../scripts/development/prepare_ui_reference_repository.sh`获取Shadcn Dashboard只读参考Checkout（首次下载取上游默认分支最新并冻结该Commit，冻结坐标以`../api/contracts/ui-template-baseline.json`为机器权威，脚本输出`YEARNING_UI_TEMPLATE_ROOT`，Checkout位于本仓库与YearningX工作树之外）。Skill、MCP缺失或模板Checkout校验失败时先补齐安装或记录阻塞，不得凭记忆猜测Block名称、安装命令或模板组件实现；Skill和MCP只用于开发理解与发现，不得进入CI、生产构建或运行时依赖。
 
