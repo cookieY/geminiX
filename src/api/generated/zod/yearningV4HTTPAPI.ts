@@ -7927,7 +7927,7 @@ export const GetOperationsDashboardResponse = zod.union([zod.object({
   "window_end": zod.iso.date(),
   "system_timezone": zod.string(),
   "refreshed_at": zod.iso.datetime({"offset":true}),
-  "completeness": zod.enum(['complete', 'partial']),
+  "completeness": zod.enum(['complete', 'partial']).describe('当前实现恒为 complete，任一底层查询失败即返回业务错误而不降级；partial 为将来保留，客户端须按枚举处理两值。'),
   "unavailable_metric_keys": zod.array(zod.string()).optional()
 }),
   "change_order_total": zod.int().min(getOperationsDashboardResponseOneDataChangeOrderTotalMin),

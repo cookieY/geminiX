@@ -1,7 +1,7 @@
 import { getReviewEventClient } from "@/shared/events/review-event-client";
 
 /**
- * Lifecycle owner for the shared domain-event feed (frontend PRD §11.6: the
+ * Lifecycle owner for the shared domain-event feed (frontend PRD §11 Phase F4: the
  * event client is a singleton and components never open their own stream).
  * The workspace page starts it on mount and stops it on unmount; the client's
  * resume point survives across pages, so a remount continues the feed without

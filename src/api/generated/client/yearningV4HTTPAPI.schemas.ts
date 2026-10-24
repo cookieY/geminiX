@@ -2532,6 +2532,9 @@ export interface QueryResultPage {
   elapsed_ms?: number;
 }
 
+/**
+ * 当前实现恒为 complete，任一底层查询失败即返回业务错误而不降级；partial 为将来保留，客户端须按枚举处理两值。
+ */
 export type DashboardSnapshotMetaCompleteness = typeof DashboardSnapshotMetaCompleteness[keyof typeof DashboardSnapshotMetaCompleteness];
 
 
@@ -2545,6 +2548,7 @@ export interface DashboardSnapshotMeta {
   window_end: string;
   system_timezone: string;
   refreshed_at: Timestamp;
+  /** 当前实现恒为 complete，任一底层查询失败即返回业务错误而不降级；partial 为将来保留，客户端须按枚举处理两值。 */
   completeness: DashboardSnapshotMetaCompleteness;
   unavailable_metric_keys?: string[];
 }

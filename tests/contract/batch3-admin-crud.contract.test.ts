@@ -17,9 +17,10 @@ import {
   deleteDatasource, deleteIdentityProvider, deleteKnowledgeEntry, deletePermissionGroup,
   deletePromptTool, deleteRuleSet, deleteUser, evaluateKnowledgeEntry, getAiProvider,
   getDatasource, getDatasourceCapabilities, getIdentityProvider, getKnowledgeEntry,
-  getPermissionGroup, getPromptTool, getRuleSet, getUserDeletionImpact, listAiProviders,
-  listDatasources, listIdentityProviders, listKnowledgeEntries, listPermissionGroups,
-  listPromptTools, listRuleSets, listUsers, replaceAiProvider, replaceDatasource,
+  getPermissionGroup, getPromptTool, getRuleSet, getUserDeletionImpact, listAiProviderModels,
+  listAiProviders, listDatasources, listIdentityProviders, listKnowledgeEntries,
+  listPermissionGroups, listPromptTools, listRuleSets, listUsers, replaceAiProvider,
+  replaceDatasource,
   replaceIdentityProvider, replaceKnowledgeEntry, replacePermissionGroup, replacePromptTool,
   replaceRuleSet, testAiProviderConnection, testDatasourceConnection,
   testIdentityProviderConnection, updateUser,
@@ -345,6 +346,13 @@ describe("ai providers", () => {
     await record("testAiProviderConnection", "scratch-stub", () =>
       testAiProviderConnection(provider.id, { headers: idem() }),
       "real probes the local TLS stub; the response body lacks the Task id (divergence #019)");
+    // §18.76-B model catalog suggestions. Plaintext credentials ride the body,
+    // never the URL; the real stack reaches the stub's GET /models.
+    await record("listAiProviderModels", "scratch-catalog", () =>
+      listAiProviderModels({ base_url: baseUrl, api_key: "f12-scratch-key" }));
+    await record("listAiProviderModels", "stored-key-catalog", () =>
+      listAiProviderModels({ base_url: baseUrl, provider_id: provider.id }),
+      "editing an existing provider reuses the stored key via provider_id");
     // The replace bumps the row version — refetch before deleting or the
     // delete fails 1004 and leaves the unique priority slot occupied.
     const beforeDelete = await getAiProvider(provider.id);

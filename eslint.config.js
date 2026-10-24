@@ -13,6 +13,11 @@ export default tseslint.config(
     // for hand-written code do not apply to them either.
     ignores: [
       "dist",
+      // e2e / real-backend builds write to these dirs (.gitignore:84-85).
+      // They are build output, not source: linting them only produces noise
+      // from vendored MSW worker files.
+      "dist-e2e",
+      "dist-real",
       "coverage",
       "playwright-report",
       "test-results",

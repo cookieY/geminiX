@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { mockSession } from "./helpers/auth";
 
-// FE-F2 screenshot baseline (yearning-ui-design-spec.md §13): the real React
+// FE-F2 screenshot baseline (yearning-ui-design-spec.md §14): the real React
 // shell captured at 1440px, 1280px, 1024px and narrow width, in zh-CN and
 // en-US, light and dark. These are assertions, not captures: each one compares
 // against the committed PNG in tests/screenshots/, which stays the stable

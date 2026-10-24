@@ -6,7 +6,7 @@ import {
 } from "./domain-event";
 
 /**
- * The single domain-event fan-out point (frontend PRD §10.5/§10.6): one
+ * The single domain-event fan-out point (frontend PRD §10 Phase F3, work items 5-6): one
  * client instance feeds every subscriber, so no component ever opens its own
  * WebSocket or stream. Transport is injected — the api-conventions contract
  * makes HTTP polling the first-release baseline and allows SSE later, so the

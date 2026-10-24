@@ -3,7 +3,7 @@ import { initReactI18next } from "react-i18next";
 import zhCN from "./locales/zh-CN.json";
 import enUS from "./locales/en-US.json";
 
-// i18n contract (yearning-ui-design-spec.md §10, migration contract §1):
+// i18n contract (yearning-ui-design-spec.md §11, migration contract §1):
 // zh-CN is the default locale, the user's explicit choice outranks the browser
 // language, and an unmatched browser language falls back to zh-CN. SQL, DDL,
 // database product names and identifiers stay untranslated.

@@ -75,7 +75,7 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests with coverage
         run: pnpm test:coverage
-      - name: Static machine gates (i18n, token contrast, raw colors, prohibited, assets, browser storage)
+      - name: Static machine gates (i18n, token contrast, raw colors, prohibited, assets, browser storage, motion)
         run: |
           pnpm check:i18n
           pnpm check:tokens
@@ -83,8 +83,11 @@ jobs:
           pnpm check:prohibited
           pnpm check:assets
           pnpm check:storage
+          pnpm check:motion
+      - name: Contract suite (generated client + zod against the mock layer)
+        run: pnpm test:contract
       - name: Registry inventory check (network required; separate from the offline build proof)
-        run: node scripts/generate-registry-inventory.mjs --check
+        run: pnpm check:registry
 
   build-offline:
     name: Offline build proof

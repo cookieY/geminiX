@@ -6,7 +6,7 @@ import { useTheme } from "@/app/providers/theme-provider";
 /**
  * Light/Dark toggle following the frozen template's Light-Dark control,
  * including the view-transition sweep. The sweep is skipped when the user
- * prefers reduced motion (yearning-ui-design-spec.md §11).
+ * prefers reduced motion (yearning-ui-design-spec.md §12).
  */
 export function ThemeToggle() {
   const { t } = useTranslation();
