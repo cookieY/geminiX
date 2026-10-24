@@ -102,6 +102,15 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await expect(page.getByTestId("run-review")).toBeEnabled({ timeout: 10_000 });
       await expect(page.getByTestId("review-status")).toBeVisible();
       await expect(page.getByTestId("review-counts")).toBeVisible({ timeout: 10_000 });
+      // The verdict read and the run button settle independently: capture only
+      // a state that holds for two samples, otherwise a busy runner records
+      // the disabled button of a follow-up poll and reads as a pixel diff.
+      const settled = async (): Promise<boolean> =>
+        (await page.getByTestId("run-review").isEnabled()) &&
+        (await page.getByTestId("review-counts").isVisible());
+      await expect.poll(settled, { timeout: 15_000 }).toBe(true);
+      await page.waitForTimeout(200);
+      await expect.poll(settled, { timeout: 15_000 }).toBe(true);
     },
   },
   {
