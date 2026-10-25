@@ -98,7 +98,7 @@ export interface SubmissionDecision {
 export interface SubmissionInput {
   draftState: DraftState | null;
   runPhase: RunPhase;
-  gate: SubmissionGate | null;
+  gate: SubmissionGate | null | undefined;
   /** Editor text differs from the last saved SQL — hash match is impossible. */
   dirty: boolean;
   flowUpdated: boolean;
@@ -134,6 +134,13 @@ export function submissionDecision(input: SubmissionInput): SubmissionDecision {
     return {
       submitEnabled: false,
       reasonKey: `precheck.phase.${input.runPhase}`,
+      flowUpdated: false,
+    };
+  }
+  if (input.gate?.passed !== true) {
+    return {
+      submitEnabled: false,
+      reasonKey: "precheck.blocked.gate",
       flowUpdated: false,
     };
   }

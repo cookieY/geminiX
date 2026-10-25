@@ -101,6 +101,9 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
     "data-draft-id",
     /.+/,
   );
+  await expect(page.getByTestId("review-summary")).toContainText(
+    "AI 审核已完成，结论已与当前阶段快照冻结。",
+  );
   expect(reviewRunCalls).toHaveLength(1);
   await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeEnabled();
@@ -138,16 +141,100 @@ test("Ready draft submits through the confirmation and lands on the order detail
 test("Blocked outcome lists gate blockers and keeps submit disabled", async ({ page }) => {
   await setReviewScenario(page, "review-blocked");
   await runReviewThroughUi(page);
+  await page.getByTestId("tab-findings").click();
+  await expect(page.getByTestId("finding-item").first()).toBeVisible();
+  await expect(page.getByTestId("findings-incomplete")).toHaveCount(0);
+  await expect(page.getByTestId("findings-empty-all")).toHaveCount(0);
   await gotoConfirmStep(page);
   await expect(page.getByTestId("gate-blockers")).toContainText("存在严重风险发现");
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
   await expect(page.getByTestId("review-status")).toContainText("已阻断");
 });
 
+for (const locale of ["zh-CN", "en-US"] as const) {
+  test(`review progress is neutral and freezes the selected ${locale} request language`, async ({ page }) => {
+    await setReviewScenario(page, "review-blocked");
+    await page.goto("/changes/new");
+    await page.getByTestId("locale-toggle").click();
+    await page.getByTestId(`locale-option-${locale}`).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
+    await page.getByTestId("draft-title-input").fill("Review feedback regression");
+    await typeSql(page, SQL_TEXT);
+
+    const request = page.waitForRequest((entry) =>
+      entry.method() === "POST" && entry.url().endsWith("/review-runs"),
+    );
+    await page.getByTestId("run-review").click();
+    expect((await request).headers()["accept-language"]).toBe(locale);
+    const progress = page.getByTestId("review-in-progress");
+    await expect(progress).toBeVisible();
+    await expect(progress).toHaveAttribute("role", "status");
+    await expect(progress).toHaveAttribute("aria-live", "polite");
+    await expect(page.getByTestId("gate-blockers")).toHaveCount(0);
+    await expect(page.getByTestId("submit-draft")).toBeDisabled();
+
+    // Switching to findings during queued/running must say that the review is
+    // still in progress, never "no findings".
+    await page.getByTestId("tab-findings").click();
+    await expect(page.getByTestId("findings-waiting")).toBeVisible();
+    await expect(page.getByTestId("findings-waiting")).toHaveAttribute("role", "status");
+    await expect(page.getByTestId("findings-empty")).toHaveCount(0);
+    await expect(page.getByTestId("findings-empty-all")).toHaveCount(0);
+    if (locale === "zh-CN") {
+      await page.getByTestId("findings-waiting").scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: "../artifacts/development/FE-F4-REVIEW-FEEDBACK/tests/review-findings-waiting-zh-CN.png",
+        fullPage: true,
+      });
+    }
+
+    await page.getByTestId("tab-overview").click();
+    await expect(page.getByTestId("review-status")).toContainText(
+      locale === "zh-CN" ? "预审中" : "Reviewing",
+      { timeout: 4_000 },
+    );
+    await page.getByTestId("tab-findings").click();
+    await expect(page.getByTestId("findings-waiting")).toBeVisible();
+
+    await expect(page.getByTestId("gate-blockers")).toBeVisible({ timeout: 8_000 });
+    await expect(progress).toHaveCount(0);
+    await expect(page.getByTestId("findings-waiting")).toHaveCount(0);
+    await expect(page.getByTestId("findings-empty-all")).toHaveCount(0);
+    await expect(page.getByTestId("submit-draft")).toBeDisabled();
+
+    await page.getByTestId("tab-overview").click();
+    const frozenSummary = page.getByTestId("review-summary").locator("dd").first();
+    await expect(frozenSummary).toHaveAttribute("lang", locale);
+    await expect(frozenSummary).toHaveText(
+      locale === "zh-CN"
+        ? "AI 审核已完成，结论已与当前阶段快照冻结。"
+        : "The AI review is complete. This result is frozen to the current stage snapshot.",
+    );
+
+    const frozenSummaryText = await frozenSummary.textContent();
+    const otherLocale = locale === "zh-CN" ? "en-US" : "zh-CN";
+    await page.getByTestId("locale-toggle").click();
+    await page.getByTestId(`locale-option-${otherLocale}`).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", otherLocale);
+    await expect(page.getByTestId("review-summary").locator("dd").first()).toHaveText(
+      frozenSummaryText ?? "",
+    );
+    await expect(page.getByTestId("review-summary").locator("dd").first()).toHaveAttribute(
+      "lang",
+      locale,
+    );
+  });
+}
+
 test("Partial outcome reports incompleteness and keeps submit disabled", async ({ page }) => {
   await setReviewScenario(page, "review-partial");
   await runReviewThroughUi(page);
   await expect(page.getByTestId("review-status")).toContainText("部分完成");
+  await page.getByTestId("tab-findings").click();
+  await expect(page.getByTestId("findings-incomplete")).toBeVisible();
+  await expect(page.getByTestId("finding-item").first()).toBeVisible();
+  await expect(page.getByTestId("findings-empty-all")).toHaveCount(0);
   await gotoConfirmStep(page);
   await expect(page.getByTestId("gate-blockers")).toContainText("存在未完成的审核阶段");
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
@@ -158,6 +245,9 @@ test("Provider failure shows honest failure copy and keeps submit disabled", asy
   await runReviewThroughUi(page);
   await expect(page.getByTestId("review-status")).toContainText("预审失败");
   await expect(page.getByTestId("review-failure")).toContainText("AI服务暂不可用");
+  await page.getByTestId("tab-findings").click();
+  await expect(page.getByTestId("findings-incomplete")).toBeVisible();
+  await expect(page.getByTestId("findings-empty-all")).toHaveCount(0);
   await gotoConfirmStep(page);
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
 });

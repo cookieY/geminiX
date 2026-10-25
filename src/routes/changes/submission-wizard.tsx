@@ -34,7 +34,10 @@ import {
   BULK_MODE_MIN_STATEMENTS,
 } from "@/features/review/bulk-constants";
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
-import { FindingList } from "@/features/review/finding-list";
+import {
+  FindingList,
+  type FindingListState,
+} from "@/features/review/finding-list";
 import { ReviewStatusCard } from "@/features/review/review-status-card";
 import {
   SqlEditorPanel,
@@ -79,6 +82,10 @@ import {
   FileUp,
   Play,
 } from "lucide-react";
+
+function reviewOutputLanguage(language: string): "zh-CN" | "en-US" {
+  return language.toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
+}
 
 /**
  * Workspace for the order submission journey (one-page continuous form +
@@ -384,7 +391,7 @@ function SummaryRow({
 }
 
 export default function SubmissionWizard({ mode }: { mode: "create" | "draft" }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const session = useSession();
   const { draftId } = useParams<{ draftId: string }>();
   const navigate = useNavigate();
@@ -532,7 +539,14 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     };
   }, [isBulk, localSqlText]);
 
-  const { run, phase } = useReviewRun(draft);
+  const {
+    run,
+    phase,
+    isPending: reviewRunPending,
+    isError: reviewRunError,
+    error: reviewRunErrorDetail,
+    refetch: refetchReviewRun,
+  } = useReviewRun(draft);
   const findingsQuery = useReviewFindings(
     draft?.review_run_id ?? null,
     run !== null && isTerminalPhase(phase),
@@ -779,6 +793,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         headers: {
           ...liveIfMatch(),
           "Idempotency-Key": idempotencyKey(),
+          "Accept-Language": reviewOutputLanguage(i18n.language),
         },
       }),
     onSuccess: (task, { draftId }) => {
@@ -1346,6 +1361,48 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     // Pre-adoption the presented phase is honestly idle: nothing has run.
     const draftMode = mode === "draft" || adopted;
     const phasePresented = draftMode ? presentPhase(store.serverState, phase, dirty) : "idle";
+    const hasPresentedRun =
+      draft?.review_run_id != null || run !== null || phasePresented !== "idle";
+    let findingsState: FindingListState;
+    if (!hasPresentedRun) {
+      findingsState = { status: "idle" };
+    } else if (reviewRunError) {
+      findingsState = {
+        status: "error",
+        error: reviewRunErrorDetail,
+        operationId: "getReviewRun",
+      };
+    } else if (reviewRunPending) {
+      findingsState = { status: "loading" };
+    } else if (phasePresented === "queued" || phasePresented === "running") {
+      findingsState = { status: "waiting" };
+    } else if (run === null) {
+      findingsState = { status: "loading" };
+    } else if (
+      phasePresented === "outdated" ||
+      flowUpdated ||
+      (draft !== null && run.draft_revision !== draft.revision)
+    ) {
+      findingsState = { status: "stale" };
+    } else if (!isTerminalPhase(phasePresented)) {
+      // A run snapshot that has not produced a terminal result is still
+      // waiting, never a successful empty list.
+      findingsState = { status: "waiting" };
+    } else if (findingsQuery.isError) {
+      findingsState = { status: "error", error: findingsQuery.error };
+    } else if (findingsQuery.isPending) {
+      findingsState = { status: "loading" };
+    } else {
+      const findings = findingsQuery.data;
+      const incomplete =
+        phasePresented === "failed" ||
+        phasePresented === "partial" ||
+        (phasePresented === "blocked" && findings.length === 0);
+      findingsState = {
+        status: incomplete ? "incomplete" : "ready",
+        findings,
+      };
+    }
     const editorValue = draftMode ? store.sql : createSql;
     const editorChange = draftMode
       ? (sql: string) => { store.setSql(sql); }
@@ -1501,12 +1558,27 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 variants={TAB_PANEL_VARIANTS}
               >
                 <div>
-                  <ReviewStatusCard phase={phasePresented} run={run} />
+                  <ReviewStatusCard
+                    phase={phasePresented}
+                    run={run}
+                    hasRunId={hasPresentedRun}
+                    isPending={reviewRunPending}
+                    isError={reviewRunError}
+                    error={reviewRunErrorDetail}
+                    onRetry={() => { void refetchReviewRun(); }}
+                  />
                 </div>
                 <div>
                   <FindingList
-                  findings={findingsQuery.data ?? []}
+                  state={findingsState}
                   onOpenEvidence={(finding) => { setEvidenceFinding(finding); }}
+                  onRetry={() => {
+                    if (reviewRunError || run === null) {
+                      void refetchReviewRun();
+                    } else {
+                      void findingsQuery.refetch();
+                    }
+                  }}
                   onLocate={
                     isTerminalPhase(phasePresented)
                       ? (finding) => {

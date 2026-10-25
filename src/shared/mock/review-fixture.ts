@@ -76,6 +76,8 @@ interface FixtureStageResult {
   finding_count: number;
   evidence_count: number;
   snapshot_hash: string;
+  summary: string | null;
+  summary_locale: "zh-CN" | "en-US" | null;
 }
 
 interface FixtureRun {
@@ -1394,7 +1396,11 @@ function liveScheduleFor(orderId: string): FixtureSchedule | undefined {
 
 /** Terminal run shape per requested behavior — the deterministic fixture
  * outcome for one stage flows. */
-function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
+function terminalRunShape(
+  behavior: ReviewBehavior,
+  run: FixtureRun,
+  summaryLocale: "zh-CN" | "en-US",
+): void {
   const collectedAt = now();
   const expiry = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
   const evidenceId = `${run.id.slice(0, 24)}00000000e001`;
@@ -1434,6 +1440,16 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
         finding_count: findings.length,
         evidence_count: 1,
         snapshot_hash: `snap-${run.id.slice(0, 8)}-${state}`,
+        summary:
+          state === "passed" || state === "blocked" || state === "partial"
+            ? summaryLocale === "en-US"
+              ? "The AI review is complete. This result is frozen to the current stage snapshot."
+              : "AI 审核已完成，结论已与当前阶段快照冻结。"
+            : null,
+        summary_locale:
+          state === "passed" || state === "blocked" || state === "partial"
+            ? summaryLocale
+            : null,
       },
     ];
     world.findings.set(run.id, findings);
@@ -1577,7 +1593,12 @@ function terminalRunShape(behavior: ReviewBehavior, run: FixtureRun): void {
   }
 }
 
-function advanceRun(draft: FixtureDraft, run: FixtureRun, task: FixtureTask): void {
+function advanceRun(
+  draft: FixtureDraft,
+  run: FixtureRun,
+  task: FixtureTask,
+  summaryLocale: "zh-CN" | "en-US",
+): void {
   const behavior = currentBehavior();
   setTimeout(() => {
     run.state = "running";
@@ -1586,7 +1607,7 @@ function advanceRun(draft: FixtureDraft, run: FixtureRun, task: FixtureTask): vo
     task.state = "running";
     task.updated_at = now();
     setTimeout(() => {
-      terminalRunShape(behavior, run);
+      terminalRunShape(behavior, run, summaryLocale);
       run.version += 1;
       // The run freezes its inputs at draft_revision; if the draft moved on
       // while the run was in flight, the terminal result is born outdated
@@ -2006,6 +2027,9 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       }
       if (draft.state === "submitted") return businessError(1010, "draft already submitted");
       if (!draft.has_sql) return businessError(1001, "draft has no SQL to review");
+      const summaryLocale = request.headers.get("accept-language")?.startsWith("en-US")
+        ? "en-US"
+        : "zh-CN";
 
       const run: FixtureRun = {
         id: uuid(),
@@ -2024,6 +2048,8 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             finding_count: 0,
             evidence_count: 0,
             snapshot_hash: `snap-${String(draft.revision)}`,
+            summary: null,
+            summary_locale: null,
           },
         ],
         gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
@@ -2056,7 +2082,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         updated_at: now(),
       };
       world.tasks.set(task.id, task);
-      advanceRun(draft, run, task);
+      advanceRun(draft, run, task, summaryLocale);
       return HttpResponse.json(successEnvelope({ ...task }));
     }),
 

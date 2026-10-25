@@ -20,17 +20,19 @@ function renderDock(overrides: {
   dirty?: boolean;
   flowUpdated?: boolean;
   reviewCurrent?: boolean;
+  variant?: "dock" | "panel";
 } = {}) {
   return render(
     <SubmissionDock
       draftState={overrides.draftState ?? "ready"}
       phase={overrides.phase ?? "ready"}
-      gate={overrides.gate ?? READY_GATE}
+      gate={overrides.gate === undefined ? READY_GATE : overrides.gate}
       dirty={overrides.dirty ?? false}
       flowUpdated={overrides.flowUpdated ?? false}
       reviewCurrent={overrides.reviewCurrent ?? true}
       submitting={false}
       onSubmit={() => {}}
+      variant={overrides.variant}
     />,
   );
 }
@@ -42,8 +44,24 @@ describe("SubmissionDock", () => {
     expect(screen.getByTestId("submission-readiness").textContent).toContain("可以提交审批");
   });
 
-  it("disables submit while the run is active", () => {
-    renderDock({ draftState: "reviewing", phase: "running", gate: null });
+  it.each([
+    ["dock", "queued"],
+    ["dock", "running"],
+    ["panel", "queued"],
+    ["panel", "running"],
+  ] as const)("shows neutral review progress instead of a gate failure on the %s dock while %s", (variant, phase) => {
+    renderDock({
+      draftState: "reviewing",
+      phase,
+      gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
+      variant,
+    });
+
+    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
+    const progress = screen.getByTestId("review-in-progress");
+    expect(progress).toHaveAttribute("role", "status");
+    expect(progress).toHaveAttribute("aria-live", "polite");
+    expect(progress).toHaveTextContent("AI 预审进行中");
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
 
@@ -69,10 +87,46 @@ describe("SubmissionDock", () => {
     expect(blockers.textContent).toContain("存在被阻断的审核阶段");
   });
 
+  it.each(["blocked", "partial", "failed"] as const)(
+    "shows the final gate explanation for a terminal %s result",
+    (phase) => {
+      renderDock({
+        draftState: phase,
+        phase,
+        gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
+      });
+
+      expect(screen.queryByTestId("review-in-progress")).not.toBeInTheDocument();
+      expect(screen.getByTestId("gate-blockers")).toHaveTextContent("存在未完成的审核阶段");
+      expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    },
+  );
+
   it("disables submit when the run was frozen on an older draft revision", () => {
-    renderDock({ reviewCurrent: false });
+    renderDock({
+      reviewCurrent: false,
+      gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
+    });
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
     expect(screen.getByTestId("submission-readiness").textContent).toContain("旧版本草稿");
+  });
+
+  it("hides stale gate reasons for unsaved and outdated results", () => {
+    const gate = { passed: false, reason_codes: ["stage_review_incomplete"] };
+
+    const dirty = renderDock({ dirty: true, gate });
+    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
+    dirty.unmount();
+
+    renderDock({ draftState: "outdated", phase: "outdated", gate });
+    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
+  });
+
+  it("fails closed when a ready run has no gate result", () => {
+    renderDock({ gate: null });
+    expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    expect(screen.getByTestId("submission-readiness").textContent).toContain("审核门禁");
   });
 
   it("never shows submit as unlocked for a submitted draft", () => {

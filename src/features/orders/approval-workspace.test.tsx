@@ -14,6 +14,7 @@ import {
   seedFixtureOrder,
   type FixtureOrder,
 } from "@/shared/mock/review-fixture";
+import type { ReviewFinding } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import OrderDetailPage from "@/routes/changes/order-detail-page";
 
 // jsdom cannot host the lazy Monaco chunk (query-pages precedent); the
@@ -119,6 +120,22 @@ function approvalOrder(overrides: Partial<FixtureOrder> = {}): FixtureOrder {
     terminal_at: null,
     review_run_id: null,
     sql_text: "UPDATE orders SET status = 1 WHERE user_id = 42;",
+    ...overrides,
+  };
+}
+
+function findingFixture(overrides: Partial<ReviewFinding> = {}): ReviewFinding {
+  return {
+    id: "cd6f1a2b-0000-4000-8000-00000000f101",
+    stage_position: 1,
+    fingerprint_group_id: null,
+    category: "performance",
+    severity: "low",
+    title: "索引缺失",
+    message: "语句 `UPDATE orders SET status = 1` 无法命中索引。",
+    suggestion: "补充索引。",
+    model_confidence: 0.9,
+    evidence_ids: [],
     ...overrides,
   };
 }
@@ -323,8 +340,65 @@ describe("frozen review and comments on the order detail page", () => {
     // A review_run_id that resolves to no planted findings reads as the
     // honest empty state from the shared finding list.
     await waitFor(() => {
-      expect(screen.getByTestId("findings-empty")).toBeVisible();
+      expect(screen.getByTestId("findings-empty-all")).toBeVisible();
     });
+  });
+
+  it("loads every frozen finding page before applying the severity filter", async () => {
+    const user = userEvent.setup();
+    const orderId = "ad6f1a2b-0000-4000-8000-00000000f701";
+    seedFixtureOrder(
+      approvalOrder({
+        id: orderId,
+        review_run_id: "cd6f1a2b-0000-4000-8000-000000003e02",
+      }),
+    );
+    const firstPage = Array.from({ length: 50 }, (_, index) =>
+      findingFixture({
+        id: `cd6f1a2b-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+        title: `低风险发现 ${String(index + 1)}`,
+      }),
+    );
+    const secondPageFinding = findingFixture({
+      id: "cd6f1a2b-0000-4000-8000-000000000051",
+      severity: "critical",
+      title: "冻结发现第二页严重项",
+      message: "仅从冻结发现第二页返回的严重风险。",
+    });
+    const requestedCursors: Array<string | null> = [];
+    const requestedLimits: Array<string | null> = [];
+    server.use(
+      http.get("*/change-orders/:orderId/review-findings", ({ request }) => {
+        const url = new URL(request.url);
+        const after = url.searchParams.get("after");
+        requestedCursors.push(after);
+        requestedLimits.push(url.searchParams.get("limit"));
+        const isSecondPage = after === "frozen-cursor-page-2";
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: isSecondPage ? [secondPageFinding] : firstPage,
+            page: isSecondPage
+              ? { next_cursor: null, has_more: false }
+              : { next_cursor: "frozen-cursor-page-2", has_more: true },
+          },
+          request_id: REQUEST_ID,
+        });
+      }),
+    );
+
+    renderDetail(orderId);
+    await screen.findByTestId("frozen-review-card");
+    await waitFor(() => {
+      expect(requestedCursors).toEqual([null, "frozen-cursor-page-2"]);
+    });
+    expect(requestedLimits).toEqual(["200", "200"]);
+
+    await user.click(screen.getByLabelText("筛选严重级别"));
+    await user.click(await screen.findByRole("option", { name: "严重" }));
+    expect(screen.getAllByTestId("finding-item")).toHaveLength(1);
+    expect(screen.getByText("冻结发现第二页严重项")).toBeInTheDocument();
   });
 
   it("reveals the frozen SQL plaintext with watermark and audits copies, keeping it out of storage", async () => {

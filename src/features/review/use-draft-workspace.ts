@@ -14,6 +14,7 @@ import {
   listReviewRunFindings,
 } from "@/api/generated/client/change-drafts/change-drafts";
 import { useDomainEvent } from "@/shared/events/review-event-client";
+import { fetchAllCursorPages, type CursorPage } from "@/shared/lib/fetch-all-cursor-pages";
 import { mergeRunPhase, type RunPhase } from "./run-state";
 
 /**
@@ -87,6 +88,11 @@ interface ReviewProgress {
   run: ReviewRun | null;
   /** Monotonic presentation phase — never walks backwards (乱序事件不回退). */
   phase: RunPhase;
+  hasRunId: boolean;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => Promise<unknown>;
 }
 
 export function useReviewRun(draft: ChangeDraft | null): ReviewProgress {
@@ -151,18 +157,27 @@ export function useReviewRun(draft: ChangeDraft | null): ReviewProgress {
     },
   );
 
-  return { run, phase };
+  return {
+    run,
+    phase,
+    hasRunId: runId !== null,
+    isPending: query.isPending,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
 }
 
 export function useReviewFindings(runId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ["review-findings", runId],
-    queryFn: async () => {
-      const page = (await listReviewRunFindings(runId as string)) as unknown as {
-        items: ReviewFinding[];
-      };
-      return page.items;
-    },
+    queryFn: async () =>
+      fetchAllCursorPages(async (after) =>
+        (await listReviewRunFindings(runId as string, {
+          limit: 200,
+          ...(after === null ? {} : { after }),
+        })) as unknown as CursorPage<ReviewFinding>,
+      ),
     enabled: runId !== null && enabled,
   });
 }

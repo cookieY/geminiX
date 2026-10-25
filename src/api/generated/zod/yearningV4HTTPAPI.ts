@@ -2987,7 +2987,7 @@ export const ListPromptToolsResponse = zod.union([zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(listPromptToolsResponseOneDataTwoItemsItemOneParametersOneMax),zod.string().max(listPromptToolsResponseOneDataTwoItemsItemOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(listPromptToolsResponseOneDataTwoItemsItemOneParametersFourItemMax)).max(listPromptToolsResponseOneDataTwoItemsItemOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(listPromptToolsResponseOneDataTwoItemsItemOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(listPromptToolsResponseOneDataTwoItemsItemOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(listPromptToolsResponseOneDataTwoItemsItemOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 }).and(zod.object({
@@ -3038,7 +3038,7 @@ export const CreatePromptToolBody = zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(createPromptToolBodyParametersOneMax),zod.string().max(createPromptToolBodyParametersTwoMax),zod.boolean(),zod.array(zod.string().max(createPromptToolBodyParametersFourItemMax)).max(createPromptToolBodyParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(createPromptToolBodyDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createPromptToolBodyDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createPromptToolBodyDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 })
@@ -3073,7 +3073,7 @@ export const CreatePromptToolResponse = zod.union([zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(createPromptToolResponseOneDataOneParametersOneMax),zod.string().max(createPromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(createPromptToolResponseOneDataOneParametersFourItemMax)).max(createPromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(createPromptToolResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createPromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createPromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 }).and(zod.object({
@@ -3131,7 +3131,7 @@ export const GetPromptToolResponse = zod.union([zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(getPromptToolResponseOneDataOneParametersOneMax),zod.string().max(getPromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(getPromptToolResponseOneDataOneParametersFourItemMax)).max(getPromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(getPromptToolResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(getPromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(getPromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 }).and(zod.object({
@@ -3192,7 +3192,7 @@ export const ReplacePromptToolBody = zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(replacePromptToolBodyParametersOneMax),zod.string().max(replacePromptToolBodyParametersTwoMax),zod.boolean(),zod.array(zod.string().max(replacePromptToolBodyParametersFourItemMax)).max(replacePromptToolBodyParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(replacePromptToolBodyDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replacePromptToolBodyDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replacePromptToolBodyDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 })
@@ -3227,7 +3227,7 @@ export const ReplacePromptToolResponse = zod.union([zod.object({
   "parameters": zod.record(zod.string(), zod.union([zod.int().min(1).max(replacePromptToolResponseOneDataOneParametersOneMax),zod.string().max(replacePromptToolResponseOneDataOneParametersTwoMax),zod.boolean(),zod.array(zod.string().max(replacePromptToolResponseOneDataOneParametersFourItemMax)).max(replacePromptToolResponseOneDataOneParametersFourMax)])).optional().describe('可调参数（阈值类；键命名^[a-z][a-z0-9_]{0,31}$， 值为正整数\/短字符串\/布尔\/短字符串数组；内置技能键集与 类型以行内为准，值可调）。知识文本以{{参数名}}引用， 注入时按行内当前值渲染；engine和parameters均由管理API 持久化并参与config_hash，变化使引用旧配置的未提交Review失效。'),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(replacePromptToolResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replacePromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replacePromptToolResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 })
 }).and(zod.object({
@@ -3322,7 +3322,7 @@ export const ListKnowledgeEntriesResponse = zod.union([zod.object({
   "table_name": zod.string().min(1).max(listKnowledgeEntriesResponseOneDataTwoItemsItemOneTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(listKnowledgeEntriesResponseOneDataTwoItemsItemOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(listKnowledgeEntriesResponseOneDataTwoItemsItemOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(listKnowledgeEntriesResponseOneDataTwoItemsItemOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']),
@@ -3369,7 +3369,7 @@ export const CreateKnowledgeEntryBody = zod.object({
   "table_name": zod.string().min(1).max(createKnowledgeEntryBodyTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(createKnowledgeEntryBodyDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createKnowledgeEntryBodyDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createKnowledgeEntryBodyDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']).optional(),
@@ -3403,7 +3403,7 @@ export const CreateKnowledgeEntryResponse = zod.union([zod.object({
   "table_name": zod.string().min(1).max(createKnowledgeEntryResponseOneDataOneTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(createKnowledgeEntryResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(createKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']),
@@ -3457,7 +3457,7 @@ export const GetKnowledgeEntryResponse = zod.union([zod.object({
   "table_name": zod.string().min(1).max(getKnowledgeEntryResponseOneDataOneTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(getKnowledgeEntryResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(getKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(getKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']),
@@ -3514,7 +3514,7 @@ export const ReplaceKnowledgeEntryBody = zod.object({
   "table_name": zod.string().min(1).max(replaceKnowledgeEntryBodyTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(replaceKnowledgeEntryBodyDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replaceKnowledgeEntryBodyDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replaceKnowledgeEntryBodyDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']).optional(),
@@ -3548,7 +3548,7 @@ export const ReplaceKnowledgeEntryResponse = zod.union([zod.object({
   "table_name": zod.string().min(1).max(replaceKnowledgeEntryResponseOneDataOneTableNameMax).optional(),
   "definition": zod.object({
   "knowledge_text": zod.string().min(1).max(replaceKnowledgeEntryResponseOneDataOneDefinitionKnowledgeTextMax),
-  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replaceKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Maximum severity this input\'s findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.'),
+  "max_severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']).default(replaceKnowledgeEntryResponseOneDataOneDefinitionMaxSeverityDefault).describe('Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.'),
   "version": zod.int().min(1)
 }),
   "provenance": zod.enum(['manual', 'finding_conversion']),
@@ -5407,11 +5407,14 @@ export const runDraftReviewHeaderIdempotencyKeyMax = 128;
 
 export const runDraftReviewHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
 export const runDraftReviewHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
+export const runDraftReviewHeaderAcceptLanguageMax = 1024;
+
 
 
 export const RunDraftReviewHeader = zod.object({
   "Idempotency-Key": zod.string().min(1).max(runDraftReviewHeaderIdempotencyKeyMax).regex(runDraftReviewHeaderIdempotencyKeyRegExp),
-  "If-Match": zod.string().regex(runDraftReviewHeaderIfMatchRegExp)
+  "If-Match": zod.string().regex(runDraftReviewHeaderIfMatchRegExp),
+  "Accept-Language": zod.string().max(runDraftReviewHeaderAcceptLanguageMax).optional().describe('Language preference for AI summary and finding title\/message\/suggestion. zh\/en variants are negotiated in preference order to zh-CN\/en-US; unsupported or malformed preferences default to zh-CN. The chosen locale is frozen when review starts, including task retries and model turns. Existing results are never automatically translated. Structured keys, enums, evidence IDs, anonymous tokens and technical identifiers retain their original values. Locale participates in idempotency identity.')
 })
 
 export const runDraftReviewResponseOneDataProgressCompletedMin = 0;
@@ -5549,6 +5552,8 @@ export const getReviewRunResponseOneDataStageResultsItemFindingCountMin = 0;
 
 export const getReviewRunResponseOneDataStageResultsItemEvidenceCountMin = 0;
 
+export const getReviewRunResponseOneDataStageResultsItemSummaryMax = 4000;
+
 export const getReviewRunResponseOneDataUsageOneInputTokensMin = 0;
 
 export const getReviewRunResponseOneDataUsageOneOutputTokensMin = 0;
@@ -5576,7 +5581,9 @@ export const GetReviewRunResponse = zod.union([zod.object({
   "gate_passed": zod.boolean(),
   "finding_count": zod.int().min(getReviewRunResponseOneDataStageResultsItemFindingCountMin),
   "evidence_count": zod.int().min(getReviewRunResponseOneDataStageResultsItemEvidenceCountMin),
-  "snapshot_hash": zod.string()
+  "snapshot_hash": zod.string(),
+  "summary": zod.string().max(getReviewRunResponseOneDataStageResultsItemSummaryMax).nullable().describe('Accepted model summary frozen with the review stage in its original output language. Null until a final model response has been accepted.'),
+  "summary_locale": zod.enum(['zh-CN', 'en-US']).nullable().describe('Language of the frozen accepted summary. Null exactly when summary is null.')
 })),
   "gate": zod.object({
   "passed": zod.boolean(),

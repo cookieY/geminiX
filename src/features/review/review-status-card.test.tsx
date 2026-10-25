@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReviewRun, ReviewStageResultState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
-import "@/shared/i18n";
+import i18n from "@/shared/i18n";
 import { ReviewStatusCard } from "./review-status-card";
 import type { RunPhase } from "./run-state";
 
@@ -29,6 +29,8 @@ function runFixture(overrides: Partial<ReviewRun> = {}): ReviewRun {
         finding_count: 1,
         evidence_count: 1,
         snapshot_hash: "snap-1",
+        summary: "审核完成。",
+        summary_locale: "zh-CN",
       },
     ],
     gate: { passed: true, reason_codes: [] },
@@ -41,16 +43,40 @@ function runFixture(overrides: Partial<ReviewRun> = {}): ReviewRun {
   };
 }
 
-function renderCard(phase: RunPhase, run: ReviewRun | null) {
-  return render(<ReviewStatusCard phase={phase} run={run} />);
+function renderCard(
+  phase: RunPhase,
+  run: ReviewRun | null,
+  query: {
+    hasRunId?: boolean;
+    isPending?: boolean;
+    isError?: boolean;
+    error?: unknown;
+    onRetry?: () => void;
+  } = {},
+) {
+  return render(
+    <ReviewStatusCard
+      phase={phase}
+      run={run}
+      hasRunId={query.hasRunId ?? (run !== null || phase !== "idle")}
+      isPending={query.isPending ?? false}
+      isError={query.isError ?? false}
+      error={query.error}
+      onRetry={query.onRetry}
+    />,
+  );
 }
 
 describe("ReviewStatusCard", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("zh-CN");
+  });
+
   it("shows counts and stage results for a finished run", () => {
     renderCard("ready", runFixture());
     expect(screen.getByTestId("review-counts").textContent).toContain("12");
     expect(screen.getByTestId("review-counts").textContent).toContain("3");
-    expect(screen.getByText("阶段 1")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "阶段 1" })).toBeInTheDocument();
     expect(screen.getByText("通过")).toBeInTheDocument();
   });
 
@@ -75,6 +101,8 @@ describe("ReviewStatusCard", () => {
             finding_count: 0,
             evidence_count: 0,
             snapshot_hash: "snap-x",
+            summary: null,
+            summary_locale: null,
           },
         ],
       }),
@@ -95,6 +123,26 @@ describe("ReviewStatusCard", () => {
   it("explains that no run exists yet instead of fabricating one", () => {
     renderCard("idle", null);
     expect(screen.getByText(/尚未运行预审/)).toBeInTheDocument();
+  });
+
+  it("shows run loading instead of claiming that no precheck exists", () => {
+    renderCard("idle", null, { hasRunId: true, isPending: true });
+    expect(screen.getByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
+    expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
+  });
+
+  it("shows a retryable run read error instead of claiming that no precheck exists", () => {
+    const onRetry = vi.fn();
+    renderCard("idle", null, {
+      hasRunId: true,
+      isError: true,
+      error: new Error("review run unavailable"),
+      onRetry,
+    });
+    expect(screen.getByTestId("review-status-error")).toHaveTextContent("请求失败");
+    expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 
   it("renders the real AI identity and usage line when the run carries usage", () => {
@@ -133,6 +181,8 @@ describe("ReviewStatusCard", () => {
             finding_count: 0,
             evidence_count: 0,
             snapshot_hash: "snap-o",
+            summary: null,
+            summary_locale: null,
           },
         ],
       }),
@@ -146,5 +196,122 @@ describe("ReviewStatusCard", () => {
     first.unmount();
     renderCard("failed", runFixture({ state: "failed", failure_code: "timed_out" }));
     expect(screen.getByTestId("review-failure").textContent).toContain("预审超时");
+  });
+
+  it("shows the accepted summary verbatim while translating only its label", async () => {
+    const summary = "已接受的中文审核结论。";
+    renderCard(
+      "ready",
+      runFixture({
+        stage_results: [
+          {
+            stage_position: 1,
+            state: "passed",
+            highest_severity: "none",
+            gate_passed: true,
+            finding_count: 0,
+            evidence_count: 1,
+            snapshot_hash: "snap-summary",
+            summary,
+            summary_locale: "zh-CN",
+          },
+        ] as ReviewRun["stage_results"],
+      }),
+    );
+
+    expect(screen.getByText("AI 审核结论")).toBeInTheDocument();
+    expect(screen.getByText(summary)).toHaveAttribute("lang", "zh-CN");
+
+    await i18n.changeLanguage("en-US");
+
+    expect(screen.getByText("AI review summary")).toBeInTheDocument();
+    expect(screen.getByText(summary)).toHaveAttribute("lang", "zh-CN");
+  });
+
+  it("renders Chinese and English frozen summaries independently of UI language", async () => {
+    const zhSummary = "中文冻结审核结论。";
+    const enSummary = "English frozen review summary.";
+    renderCard(
+      "ready",
+      runFixture({
+        stage_results: [
+          {
+            stage_position: 1,
+            state: "passed",
+            highest_severity: "none",
+            gate_passed: true,
+            finding_count: 0,
+            evidence_count: 1,
+            snapshot_hash: "snap-summary-zh",
+            summary: zhSummary,
+            summary_locale: "zh-CN",
+          },
+          {
+            stage_position: 2,
+            state: "passed",
+            highest_severity: "none",
+            gate_passed: true,
+            finding_count: 0,
+            evidence_count: 1,
+            snapshot_hash: "snap-summary-en",
+            summary: enSummary,
+            summary_locale: "en-US",
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText(zhSummary)).toHaveAttribute("lang", "zh-CN");
+    expect(screen.getByText(enSummary)).toHaveAttribute("lang", "en-US");
+
+    await i18n.changeLanguage("en-US");
+
+    expect(screen.getByText(zhSummary)).toHaveAttribute("lang", "zh-CN");
+    expect(screen.getByText(enSummary)).toHaveAttribute("lang", "en-US");
+  });
+
+  it("does not fabricate a summary for a stage that has not completed", () => {
+    renderCard(
+      "running",
+      runFixture({
+        state: "running",
+        stage_results: [
+          {
+            stage_position: 1,
+            state: "running",
+            highest_severity: "none",
+            gate_passed: false,
+            finding_count: 0,
+            evidence_count: 0,
+            snapshot_hash: "snap-running",
+            summary: null,
+            summary_locale: null,
+          },
+        ] as ReviewRun["stage_results"],
+      }),
+    );
+
+    expect(screen.queryByTestId("review-summary")).not.toBeInTheDocument();
+  });
+
+  it("ignores a malformed stage response with no summary property", () => {
+    const malformedStage = {
+      stage_position: 1,
+      state: "passed",
+      highest_severity: "none",
+      gate_passed: true,
+      finding_count: 0,
+      evidence_count: 1,
+      snapshot_hash: "snap-malformed",
+    };
+    renderCard(
+      "ready",
+      runFixture({
+        stage_results: [malformedStage] as unknown as ReviewRun["stage_results"],
+      }),
+    );
+
+    expect(screen.queryByTestId("review-summary")).not.toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "阶段 1" })).toBeInTheDocument();
   });
 });

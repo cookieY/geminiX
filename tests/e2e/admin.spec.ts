@@ -6,7 +6,8 @@ import { mockSession } from "./helpers/auth";
 //   1. Secret永不回填 — datasource credential fields and the provider API
 //      key render empty on edit; no stored secret text ever reaches the DOM;
 //   2. 无外部代码HTTP或写库Custom Tool UI — the review-input editor exposes
-//      only the four-field definition surface, no executable affordance;
+//      the governed rule definition with fixed Critical severity and no
+//      executable affordance;
 //   3. 配置Hash与Review失效影响明确 — config hashes, the outdated-impact
 //      note and the rule-set impact preview are visible;
 //   4. 内部经验无自动学习入口 — knowledge management offers only manual
@@ -62,19 +63,30 @@ test("review-input editor offers no executable-code, HTTP or database-write surf
   await page.getByTestId("review-input-create").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByTestId("review-input-knowledge-text")).toBeVisible();
-  // §18.66: the five-field editor — rule text plus the single max-severity
-  // control; finding key / template fields no longer render.
-  await expect(dialog.getByTestId("review-input-max-severity")).toBeVisible();
-  await expect(dialog.getByTestId("review-input-max-severity-medium")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  // R013: enabled rules always produce effective Critical findings. The
+  // legacy max_severity field remains on the wire but has no editable UI.
+  await expect(dialog.getByTestId("review-input-severity-policy")).toBeVisible();
+  await expect(dialog.getByTestId("review-input-critical-severity")).toContainText("严重");
+  await expect(dialog.getByTestId(/^review-input-max-severity/)).toHaveCount(0);
   await expect(dialog.getByTestId("review-input-finding-key")).toHaveCount(0);
   await expect(dialog.getByTestId("review-input-title")).toHaveCount(0);
   await expect(dialog.getByTestId("review-input-message")).toHaveCount(0);
   for (const button of await dialog.getByRole("button").all()) {
     expect(await button.textContent()).not.toMatch(/HTTP|执行代码|写库|Webhook/);
   }
+  await dialog.getByTestId("review-input-name").fill("e2e-critical-policy");
+  await dialog
+    .getByTestId("review-input-knowledge-text")
+    .fill("Every enabled rule violation is Critical and must block submission.");
+  const saveRequest = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/admin/prompt-tools"),
+  );
+  await dialog.getByTestId("review-input-submit").click();
+  const payload = (await saveRequest).postDataJSON() as {
+    definition?: { max_severity?: string };
+  };
+  expect(payload.definition?.max_severity).toBe("critical");
+  await expect(dialog).toBeHidden();
 });
 
 test("config hashes and review-invalidation impact live in the edit dialog (owner ruling)", async ({ page }) => {

@@ -17,6 +17,7 @@ import {
 import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-event-client";
 import { useSession } from "@/features/auth/session-provider";
 import { stageApprovalSteps } from "@/features/orders/approval-steps";
+import { fetchAllCursorPages, type CursorPage } from "@/shared/lib/fetch-all-cursor-pages";
 
 /**
  * Server-state hooks for the approval workspace (frontend PRD F7). The
@@ -160,12 +161,13 @@ export function useCreateOrderComment(orderId: string) {
 export function useOrderReviewFindings(orderId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["change-order-review-findings", orderId],
-    queryFn: async () => {
-      const page = (await listOrderReviewFindings(orderId, { limit: 50 })) as unknown as {
-        items: ReviewFinding[];
-      };
-      return page.items;
-    },
+    queryFn: async () =>
+      fetchAllCursorPages(async (after) =>
+        (await listOrderReviewFindings(orderId, {
+          limit: 200,
+          ...(after === null ? {} : { after }),
+        })) as unknown as CursorPage<ReviewFinding>,
+      ),
     enabled: enabled && orderId !== "",
   });
 }

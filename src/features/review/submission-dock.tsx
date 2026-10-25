@@ -8,6 +8,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import {
   gateBlockers,
+  isTerminalPhase,
   submissionDecision,
   type RunPhase,
 } from "./run-state";
@@ -51,16 +52,35 @@ export function SubmissionDock(props: SubmissionDockProps) {
     flowUpdated: props.flowUpdated,
     reviewCurrent: props.reviewCurrent,
   });
-  const blockers = gateBlockers(props.gate);
+  const reviewInProgress =
+    !props.flowUpdated && (props.phase === "queued" || props.phase === "running");
+  const canShowGateResult =
+    isTerminalPhase(props.phase) &&
+    props.reviewCurrent &&
+    !props.dirty &&
+    !props.flowUpdated;
+  const blockers = canShowGateResult ? gateBlockers(props.gate) : [];
   const panel = props.variant === "panel";
 
-  const inner = (
+  const statusAlerts = (
     <>
       {props.flowUpdated && (
         <Alert data-testid="flow-updated-alert">
           <ShieldAlert className="size-4" aria-hidden />
           <AlertTitle>{t("precheck.flowUpdated.title")}</AlertTitle>
           <AlertDescription>{t("precheck.flowUpdated.description")}</AlertDescription>
+        </Alert>
+      )}
+      {reviewInProgress && (
+        <Alert
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="review-in-progress"
+        >
+          <Spinner aria-hidden />
+          <AlertTitle>{t("precheck.progress.title")}</AlertTitle>
+          <AlertDescription>{t("precheck.progress.description")}</AlertDescription>
         </Alert>
       )}
       {!props.flowUpdated && blockers.length > 0 && (
@@ -76,6 +96,12 @@ export function SubmissionDock(props: SubmissionDockProps) {
           </AlertDescription>
         </Alert>
       )}
+    </>
+  );
+
+  const inner = (
+    <>
+      {statusAlerts}
       <p className="text-muted-foreground text-sm" data-testid="submission-readiness">
         {decision.submitEnabled
           ? t("precheck.submit.ready")
@@ -152,26 +178,7 @@ export function SubmissionDock(props: SubmissionDockProps) {
       data-testid="submission-dock"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3">
-        {props.flowUpdated && (
-          <Alert data-testid="flow-updated-alert">
-            <ShieldAlert className="size-4" aria-hidden />
-            <AlertTitle>{t("precheck.flowUpdated.title")}</AlertTitle>
-            <AlertDescription>{t("precheck.flowUpdated.description")}</AlertDescription>
-          </Alert>
-        )}
-        {!props.flowUpdated && blockers.length > 0 && (
-          <Alert variant="destructive" data-testid="gate-blockers">
-            <ShieldAlert className="size-4" aria-hidden />
-            <AlertTitle>{t("precheck.blocked.gate")}</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-4">
-                {blockers.map((blocker) => (
-                  <li key={blocker.code}>{t(blocker.messageKey)}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
+        {statusAlerts}
         <div className="flex items-center gap-3">
           <p className="text-muted-foreground flex-1 text-sm" data-testid="submission-readiness">
             {decision.submitEnabled

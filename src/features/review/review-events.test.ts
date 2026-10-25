@@ -99,6 +99,21 @@ describe("review events wiring", () => {
       await new Promise((resolve) => {
         setTimeout(resolve, 1_700);
       });
+      const frozenRun = (await (
+        await fetch(`/review-runs/${runId}`)
+      ).json()) as {
+        data: {
+          stage_results: Array<{
+            summary: string | null;
+            summary_locale: "zh-CN" | "en-US" | null;
+          }>;
+        };
+      };
+      // The authoritative HTTP read model keeps the accepted frozen summary;
+      // the event notification omits these read-model-only fields so its
+      // strict domain-event schema can accept and deliver it.
+      expect(frozenRun.data.stage_results[0]?.summary).toContain("AI 审核已完成");
+      expect(frozenRun.data.stage_results[0]?.summary_locale).toBe("zh-CN");
 
       // Immediate remount after stop: the client converges the previous loop
       // instead of silently dying (the stop→start race the review gate

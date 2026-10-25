@@ -12,6 +12,7 @@ import {
   ADMIN_FIXTURE_DATASOURCE_PG_ID,
   ADMIN_FIXTURE_PROVIDER_PRIMARY_ID,
   ADMIN_FIXTURE_TOOL_BUILTIN_ID,
+  ADMIN_FIXTURE_TOOL_DRAFT_ID,
 } from "@/shared/mock/admin-fixture";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { RequireAdminCapability } from "@/app/router/guards";
@@ -150,13 +151,14 @@ describe("gate: Secret永不回填", () => {
 });
 
 describe("gate: 无外部代码HTTP或写库Custom Tool UI", () => {
-  it("renders only the five-field definition editor — no executable affordances", async () => {
+  it("renders only the governed rule definition editor — no executable affordances", async () => {
     renderPage(<AdminReviewSkillsPage />);
     await screen.findByTestId("review-input-create");
     await userEvent.click(screen.getByTestId("review-input-create"));
     await screen.findByTestId("review-input-knowledge-text");
-    // §18.66：定义面只剩规则正文+最高严重级别；finding key/模板字段不再呈现。
-    expect(screen.getByTestId("review-input-max-severity")).toBeInTheDocument();
+    // 强制规则的实际违规等级固定为 Critical；legacy max_severity 不再是可编辑选项。
+    expect(screen.getByTestId("review-input-critical-severity")).toHaveTextContent("严重");
+    expect(screen.queryByTestId(/^review-input-max-severity/)).not.toBeInTheDocument();
     expect(screen.queryByTestId("review-input-finding-key")).not.toBeInTheDocument();
     expect(screen.queryByTestId("review-input-title")).not.toBeInTheDocument();
     expect(screen.queryByTestId("review-input-message")).not.toBeInTheDocument();
@@ -386,19 +388,67 @@ describe("admin page flows", () => {
 // ---- dialog flows: create/replace/delete on both registries ----
 
 describe("review-input dialog flows", () => {
-  it("creates an enabled skill through the five-field editor", async () => {
+  it("submits a new skill with Critical as the effective severity", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    server.use(
+      http.post("*/admin/prompt-tools", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        writes.push(body);
+      }),
+    );
     renderPage(<AdminReviewSkillsPage />);
     await userEvent.click(await screen.findByTestId("review-input-create"));
     await userEvent.type(screen.getByTestId("review-input-name"), "column-null-check");
     await userEvent.type(screen.getByTestId("review-input-knowledge-text"), "Columns must be NOT NULL unless justified.");
-    // §18.66：单一最高档控件——切到 high 再切回 medium（默认档）。
-    await userEvent.click(screen.getByTestId("review-input-max-severity-high"));
-    await userEvent.click(screen.getByTestId("review-input-max-severity-medium"));
+    expect(screen.getByTestId("review-input-critical-severity")).toBeInTheDocument();
+    expect(screen.queryByTestId(/^review-input-max-severity/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByTestId("review-input-submit"));
-    await waitFor(() => expect(screen.getByText("column-null-check")).toBeInTheDocument());
-    // owner裁定：说明挪入编辑对话框，列表页不再有常驻Alert。
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("review-input-outdated-note")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(writes[0]?.definition).toMatchObject({ max_severity: "critical" });
+  });
+
+  it("preserves legacy draft max_severity while showing Critical as the effective severity", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    server.use(
+      http.put("*/admin/prompt-tools/:promptToolId", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        writes.push(body);
+      }),
+    );
+    renderPage(<AdminReviewSkillsPage />);
+    const row = await screen.findByTestId(`review-input-row-${ADMIN_FIXTURE_TOOL_DRAFT_ID}`);
+    await openRowActionsAt(within(row).getByTestId(/review-input-actions-/));
+    await userEvent.click(screen.getByTestId(/review-input-edit-/));
+    await screen.findByTestId("review-input-critical-severity");
+    expect(screen.queryByTestId(/^review-input-max-severity/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("review-input-submit"));
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(writes[0]?.definition).toMatchObject({ max_severity: "low" });
+  });
+
+  it("submits an internal-experience rule with Critical as the effective severity", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    server.use(
+      http.post("*/admin/knowledge-entries", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        writes.push(body);
+      }),
+    );
+    renderPage(<AdminReviewKnowledgePage />);
+    await userEvent.click(await screen.findByTestId("review-input-create"));
+    await userEvent.type(screen.getByTestId("review-input-name"), "charset-policy");
+    await userEvent.type(screen.getByTestId("review-input-knowledge-text"), "Keep the default charset.");
+    expect(screen.getByTestId("review-input-critical-severity")).toBeInTheDocument();
+    expect(screen.queryByTestId(/^review-input-max-severity/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("review-input-submit"));
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(writes[0]?.definition).toMatchObject({ max_severity: "critical" });
   });
 
   it("replaces an existing skill and bumps its version", async () => {
@@ -670,7 +720,8 @@ describe("gate: 内置技能锁徽章与定义面锁定", () => {
     expect(screen.getByTestId("review-input-engine")).toBeDisabled();
     expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
     expect(screen.getByTestId("review-input-knowledge-text")).toBeDisabled();
-    expect(screen.getByTestId("review-input-max-severity-high")).toBeDisabled();
+    expect(screen.getByTestId("review-input-critical-severity")).toHaveTextContent("严重");
+    expect(screen.queryByTestId(/^review-input-max-severity/)).not.toBeInTheDocument();
     expect(screen.getByTestId("review-input-state-select")).toBeEnabled();
   });
 

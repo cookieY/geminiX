@@ -890,7 +890,7 @@ export const PromptToolWriteEngine = {
 export type PromptToolWriteParameters = {[key: string]: number | string | boolean | string[]};
 
 /**
- * Maximum severity this input's findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text.
+ * Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text.
  */
 export type ReviewInputDefinitionMaxSeverity = typeof ReviewInputDefinitionMaxSeverity[keyof typeof ReviewInputDefinitionMaxSeverity];
 
@@ -909,7 +909,7 @@ export interface ReviewInputDefinition {
      * @maxLength 65536
      */
   knowledge_text: string;
-  /** Maximum severity this input's findings may carry (downward-closed allowlist info..max_severity). The finding key is not part of the user definition: the system derives a stable per-row key and injects it into the model context alongside the rule text. */
+  /** Retained for v1 definition, API and stored-configuration compatibility. This field is not a submission ceiling for enabled mandatory rules and cannot authorize a lower-risk result: every actual hit from an enabled, frozen and scope-matched Prompt Tool or internal-experience rule becomes effective Critical and blocks submission regardless of the model-provided severity. Unbound model observations remain visible but are capped at Medium. The finding key is system-derived and is injected alongside the rule text. */
   max_severity: ReviewInputDefinitionMaxSeverity;
   /** @minimum 1 */
   version: number;
@@ -1905,6 +1905,17 @@ export const ReviewStageResultHighestSeverity = {
   critical: 'critical',
 } as const;
 
+/**
+ * Language of the frozen accepted summary. Null exactly when summary is null.
+ */
+export type ReviewStageResultSummaryLocale = typeof ReviewStageResultSummaryLocale[keyof typeof ReviewStageResultSummaryLocale] | null;
+
+
+export const ReviewStageResultSummaryLocale = {
+  'zh-CN': 'zh-CN',
+  'en-US': 'en-US',
+} as const;
+
 export interface ReviewStageResult {
   /** @minimum 1 */
   stage_position: number;
@@ -1917,6 +1928,13 @@ export interface ReviewStageResult {
   /** @minimum 0 */
   evidence_count: number;
   snapshot_hash: string;
+  /**
+     * Accepted model summary frozen with the review stage in its original output language. Null until a final model response has been accepted.
+     * @maxLength 4000
+     */
+  summary: string | null;
+  /** Language of the frozen accepted summary. Null exactly when summary is null. */
+  summary_locale: ReviewStageResultSummaryLocale;
 }
 
 export interface SubmissionGate {

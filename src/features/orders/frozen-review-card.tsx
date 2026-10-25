@@ -48,7 +48,7 @@ export function FrozenReviewCard({ orderId }: { orderId: string }) {
               {t("orders.detail.frozenReviewNote")}
             </p>
             <FindingList
-              findings={findingsQuery.data}
+              state={{ status: "ready", findings: findingsQuery.data }}
               onOpenEvidence={(finding) => {
                 setEvidenceFinding(finding);
                 setEvidenceOpen(true);

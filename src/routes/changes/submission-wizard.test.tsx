@@ -2,10 +2,10 @@ import { fireEvent, within, render, screen, waitFor } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpResponse, http } from "msw";
 import { server } from "@/test/msw/server";
-import "@/shared/i18n";
+import i18n from "@/shared/i18n";
 import {
   FIXTURE_FLOW_ID,
   FIXTURE_OWNER_ID,
@@ -112,12 +112,18 @@ beforeEach(() => {
   grantSession();
 });
 
+afterEach(async () => {
+  await i18n.changeLanguage("zh-CN");
+});
+
 describe("SubmissionWizard create mode (implicit drafts)", () => {
   it("adopts the draft silently on the first acting operation, never before", async () => {
     const reviewDraftIds: string[] = [];
+    const reviewLanguages: Array<string | null> = [];
     server.use(
-      http.post("*/change-drafts/:draftId/review-runs", ({ params }) => {
+      http.post("*/change-drafts/:draftId/review-runs", ({ params, request }) => {
         reviewDraftIds.push(String(params.draftId));
+        reviewLanguages.push(request.headers.get("Accept-Language"));
         return HttpResponse.json({ err_code: 0, message: "ok", data: null, request_id: FIXTURE_OWNER_ID });
       }),
     );
@@ -157,6 +163,38 @@ describe("SubmissionWizard create mode (implicit drafts)", () => {
     expect(drafts.data.items[0]?.has_sql).toBe(true);
     expect(drafts.data.items.filter((draft) => draft.title === "向导创建草稿")).toHaveLength(1);
     expect(reviewDraftIds).toEqual([drafts.data.items[0]?.id]);
+    expect(reviewLanguages).toEqual(["zh-CN"]);
+  });
+
+  it("sends the page language with the AI review request", async () => {
+    await i18n.changeLanguage("en-US");
+    let reviewLanguage: string | null = null;
+    server.use(
+      http.post("*/change-drafts/:draftId/review-runs", ({ request }) => {
+        reviewLanguage = request.headers.get("Accept-Language");
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "English precheck" },
+    });
+    fireEvent.change(await screen.findByTestId("sql-editor"), {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    fireEvent.click(screen.getByTestId("run-review"));
+
+    await waitFor(() => {
+      expect(reviewLanguage).toBe("en-US");
+    });
   });
 
   it("imports bulk SQL against the adopted draft and keeps plaintext for this session", async () => {

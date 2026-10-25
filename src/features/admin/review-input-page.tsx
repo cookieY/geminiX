@@ -182,7 +182,7 @@ function emptyForm(): ReviewInputFormState {
     editor: {
       definition: {
         knowledge_text: "",
-        max_severity: "medium",
+        max_severity: "critical",
         version: 1,
       },
       parameters: {},
@@ -967,6 +967,10 @@ function ReviewInputDialog({
   const submit = () => {
     setErrorKey(null);
     setErrorRequestId(null);
+    // max_severity is a retained v1 wire field. Preserve historical stored
+    // values on unrelated edits; effective mandatory-rule severity remains
+    // Critical in the backend regardless of this compatibility metadata.
+    const definition = form.editor.definition;
     if (isSkills) {
       // §18.81：参数值按行内类型还原后再提交；非法值就地拦截不发请求。
       const params = convertParamDrafts(form.paramDrafts, rowParams);
@@ -982,7 +986,7 @@ function ReviewInputDialog({
         state: form.state,
         engine: form.engine,
         parameters: params,
-        definition: form.editor.definition,
+        definition,
       };
       if (editing === null) {
         createTool.mutate(write, { onSuccess: onClose, onError: onWriteError("createPromptTool") });
@@ -1001,7 +1005,7 @@ function ReviewInputDialog({
         datasource_id: form.scopeType === "global" ? undefined : form.datasourceId === "" ? undefined : form.datasourceId,
         database_name: form.databaseName === "" ? undefined : form.databaseName,
         table_name: form.tableName === "" ? undefined : form.tableName,
-        definition: form.editor.definition,
+        definition,
         provenance: editing !== null && "provenance" in editing ? editing.provenance : "manual",
         source_finding_id:
           editing !== null && "source_finding_id" in editing

@@ -18,8 +18,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { Separator } from "@/shared/components/ui/separator";
 import { EmptyState } from "@/shared/components/status/empty-state";
-import { CheckCircle2, CircleDashed, Loader2, OctagonAlert, TriangleAlert } from "lucide-react";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import {
+  CheckCircle2,
+  CircleAlert,
+  CircleDashed,
+  Loader2,
+  OctagonAlert,
+  TriangleAlert,
+} from "lucide-react";
 import type { RunPhase } from "./run-state";
 
 /**
@@ -57,10 +67,43 @@ function stageBadgeOf(state: string): { key: string; className: string } {
   return { key: "precheck.stage.pending", className: "text-muted-foreground" };
 }
 
-export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewRun | null }) {
+export interface ReviewStatusCardProps {
+  phase: RunPhase;
+  run: ReviewRun | null;
+  hasRunId: boolean;
+  isPending: boolean;
+  isError: boolean;
+  error?: unknown;
+  onRetry?: () => void;
+}
+
+export function ReviewStatusCard({
+  phase,
+  run,
+  hasRunId,
+  isPending,
+  isError,
+  error,
+  onRetry,
+}: ReviewStatusCardProps) {
   const { t } = useTranslation();
-  const badge = PHASE_BADGE[phase];
+  const badge = isError
+    ? {
+        key: "precheck.review.errorBadge",
+        icon: CircleAlert,
+        className: "text-destructive",
+        spin: false,
+      }
+    : hasRunId && (isPending || run === null) && phase === "idle"
+      ? {
+          key: "precheck.review.loadingBadge",
+          icon: Loader2,
+          className: "text-primary",
+          spin: true,
+        }
+      : PHASE_BADGE[phase];
   const Icon = badge.icon;
+  const summaries = run?.stage_results.filter(hasReviewSummary) ?? [];
 
   return (
     <Card data-testid="review-status">
@@ -75,7 +118,22 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
         <CardDescription>{t("precheck.review.description")}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {run !== null && (
+        {!hasRunId && <EmptyState title={t("precheck.review.noRun")} />}
+        {hasRunId && isError && (
+          <div data-testid="review-status-error">
+            <ErrorState
+              error={error}
+              operationId="getReviewRun"
+              onRetry={onRetry}
+            />
+          </div>
+        )}
+        {hasRunId && !isError && run === null && (
+          <div data-testid="review-status-loading">
+            <LoadingState variant="inline" label={t("precheck.review.loading")} />
+          </div>
+        )}
+        {hasRunId && !isError && run !== null && (
           <>
             <div className="text-sm" data-testid="review-counts">
               {t("precheck.review.statements", { count: run.statement_count })} ·{" "}
@@ -118,6 +176,35 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
                 })}
               </TableBody>
             </Table>
+            {summaries.length > 0 && (
+              <>
+                <Separator />
+                <section
+                  className="flex flex-col gap-3"
+                  aria-label={t("precheck.review.summary")}
+                  data-testid="review-summary"
+                >
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {t("precheck.review.summary")}
+                  </h3>
+                  <dl className="flex flex-col gap-3">
+                    {summaries.map((stage) => (
+                      <div className="flex flex-col gap-1" key={stage.stage_position}>
+                        <dt className="text-xs font-medium text-muted-foreground">
+                          {t("precheck.stagePath.stage", { position: stage.stage_position })}
+                        </dt>
+                        <dd
+                          className="text-sm leading-6 text-foreground"
+                          lang={stage.summary_locale}
+                        >
+                          {stage.summary}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              </>
+            )}
             {run.failure_code != null && (
               <p className="text-sm text-[var(--exec-failed)]" data-testid="review-failure">
                 {t(`precheck.failure.${knownFailureKey(run.failure_code)}`)}
@@ -125,9 +212,21 @@ export function ReviewStatusCard({ phase, run }: { phase: RunPhase; run: ReviewR
             )}
           </>
         )}
-        {run === null && <EmptyState title={t("precheck.review.noRun")} />}
       </CardContent>
     </Card>
+  );
+}
+
+function hasReviewSummary(
+  stage: ReviewRun["stage_results"][number],
+): stage is ReviewRun["stage_results"][number] & {
+  summary: string;
+  summary_locale: "zh-CN" | "en-US";
+} {
+  return (
+    typeof stage.summary === "string" &&
+    stage.summary.trim() !== "" &&
+    (stage.summary_locale === "zh-CN" || stage.summary_locale === "en-US")
   );
 }
 

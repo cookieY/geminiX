@@ -144,6 +144,25 @@ describe("submissionDecision", () => {
     expect(decision.reasonKey).toBe("precheck.blocked.gate");
   });
 
+  it("fails closed when a ready run has no passing gate", () => {
+    for (const gate of [
+      null,
+      undefined,
+      { passed: false, reason_codes: [] },
+    ]) {
+      const decision = submissionDecision({
+        draftState: "ready",
+        runPhase: "ready",
+        gate,
+        dirty: false,
+        flowUpdated: false,
+        reviewCurrent: true,
+      });
+      expect(decision.submitEnabled).toBe(false);
+      expect(decision.reasonKey).toBe("precheck.blocked.gate");
+    }
+  });
+
   it("blocks on unsaved SQL changes because the hash can no longer match", () => {
     const decision = submissionDecision({
       draftState: "ready",

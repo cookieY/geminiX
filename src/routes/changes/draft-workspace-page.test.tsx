@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -6,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpResponse, http } from "msw";
 import { server } from "@/test/msw/server";
 import "@/shared/i18n";
+import type {
+  GetReviewRun200,
+  ReviewFinding,
+} from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
   FIXTURE_FLOW_ID,
   FIXTURE_OWNER_ID,
@@ -25,6 +30,22 @@ import OrderDetailPage from "./order-detail-page";
  */
 
 const OWNER = "0198d9cc-e65d-7b9d-a8aa-3c81945f99ac";
+
+function findingFixture(overrides: Partial<ReviewFinding> = {}): ReviewFinding {
+  return {
+    id: "4f6f1a2b-0000-4000-8000-00000000f101",
+    stage_position: 1,
+    fingerprint_group_id: null,
+    category: "performance",
+    severity: "low",
+    title: "索引缺失",
+    message: "语句 `UPDATE orders SET status = 1` 无法命中索引。",
+    suggestion: "补充索引。",
+    model_confidence: 0.9,
+    evidence_ids: [],
+    ...overrides,
+  };
+}
 
 // jsdom lacks ResizeObserver; the resizable panels need it for layout.
 class ResizeObserverStub {
@@ -63,6 +84,7 @@ interface FixtureDraft {
   revision: number;
   state: string;
   version: number;
+  review_run_id: string | null;
 }
 
 async function createReadyDraft(): Promise<FixtureDraft> {
@@ -116,6 +138,36 @@ function renderWorkspace(draftId: string) {
   return { ...utils, queryClient };
 }
 
+async function serveTerminalReview(
+  draft: FixtureDraft,
+  state: "failed" | "partial" | "blocked",
+  findings: ReviewFinding[] = [],
+): Promise<void> {
+  if (draft.review_run_id === null) throw new Error("review run id missing");
+  const snapshot = (await (
+    await fetch(`/review-runs/${draft.review_run_id}`)
+  ).json()) as GetReviewRun200;
+  server.use(
+    http.get("*/review-runs/:runId", () =>
+      HttpResponse.json({
+        ...snapshot,
+        data: { ...snapshot.data, state },
+      }),
+    ),
+    http.get("*/review-runs/:runId/findings", () =>
+      HttpResponse.json({
+        err_code: 0,
+        message: "ok",
+        data: {
+          items: findings,
+          page: { next_cursor: null, has_more: false },
+        },
+        request_id: OWNER,
+      }),
+    ),
+  );
+}
+
 /** One-page layout (owner ruling 2026-10-24): the summary card and its
  * submission dock are always mounted next to the form — there is no step
  * navigation to walk anymore. Kept as a named no-op so the tests that used
@@ -133,6 +185,14 @@ async function refetchRunQuery(
   await queryClient.invalidateQueries({ queryKey: ["review-run", reviewRunId] });
   await queryClient.refetchQueries({ queryKey: ["review-run", reviewRunId] });
   void draftId;
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 beforeEach(() => {
@@ -207,6 +267,227 @@ describe("DraftWorkspacePage", () => {
     expect(await screen.findByTestId("wizard-summary")).toBeVisible();
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
+
+  it("distinguishes terminal findings loading from an empty review", async () => {
+    const draft = await createReadyDraft();
+    const requestStarted = deferred();
+    const releaseRequest = deferred();
+    server.use(
+      http.get("*/review-runs/:runId/findings", async () => {
+        requestStarted.resolve();
+        await releaseRequest.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: [],
+            page: { next_cursor: null, has_more: false },
+          },
+          request_id: OWNER,
+        });
+      }),
+    );
+
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+    await requestStarted.promise;
+
+    expect(screen.getByTestId("findings-loading")).toHaveTextContent("正在加载风险发现");
+    expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
+
+    releaseRequest.resolve();
+    await waitFor(() => {
+      expect(screen.getByTestId("findings-empty-all")).toBeVisible();
+    });
+  });
+
+  it("loads every finding page before applying the severity filter", async () => {
+    const user = userEvent.setup();
+    const draft = await createReadyDraft();
+    const firstPage = Array.from({ length: 50 }, (_, index) =>
+      findingFixture({
+        id: `4f6f1a2b-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+        title: `低风险发现 ${String(index + 1)}`,
+      }),
+    );
+    const secondPageFinding = findingFixture({
+      id: "4f6f1a2b-0000-4000-8000-000000000051",
+      severity: "critical",
+      title: "第二页严重发现",
+      message: "仅从第二页返回的严重风险。",
+    });
+    const requestedCursors: Array<string | null> = [];
+    const requestedLimits: Array<string | null> = [];
+    server.use(
+      http.get("*/review-runs/:runId/findings", ({ request }) => {
+        const url = new URL(request.url);
+        const after = url.searchParams.get("after");
+        requestedCursors.push(after);
+        requestedLimits.push(url.searchParams.get("limit"));
+        const isSecondPage = after === "cursor-page-2";
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            items: isSecondPage ? [secondPageFinding] : firstPage,
+            page: isSecondPage
+              ? { next_cursor: null, has_more: false }
+              : { next_cursor: "cursor-page-2", has_more: true },
+          },
+          request_id: OWNER,
+        });
+      }),
+    );
+
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+    await waitFor(() => {
+      expect(requestedCursors).toEqual([null, "cursor-page-2"]);
+    });
+    expect(requestedLimits).toEqual(["200", "200"]);
+
+    await user.click(screen.getByLabelText("筛选严重级别"));
+    await user.click(await screen.findByRole("option", { name: "严重" }));
+    expect(screen.getAllByTestId("finding-item")).toHaveLength(1);
+    expect(screen.getByText("第二页严重发现")).toBeInTheDocument();
+  });
+
+  it("never presents a run read failure as an idle or empty review", async () => {
+    const draft = await createReadyDraft();
+    server.use(
+      http.get("*/review-runs/:runId", () =>
+        HttpResponse.json(
+          {
+            err_code: 5000,
+            message: "review run temporarily unavailable",
+            data: null,
+            request_id: OWNER,
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status-error")).toHaveTextContent("请求失败");
+    expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+    expect(await screen.findByTestId("findings-error")).toHaveTextContent("请求失败");
+    expect(screen.queryByTestId("findings-empty")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
+  });
+
+  it("keeps run loading distinct from a draft that never started a review", async () => {
+    const draft = await createReadyDraft();
+    const snapshot = (await (
+      await fetch(`/review-runs/${draft.review_run_id ?? ""}`)
+    ).json()) as GetReviewRun200;
+    const requestStarted = deferred();
+    const releaseRequest = deferred();
+    server.use(
+      http.get("*/review-runs/:runId", async () => {
+        requestStarted.resolve();
+        await releaseRequest.promise;
+        return HttpResponse.json(snapshot);
+      }),
+    );
+
+    renderWorkspace(draft.id);
+    await requestStarted.promise;
+    expect(screen.getByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
+    expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+    expect(screen.getByTestId("findings-loading")).toHaveTextContent("正在加载风险发现");
+    expect(screen.queryByTestId("findings-idle")).not.toBeInTheDocument();
+
+    releaseRequest.resolve();
+    fireEvent.click(screen.getByTestId("tab-overview"));
+    expect(await screen.findByTestId("review-counts")).toBeVisible();
+  });
+
+  it("keeps the findings tab in a waiting state while the review is queued", async () => {
+    const create = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "等待中的风险发现" }),
+      })
+    ).json()) as { data: { id: string } };
+    const draftId = create.data.id;
+    await fetch(`/change-drafts/${draftId}/sql`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql: "UPDATE orders SET status = 1 WHERE user_id = 42;" }),
+    });
+    const started = (await (
+      await fetch(`/change-drafts/${draftId}/review-runs`, { method: "POST" })
+    ).json()) as { data: { result_ref: string } };
+    const runId = started.data.result_ref.split("/").pop();
+    if (runId === undefined) throw new Error("review run reference missing");
+    const queuedSnapshot = (await (
+      await fetch(`/review-runs/${runId}`)
+    ).json()) as GetReviewRun200;
+    server.use(
+      http.get("*/review-runs/:runId", () => HttpResponse.json(queuedSnapshot)),
+    );
+
+    renderWorkspace(draftId);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+
+    const waiting = screen.getByTestId("findings-waiting");
+    expect(waiting).toHaveAttribute("role", "status");
+    expect(waiting).toHaveTextContent("风险发现将在所有审核阶段完成后显示");
+    expect(screen.queryByTestId("findings-empty")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
+    expect(screen.getByTestId("submit-draft")).toBeDisabled();
+  });
+
+  it("shows a retryable findings error instead of claiming no risks", async () => {
+    const draft = await createReadyDraft();
+    server.use(
+      http.get("*/review-runs/:runId/findings", () =>
+        HttpResponse.json(
+          {
+            err_code: 5000,
+            message: "findings temporarily unavailable",
+            data: null,
+            request_id: OWNER,
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWorkspace(draft.id);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    fireEvent.click(screen.getByTestId("tab-findings"));
+
+    expect(await screen.findByTestId("findings-error")).toHaveTextContent("请求失败");
+    expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "重试" })).toBeVisible();
+    });
+  });
+
+  it.each(["failed", "partial", "blocked"] as const)(
+    "does not claim no risks when a %s review has no findings",
+    async (state) => {
+      const draft = await createReadyDraft();
+      await serveTerminalReview(draft, state, []);
+
+      renderWorkspace(draft.id);
+      expect(await screen.findByTestId("review-status")).toBeVisible();
+      fireEvent.click(screen.getByTestId("tab-findings"));
+
+      const incomplete = await screen.findByTestId("findings-incomplete");
+      expect(incomplete).toHaveTextContent("审核未完整完成");
+      expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
+      expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    },
+  );
 
   it("treats a flow.updated domain event as a submission blocker", async () => {
     const draft = await createReadyDraft();
