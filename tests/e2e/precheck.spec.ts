@@ -141,6 +141,7 @@ test("Ready draft submits through the confirmation and lands on the order detail
 test("Blocked outcome lists gate blockers and keeps submit disabled", async ({ page }) => {
   await setReviewScenario(page, "review-blocked");
   await runReviewThroughUi(page);
+  await expect(page.getByTestId("review-status")).toContainText("已阻断");
   await page.getByTestId("tab-findings").click();
   await expect(page.getByTestId("finding-item").first()).toBeVisible();
   await expect(page.getByTestId("findings-incomplete")).toHaveCount(0);
@@ -148,7 +149,6 @@ test("Blocked outcome lists gate blockers and keeps submit disabled", async ({ p
   await gotoConfirmStep(page);
   await expect(page.getByTestId("gate-blockers")).toContainText("存在严重风险发现");
   await expect(page.getByTestId("submit-draft")).toBeDisabled();
-  await expect(page.getByTestId("review-status")).toContainText("已阻断");
 });
 
 for (const locale of ["zh-CN", "en-US"] as const) {
