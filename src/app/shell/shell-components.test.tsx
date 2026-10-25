@@ -56,7 +56,13 @@ describe("UserMenu", () => {
   it("opens the account sheet with identity and disabled actions that explain themselves", async () => {
     const user = userEvent.setup();
     renderWithShellProviders(<UserMenu />);
-    await user.click(screen.getByRole("button", { name: "账户菜单" }));
+    const trigger = screen.getByRole("button", { name: "账户菜单" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await user.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger.getAttribute("aria-controls")).toBe(dialog.id);
     expect(await screen.findByText("会话未接入")).toBeVisible();
     const profile = screen.getByRole("button", { name: /个人中心/ });
     expect(profile).toBeDisabled();

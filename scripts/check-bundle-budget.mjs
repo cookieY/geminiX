@@ -54,6 +54,11 @@ const rows = initialAssets.map((asset) => {
 
 const jsKib = rows.filter((r) => r.kind === "js").reduce((sum, r) => sum + r.gzipBytes, 0) / 1024;
 const cssKib = rows.filter((r) => r.kind === "css").reduce((sum, r) => sum + r.gzipBytes, 0) / 1024;
+const initialAssetNames = new Set(rows.map((row) => row.asset));
+const initialJsSource = rows
+  .filter((row) => row.kind === "js")
+  .map((row) => readFileSync(path.join(DIST, "assets", row.asset), "utf8"))
+  .join("\n");
 
 const violations = [];
 if (jsKib > BUDGET_JS_KIB) {
@@ -82,9 +87,27 @@ for (const row of rows) {
   }
 }
 
+// The mobile sidebar and account menu share the Sheet implementation. Its
+// portal/content markers must not survive in an initial JavaScript chunk even
+// when those chunks are under the numeric budget. Require at least one lazy
+// chunk to retain them so an empty/stubbed Sheet cannot pass this check.
+const SHEET_BOUNDARY_MARKERS = ["sheet-portal", "sheet-content"];
+if (SHEET_BOUNDARY_MARKERS.some((marker) => initialJsSource.includes(marker))) {
+  violations.push("Sheet module is on the initial-load critical path");
+}
+const allAssets = readdirSync(path.join(DIST, "assets"));
+const lazySheetChunks = allAssets
+  .filter((name) => name.endsWith(".js") && !initialAssetNames.has(name))
+  .filter((name) => {
+    const source = readFileSync(path.join(DIST, "assets", name), "utf8");
+    return SHEET_BOUNDARY_MARKERS.every((marker) => source.includes(marker));
+  });
+if (lazySheetChunks.length === 0) {
+  violations.push("Sheet module has no lazy chunk in the release build");
+}
+
 // Monaco must exist as a lazy chunk (route-level code splitting actually
 // splits it rather than the tree having silently lost the editor).
-const allAssets = readdirSync(path.join(DIST, "assets"));
 const monacoChunks = allAssets.filter(
   (name) => /^sql-editor-panel-.*\.js$/.test(name) || /^editor\.worker-.*\.js$/.test(name),
 );
@@ -119,6 +142,7 @@ writeFileSync(
         initial_chunks: rows,
       },
       monaco_lazy_chunks: monacoChunks,
+      sheet_lazy_chunks: lazySheetChunks,
       violations,
     },
     null,
@@ -130,5 +154,5 @@ if (violations.length > 0) {
   fail(`${violations.length} violation(s):\n  - ${violations.join("\n  - ")}`);
 }
 console.log(
-  `[check-bundle-budget] OK: initial JS ${jsKib.toFixed(1)}/${BUDGET_JS_KIB} KiB, initial CSS ${cssKib.toFixed(1)}/${BUDGET_CSS_KIB} KiB (gzip), Monaco lazy, admin/migration/mock off the first screen`,
+  `[check-bundle-budget] OK: initial JS ${jsKib.toFixed(1)}/${BUDGET_JS_KIB} KiB, initial CSS ${cssKib.toFixed(1)}/${BUDGET_CSS_KIB} KiB (gzip), Sheet/Monaco lazy, admin/migration/mock off the first screen`,
 );

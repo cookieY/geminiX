@@ -53,13 +53,19 @@ test("keyboard-only session opens, operates and dismisses the user sheet", async
   await page.goto("/workspace");
   await expect(page.getByTestId("workspace-page")).toBeVisible();
 
-  const trigger = page.getByRole("button", { name: /账户菜单|Account menu/ });
+  const trigger = page.getByTestId("user-menu-trigger");
+  await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
   await trigger.focus();
   await page.keyboard.press("Enter");
   // The user menu is the template Profile Sheet — a side dialog, so the
   // overlay contract (focus in, Escape out, focus restored) is the dialog's.
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const controls = await trigger.getAttribute("aria-controls");
+  expect(controls).not.toBeNull();
+  await expect(sheet).toHaveAttribute("id", controls ?? "");
   // Focus moves into the overlay (asynchronously with the open animation).
   await expect
     .poll(() =>
@@ -75,6 +81,7 @@ test("keyboard-only session opens, operates and dismisses the user sheet", async
 
   await page.keyboard.press("Escape");
   await expect(sheet).not.toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
   // Focus returns to the trigger (Overlay焦点回收).
   await expect(trigger).toBeFocused();
 });

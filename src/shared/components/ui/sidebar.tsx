@@ -8,13 +8,6 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Separator } from "@/shared/components/ui/separator"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/components/ui/sheet"
 import { Skeleton } from "@/shared/components/ui/skeleton"
 import {
   Tooltip,
@@ -23,10 +16,15 @@ import {
 } from "@/shared/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
+const SidebarMobile = React.lazy(() =>
+  import("@/shared/components/ui/sidebar-mobile").then((module) => ({
+    default: module.SidebarMobile,
+  }))
+)
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "14rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -178,28 +176,21 @@ function Sidebar({
   }
 
   if (isMobile) {
+    // Mount the closed Sheet after the shell so opening it has a real closing
+    // state to transition from. The dynamic import keeps the module out of the
+    // initial transfer while still allowing it to warm in the background.
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetContent
-          dir={dir}
-          data-sidebar="sidebar"
-          data-slot="sidebar"
-          data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+      <React.Suspense fallback={null}>
+        <SidebarMobile
+          open={openMobile}
+          onOpenChange={setOpenMobile}
           side={side}
+          dir={dir}
+          rootProps={props}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
+          {children}
+        </SidebarMobile>
+      </React.Suspense>
     )
   }
 
