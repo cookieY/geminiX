@@ -183,12 +183,14 @@ export function useReviewFindings(runId: string | null, enabled: boolean) {
 }
 
 /** Severity filter state shared by the finding list header. */
+type FindingSeverityFilter = "all" | ReviewFinding["severity"];
+
 export function useSeverityFilter(): {
-  severity: "all" | "low" | "medium" | "high" | "critical";
-  setSeverity: (severity: "all" | "low" | "medium" | "high" | "critical") => void;
+  severity: FindingSeverityFilter;
+  setSeverity: (severity: FindingSeverityFilter) => void;
   visible: (findings: ReviewFinding[]) => ReviewFinding[];
 } {
-  const [severity, setSeverity] = useState<"all" | "low" | "medium" | "high" | "critical">("all");
+  const [severity, setSeverity] = useState<FindingSeverityFilter>("all");
   const visible = useMemo(
     () => (findings: ReviewFinding[]) =>
       severity === "all" ? findings : findings.filter((finding) => finding.severity === severity),

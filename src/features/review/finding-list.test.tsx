@@ -67,6 +67,28 @@ describe("FindingList", () => {
     expect(screen.getByText("DROP TABLE")).toBeInTheDocument();
   });
 
+  it("filters info findings independently", async () => {
+    const user = userEvent.setup();
+    render(
+      <FindingList
+        state={ready([
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f103",
+            severity: "info",
+            title: "执行提示",
+            evidence_ids: [],
+          }),
+          finding(),
+        ])}
+        onOpenEvidence={() => {}}
+      />,
+    );
+    await user.click(screen.getByLabelText("筛选严重级别"));
+    await user.click(await screen.findByRole("option", { name: "信息" }));
+    expect(screen.getAllByTestId("finding-item")).toHaveLength(1);
+    expect(screen.getByText("执行提示")).toBeInTheDocument();
+  });
+
   it("shows an empty state when the filter matches nothing", async () => {
     const user = userEvent.setup();
     render(<FindingList state={ready()} onOpenEvidence={() => {}} />);

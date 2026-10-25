@@ -82,10 +82,12 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
         {findings !== null && findings.length > 0 && (
           <Select
             value={severity}
-            onValueChange={(value) => { setSeverity(value as "all" | "low" | "medium" | "high" | "critical"); }
-            }
+            onValueChange={(value) => {
+              setSeverity(value as "all" | ReviewFinding["severity"]);
+            }}
             items={{
               all: t("precheck.findings.filterAll"),
+              info: t("precheck.severity.info"),
               low: t("precheck.severity.low"),
               medium: t("precheck.severity.medium"),
               high: t("precheck.severity.high"),
@@ -97,6 +99,7 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("precheck.findings.filterAll")}</SelectItem>
+              <SelectItem value="info">{t("precheck.severity.info")}</SelectItem>
               <SelectItem value="low">{t("precheck.severity.low")}</SelectItem>
               <SelectItem value="medium">{t("precheck.severity.medium")}</SelectItem>
               <SelectItem value="high">{t("precheck.severity.high")}</SelectItem>
