@@ -2,6 +2,10 @@
 
 本仓库是Yearning v4的独立React前端仓库，通过YearningX根仓库的`frontend/` Git Submodule锁定正式Commit。
 
+## 第三方库文档
+
+涉及 React / Next / Prisma / Drizzle / Tailwind / Vite / Vitest 等第三方库的 API、配置、迁移时，先用 `mcp__context7__query-docs` 查最新文档，再写代码；不确定库 ID 时先用 `mcp__context7__resolve-library-id`。该规则仅用于公开库——查本仓库自己的代码仍用 read / grep，不要用外部文档工具替代读码。
+
 ## 工作入口
 
 Frontend Work Package必须从已初始化本Submodule的YearningX工作区开始。开始任务前先确认父目录存在：
