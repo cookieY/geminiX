@@ -346,7 +346,8 @@ export const OPERATION_ERROR_PROFILES: {
       "revealOrderSql",
       "revealRawReviewEvidence",
       "recordOrderSqlCopy",
-      "recordRawReviewEvidenceCopy"
+      "recordRawReviewEvidenceCopy",
+      "revealIdentifierMapping"
     ]
   },
   "draft_review": {

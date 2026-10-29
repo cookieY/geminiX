@@ -42,6 +42,7 @@ import type {
   ExecutionVerificationRequest,
   GetChangeOrder200,
   GetExecutionAttempt200,
+  IdentifierMappingRevealRequest,
   ListChangeOrderComments200,
   ListChangeOrderCommentsParams,
   ListChangeOrderTimeline200,
@@ -57,6 +58,7 @@ import type {
   ReasonRequest,
   RecordOrderSqlCopy200,
   RecordRawReviewEvidenceCopy200,
+  RevealIdentifierMapping200,
   RevealOrderSql200,
   RevealRawReviewEvidence200,
   RevealRequest,
@@ -800,6 +802,135 @@ export function useRevealRawReviewEvidence<TData = Awaited<ReturnType<typeof rev
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getRevealRawReviewEvidenceQueryOptions(evidenceId,revealRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type revealIdentifierMappingResponse200 = {
+  data: RevealIdentifierMapping200
+  status: 200
+}
+
+export type revealIdentifierMappingResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type revealIdentifierMappingResponseSuccess = (revealIdentifierMappingResponse200) & {
+  headers: Headers;
+};
+export type revealIdentifierMappingResponseError = (revealIdentifierMappingResponse403) & {
+  headers: Headers;
+};
+
+export type revealIdentifierMappingResponse = (revealIdentifierMappingResponseSuccess | revealIdentifierMappingResponseError)
+
+export const getRevealIdentifierMappingUrl = (reviewRunId: string,) => {
+
+
+
+
+  return `/api/v4/review-runs/${reviewRunId}/identifier-mapping-reveals`
+}
+
+/**
+ * Authorized reveal of the review run's anonymized identifier mapping (draft owner only, same caliber as raw reveal). Audited per action (review_evidence.mapping_revealed); response is no-store; plaintext mappings never enter logs or the model context.
+ */
+export const revealIdentifierMapping = async (reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: Parameters<typeof customInstance>[1]): Promise<revealIdentifierMappingResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<revealIdentifierMappingResponse>(getRevealIdentifierMappingUrl(reviewRunId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(identifierMappingRevealRequest)
+  }
+);}
+
+
+
+
+
+export const getRevealIdentifierMappingQueryKey = (reviewRunId: string,
+    identifierMappingRevealRequest?: IdentifierMappingRevealRequest,) => {
+    return [
+    'POST', `/api/v4/review-runs/${reviewRunId}/identifier-mapping-reveals`, identifierMappingRevealRequest
+    ] as const;
+    }
+
+
+export const getRevealIdentifierMappingQueryOptions = <TData = Awaited<ReturnType<typeof revealIdentifierMapping>>, TError = ProblemResponse>(reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRevealIdentifierMappingQueryKey(reviewRunId,identifierMappingRevealRequest);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof revealIdentifierMapping>>> = ({ signal }) => revealIdentifierMapping(reviewRunId,identifierMappingRevealRequest, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reviewRunId !== null && reviewRunId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RevealIdentifierMappingQueryResult = NonNullable<Awaited<ReturnType<typeof revealIdentifierMapping>>>
+export type RevealIdentifierMappingQueryError = ProblemResponse
+
+
+export function useRevealIdentifierMapping<TData = Awaited<ReturnType<typeof revealIdentifierMapping>>, TError = ProblemResponse>(
+ reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof revealIdentifierMapping>>,
+          TError,
+          Awaited<ReturnType<typeof revealIdentifierMapping>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRevealIdentifierMapping<TData = Awaited<ReturnType<typeof revealIdentifierMapping>>, TError = ProblemResponse>(
+ reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof revealIdentifierMapping>>,
+          TError,
+          Awaited<ReturnType<typeof revealIdentifierMapping>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRevealIdentifierMapping<TData = Awaited<ReturnType<typeof revealIdentifierMapping>>, TError = ProblemResponse>(
+ reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useRevealIdentifierMapping<TData = Awaited<ReturnType<typeof revealIdentifierMapping>>, TError = ProblemResponse>(
+ reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revealIdentifierMapping>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRevealIdentifierMappingQueryOptions(reviewRunId,identifierMappingRevealRequest,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

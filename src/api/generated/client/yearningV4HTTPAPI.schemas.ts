@@ -2012,6 +2012,9 @@ export const ReviewEvidenceFactStatus = {
   stale: 'stale',
 } as const;
 
+/**
+ * Anonymized normalized fact. Values may carry review-scoped stable anonymous identifier tokens (e.g. table_1/schema_1), never real identifiers; authorized reveal is an explicit action via POST /review-runs/{review_run_id}/identifier-mapping-reveals (RCP-20261022, audited per action).
+ */
 export type ReviewEvidenceNormalizedFact = { [key: string]: unknown };
 
 export interface ReviewEvidence {
@@ -2019,10 +2022,53 @@ export interface ReviewEvidence {
   source_kind: string;
   source_reference: string;
   fact_status: ReviewEvidenceFactStatus;
+  /** Anonymized normalized fact. Values may carry review-scoped stable anonymous identifier tokens (e.g. table_1/schema_1), never real identifiers; authorized reveal is an explicit action via POST /review-runs/{review_run_id}/identifier-mapping-reveals (RCP-20261022, audited per action). */
   normalized_fact: ReviewEvidenceNormalizedFact;
   has_raw_payload: boolean;
   raw_payload_expires_at?: Timestamp | null;
   collected_at: Timestamp;
+}
+
+/**
+ * Tokens to reveal, or the whole mapping with all=true. Exactly one of tokens/all; unknown tokens fail the whole request (fail-closed, no partial mapping).
+ */
+export interface IdentifierMappingRevealRequest {
+  /**
+     * @minItems 1
+     * @maxItems 200
+     * @items.minLength 1
+     */
+  tokens?: string[];
+  all?: boolean;
+}
+
+export type IdentifierMappingRevealedKind = typeof IdentifierMappingRevealedKind[keyof typeof IdentifierMappingRevealedKind];
+
+
+export const IdentifierMappingRevealedKind = {
+  database: 'database',
+  schema: 'schema',
+  table: 'table',
+  column: 'column',
+  index: 'index',
+  constraint: 'constraint',
+  alias: 'alias',
+  cte: 'cte',
+  ident: 'ident',
+} as const;
+
+export interface IdentifierMappingRevealed {
+  /** The anonymous token as it appears in anonymized evidence. */
+  token: string;
+  kind: IdentifierMappingRevealedKind;
+  /** The real identifier the token maps to. */
+  identifier: string;
+}
+
+export interface IdentifierMappingReveal {
+  review_run_id: Uuid;
+  mappings: IdentifierMappingRevealed[];
+  revealed_at: Timestamp;
 }
 
 export type RawEvidenceRevealContentType = typeof RawEvidenceRevealContentType[keyof typeof RawEvidenceRevealContentType];
@@ -4090,6 +4136,13 @@ export type RevealRawReviewEvidence200 = {
   err_code: 0;
   message: 'ok';
   data: RawEvidenceReveal;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type RevealIdentifierMapping200 = {
+  err_code: 0;
+  message: 'ok';
+  data: IdentifierMappingReveal;
   request_id: Uuid;
 } | BusinessErrorResponse;
 

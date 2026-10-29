@@ -23,6 +23,7 @@ import type {
   ExecutionVerificationRequest,
   GetChangeOrder200,
   GetExecutionAttempt200,
+  IdentifierMappingRevealRequest,
   ListChangeOrderComments200,
   ListChangeOrderCommentsParams,
   ListChangeOrderTimeline200,
@@ -38,6 +39,7 @@ import type {
   ReasonRequest,
   RecordOrderSqlCopy200,
   RecordRawReviewEvidenceCopy200,
+  RevealIdentifierMapping200,
   RevealOrderSql200,
   RevealRawReviewEvidence200,
   RevealRequest,
@@ -340,6 +342,55 @@ return customInstance<revealRawReviewEvidenceResponse>(getRevealRawReviewEvidenc
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(revealRequest)
+  }
+);}
+
+
+export type revealIdentifierMappingResponse200 = {
+  data: RevealIdentifierMapping200
+  status: 200
+}
+
+export type revealIdentifierMappingResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type revealIdentifierMappingResponseSuccess = (revealIdentifierMappingResponse200) & {
+  headers: Headers;
+};
+export type revealIdentifierMappingResponseError = (revealIdentifierMappingResponse403) & {
+  headers: Headers;
+};
+
+export type revealIdentifierMappingResponse = (revealIdentifierMappingResponseSuccess | revealIdentifierMappingResponseError)
+
+export const getRevealIdentifierMappingUrl = (reviewRunId: string,) => {
+
+
+
+
+  return `/api/v4/review-runs/${reviewRunId}/identifier-mapping-reveals`
+}
+
+/**
+ * Authorized reveal of the review run's anonymized identifier mapping (draft owner only, same caliber as raw reveal). Audited per action (review_evidence.mapping_revealed); response is no-store; plaintext mappings never enter logs or the model context.
+ */
+export const revealIdentifierMapping = async (reviewRunId: string,
+    identifierMappingRevealRequest: IdentifierMappingRevealRequest, options?: Parameters<typeof customInstance>[1]): Promise<revealIdentifierMappingResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<revealIdentifierMappingResponse>(getRevealIdentifierMappingUrl(reviewRunId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(identifierMappingRevealRequest)
   }
 );}
 

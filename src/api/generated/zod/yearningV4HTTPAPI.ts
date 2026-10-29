@@ -5940,7 +5940,7 @@ export const ListReviewFindingEvidenceResponse = zod.union([zod.object({
   "fact_status": zod.enum(['known', 'unknown', 'unavailable', 'stale']),
   "normalized_fact": zod.looseObject({
 
-}),
+}).describe('Anonymized normalized fact. Values may carry review-scoped stable anonymous identifier tokens (e.g. table_1\/schema_1), never real identifiers; authorized reveal is an explicit action via POST \/review-runs\/{review_run_id}\/identifier-mapping-reveals (RCP-20261022, audited per action).'),
   "has_raw_payload": zod.boolean(),
   "raw_payload_expires_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
   "collected_at": zod.iso.datetime({"offset":true})
@@ -5979,6 +5979,46 @@ export const RevealRawReviewEvidenceResponse = zod.union([zod.object({
 }),zod.array(zod.unknown()),zod.string()]),
   "watermark": zod.string(),
   "valid_until": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+/**
+ * Authorized reveal of the review run's anonymized identifier mapping (draft owner only, same caliber as raw reveal). Audited per action (review_evidence.mapping_revealed); response is no-store; plaintext mappings never enter logs or the model context.
+ */
+export const RevealIdentifierMappingParams = zod.object({
+  "review_run_id": zod.uuid()
+})
+
+
+export const revealIdentifierMappingBodyTokensMax = 200;
+
+export const revealIdentifierMappingBodyAllDefault = false;
+
+export const RevealIdentifierMappingBody = zod.object({
+  "tokens": zod.array(zod.string().min(1)).min(1).max(revealIdentifierMappingBodyTokensMax).optional(),
+  "all": zod.boolean().default(revealIdentifierMappingBodyAllDefault)
+}).describe('Tokens to reveal, or the whole mapping with all=true. Exactly one of tokens\/all; unknown tokens fail the whole request (fail-closed, no partial mapping).')
+
+export const RevealIdentifierMappingResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "review_run_id": zod.uuid(),
+  "mappings": zod.array(zod.object({
+  "token": zod.string().describe('The anonymous token as it appears in anonymized evidence.'),
+  "kind": zod.enum(['database', 'schema', 'table', 'column', 'index', 'constraint', 'alias', 'cte', 'ident']),
+  "identifier": zod.string().describe('The real identifier the token maps to.')
+})),
+  "revealed_at": zod.iso.datetime({"offset":true})
 }),
   "request_id": zod.uuid()
 }),zod.object({
