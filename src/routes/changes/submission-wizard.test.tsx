@@ -342,6 +342,142 @@ describe("SubmissionWizard in-flight SQL saves", () => {
     });
   });
 
+  it("shows the pending state immediately while the precheck save is still in flight", async () => {
+    const created = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "预审即时反馈" }),
+      })
+    ).json()) as {
+      data: {
+        id: string;
+        version: number;
+        revision: number;
+        has_sql: boolean;
+        [key: string]: unknown;
+      };
+    };
+    const draft = created.data;
+    const saveStarted = gate();
+    const releaseSave = gate();
+    let reviewRunCalls = 0;
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request }) => {
+        await request.json();
+        saveStarted.open();
+        await releaseSave.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            ...draft,
+            state: "draft",
+            version: draft.version + 1,
+            revision: draft.revision + 1,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard(`/changes/drafts/${draft.id}`);
+    const editor = await screen.findByTestId("sql-editor");
+    fireEvent.change(editor, {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    const runReview = screen.getByTestId("run-review");
+    fireEvent.click(runReview);
+
+    // 保存仍在途（闸门未开）时按钮就必须处于pending：立即转圈+禁用，
+    // 而不是呆住数秒让用户以为点击失效而重复点击。
+    await saveStarted.promise;
+    expect(runReview).toBeDisabled();
+    expect(runReview).toHaveAttribute("aria-busy", "true");
+    // 窗口内的重复点击必须被吞掉：预审只允许发起一次。
+    fireEvent.click(runReview);
+
+    releaseSave.open();
+    await waitFor(() => {
+      expect(reviewRunCalls).toBe(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("run-review")).toBeEnabled();
+    });
+  });
+
+  it("shows the pending state immediately during implicit adoption on /changes/new", async () => {
+    // 创建态领养窗口（POST草稿 + 裸replaceDraftSql PUT）没有
+    // saveMutation参与——HEAD上这段时间按钮既无pending也无禁用，
+    // 是"呆住"最重的路径。
+    const putStarted = gate();
+    const releasePut = gate();
+    let reviewRunCalls = 0;
+    server.use(
+      http.put("*/change-drafts/:draftId/sql", async ({ request, params }) => {
+        await request.json();
+        putStarted.open();
+        await releasePut.promise;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: String(params.draftId),
+            state: "draft",
+            version: 2,
+            revision: 2,
+            has_sql: true,
+          },
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+      http.post("*/change-drafts/:draftId/review-runs", () => {
+        reviewRunCalls += 1;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: null,
+          request_id: FIXTURE_OWNER_ID,
+        });
+      }),
+    );
+
+    renderWizard("/changes/new");
+    expect(await screen.findByTestId("wizard-flow-picker")).toBeVisible();
+    fireEvent.click(screen.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`));
+    fireEvent.change(screen.getByTestId("draft-title-input"), {
+      target: { value: "创建态即时反馈" },
+    });
+    fireEvent.change(await screen.findByTestId("sql-editor"), {
+      target: { value: "UPDATE orders SET status = 1;" },
+    });
+    const runReview = screen.getByTestId("run-review");
+    fireEvent.click(runReview);
+    fireEvent.click(runReview);
+
+    await putStarted.promise;
+    expect(runReview).toBeDisabled();
+    expect(runReview).toHaveAttribute("aria-busy", "true");
+
+    releasePut.open();
+    await waitFor(() => {
+      expect(reviewRunCalls).toBe(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("run-review")).toBeEnabled();
+    });
+  });
+
   it("does not leave the editor when SQL changes while save-and-return is in flight", async () => {
     const created = (await (
       await fetch("/change-drafts", {

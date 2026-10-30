@@ -413,6 +413,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const createSqlRef = useRef(createSql);
   const ensureDraftPromiseRef = useRef<Promise<string | null> | null>(null);
   const reviewStartInFlightRef = useRef(false);
+  // 镜像reviewStartInFlightRef的响应式状态：点击到runDraftReview真正
+  // 发起之间隔着ensureDraft与SQL保存（大SQL可达数秒），这段时间
+  // reviewMutation.isPending仍为false——不进pending的话按钮毫无进行中
+  // 反馈，用户以为点击失效而重复点击造成重复预审。
+  const [reviewStartPending, setReviewStartPending] = useState(false);
   const adopted = mode === "create" && localDraftId !== null;
   /** Route drafts and adopted implicit drafts share the persisted metadata
    * state; create-before-adoption keeps metadata in plain local state and
@@ -666,6 +671,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     const rejectDraft = (message: string): null => {
       setStepError(message);
       reviewStartInFlightRef.current = false;
+      // 校验拒绝在点击的同一同步批次内发生：就地撤下pending，让按钮
+      // 保持在可交互状态（校验错误不应表现为"进行中"）。
+      setReviewStartPending(false);
       return null;
     };
     const requestedIssue = (value: string): string | null => {
@@ -937,8 +945,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const handleRunReview = useCallback(() => {
     if (reviewStartInFlightRef.current) return;
     reviewStartInFlightRef.current = true;
+    setReviewStartPending(true);
     const finish = () => {
       reviewStartInFlightRef.current = false;
+      setReviewStartPending(false);
     };
     void (async () => {
       // Implicit adoption first: precheck needs the server envelope.
@@ -1470,6 +1480,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 <PendingButton
                   size="sm"
                   pending={
+                    reviewStartPending ||
                     reviewMutation.isPending ||
                     createMutation.isPending ||
                     adoptionPending
