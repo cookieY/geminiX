@@ -725,6 +725,12 @@
       "copySuffix": "copy",
       "schedulePrefilled": "Prefilled from the submitter's desired time; confirm or adjust.",
       "schedulePlaceholder": "Pick a schedule time",
+      "scheduledTitle": "Execution scheduled",
+      "scheduledNote": "Runs automatically once at {{time}}; a missed due time is never caught up.",
+      "scheduledCancelNote": "Any frozen executor of this stage may cancel: the order returns to pending execution for a fresh schedule or an immediate run. A server restart does not affect a not-yet-due schedule.",
+      "cancelSchedule": "Cancel schedule",
+      "cancelScheduleTitle": "Cancel schedule",
+      "cancelScheduleDescription": "The order returns to pending execution and will not run automatically at the planned time; schedule again or execute immediately.",
       "waitTitle": "Awaiting execution",
       "waitNote": "This stage is approved. Only the frozen executors ({{names}}) can run it; everyone else waits for the outcome.",
       "scheduleLeadHint": "The scheduled time must be at least 5 minutes in the future (blocked client-side; no backend error needed)."

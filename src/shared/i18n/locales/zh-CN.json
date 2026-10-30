@@ -725,6 +725,12 @@
       "copySuffix": "副本",
       "schedulePrefilled": "已按提交人期望时间预填，可直接确认或修改。",
       "schedulePlaceholder": "选择预约时间",
+      "scheduledTitle": "已预约定时执行",
+      "scheduledNote": "将于 {{time}} 到点自动执行一次；错过不补跑。",
+      "scheduledCancelNote": "预约由该阶段任一冻结执行人可取消：取消后工单回到待执行，可重新预约或立即执行。服务器重启不影响未到点的预约。",
+      "cancelSchedule": "取消预约",
+      "cancelScheduleTitle": "取消预约",
+      "cancelScheduleDescription": "取消后工单回到待执行，到点不会再自动执行；可重新预约或立即执行。",
       "waitTitle": "等待执行",
       "waitNote": "该阶段审批已通过。执行操作只属于流程冻结的执行人（{{names}}）；其他角色在此等待执行结果。",
       "scheduleLeadHint": "预约时间需晚于当前至少 5 分钟（前端已拦截，无需后端错误）。"

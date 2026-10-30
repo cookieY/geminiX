@@ -184,6 +184,21 @@ test("schedules are executor-created and missed schedules never catch up", async
   });
   await expect(page.getByTestId("execution-action-card")).toHaveCount(0);
 
+  // Cancel (owner ruling 2026-10-30): any frozen executor — executor-a here,
+  // not necessarily the booker — cancels the live schedule; the order returns
+  // to pending execution (fresh schedule or immediate run) and the timeline
+  // keeps the cancellation trace for the submitter.
+  await expect(page.getByTestId("execution-scheduled-card")).toBeVisible();
+  await page.getByTestId("execution-schedule-cancel").click();
+  await page.getByTestId("execution-schedule-cancel-confirm").click();
+  await expect(page.getByTestId("execution-action-card")).toBeVisible({
+    timeout: 8_000,
+  });
+  await expect(page.getByTestId("execution-scheduled-card")).toHaveCount(0);
+  await expect(page.getByTestId("order-timeline")).toContainText("取消预约", {
+    timeout: 8_000,
+  });
+
   // A missed schedule is terminal: the seeded order shows the missed badge
   // and the copy-only path — no catch-up button anywhere.
   await useScenario(page, "schedule-missed");

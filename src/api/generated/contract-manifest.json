@@ -3,7 +3,7 @@
   "sources": {
     "openapi": {
       "path": "api/openapi/yearning-v4.yaml",
-      "sha256": "e3a7fbb034036c03271fa16e7713f383e6da2aaaad6124da77802a3c31c11c8d"
+      "sha256": "375cd4a0d075bfca2a3557338cb81b67ddfffb15a9fb753bef49e1dcd96e2a34"
     },
     "error_codes": {
       "path": "api/contracts/error-codes.json",
@@ -11,11 +11,11 @@
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "eb8873a562c9caa1f5fcd79d3603c701c2457bdbade7b6e21f29b1a8d8f09f23"
+      "sha256": "3dafd7e0e347b20658bdface36b7aa7c97dac6950caf45a10c582f9c03fed46f"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
-      "sha256": "88b6e46e33b75a7a1a8929935930681a908e5c99a9f4113e92958c337eb259cc"
+      "sha256": "0ea72336e53435977f0810ff6f304a57ada15f75e0fc0b3d10a9cf24544d9b36"
     }
   },
   "generator": {
@@ -29,19 +29,19 @@
   "outputs": {
     "typescript_client": {
       "path": "src/api/generated/client",
-      "sha256": "78f6d1902ef7c9af1b55f15d6f0ccceced72f022edaee348641233fad4d25823"
+      "sha256": "3d0571fd90afd79659b2009927be31f6fa60dec790c70b849c7f4cf35c48b7d3"
     },
     "zod_runtime_schemas": {
       "path": "src/api/generated/zod",
-      "sha256": "50ded935ed997ffc1cfbff2c49e5bb9ba618d3740133369198ede2eabaf6ebfa"
+      "sha256": "fd7cb986baa8035cccef2c7297c5cebe13d690506f7ffc4943d5aa96c37339a9"
     },
     "tanstack_query_hooks": {
       "path": "src/api/generated/hooks",
-      "sha256": "8b7ed07528426928cc6e05f004104aa465ff492a3a2b3cf6a36ee129bb3725fb"
+      "sha256": "6c45924a253bcccf0c8336d24b73a1166e168d5957dd405d6db28bbd480ba68d"
     },
     "msw_mock_handlers": {
       "path": "src/api/generated/mocks",
-      "sha256": "808d1b51238b68987530bfa5e2f24993a9cb6f115cacc648b0a5231916d02666"
+      "sha256": "fd976fdeb0a8e31db51f78fadad68ebca1c6bce4cf103a7a7296c35d1df4dae3"
     },
     "business_error_catalog": {
       "path": "src/api/generated/projections/business-error-catalog.ts",
@@ -49,7 +49,7 @@
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "a686ebbff9e04078240db317b03183139c662de91d4adc32d673bda2bec1b173"
+      "sha256": "cad60c0ceb8a0efe2278fcae83cd9195560ccb45889d7656a97f6debac50bf80"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-10-30T09:18:03.962Z"
+  "generated_at": "2026-10-30T14:31:00.678Z"
 }

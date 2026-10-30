@@ -13,10 +13,12 @@ import {
   executionAttemptTone,
   frozenExecutorStageFor,
   ORDER_STATE_TONE_CLASS,
+  scheduledStageFor,
   statementStateTone,
 } from "@/features/orders/order-state";
 import {
   useCancelExecutionAttempt,
+  useCancelExecutionSchedule,
   useCreateExecutionAttempt,
   useCreateExecutionSchedule,
   useCreateExecutionVerification,
@@ -308,6 +310,108 @@ function ExecutionActionCard({ order, onAttemptCreated }: {
             </Button>
             <PendingButton pending={create.isPending} onClick={runExecute} data-testid="execution-confirm-run">
               {t("orders.execution.start")}
+            </PendingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+/** Scheduled-state card (owner ruling 2026-10-30): while the order sits in
+ * `scheduled`, its frozen executors see the planned time and the cancel
+ * affordance. Any frozen executor may cancel (not just the booker); the
+ * order returns to stage_execution_pending for a fresh schedule or an
+ * immediate run. Both the schedule and its cancellation live in the
+ * database, so a page refresh — or a server crash plus restart — keeps the
+ * booking intact until due time. */
+function ScheduledCard({ order }: { order: ChangeOrder }) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const stage = scheduledStageFor(order, session.user?.id);
+  const cancel = useCancelExecutionSchedule(order);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  if (stage === null) return null;
+  // Live-row gate (Review P3): the backend guarantees active_schedule present
+  // iff a state='scheduled' row exists. In the preflight-blocked corner
+  // (blockDueScheduleOnly) the order stays `scheduled` with the row `blocked`
+  // and no active_schedule — the cancel command would deterministically fail
+  // 1004 there, so the affordance must not render on order.state alone.
+  // Captured into a local so the narrowing reads as one guard; the planned
+  // time below is then non-null by construction (ExecutionSchedule contract).
+  const activeSchedule = order.active_schedule;
+  if (activeSchedule == null) return null;
+
+  const runCancel = (): void => {
+    cancel.mutate(undefined, {
+      onSuccess: () => {
+        setCancelOpen(false);
+        setActionError(null);
+      },
+      onError: (error) => {
+        const display = describeError(error, "cancelExecutionSchedule");
+        setActionError(
+          `${t(display.messageKey)}${display.requestId !== null ? ` (${display.requestId})` : ""}`,
+        );
+        setCancelOpen(false);
+      },
+    });
+  };
+
+  const plannedFor = activeSchedule.scheduled_for;
+
+  return (
+    <Card data-testid="execution-scheduled-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2">
+          <CalendarClock className="size-4" aria-hidden />
+          {t("orders.execution.scheduledTitle")}
+        </CardTitle>
+        <CardDescription>
+          {t("orders.execution.scheduledNote", { time: formatTimestamp(plannedFor) })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-muted-foreground text-xs">{t("orders.execution.scheduledCancelNote")}</p>
+        <Button
+          variant="outline"
+          className="self-start"
+          onClick={() => { setCancelOpen(true); setActionError(null); }}
+          disabled={cancel.isPending}
+          data-testid="execution-schedule-cancel"
+        >
+          <XCircle className="size-4" aria-hidden />
+          {t("orders.execution.cancelSchedule")}
+        </Button>
+        {actionError !== null && (
+          <p role="alert" className="text-destructive text-sm" data-testid="execution-schedule-cancel-error">
+            {actionError}
+          </p>
+        )}
+      </CardContent>
+
+      <Dialog open={cancelOpen} onOpenChange={(open) => { if (!open) { setCancelOpen(false); setActionError(null); } }}>
+        <DialogContent data-testid="execution-schedule-cancel-dialog">
+          <DialogHeader>
+            <DialogTitle>{t("orders.execution.cancelScheduleTitle")}</DialogTitle>
+            <DialogDescription>{t("orders.execution.cancelScheduleDescription")}</DialogDescription>
+          </DialogHeader>
+          {actionError !== null && (
+            <p role="alert" className="text-destructive text-sm">{actionError}</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCancelOpen(false); setActionError(null); }} data-testid="execution-schedule-cancel-cancel">
+              {t("common.cancel")}
+            </Button>
+            <PendingButton
+              variant="destructive"
+              onClick={runCancel}
+              pending={cancel.isPending}
+              data-testid="execution-schedule-cancel-confirm"
+            >
+              {t("orders.execution.cancelSchedule")}
             </PendingButton>
           </DialogFooter>
         </DialogContent>
@@ -850,6 +954,7 @@ export function ExecutionWorkspaceCard({ order, attemptId, onAttemptCreated, onR
   return (
     <div className="flex flex-col gap-4">
       <ExecutionActionCard order={order} onAttemptCreated={onAttemptCreated} />
+      <ScheduledCard order={order} />
       {attemptId !== null && (
         <ExecutionAttemptCard order={order} attemptId={attemptId} onRecover={onRecover} />
       )}

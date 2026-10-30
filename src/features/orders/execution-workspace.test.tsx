@@ -12,6 +12,7 @@ import {
   FIXTURE_OWNER_ID,
   resetReviewFixture,
   seedFixtureOrder,
+  seedFixtureSchedule,
   type FixtureOrder,
 } from "@/shared/mock/review-fixture";
 import OrderDetailPage from "@/routes/changes/order-detail-page";
@@ -674,6 +675,82 @@ describe("execution schedule interactions (UX-004 / BUG-006)", () => {
     });
     expect(screen.getByTestId("execution-action-error")).toHaveTextContent("sql_changed_after_review: snapshot hash moved");
   }, 15_000);
+});
+
+describe("execution schedule cancel (owner ruling 2026-10-30)", () => {
+  /** An order staged in the scheduled state with a live schedule row — the
+   * create endpoint's post-state, seeded directly so the cancel path doesn't
+   * have to drive the datetime picker. */
+  function scheduledOrder(id: string, executorIsCurrentUser = true) {
+    const base = executionOrder({ id });
+    const baseStage = base.stages[0];
+    if (baseStage === undefined) throw new Error("seed stage missing");
+    const actors = executorIsCurrentUser
+      ? baseStage.execution_actors
+      : [
+          {
+            id: "1111d9cc-e65d-7b9d-a8aa-3c81945f99ac",
+            username: "other",
+            display_name: "other",
+            email: null,
+            is_builtin_admin: false,
+            version: 1,
+            created_at: "2026-08-01T00:00:00Z",
+            updated_at: "2026-08-01T00:00:00Z",
+          },
+        ];
+    const order = executionOrder({
+      id,
+      state: "scheduled",
+      stages: [{ ...baseStage, state: "scheduled", execution_actors: actors }],
+    });
+    seedFixtureOrder(order);
+    seedFixtureSchedule(order.id, baseStage.id, "2026-12-01T03:08:00Z");
+    return order;
+  }
+
+  it("shows the planned time to frozen executors and cancels back to pending execution", async () => {
+    const user = userEvent.setup();
+    const order = scheduledOrder("ee6f1a2b-0000-4000-8000-00000000f916");
+    renderDetail(order.id);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("execution-scheduled-card")).toBeVisible();
+    });
+    // The planned time comes from the order read face (active_schedule).
+    expect(screen.getByTestId("execution-scheduled-card")).toHaveTextContent("2026-12-01 03:08");
+    // While scheduled the regular action card is gone.
+    expect(screen.queryByTestId("execution-action-card")).toBeNull();
+
+    await user.click(screen.getByTestId("execution-schedule-cancel"));
+    expect(screen.getByTestId("execution-schedule-cancel-dialog")).toBeVisible();
+    await user.click(screen.getByTestId("execution-schedule-cancel-confirm"));
+
+    // Back to stage_execution_pending: the scheduled card disappears and the
+    // regular executor area (re-schedule or run now) returns.
+    await waitFor(() => {
+      expect(screen.queryByTestId("execution-scheduled-card")).toBeNull();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("execution-action-card")).toBeVisible();
+    });
+    // 提交人感知=时间线留痕（owner裁定：消息推送为后续独立需求）。
+    await waitFor(() => {
+      expect(screen.getByTestId("order-timeline")).toHaveTextContent("取消预约");
+    });
+  }, 15_000);
+
+  it("hides the scheduled card from non-executors", async () => {
+    const order = scheduledOrder("ee6f1a2b-0000-4000-8000-00000000f917", false);
+    renderDetail(order.id);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("order-detail-page")).toBeVisible();
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId("execution-scheduled-card")).toBeNull();
+    });
+  });
 });
 
 describe("copy-to-draft dialog branches (E004)", () => {

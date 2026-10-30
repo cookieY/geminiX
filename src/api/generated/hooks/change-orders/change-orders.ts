@@ -29,6 +29,7 @@ import type {
 import type {
   ApprovalDecisionRequest,
   CancelExecutionAttempt200,
+  CancelExecutionSchedule200,
   CopyAuditRequest,
   CopyChangeOrderToDraft200,
   CopyChangeOrderToDraftRequest,
@@ -1856,6 +1857,122 @@ export function useCreateExecutionSchedule<TData = Awaited<ReturnType<typeof cre
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getCreateExecutionScheduleQueryOptions(orderId,scheduleRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type cancelExecutionScheduleResponse200 = {
+  data: CancelExecutionSchedule200
+  status: 200
+}
+
+export type cancelExecutionScheduleResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type cancelExecutionScheduleResponseSuccess = (cancelExecutionScheduleResponse200) & {
+  headers: Headers;
+};
+export type cancelExecutionScheduleResponseError = (cancelExecutionScheduleResponse403) & {
+  headers: Headers;
+};
+
+export type cancelExecutionScheduleResponse = (cancelExecutionScheduleResponseSuccess | cancelExecutionScheduleResponseError)
+
+export const getCancelExecutionScheduleUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/v4/change-orders/${orderId}/execution-schedules/cancellation`
+}
+
+/**
+ * Cancel the live execution schedule of a scheduled order (owner ruling 2026-10-30): any frozen executor of the current stage may cancel; the order returns to stage_execution_pending (re-schedule or execute immediately); the schedule row settles as cancelled and the due-time claim can never fire it. Cancel and the scheduler's due claim are mutually exclusive via schedule-row CAS - first committer wins.
+ */
+export const cancelExecutionSchedule = async (orderId: string, options?: Parameters<typeof customInstance>[1]): Promise<cancelExecutionScheduleResponse> => {
+
+  return customInstance<cancelExecutionScheduleResponse>(getCancelExecutionScheduleUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelExecutionScheduleQueryKey = (orderId: string,) => {
+    return [
+    'POST', `/api/v4/change-orders/${orderId}/execution-schedules/cancellation`
+    ] as const;
+    }
+
+
+export const getCancelExecutionScheduleQueryOptions = <TData = Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError = ProblemResponse>(orderId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCancelExecutionScheduleQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof cancelExecutionSchedule>>> = ({ signal }) => cancelExecutionSchedule(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CancelExecutionScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof cancelExecutionSchedule>>>
+export type CancelExecutionScheduleQueryError = ProblemResponse
+
+
+export function useCancelExecutionSchedule<TData = Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError = ProblemResponse>(
+ orderId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cancelExecutionSchedule>>,
+          TError,
+          Awaited<ReturnType<typeof cancelExecutionSchedule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCancelExecutionSchedule<TData = Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError = ProblemResponse>(
+ orderId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cancelExecutionSchedule>>,
+          TError,
+          Awaited<ReturnType<typeof cancelExecutionSchedule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCancelExecutionSchedule<TData = Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError = ProblemResponse>(
+ orderId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useCancelExecutionSchedule<TData = Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError = ProblemResponse>(
+ orderId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelExecutionSchedule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCancelExecutionScheduleQueryOptions(orderId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

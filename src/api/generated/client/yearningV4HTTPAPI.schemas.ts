@@ -1790,6 +1790,24 @@ export interface OrderStage {
   execution_actors: User[];
 }
 
+export type ExecutionScheduleState = typeof ExecutionScheduleState[keyof typeof ExecutionScheduleState];
+
+
+export const ExecutionScheduleState = {
+  scheduled: 'scheduled',
+  running: 'running',
+  cancelled: 'cancelled',
+  missed: 'missed',
+  blocked: 'blocked',
+} as const;
+
+export interface ExecutionSchedule {
+  id: Uuid;
+  stage_id: Uuid;
+  scheduled_for: Timestamp;
+  state: ExecutionScheduleState;
+}
+
 export interface ChangeOrder {
   id: Uuid;
   /** @pattern ^YR-[0-9]{8}-[0-9]{6}$ */
@@ -1821,6 +1839,8 @@ export interface ChangeOrder {
   version: number;
   submitted_at: Timestamp;
   terminal_at?: Timestamp | null;
+  /** The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance). */
+  active_schedule?: ExecutionSchedule | null;
 }
 
 export interface RevealRequest {
@@ -2308,24 +2328,6 @@ export interface ExecutionStatement {
   failure_name?: string | null;
   started_at?: Timestamp | null;
   finished_at?: Timestamp | null;
-}
-
-export type ExecutionScheduleState = typeof ExecutionScheduleState[keyof typeof ExecutionScheduleState];
-
-
-export const ExecutionScheduleState = {
-  scheduled: 'scheduled',
-  running: 'running',
-  cancelled: 'cancelled',
-  missed: 'missed',
-  blocked: 'blocked',
-} as const;
-
-export interface ExecutionSchedule {
-  id: Uuid;
-  stage_id: Uuid;
-  scheduled_for: Timestamp;
-  state: ExecutionScheduleState;
 }
 
 export type ExecutionVerificationRequestResult = typeof ExecutionVerificationRequestResult[keyof typeof ExecutionVerificationRequestResult];
@@ -4222,6 +4224,13 @@ export type CreateExecutionAttempt200 = {
 } | BusinessErrorResponse;
 
 export type CreateExecutionSchedule200 = {
+  err_code: 0;
+  message: 'ok';
+  data: ExecutionSchedule;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type CancelExecutionSchedule200 = {
   err_code: 0;
   message: 'ok';
   data: ExecutionSchedule;

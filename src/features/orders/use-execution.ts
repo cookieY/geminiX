@@ -9,6 +9,7 @@ import type {
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
   cancelExecutionAttempt,
+  cancelExecutionSchedule,
   createExecutionAttempt,
   createExecutionSchedule,
   createExecutionVerification,
@@ -198,6 +199,24 @@ export function useCreateExecutionSchedule(order: ChangeOrder | null) {
         { scheduled_for: scheduledFor },
         { headers: orderActionHeaders(order) },
       )) as unknown as ExecutionSchedule;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["change-order", order?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["change-order-timeline", order?.id] });
+    },
+  });
+}
+
+/** Cancel the live schedule (owner ruling 2026-10-30): any frozen executor,
+ * order-keyed command (the schedule id never crosses a refresh), order back
+ * to stage_execution_pending — re-schedule or execute immediately. */
+export function useCancelExecutionSchedule(order: ChangeOrder | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<ExecutionSchedule> => {
+      return (await cancelExecutionSchedule(order?.id as string, {
+        headers: orderActionHeaders(order),
+      })) as unknown as ExecutionSchedule;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["change-order", order?.id] });

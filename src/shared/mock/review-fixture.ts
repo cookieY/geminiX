@@ -458,6 +458,26 @@ function orderNumberSuffix(displayNumber: string): number {
   return Number(suffix);
 }
 
+/** Test seam: stages a live schedule row for an order already seeded in the
+ * `scheduled` state (the create endpoint's post-state), so cancel-path tests
+ * don't have to drive the datetime picker. */
+export function seedFixtureSchedule(
+  orderId: string,
+  stageId: string,
+  scheduledFor: string,
+): string {
+  const id = uuid();
+  world.schedules.set(id, {
+    id,
+    order_id: orderId,
+    stage_id: stageId,
+    scheduled_for: scheduledFor,
+    state: "scheduled",
+    version: 1,
+  });
+  return id;
+}
+
 function successEnvelope(data: DefaultBodyType) {
   return { err_code: 0, message: "ok", data, request_id: MOCK_REQUEST_ID };
 }
@@ -631,6 +651,22 @@ function orderPublic(order: FixtureOrder) {
     version: order.version,
     submitted_at: order.submitted_at,
     terminal_at: order.terminal_at,
+    // owner裁定2026-10-30：scheduled态读面携带存活预约（计划时间+
+    // 取消入口）；其余状态缺席。与后端buildOrderView同口径。
+    ...(order.state === "scheduled"
+      ? { active_schedule: schedulePublic(liveScheduleFor(order.id)) }
+      : {}),
+  };
+}
+
+/** ExecutionSchedule view shape for a fixture schedule row. */
+function schedulePublic(schedule: FixtureSchedule | undefined) {
+  if (schedule === undefined) return null;
+  return {
+    id: schedule.id,
+    stage_id: schedule.stage_id,
+    scheduled_for: schedule.scheduled_for,
+    state: schedule.state,
   };
 }
 
@@ -2980,6 +3016,44 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           state: schedule.state,
         }),
       );
+    }),
+
+    // Cancel the live schedule (owner ruling 2026-10-30): any frozen executor
+    // of the scheduled stage, order-keyed (the schedule id never crosses a
+    // refresh). cancelScheduleOnce check order: frozen executor (3001) →
+    // scheduled state (1010) → live schedule row (1004). The stage returns to
+    // execution_pending so the regular action card reappears.
+    http.post("*/change-orders/:orderId/execution-schedules/cancellation", ({ request, params }) => {
+      seedExecutionScenarioOrder();
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
+        return businessError(1004, "order changed elsewhere");
+      }
+      const stage = order.stages.find((candidate) => candidate.state === "scheduled");
+      if (stage !== undefined &&
+          !stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+        return businessError(3001, "current user is not a frozen executor of this stage");
+      }
+      if (stage === undefined) {
+        return businessError(1010, `cancelling a schedule is not legal from state ${order.state}`);
+      }
+      const schedule = liveScheduleFor(order.id);
+      if (schedule === undefined) {
+        return businessError(1004, "no live schedule for this order");
+      }
+      const from = order.state;
+      schedule.state = "cancelled";
+      schedule.version += 1;
+      stage.state = "execution_pending";
+      order.state = "stage_execution_pending";
+      order.version += 1;
+      recordOrderEvent(order, "execution.schedule_cancelled", "user", currentIdentityId(), "执行人取消预约，工单回到待执行", stage.position, "stage_execution_pending");
+      emitExecutionState(order, from, "executor_cancelled_schedule", stage.id, {
+        kind: "user",
+        user_id: currentIdentityId(),
+      });
+      return HttpResponse.json(successEnvelope(schedulePublic(schedule)));
     }),
 
     http.get("*/review-runs/:runId", ({ params }) => {

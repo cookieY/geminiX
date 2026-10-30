@@ -10,6 +10,7 @@
 import type {
   ApprovalDecisionRequest,
   CancelExecutionAttempt200,
+  CancelExecutionSchedule200,
   CopyAuditRequest,
   CopyChangeOrderToDraft200,
   CopyChangeOrderToDraftRequest,
@@ -742,6 +743,48 @@ return customInstance<createExecutionScheduleResponse>(getCreateExecutionSchedul
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(scheduleRequest)
+  }
+);}
+
+
+export type cancelExecutionScheduleResponse200 = {
+  data: CancelExecutionSchedule200
+  status: 200
+}
+
+export type cancelExecutionScheduleResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type cancelExecutionScheduleResponseSuccess = (cancelExecutionScheduleResponse200) & {
+  headers: Headers;
+};
+export type cancelExecutionScheduleResponseError = (cancelExecutionScheduleResponse403) & {
+  headers: Headers;
+};
+
+export type cancelExecutionScheduleResponse = (cancelExecutionScheduleResponseSuccess | cancelExecutionScheduleResponseError)
+
+export const getCancelExecutionScheduleUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/v4/change-orders/${orderId}/execution-schedules/cancellation`
+}
+
+/**
+ * Cancel the live execution schedule of a scheduled order (owner ruling 2026-10-30): any frozen executor of the current stage may cancel; the order returns to stage_execution_pending (re-schedule or execute immediately); the schedule row settles as cancelled and the due-time claim can never fire it. Cancel and the scheduler's due claim are mutually exclusive via schedule-row CAS - first committer wins.
+ */
+export const cancelExecutionSchedule = async (orderId: string, options?: Parameters<typeof customInstance>[1]): Promise<cancelExecutionScheduleResponse> => {
+
+  return customInstance<cancelExecutionScheduleResponse>(getCancelExecutionScheduleUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
   }
 );}
 

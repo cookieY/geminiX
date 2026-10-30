@@ -5523,7 +5523,13 @@ export const SubmitChangeDraftResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(submitChangeDraftResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -5740,7 +5746,13 @@ export const ListChangeOrdersResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(listChangeOrdersResponseOneDataTwoItemsItemManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }))
 })),
   "request_id": zod.uuid()
@@ -5804,7 +5816,13 @@ export const GetChangeOrderResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(getChangeOrderResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6331,7 +6349,13 @@ export const DecideChangeOrderResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(decideChangeOrderResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6447,6 +6471,45 @@ export const CreateExecutionScheduleBody = zod.object({
 })
 
 export const CreateExecutionScheduleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+/**
+ * Cancel the live execution schedule of a scheduled order (owner ruling 2026-10-30): any frozen executor of the current stage may cancel; the order returns to stage_execution_pending (re-schedule or execute immediately); the schedule row settles as cancelled and the due-time claim can never fire it. Cancel and the scheduler's due claim are mutually exclusive via schedule-row CAS - first committer wins.
+ */
+export const CancelExecutionScheduleParams = zod.object({
+  "order_id": zod.uuid()
+})
+
+export const cancelExecutionScheduleHeaderIdempotencyKeyMax = 128;
+
+
+export const cancelExecutionScheduleHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
+export const cancelExecutionScheduleHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
+
+
+export const CancelExecutionScheduleHeader = zod.object({
+  "Idempotency-Key": zod.string().min(1).max(cancelExecutionScheduleHeaderIdempotencyKeyMax).regex(cancelExecutionScheduleHeaderIdempotencyKeyRegExp),
+  "If-Match": zod.string().regex(cancelExecutionScheduleHeaderIfMatchRegExp)
+})
+
+export const CancelExecutionScheduleResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
@@ -6712,7 +6775,13 @@ export const CreateExecutionVerificationResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(createExecutionVerificationResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6795,7 +6864,13 @@ export const WithdrawChangeOrderResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(withdrawChangeOrderResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -6878,7 +6953,13 @@ export const VoidChangeOrderResponse = zod.union([zod.object({
   "manually_verified": zod.boolean().default(voidChangeOrderResponseOneDataManuallyVerifiedDefault),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional()
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
 }),
   "request_id": zod.uuid()
 }),zod.object({

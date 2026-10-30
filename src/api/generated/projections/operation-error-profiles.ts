@@ -456,7 +456,8 @@ export const OPERATION_ERROR_PROFILES: {
       1008
     ],
     "operations": [
-      "createExecutionSchedule"
+      "createExecutionSchedule",
+      "cancelExecutionSchedule"
     ]
   },
   "execution_cancel": {

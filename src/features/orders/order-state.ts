@@ -264,6 +264,25 @@ export function frozenExecutorStageFor(
   return stage.execution_actors.some((actor) => actor.id === userId) ? stage : null;
 }
 
+/** The stage holding the live execution schedule while the order is
+ * `scheduled` (owner ruling 2026-10-30), when the given user is one of its
+ * frozen executors — any frozen executor may cancel, not just the booker
+ * (the backend re-checks membership on the command, 3001). The stage stays
+ * execution_pending in the backend read model while scheduled; the mock
+ * world marks it scheduled, so both spellings match. */
+export function scheduledStageFor(
+  order: ChangeOrder,
+  userId: string | undefined,
+): (typeof order.stages)[number] | null {
+  if (userId === undefined) return null;
+  if (order.state !== "scheduled") return null;
+  const stage = order.stages.find(
+    (candidate) => candidate.state === "scheduled" || candidate.state === "execution_pending",
+  );
+  if (stage === undefined) return null;
+  return stage.execution_actors.some((actor) => actor.id === userId) ? stage : null;
+}
+
 /** Terminal execution-attempt states (backend domain.AttemptState.Terminal) —
  * the shared truth for "attempt is live" across the polling hooks and the
  * workspace cards. */
