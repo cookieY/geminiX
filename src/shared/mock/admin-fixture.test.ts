@@ -37,6 +37,7 @@ interface Envelope<T> {
   err_code: number;
   message: string;
   data: T;
+  meta?: { detail?: string };
 }
 
 function setAuth(behavior: "admin" | "default" | "expired"): void {
@@ -340,11 +341,20 @@ describe("admin ai providers", () => {
       request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 5, api_key: { value: "key-1" } }),
     );
     expect(created.body.err_code).toBe(0);
+    // F-UX-002：两个唯一轴的1005各自带meta.detail，UI不再只见
+    // "同身份资源已存在"的无差别文案。
     const duplicate = await jsonRequest(
       "/admin/ai-providers",
       request("POST", { name: "p1", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 6, api_key: { value: "key-2" } }),
     );
     expect(duplicate.body.err_code).toBe(1005);
+    expect(duplicate.body.meta?.detail).toContain("name");
+    const priorityClash = await jsonRequest(
+      "/admin/ai-providers",
+      request("POST", { name: "p2", provider_kind: "k", base_url: "https://x", model_name: "m", enabled: true, selection_priority: 1, api_key: { value: "key-3" } }),
+    );
+    expect(priorityClash.body.err_code).toBe(1005);
+    expect(priorityClash.body.meta?.detail).toContain("selection_priority=1");
   });
 
   it("keeps the stored key when the replace omits it and replaces on a new SecretInput", async () => {

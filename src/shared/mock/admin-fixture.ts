@@ -2747,11 +2747,16 @@ export function adminFixtureHandlers(): HttpHandler[] {
         return businessError(1001, "name is required");
       }
       const duplicate = [...world.providers.values()].some((p) => p.name === body.name);
-      if (duplicate) return businessError(1005, "provider name already exists");
+      // F-UX-002 parity：冲突轴进meta.detail（后端按约束名区分）。
+      if (duplicate) {
+        return businessError(1005, "RESOURCE_ALREADY_EXISTS", { detail: "name 已被其他AI Provider占用" });
+      }
       // §18.75 parity：selection_priority全局唯一（镜像后端唯一索引）。
       const createPrio = Number(body.selection_priority ?? 100);
       if ([...world.providers.values()].some((p) => p.selection_priority === createPrio)) {
-        return businessError(1005, "selection_priority already in use");
+        return businessError(1005, "RESOURCE_ALREADY_EXISTS", {
+          detail: `selection_priority=${String(createPrio)} 已被其他AI Provider占用`,
+        });
       }
       // Create requires an api key (CreateAiProviderRequest Pick<api_key>);
       // the plaintext never reaches any read face.
@@ -2792,14 +2797,17 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (versionMismatch(request, provider.version)) return businessError(1004, "version mismatch");
       const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
       if (body === null) return businessError(1001, "body is required");
-      // §18.75 parity：改名/改优先级撞其他Provider的唯一值→1005。
+      // §18.75 parity：改名/改优先级撞其他Provider的唯一值→1005；
+      // F-UX-002 parity：冲突轴进meta.detail。
       if (typeof body.name === "string" && body.name !== "" &&
         [...world.providers.values()].some((p) => p.id !== provider.id && p.name === body.name)) {
-        return businessError(1005, "provider name already exists");
+        return businessError(1005, "RESOURCE_ALREADY_EXISTS", { detail: "name 已被其他AI Provider占用" });
       }
       if (typeof body.selection_priority === "number" &&
         [...world.providers.values()].some((p) => p.id !== provider.id && p.selection_priority === body.selection_priority)) {
-        return businessError(1005, "selection_priority already in use");
+        return businessError(1005, "RESOURCE_ALREADY_EXISTS", {
+          detail: `selection_priority=${String(body.selection_priority)} 已被其他AI Provider占用`,
+        });
       }
       if (typeof body.name === "string" && body.name !== "") provider.name = body.name;
       if (typeof body.base_url === "string") provider.base_url = body.base_url;

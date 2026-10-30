@@ -462,13 +462,14 @@ function successEnvelope(data: DefaultBodyType) {
   return { err_code: 0, message: "ok", data, request_id: MOCK_REQUEST_ID };
 }
 
-function businessError(errCode: number, message: string) {
+function businessError(errCode: number, message: string, meta?: Record<string, unknown>) {
   return HttpResponse.json({
     err_code: errCode,
     message,
     data: null,
     request_id: MOCK_REQUEST_ID,
     retryable: false,
+    ...(meta === undefined ? {} : { meta }),
   });
 }
 
@@ -2026,7 +2027,14 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         return businessError(1010, "a review run is already in flight");
       }
       if (draft.state === "submitted") return businessError(1010, "draft already submitted");
-      if (!draft.has_sql) return businessError(1001, "draft has no SQL to review");
+      // F-UX-003 parity：缺SQL的1001把原因放meta.detail（后端
+      // writeReviewErr同形：message="业务处理失败"+meta.detail），
+      // UI逐字透传而非泛化文案。
+      if (!draft.has_sql) {
+        return businessError(1001, "业务处理失败", {
+          detail: "SQL尚未保存：先在草稿中保存SQL，再发起AI预审",
+        });
+      }
       const summaryLocale = request.headers.get("accept-language")?.startsWith("en-US")
         ? "en-US"
         : "zh-CN";

@@ -123,6 +123,17 @@ describe("review fixture draft and run lifecycle", () => {
     expect(saved.has_sql).toBe(true);
   });
 
+  it("states the missing-SQL cause in meta.detail when reviewing a draft without SQL (F-UX-003)", async () => {
+    const draft = await createDraft();
+    const response = await fetch(
+      `https://yearning.test/change-drafts/${draft.id}/review-runs`,
+      { method: "POST" },
+    );
+    const body = (await response.json()) as { err_code: number; meta?: { detail?: string } };
+    expect(body.err_code).toBe(1001);
+    expect(body.meta?.detail).toContain("SQL尚未保存");
+  });
+
   it("advances the run to the ready terminal state and voids it on edit", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "SELECT 1;");
