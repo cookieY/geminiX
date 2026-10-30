@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type {
   ChangeDraft,
@@ -11,6 +11,7 @@ import {
   useMyDrafts,
   useOrderDatasourceOptions,
   type OrderListFilters,
+  type OrderListScope,
 } from "@/features/orders/use-orders";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { OrderStateBadge } from "@/features/orders/order-state-badge";
@@ -339,12 +340,18 @@ export default function MinePage() {
     submitted_to: filters.submittedTo === "" ? undefined : filters.submittedTo,
   };
 
+  // F-UX-004：工作台「待我执行」卡携带 ?scope=execution 到达——同一
+  // 关系范围读改为执行人待办视图（展示过滤，见useMyChangeOrders）。
+  const [searchParams] = useSearchParams();
+  const orderScope: OrderListScope = searchParams.get("scope") === "execution" ? "execution" : "submitter";
+
   const draftsQuery = useMyDrafts(true);
   const ordersPager = useCursorPage(20);
   const ordersQuery = useMyChangeOrders(
     true,
     serverFilters,
     { limit: ordersPager.pageSize, after: ordersPager.after },
+    orderScope,
   );
   const ordersPageMeta = ordersQuery.data?.page;
   const orderItems = ordersQuery.data?.items ?? [];
@@ -500,7 +507,9 @@ export default function MinePage() {
                       title={
                         hasActiveFilters(filters)
                           ? t("orders.list.filter.emptyFiltered")
-                          : t("orders.list.ordersEmpty")
+                          : orderScope === "execution"
+                            ? t("orders.list.executionEmpty")
+                            : t("orders.list.ordersEmpty")
                       }
                       testId="orders-empty"
                     />

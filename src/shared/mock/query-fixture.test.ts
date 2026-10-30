@@ -81,11 +81,31 @@ describe("query fixture single-SELECT safety", () => {
     expect(String(envelope.data.rows[0]?.[emailIndex])).toBe("***");
   });
 
-  it("rejects write heads and multi-statement SQL with QUERY_ONLY_SINGLE_SELECT", async () => {
+  it("rejects write heads and impure batches with QUERY_ONLY_SINGLE_SELECT", async () => {
     const update = await execute("update app.users set username = 'x'");
     expect(update.err_code).toBe(4007);
-    const multi = await execute("select 1; select 2");
-    expect(multi.err_code).toBe(4007);
+    // F-Q-001（owner裁定）：纯SELECT批次解禁——只有夹带非纯SELECT的批次才拒绝。
+    const impure = await execute("select 1; update app.users set username = 'x'");
+    expect(impure.err_code).toBe(4007);
+  });
+
+  it("accepts semicolon batches and trailing semicolons, returning the LAST statement's result (F-Q-001)", async () => {
+    const trailing = await execute("select id from app.users;");
+    expect(trailing.err_code).toBe(0);
+    const batch = await execute("select id from app.users; select username from app.users");
+    expect(batch.err_code).toBe(0);
+    // 结果集来自最后一条语句：列应为 username（app.users 的掩码词表外列）。
+    expect(batch.data.columns.map((column) => column.name)).toContain("username");
+    const noRows = await execute(";;;");
+    expect(noRows.err_code).toBe(1001);
+  });
+
+  it("rejects a batch beyond the 16-statement cap with 4007 (Review R1 M2)", async () => {
+    const oversize = Array.from({ length: 17 }, (_, i) => `select ${String(i)}`).join("; ");
+    const over = await execute(oversize);
+    expect(over.err_code).toBe(4007);
+    const atCap = Array.from({ length: 16 }, (_, i) => `select ${String(i)}`).join("; ");
+    expect((await execute(atCap)).err_code).toBe(0);
   });
 
   it("rejects out-of-range timeouts with QUERY_TIMEOUT_OUT_OF_RANGE", async () => {

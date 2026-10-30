@@ -956,6 +956,26 @@ describe("SubmissionWizard draft mode metadata", () => {
     expect(drafts.data.items[0]?.title).toBe("改后的标题");
   });
 
+  it("shows the saved draft title in the summary card on reopen (F-UX-001)", async () => {
+    const create = (await (
+      await fetch("/change-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "已保存标题草稿" }),
+      })
+    ).json()) as { data: { id: string } };
+
+    renderWizard(`/changes/drafts/${create.data.id}`);
+    expect(await screen.findByTestId("wizard-summary")).toBeVisible();
+    // 重开草稿：摘要「标题」显示已保存标题，不是"未填写"。
+    const summary = screen.getByTestId("wizard-summary");
+    await waitFor(() => {
+      expect(summary.textContent).toContain("已保存标题草稿");
+    });
+    // 仅断言标题行本身——"SQL 规模"无SQL时合法显示"未填写"。
+    expect(summary.textContent).not.toContain("标题未填写");
+  });
+
   it("keeps the summary dock blocked while no SQL exists, then leaves via 保存草稿", async () => {
     const create = (await (
       await fetch("/change-drafts", {

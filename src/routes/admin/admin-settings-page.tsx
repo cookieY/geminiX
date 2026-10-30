@@ -220,10 +220,16 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
               </Alert>
             )}
 
+            {namespace === "general" && !timezoneStructureOk(generalTimezoneOf(draft)) && (
+              <Alert variant="destructive" data-testid="settings-timezone-blocked">
+                <AlertTitle>{t("adminSettings.saveFailed")}</AlertTitle>
+                <AlertDescription>{t("adminSettings.general.timezoneInvalid")}</AlertDescription>
+              </Alert>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <PendingButton
                 variant="outline"
-                disabled={!dirty || assessMutation.isPending}
+                disabled={!dirty || assessMutation.isPending || (namespace === "general" && !timezoneStructureOk(generalTimezoneOf(draft)))}
                 pending={assessMutation.isPending}
                 onClick={() => {
                   assessMutation.mutate(
@@ -241,7 +247,7 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
                 {t("adminSettings.assess")}
               </PendingButton>
               <PendingButton
-                disabled={!dirty || replaceMutation.isPending || assessMutation.isPending}
+                disabled={!dirty || replaceMutation.isPending || assessMutation.isPending || (namespace === "general" && !timezoneStructureOk(generalTimezoneOf(draft)))}
                 pending={replaceMutation.isPending}
                 onClick={() => { save(assessment !== null && highImpact ? assessment.impact_token : null); }}
                 data-testid="settings-save"
@@ -257,6 +263,20 @@ function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace })
 }
 
 type DraftSetter = (next: SettingsValue) => void;
+
+/** F-SET-001：时区结构校验（与后端结构规则同形——非空段、字符集、
+ * 非"Local"、长度；IANA区域名是否真实存在由服务端权威判定并回显错误）。 */
+function timezoneStructureOk(value: string): boolean {
+  if (value === "" || value.length > 64 || value === "Local") return false;
+  if (value.split("/").some((segment) => segment === "")) return false;
+  return /^[A-Za-z0-9_+/-]+$/.test(value);
+}
+
+/** `SettingsValue` 是五命名空间联合类型；general 面板的守卫只在
+ * namespace==="general" 时读取时区字段，用 in 收窄安全取出。 */
+function generalTimezoneOf(draft: SettingsValue): string {
+  return "system_timezone" in draft ? draft.system_timezone : "";
+}
 
 function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: DraftSetter }) {
   const { t } = useTranslation();
@@ -280,9 +300,15 @@ function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Dr
           id="settings-general-timezone"
           value={draft.system_timezone}
           onChange={(event) => { setDraft({ ...draft, system_timezone: event.target.value }); }}
-          maxLength={255}
+          maxLength={64}
+          aria-invalid={!timezoneStructureOk(draft.system_timezone)}
           data-testid="settings-general-timezone"
         />
+        {!timezoneStructureOk(draft.system_timezone) && (
+          <p className="text-destructive text-xs" data-testid="settings-general-timezone-error">
+            {t("adminSettings.general.timezoneInvalid")}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-general-locale">{t("adminSettings.general.locale")}</Label>

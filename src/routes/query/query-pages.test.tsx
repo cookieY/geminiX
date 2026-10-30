@@ -120,7 +120,7 @@ describe("gate: 查询仅单SELECT且无限总量分页", () => {
     const textarea = screen.getByTestId("query-sql-editor");
     await userEvent.type(textarea, "update app.users set username = 'x'");
     await userEvent.click(screen.getByTestId("query-run"));
-    expect(await screen.findByTestId("query-run-error")).toHaveTextContent("仅允许执行单条SELECT");
+    expect(await screen.findByTestId("query-run-error")).toHaveTextContent("仅允许SELECT语句");
   });
 
   it("reports rows loaded from the cursor, never a fabricated total", async () => {

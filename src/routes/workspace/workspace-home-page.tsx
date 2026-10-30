@@ -342,6 +342,7 @@ function KpiCard({
         <p className="text-base font-semibold">{label}</p>
         <Link
           to={to}
+          data-testid={`${testId}-link`}
           className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-[13px]"
         >
           {t("home.kpi.action")}
@@ -658,7 +659,7 @@ export default function WorkspaceHomePage() {
           icon={<Clock3 className="size-4" />}
           label={t("home.kpi.pendingExecution")}
           value={me?.pending_execution_count}
-          to="/changes/mine"
+          to="/changes/mine?scope=execution"
           testId="home-kpi-pending-execution"
           tone="bg-tone-amber/12 text-tone-amber"
         />

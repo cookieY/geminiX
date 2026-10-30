@@ -14,6 +14,7 @@ import {
   resetReviewFixture,
   seedFixtureOrder,
 } from "@/shared/mock/review-fixture";
+import { MOCK_IDENTITY_IDS } from "@/shared/mock/identity-store";
 import MinePage from "./mine-page";
 import OrderDetailPage from "./order-detail-page";
 
@@ -51,14 +52,14 @@ function seedOrder(overrides: Record<string, unknown> = {}): void {
   });
 }
 
-function renderMine() {
+function renderMine(entry = "/changes/mine") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-      <MemoryRouter initialEntries={["/changes/mine"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/changes/mine" element={<MinePage />} />
           <Route path="/changes/drafts/:draftId" element={<p data-testid="draft-target" />} />
@@ -121,6 +122,58 @@ describe("MinePage", () => {
     expect(rows[0]?.textContent).toContain("YR-20260830-000012");
     expect(rows[1]?.textContent).toContain("YR-20260830-000011");
     expect(screen.getByTestId("tab-audit-orders")).toBeVisible();
+  });
+
+  it("shows orders awaiting MY execution via ?scope=execution, hidden from the submitter view (F-UX-004)", async () => {
+    // 他人提交、我为冻结执行人、阶段待执行——dashboard pending_execution_count 同口径。
+    const EXEC_PENDING_ID = "9b6f1a2b-0000-4000-8000-00000000ee01";
+    seedOrder({
+      id: EXEC_PENDING_ID,
+      display_number: "YR-20261030-000001",
+      submitter_user_id: MOCK_IDENTITY_IDS.executor,
+      title: "待我执行的工单",
+      state: "stage_execution_pending",
+      stages: [
+        {
+          id: `${EXEC_PENDING_ID}-s1`,
+          position: 1,
+          datasource_name: "prod-pg",
+          state: "execution_pending",
+          approval_steps: [
+            {
+              id: `${EXEC_PENDING_ID}-a1`,
+              position: 1,
+              state: "approved",
+              decided_at: "2026-10-30T09:00:00Z",
+              actors: [{ id: MOCK_IDENTITY_IDS.reviewer, username: "reviewer-a", display_name: "reviewer-a" }],
+            },
+          ],
+          execution_actors: [
+            {
+              id: FIXTURE_OWNER_ID,
+              username: "henry",
+              display_name: "henry",
+              email: null,
+              is_builtin_admin: true,
+              version: 1,
+              created_at: "2026-08-01T00:00:00Z",
+              updated_at: "2026-08-01T00:00:00Z",
+            },
+          ],
+        },
+      ],
+    });
+    // 默认scope（我的工单=提交人视角）：非本人提交→不可见（空态）。
+    renderMine();
+    expect(await screen.findByTestId("orders-empty")).toBeVisible();
+    expect(screen.queryByTestId("mine-orders-table")).toBeNull();
+
+    // 执行人到达路径（工作台「待我执行」卡携带?scope=execution）：可见。
+    renderMine("/changes/mine?scope=execution");
+    expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
+    const rows = screen.getAllByTestId("mine-order-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.textContent).toContain("YR-20261030-000001");
   });
 
   it("deletes a saved draft through the confirm dialog (owner ruling 2026-10-24)", async () => {

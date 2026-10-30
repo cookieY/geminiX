@@ -73,7 +73,7 @@ test("gate 1: single-SELECT only and cursor pagination without totals", async ({
       await page.getByRole("option", { name: "app" }).click();
   await typeSql(page, "delete from app.users");
   await page.getByTestId("query-run").click();
-  await expect(page.getByTestId("query-run-error")).toContainText("仅允许执行单条SELECT");
+  await expect(page.getByTestId("query-run-error")).toContainText("仅允许SELECT语句");
 
   // A legal SELECT streams the first cursor page; the footer states rows
   // already read and offers continuation — no total anywhere.

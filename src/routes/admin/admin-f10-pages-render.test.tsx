@@ -217,6 +217,11 @@ describe("workspace home", () => {
     expect(await screen.findByTestId("home-kpi-pending-approval")).toBeVisible();
     expect(screen.getByTestId("home-kpi-pending-execution")).toBeVisible();
     expect(screen.getByTestId("home-kpi-blocked-review")).toBeVisible();
+    // F-UX-004：「待我执行」直达执行人待办视图，不再是提交人视角死链。
+    expect(screen.getByTestId("home-kpi-pending-execution-link")).toHaveAttribute(
+      "href",
+      "/changes/mine?scope=execution",
+    );
     // The announcement mounts immediately and fills in once the query lands.
     await screen.findByText("季度维护窗口公告");
     expect(screen.getByTestId("home-announcement")).toHaveTextContent("季度维护窗口公告");

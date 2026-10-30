@@ -121,6 +121,63 @@ describe("admin settings visual consistency", () => {
     expect(locale).toHaveTextContent("en-US");
   });
 
+  it("blocks a structurally invalid system timezone before any save (F-SET-001)", async () => {
+    stubAdminSession();
+    renderSettingsNamespace("general");
+
+    const input = await screen.findByTestId("settings-general-timezone");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Asia//Shanghai");
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByTestId("settings-general-timezone-error")).toHaveTextContent("时区不合法");
+    expect(screen.getByTestId("settings-timezone-blocked")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-save")).toBeDisabled();
+    expect(screen.getByTestId("settings-assess")).toBeDisabled();
+
+    await userEvent.clear(input);
+    // A different valid zone keeps the draft dirty so the save button's
+    // remaining disabled arm (clean draft) is not what's holding it down.
+    await userEvent.type(input, "UTC");
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByTestId("settings-general-timezone-error")).toBeNull();
+    expect(screen.queryByTestId("settings-timezone-blocked")).toBeNull();
+    expect(screen.getByTestId("settings-save")).toBeEnabled();
+  });
+
+  it("surfaces the server-side rejection of a well-formed but unknown zone (F-SET-001)", async () => {
+    stubAdminSession();
+    // The v6.4 acceptance value passes every client-side structural rule —
+    // only the backend's IANA zone database can reject it (server-authoritative).
+    server.use(
+      http.put("*/admin/settings/general", () =>
+        HttpResponse.json(
+          {
+            err_code: 1001,
+            message: "settings: validation failed",
+            data: null,
+            request_id: "req-fset001",
+            retryable: false,
+            meta: { detail: "system_timezone timezone" },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    renderSettingsNamespace("general");
+
+    const input = await screen.findByTestId("settings-general-timezone");
+    await userEvent.clear(input);
+    await userEvent.type(input, "UTCUTCAsia/Shanghai");
+
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByTestId("settings-timezone-blocked")).toBeNull();
+
+    await userEvent.click(screen.getByTestId("settings-save"));
+    await waitFor(() => expect(screen.getByTestId("settings-error")).toBeVisible());
+    expect(screen.queryByTestId("settings-saved-note")).toBeNull();
+  });
+
   it("uses the structural page loading state on first load", async () => {
     stubAdminSession();
     server.use(

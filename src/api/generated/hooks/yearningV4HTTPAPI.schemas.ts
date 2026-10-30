@@ -2568,7 +2568,10 @@ export interface ExecuteQueryRequest {
      * @maxLength 128
      */
   schema_name: string;
-  /** @minLength 1 */
+  /**
+     * 分号分隔的多条纯SELECT语句批次（F-Q-001，owner 2026-10-30裁定）：逐条确定性强分类，任一非纯SELECT整批拒绝； 批次在同一只读连接/事务按序执行，结果集为最后一条语句的 结果；字符串与注释内的分号不构成分隔。尾分号等空段允许。 批次最多16条语句，超限整批拒绝（4007）。
+     * @minLength 1
+     */
   sql: string;
   /**
      * @minimum 1

@@ -185,7 +185,7 @@
     "QUERY_GRANT_REVOKED": "The query grant was revoked.",
     "QUERY_GRANT_EXPIRED": "The query grant has expired.",
     "QUERY_SESSION_CLOSED": "The query session is closed. Re-enter the workspace.",
-    "QUERY_ONLY_SINGLE_SELECT": "Only a single SELECT statement is allowed.",
+    "QUERY_ONLY_SINGLE_SELECT": "Only SELECT statements are allowed (multiple allowed, separated by semicolons, each validated).",
     "QUERY_TIMEOUT_OUT_OF_RANGE": "The query timeout is out of range (30-300 seconds).",
     "QUERY_CURSOR_INVALID": "The result cursor is invalid or expired. Refetch.",
     "MIGRATION_ACTIVE_WORK_EXISTS": "Unfinished migration work exists; new actions are blocked.",
@@ -563,6 +563,7 @@
       "draftsDeleted": "Draft deleted",
       "ordersCard": "Submitted orders",
       "ordersEmpty": "No submitted orders yet.",
+      "executionEmpty": "No orders are waiting for your execution.",
       "stagePosition": "Stage {{position}}",
       "open": "Open",
       "column": {
@@ -1209,7 +1210,7 @@
       "execute": "Run",
       "running": "Running…",
       "needSchema": "Enter the target schema first",
-      "singleSelectHint": "Single SELECT only (server validation is authoritative)"
+      "singleSelectHint": "Multiple semicolon-separated SELECTs allowed, each validated; the last statement returns the result (server validation is authoritative)"
     },
     "result": {
       "empty": "Results appear here after you run a query",
@@ -1652,6 +1653,7 @@
       "description": "Registration switch, system timezone and default locale.",
       "registration": "Open user registration",
       "timezone": "System timezone",
+      "timezoneInvalid": "Invalid timezone: must be an IANA zone name (e.g. Asia/Shanghai); concatenated strings are rejected.",
       "locale": "Default locale"
     },
     "query": {

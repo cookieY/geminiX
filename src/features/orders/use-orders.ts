@@ -47,10 +47,36 @@ function activeFilters(filters: OrderListFilters): OrderListFilters {
   );
 }
 
+/** Presentation scope for the relation-scoped order read (F-UX-004):
+ * - "submitter" (default, UI-spec §5.2 我的工单): only orders I submitted.
+ * - "execution": orders awaiting MY execution — I am a frozen execution
+ *   actor of an execution_pending stage and the order is
+ *   stage_execution_pending/scheduled, mirroring the dashboard's
+ *   pending_execution_count SQL. Both are presentation filters over the
+ *   same relation-scoped read (submitter / frozen approver / frozen
+ *   executor), never an authorization boundary. */
+export type OrderListScope = "submitter" | "execution";
+
+/** "execution" scope predicate (F-UX-004): awaiting MY execution — I am a
+ * frozen execution actor of an execution_pending stage and the order is
+ * stage_execution_pending/scheduled, mirroring the dashboard's
+ * pending_execution_count SQL. */
+function awaitingMyExecution(order: ChangeOrder, me: string): boolean {
+  return (
+    (order.state === "stage_execution_pending" || order.state === "scheduled") &&
+    order.stages.some(
+      (stage) =>
+        stage.state === "execution_pending" &&
+        stage.execution_actors.some((actor) => actor.id === me),
+    )
+  );
+}
+
 export function useMyChangeOrders(
   enabled: boolean,
   filters: OrderListFilters = EMPTY_FILTERS,
   paging?: { limit: number; after?: string },
+  scope: OrderListScope = "submitter",
 ) {
   const queryClient = useQueryClient();
   const session = useSession();
@@ -61,23 +87,47 @@ export function useMyChangeOrders(
     // server read, never a stale-cache hit. keepPreviousData holds the last
     // rows (and keeps this hook's consumers mounted) while a first-time
     // filter combination is in flight. The user id joins the key so the
-    // submitter filter below never runs against a half-initialized session.
-    queryKey: ["change-orders", "mine", me, effective, paging?.after ?? "", paging?.limit ?? 0],
+    // scope filter below never runs against a half-initialized session.
+    queryKey: ["change-orders", "mine", me, scope, effective, paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
       // The list endpoint is relation-scoped (submitter / frozen approval
       // actor / frozen execution actor — backend relationFilterSQL, consumed
       // by the approval queue on the same read). The 我的工单 tab is
       // submitter-scoped per UI-spec §5.2: a presentation filter on this
       // shared read, never an authorization boundary.
-      const page = (await listChangeOrders({
-        limit: paging?.limit ?? 50,
-        after: paging?.after || undefined,
-        ...effective,
-      })) as unknown as {
-        items: ChangeOrder[];
-        page: { has_more: boolean; next_cursor: string | null };
-      };
-      if (me === undefined) return { items: [], page: page.page };
+      const readPage = async (after?: string) =>
+        (await listChangeOrders({
+          limit: paging?.limit ?? 50,
+          after: after || undefined,
+          ...effective,
+        })) as unknown as {
+          items: ChangeOrder[];
+          page: { has_more: boolean; next_cursor: string | null };
+        };
+      if (me === undefined) return { items: [], page: { has_more: false, next_cursor: null } };
+      if (scope === "execution") {
+        // Review R1 M1: filtering AFTER cursor paging breaks the KPI→list
+        // contract — the first page can hold zero matches while the
+        // dashboard's pending_execution_count is >0. Drain the relation
+        // read forward (bounded lookahead) and filter the accumulated set.
+        const matches: ChangeOrder[] = [];
+        let cursor: string | null = paging?.after || null;
+        for (let guard = 0; guard < 20; guard += 1) {
+          const page = await readPage(cursor ?? undefined);
+          for (const order of page.items) {
+            if (awaitingMyExecution(order, me)) matches.push(order);
+          }
+          if (!page.page.has_more || page.page.next_cursor === null) {
+            return { items: matches, page: { has_more: false, next_cursor: null } };
+          }
+          cursor = page.page.next_cursor;
+        }
+        // Lookahead guard hit (limit×20 relation rows ahead of the cursor —
+        // extreme for a to-do surface): hand the honest cursor back so the
+        // pager's next read continues the drain from where this one stopped.
+        return { items: matches, page: { has_more: true, next_cursor: cursor } };
+      }
+      const page = await readPage(paging?.after);
       return {
         items: page.items.filter((order) => order.submitter_user_id === me),
         page: page.page,

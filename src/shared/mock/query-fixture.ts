@@ -392,11 +392,11 @@ const WRITE_HEADS = new Set([
   "reindex", "vacuum", "copy", "merge", "values",
 ]);
 
-/** True when the SQL is a plausible single SELECT for the mock world. */
-function checkSingleSelectError(sql: string): number | null {
-  if (sql === "" || sql.includes("\0")) return 4007;
-  // Strip string literals, quoted identifiers and comments so separators
-  // inside them do not count (tokenizer-lite approximation).
+/** Strips literals/identifiers/comments then splits on semicolons — the
+ *  tokenizer-lite statement segmentation shared by the batch safety check
+ *  and result-table resolution (F-Q-001: result set comes from the LAST
+ *  statement). */
+function topLevelStatements(sql: string): string[] {
   const stripped = sql
     .replace(/--[^\n]*/g, " ")
     .replace(/#[^\n]*/g, " ")
@@ -404,16 +404,34 @@ function checkSingleSelectError(sql: string): number | null {
     .replace(/'(?:[^'\\]|\\.)*'/g, "''")
     .replace(/"(?:[^"\\]|\\.)*"/g, '""')
     .replace(/`(?:[^`])*`/g, "``");
-  if (stripped.includes(";")) return 4007;
-  const words = stripped.toLowerCase().match(/[a-z_]+/g) ?? [];
-  if (words.length === 0) return 4007;
-  const head = words[0];
-  if (head !== "select" && head !== "with") return 4007;
-  for (const word of words) {
-    if (WRITE_HEADS.has(word) && word !== "select") {
-      // Allow write-heads as column/table identifiers only when quoted; the
-      // stripped scan sees bare words, so any bare write head is a rejection.
-      return 4007;
+  return stripped
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/** Batch-split approximation of domain.CheckSelectBatch (F-Q-001): splits
+ *  on top-level semicolons, validates each statement as a plausible pure
+ *  SELECT; empty segments are dropped; trailing semicolons are fine.
+ *  Mirrors the server's 16-statement batch cap (Review R1 M2). */
+const MAX_BATCH_STATEMENTS = 16;
+
+function checkSingleSelectError(sql: string): number | null {
+  if (sql === "" || sql.includes("\0")) return 4007;
+  const statements = topLevelStatements(sql);
+  if (statements.length === 0) return 1001;
+  if (statements.length > MAX_BATCH_STATEMENTS) return 4007;
+  for (const statement of statements) {
+    const words = statement.toLowerCase().match(/[a-z_]+/g) ?? [];
+    if (words.length === 0) return 4007;
+    const head = words[0];
+    if (head !== "select" && head !== "with") return 4007;
+    for (const word of words) {
+      if (WRITE_HEADS.has(word) && word !== "select") {
+        // Allow write-heads as column/table identifiers only when quoted; the
+        // stripped scan sees bare words, so any bare write head is a rejection.
+        return 4007;
+      }
     }
   }
   return null;
@@ -872,8 +890,10 @@ function executeSelect(
   const ds = world.datasources.get(body.datasource_id ?? "");
   const schema = ds?.schemas.find((s) => s.name === body.schema_name);
   if (ds === undefined || schema === undefined) return businessError(1001, "schema not found");
-  // Resolve the target table from `from <schema>.<table>` / `from <table>`.
-  const fromMatch = sql.match(/from\s+(?:`?([a-z_][a-z0-9_]*)`?\.)?`?([a-z_][a-z0-9_]*)`?/i);
+  // Resolve the target table from the LAST statement's
+  // `from <schema>.<table>` / `from <table>` (F-Q-001 batch semantics).
+  const lastStatement = topLevelStatements(sql).at(-1) ?? sql;
+  const fromMatch = lastStatement.match(/from\s+(?:`?([a-z_][a-z0-9_]*)`?\.)?`?([a-z_][a-z0-9_]*)`?/i);
   const fallback = schema.tables[0];
   if (fallback === undefined) return businessError(1001, "no tables in schema");
   const table = fromMatch === null

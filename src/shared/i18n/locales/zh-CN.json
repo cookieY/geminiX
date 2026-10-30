@@ -185,7 +185,7 @@
     "QUERY_GRANT_REVOKED": "查询访问资格已被撤销。",
     "QUERY_GRANT_EXPIRED": "查询访问资格已到期。",
     "QUERY_SESSION_CLOSED": "查询会话已关闭，请重新进入。",
-    "QUERY_ONLY_SINGLE_SELECT": "仅允许执行单条SELECT语句。",
+    "QUERY_ONLY_SINGLE_SELECT": "仅允许SELECT语句（可分号分隔多条，逐条校验）。",
     "QUERY_TIMEOUT_OUT_OF_RANGE": "查询超时设置超出允许范围（30-300秒）。",
     "QUERY_CURSOR_INVALID": "结果游标无效或已过期，请重新取数。",
     "MIGRATION_ACTIVE_WORK_EXISTS": "存在未完成的迁移工作，无法执行新操作。",
@@ -563,6 +563,7 @@
       "draftsDeleted": "草稿已删除",
       "ordersCard": "已提交工单",
       "ordersEmpty": "还没有已提交的工单。",
+      "executionEmpty": "暂无待我执行的工单。",
       "stagePosition": "阶段 {{position}}",
       "open": "查看",
       "column": {
@@ -1209,7 +1210,7 @@
       "execute": "执行查询",
       "running": "执行中…",
       "needSchema": "请先填写目标 schema",
-      "singleSelectHint": "仅允许单条 SELECT（服务端校验为准）"
+      "singleSelectHint": "支持分号分隔多条 SELECT，逐条校验，返回最后一条结果（服务端校验为准）"
     },
     "result": {
       "empty": "执行查询后结果将在这里展示",
@@ -1652,6 +1653,7 @@
       "description": "注册开关、系统时区与默认语言。",
       "registration": "开放用户注册",
       "timezone": "系统时区",
+      "timezoneInvalid": "时区不合法：须为 IANA 区域名（如 Asia/Shanghai），且不能是拼接串。",
       "locale": "默认语言"
     },
     "query": {

@@ -1071,8 +1071,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   /** Summary values share one source of truth with the form fields. */
   function summaryValues() {
     const presented = mode === "draft" || adopted ? presentPhase(store.serverState, phase, dirty) : "idle";
-    const title = adopted ? metaTitle.trim() : createTitle.trim();
-    const requestedFor = adopted ? metaRequestedFor : createRequestedFor;
+    // F-UX-001：摘要与元数据字段同源——draft模式（重开已存草稿）与
+    // create领养态都读meta*（由草稿载入水合）；旧代码按adopted分支，
+    // draft模式下摘要读了恒空的createTitle，标题永远显示"未填写"。
+    const title = metaBound ? metaTitle.trim() : createTitle.trim();
+    const requestedFor = metaBound ? metaRequestedFor : createRequestedFor;
     const datasources = [...new Set((flow?.stages ?? []).map((stage) => stage.datasource_name))];
     return {
       presented,
