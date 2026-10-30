@@ -28,7 +28,13 @@ import { describeError } from "@/shared/api/error-display";
  */
 
 interface EvidenceSheetProps {
-  finding: ReviewFinding | null;
+  /**
+   * One or more findings whose evidence renders together (owner ruling
+   * 2026-10-31: a merged same-group card exposes ONE evidence button that
+   * carries the whole group). With multiple findings each group is headed
+   * by its finding title.
+   */
+  findings: ReviewFinding[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -39,16 +45,28 @@ interface RevealedRaw {
   watermark: string;
 }
 
-export function EvidenceSheet({ finding, open, onOpenChange }: EvidenceSheetProps) {
+export function EvidenceSheet({ findings, open, onOpenChange }: EvidenceSheetProps) {
   const { t } = useTranslation();
 
+  const findingIds = findings.map((finding) => finding.id);
   const evidenceQuery = useQuery({
-    queryKey: ["review-finding-evidence", finding?.id],
+    queryKey: ["review-finding-evidence", findingIds.join(",")],
     queryFn: async () =>
-      (await listReviewFindingEvidence(finding?.id as string)) as unknown as ReviewEvidence[],
-    enabled: open && finding !== null,
+      Promise.all(
+        findingIds.map(async (id) =>
+          (await listReviewFindingEvidence(id)) as unknown as ReviewEvidence[],
+        ),
+      ),
+    enabled: open && findingIds.length > 0,
   });
-  const evidence: ReviewEvidence[] = evidenceQuery.data ?? [];
+  // Findings stay in call order; a finding may carry zero evidence rows.
+  const evidenceGroups: Array<{ finding: ReviewFinding; evidence: ReviewEvidence[] }> =
+    evidenceQuery.data != null
+      ? findings.map((finding, index) => ({
+          finding,
+          evidence: evidenceQuery.data[index] ?? [],
+        }))
+      : [];
 
   const [revealed, setRevealed] = useState<Record<string, RevealedRaw>>({});
   // SEC-0035: copy-flow errors (clipboard write or copy-audit) surface inline
@@ -145,72 +163,86 @@ export function EvidenceSheet({ finding, open, onOpenChange }: EvidenceSheetProp
               {copyError}
             </p>
           )}
-          {evidence.length === 0 && evidenceQuery.isSuccess && (
-            <p className="text-muted-foreground text-sm">{t("precheck.evidence.empty")}</p>
-          )}
-          {evidence.map((entry) => {
-            const revealedRaw = revealed[entry.id];
-            const expiresAt = entry.raw_payload_expires_at;
-            return (
-              <section
-                key={entry.id}
-                className="rounded-md border p-3 text-sm"
-                data-testid="evidence-item"
-              >
-                <header className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{entry.source_reference}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {t(`precheck.evidence.fact.${entry.fact_status}`)}
-                  </span>
-                </header>
-                <pre className="bg-muted mt-2 overflow-x-auto rounded-md p-2 text-xs">
-                  {JSON.stringify(entry.normalized_fact, null, 2)}
-                </pre>
-                {entry.has_raw_payload && expiresAt != null && (
-                  <footer className="mt-2 space-y-2">
-                    <p className="text-muted-foreground text-xs">
-                      {t("precheck.evidence.retention", {
-                        days: remainingDays(expiresAt),
-                      })}
-                    </p>
-                    {revealedRaw === undefined ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { revealMutation.mutate(entry.id); }}
-                        disabled={revealMutation.isPending}
-                        data-testid={`reveal-raw-${entry.id}`}
-                      >
-                        <Eye className="size-3.5" aria-hidden />
-                        {t("precheck.evidence.reveal")}
-                      </Button>
-                    ) : (
-                      <div className="space-y-2" data-testid={`raw-view-${entry.id}`}>
-                        <p className="text-muted-foreground flex items-center gap-1 text-xs">
-                          <ShieldAlert className="size-3.5" aria-hidden />
-                          {revealedRaw.watermark}
+          {evidenceGroups.length > 0 &&
+            evidenceGroups.every((group) => group.evidence.length === 0) &&
+            evidenceQuery.isSuccess && (
+              <p className="text-muted-foreground text-sm">{t("precheck.evidence.empty")}</p>
+            )}
+          {evidenceGroups.map((group) => (
+            <div key={group.finding.id} className="space-y-3">
+              {evidenceGroups.length > 1 && (
+                <p
+                  className="text-muted-foreground border-b pb-1 text-xs font-medium"
+                  data-testid="evidence-finding-header"
+                >
+                  {group.finding.title}
+                </p>
+              )}
+              {group.evidence.map((entry) => {
+                const revealedRaw = revealed[entry.id];
+                const expiresAt = entry.raw_payload_expires_at;
+                return (
+                  <section
+                    key={entry.id}
+                    className="rounded-md border p-3 text-sm"
+                    data-testid="evidence-item"
+                  >
+                    <header className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">{entry.source_reference}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {t(`precheck.evidence.fact.${entry.fact_status}`)}
+                      </span>
+                    </header>
+                    <pre className="bg-muted mt-2 overflow-x-auto rounded-md p-2 text-xs">
+                      {JSON.stringify(entry.normalized_fact, null, 2)}
+                    </pre>
+                    {entry.has_raw_payload && expiresAt != null && (
+                      <footer className="mt-2 space-y-2">
+                        <p className="text-muted-foreground text-xs">
+                          {t("precheck.evidence.retention", {
+                            days: remainingDays(expiresAt),
+                          })}
                         </p>
-                        <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
-                          {revealedRaw.text}
-                        </pre>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            copyRevealed(entry.id);
-                          }}
-                          data-testid={`copy-raw-${entry.id}`}
-                        >
-                          <ClipboardCopy className="size-3.5" aria-hidden />
-                          {t("precheck.evidence.copy")}
-                        </Button>
-                      </div>
+                        {revealedRaw === undefined ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { revealMutation.mutate(entry.id); }}
+                            disabled={revealMutation.isPending}
+                            data-testid={`reveal-raw-${entry.id}`}
+                          >
+                            <Eye className="size-3.5" aria-hidden />
+                            {t("precheck.evidence.reveal")}
+                          </Button>
+                        ) : (
+                          <div className="space-y-2" data-testid={`raw-view-${entry.id}`}>
+                            <p className="text-muted-foreground flex items-center gap-1 text-xs">
+                              <ShieldAlert className="size-3.5" aria-hidden />
+                              {revealedRaw.watermark}
+                            </p>
+                            <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
+                              {revealedRaw.text}
+                            </pre>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                copyRevealed(entry.id);
+                              }}
+                              data-testid={`copy-raw-${entry.id}`}
+                            >
+                              <ClipboardCopy className="size-3.5" aria-hidden />
+                              {t("precheck.evidence.copy")}
+                            </Button>
+                          </div>
+                        )}
+                      </footer>
                     )}
-                  </footer>
-                )}
-              </section>
-            );
-          })}
+                  </section>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </SheetContent>
     </Sheet>

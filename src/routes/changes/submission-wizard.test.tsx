@@ -271,12 +271,15 @@ describe("SubmissionWizard create mode (implicit drafts)", () => {
 });
 
 describe("SubmissionWizard in-flight SQL saves", () => {
-  it("does not review SQL that was replaced in the editor while saving", async () => {
+  it("reviews the saved draft revision without saving unsaved editor changes", async () => {
+    // owner裁定2026-10-31：运行预审与保存解耦——草稿态下点击运行直接
+    // 对已保存版本发起评审（评审与提交读的是同一服务端草稿，结论与
+    // 将提交内容一致），绝不替用户写SQL；编辑器本地新文本原样保留。
     const created = (await (
       await fetch("/change-drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "保存竞态" }),
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "运行不保存" }),
       })
     ).json()) as {
       data: {
@@ -288,29 +291,24 @@ describe("SubmissionWizard in-flight SQL saves", () => {
       };
     };
     const draft = created.data;
-    const saveStarted = gate();
-    const releaseSave = gate();
+    const runStarted = gate();
+    const releaseRun = gate();
     let reviewRunCalls = 0;
+    let sqlPutCalls = 0;
     server.use(
-      http.put("*/change-drafts/:draftId/sql", async ({ request }) => {
-        await request.json();
-        saveStarted.open();
-        await releaseSave.promise;
+      http.put("*/change-drafts/:draftId/sql", () => {
+        sqlPutCalls += 1;
         return HttpResponse.json({
           err_code: 0,
           message: "ok",
-          data: {
-            ...draft,
-            state: "draft",
-            version: draft.version + 1,
-            revision: draft.revision + 1,
-            has_sql: true,
-          },
+          data: { ...draft, has_sql: true },
           request_id: FIXTURE_OWNER_ID,
         });
       }),
-      http.post("*/change-drafts/:draftId/review-runs", () => {
+      http.post("*/change-drafts/:draftId/review-runs", async () => {
         reviewRunCalls += 1;
+        runStarted.open();
+        await releaseRun.promise;
         return HttpResponse.json({
           err_code: 0,
           message: "ok",
@@ -323,31 +321,26 @@ describe("SubmissionWizard in-flight SQL saves", () => {
     renderWizard(`/changes/drafts/${draft.id}`);
     const editor = await screen.findByTestId("sql-editor");
     fireEvent.change(editor, {
-      target: { value: "UPDATE orders SET status = 1;" },
+      target: { value: "UPDATE orders SET status = 2;" },
     });
     fireEvent.click(screen.getByTestId("run-review"));
 
-    await saveStarted.promise;
-    fireEvent.change(editor, {
-      target: { value: "UPDATE orders SET status = 2;" },
-    });
-    releaseSave.open();
-
+    await runStarted.promise;
+    fireEvent.click(screen.getByTestId("run-review"));
+    releaseRun.open();
     await waitFor(() => {
-      expect(editor).toHaveValue("UPDATE orders SET status = 2;");
+      expect(reviewRunCalls).toBe(1);
     });
-    expect(reviewRunCalls).toBe(0);
-    await waitFor(() => {
-      expect(screen.getByTestId("run-review")).toBeEnabled();
-    });
+    expect(sqlPutCalls).toBe(0);
+    expect(editor).toHaveValue("UPDATE orders SET status = 2;");
   });
 
-  it("shows the pending state immediately while the precheck save is still in flight", async () => {
+  it("runs the review without saving unsaved editor changes (owner ruling 2026-10-31)", async () => {
     const created = (await (
       await fetch("/change-drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "预审即时反馈" }),
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "预审不捎带保存" }),
       })
     ).json()) as {
       data: {
@@ -359,29 +352,24 @@ describe("SubmissionWizard in-flight SQL saves", () => {
       };
     };
     const draft = created.data;
-    const saveStarted = gate();
-    const releaseSave = gate();
+    const runStarted = gate();
+    const releaseRun = gate();
     let reviewRunCalls = 0;
+    let sqlPutCalls = 0;
     server.use(
-      http.put("*/change-drafts/:draftId/sql", async ({ request }) => {
-        await request.json();
-        saveStarted.open();
-        await releaseSave.promise;
+      http.put("*/change-drafts/:draftId/sql", () => {
+        sqlPutCalls += 1;
         return HttpResponse.json({
           err_code: 0,
           message: "ok",
-          data: {
-            ...draft,
-            state: "draft",
-            version: draft.version + 1,
-            revision: draft.revision + 1,
-            has_sql: true,
-          },
+          data: { ...draft, has_sql: true },
           request_id: FIXTURE_OWNER_ID,
         });
       }),
-      http.post("*/change-drafts/:draftId/review-runs", () => {
+      http.post("*/change-drafts/:draftId/review-runs", async () => {
         reviewRunCalls += 1;
+        runStarted.open();
+        await releaseRun.promise;
         return HttpResponse.json({
           err_code: 0,
           message: "ok",
@@ -399,18 +387,20 @@ describe("SubmissionWizard in-flight SQL saves", () => {
     const runReview = screen.getByTestId("run-review");
     fireEvent.click(runReview);
 
-    // 保存仍在途（闸门未开）时按钮就必须处于pending：立即转圈+禁用，
+    // 运行在途（闸门未开）时按钮就必须处于pending：立即转圈+禁用，
     // 而不是呆住数秒让用户以为点击失效而重复点击。
-    await saveStarted.promise;
+    await runStarted.promise;
     expect(runReview).toBeDisabled();
     expect(runReview).toHaveAttribute("aria-busy", "true");
     // 窗口内的重复点击必须被吞掉：预审只允许发起一次。
     fireEvent.click(runReview);
 
-    releaseSave.open();
+    // 运行不捎带保存：预审只发 review-run，绝不替用户写 SQL。
+    releaseRun.open();
     await waitFor(() => {
       expect(reviewRunCalls).toBe(1);
     });
+    expect(sqlPutCalls).toBe(0);
     await waitFor(() => {
       expect(screen.getByTestId("run-review")).toBeEnabled();
     });
@@ -804,10 +794,9 @@ describe("SubmissionWizard in-flight SQL saves", () => {
     await waitFor(() => {
       expect(reviewRunCalls).toBe(1);
     });
-    expect(savedBodies).toEqual([
-      "UPDATE orders SET status = 1;",
-      "UPDATE orders SET status = 2;",
-    ]);
+    // owner裁定2026-10-31：运行不捎带保存——领养只落用户点击时的SQL，
+    // 在途期间新敲入的文本保留在编辑器（不丢失），但不触发第二次PUT。
+    expect(savedBodies).toEqual(["UPDATE orders SET status = 1;"]);
     expect(editor).toHaveValue("UPDATE orders SET status = 2;");
   });
 

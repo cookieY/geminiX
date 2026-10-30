@@ -45,7 +45,7 @@ function renderSheet(open: boolean) {
   return render(
     <QueryClientProvider client={queryClient}>
       <EvidenceSheet
-        finding={finding()}
+        findings={[finding()]}
         open={open}
         onOpenChange={() => {}}
       />
@@ -78,6 +78,112 @@ beforeEach(() => {
 });
 
 describe("EvidenceSheet", () => {
+  it("groups evidence under per-finding headers for multiple findings (2026-10-31)", async () => {
+    const secondEvidenceId = "4f6f1a2b-0000-4000-8000-00000000be02";
+    const secondFinding: ReviewFinding = {
+      ...finding(),
+      id: "4f6f1a2b-0000-4000-8000-00000000f102",
+      title: "目标表不存在",
+    };
+    server.use(
+      http.get("*/review-findings/:findingId/evidence", ({ params }) =>
+        HttpResponse.json(
+          envelope(
+            params.findingId === FINDING_ID
+              ? [
+                  {
+                    id: EVIDENCE_ID,
+                    source_kind: "tool_call",
+                    source_reference: "built-in:mysql.table_stats",
+                    fact_status: "known",
+                    normalized_fact: { object_type: "table", object_name: "orders" },
+                    has_raw_payload: false,
+                    raw_payload_expires_at: null,
+                    collected_at: new Date().toISOString(),
+                  },
+                ]
+              : [
+                  {
+                    id: secondEvidenceId,
+                    source_kind: "tool_call",
+                    source_reference: "built-in:pg.schema_metadata",
+                    fact_status: "known",
+                    normalized_fact: { object_type: "table", object_name: "x" },
+                    has_raw_payload: false,
+                    raw_payload_expires_at: null,
+                    collected_at: new Date().toISOString(),
+                  },
+                ],
+          ),
+        ),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EvidenceSheet
+          findings={[finding(), secondFinding]}
+          open
+          onOpenChange={() => {}}
+        />
+      </QueryClientProvider>,
+    );
+    // 每个发现一个标题组，顺序与传入一致；证据归位到各自发现下。
+    const headers = await screen.findAllByTestId("evidence-finding-header");
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toHaveTextContent("索引缺失");
+    expect(headers[1]).toHaveTextContent("目标表不存在");
+    const items = screen.getAllByTestId("evidence-item");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("built-in:mysql.table_stats");
+    expect(items[1]).toHaveTextContent("built-in:pg.schema_metadata");
+  });
+
+  it("renders a per-finding header even when a group member carries no evidence", async () => {
+    server.use(
+      http.get("*/review-findings/:findingId/evidence", ({ params }) =>
+        HttpResponse.json(
+          envelope(
+            params.findingId === FINDING_ID
+              ? [
+                  {
+                    id: EVIDENCE_ID,
+                    source_kind: "tool_call",
+                    source_reference: "built-in:mysql.table_stats",
+                    fact_status: "known",
+                    normalized_fact: { object_type: "table", object_name: "orders" },
+                    has_raw_payload: false,
+                    raw_payload_expires_at: null,
+                    collected_at: new Date().toISOString(),
+                  },
+                ]
+              : [],
+          ),
+        ),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EvidenceSheet
+          findings={[finding(), { ...finding(), id: "4f6f1a2b-0000-4000-8000-00000000f103", title: "无证据发现" }]}
+          open
+          onOpenChange={() => {}}
+        />
+      </QueryClientProvider>,
+    );
+    const headers = await screen.findAllByTestId("evidence-finding-header");
+    expect(headers).toHaveLength(2);
+    // 仅第一个发现携带证据条目；无证据发现只剩标题组（不冒充别的证据）。
+    expect(screen.getAllByTestId("evidence-item")).toHaveLength(1);
+    expect(headers[1]).toHaveTextContent("无证据发现");
+  });
+
+
   it("renders normalized evidence without any raw payload", async () => {
     renderSheet(true);
     expect(await screen.findByText("built-in:mysql.table_stats")).toBeVisible();
@@ -289,7 +395,7 @@ describe("EvidenceSheet", () => {
     // in-memory plaintext, so nothing raw survives a reopen.
     rerender(
       <QueryClientProvider client={new QueryClient()}>
-        <EvidenceSheet finding={finding()} open={false} onOpenChange={() => {}} />
+        <EvidenceSheet findings={[finding()]} open={false} onOpenChange={() => {}} />
       </QueryClientProvider>,
     );
     expect(screen.queryByTestId(`raw-view-${EVIDENCE_ID}`)).toBeNull();

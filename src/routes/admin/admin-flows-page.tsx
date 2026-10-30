@@ -882,41 +882,91 @@ function ApprovalStepsEditor({
               )}
             </span>
           </div>
-          <div className="flex flex-wrap gap-1">
-            {users.map((user) => {
-              const checked = step.actorIds.includes(user.id);
-              return (
-                <label
-                  key={user.id}
-                  className={`flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                    checked ? "bg-secondary" : ""
-                  }`}
-                >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={(value) => {
-                      onChange(
-                        steps.map((item, index) =>
-                          index === stepIndex
-                            ? {
-                                ...item,
-                                actorIds: value
-                                  ? [...item.actorIds, user.id]
-                                  : item.actorIds.filter((id) => id !== user.id),
-                              }
-                            : item,
-                        ),
-                      );
-                    }}
-                    data-testid={`${testIdPrefix}-step-${String(stepIndex)}-actor-${user.id}`}
-                  />
-                  {user.display_name}
-                </label>
+          <StepActorPicker
+            step={step}
+            users={users}
+            onToggle={(userId, checked) => {
+              onChange(
+                steps.map((item, index) =>
+                  index === stepIndex
+                    ? {
+                        ...item,
+                        actorIds: checked
+                          ? [...item.actorIds, userId]
+                          : item.actorIds.filter((id) => id !== userId),
+                      }
+                    : item,
+                ),
               );
-            })}
-          </div>
+            }}
+            testIdPrefix={`${testIdPrefix}-step-${String(stepIndex)}`}
+          />
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Per-step actor capsules with a client-side search (owner ruling
+ * 2026-10-31): the actor roster can be long, so the capsules filter on a
+ * name substring while selections persist — filtering only hides capsules,
+ * it never changes step.actorIds.
+ */
+function StepActorPicker({
+  step,
+  users,
+  onToggle,
+  testIdPrefix,
+}: {
+  step: { position: number; actorIds: string[] };
+  users: User[];
+  onToggle: (userId: string, checked: boolean) => void;
+  testIdPrefix: string;
+}) {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const visibleUsers = normalized === ""
+    ? users
+    : users.filter((user) =>
+        (user.display_name ?? user.username).toLowerCase().includes(normalized) ||
+        user.username.toLowerCase().includes(normalized),
+      );
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Input
+        value={query}
+        onChange={(event) => { setQuery(event.target.value); }}
+        placeholder={t("adminFlows.actorSearch")}
+        aria-label={t("adminFlows.actorSearch")}
+        className="h-7 text-xs"
+        maxLength={64}
+        data-testid={`${testIdPrefix}-search`}
+      />
+      <div className="flex flex-wrap gap-1">
+        {visibleUsers.map((user) => {
+          const checked = step.actorIds.includes(user.id);
+          return (
+            <label
+              key={user.id}
+              className={`flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+                checked ? "bg-secondary" : ""
+              }`}
+            >
+              <Checkbox
+                checked={checked}
+                onCheckedChange={(value) => { onToggle(user.id, value); }}
+                data-testid={`${testIdPrefix}-actor-${user.id}`}
+              />
+              {user.display_name}
+            </label>
+          );
+        })}
+        {visibleUsers.length === 0 && (
+          <span className="text-muted-foreground text-xs">{t("adminFlows.actorSearchEmpty")}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -954,31 +1004,16 @@ function ActorPicker({
           </span>
         </label>
       </div>
-      <div className="flex flex-wrap gap-1">
-        {users.map((user) => {
-          const checked = selected.includes(user.id);
-          return (
-            <label
-              key={user.id}
-              className={`flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                checked ? "bg-secondary" : ""
-              }`}
-            >
-              <Checkbox
-                checked={checked}
-                onCheckedChange={(value) => {
-                  onChange(
-                    value ? [...selected, user.id] : selected.filter((id) => id !== user.id),
-                  );
-                }}
-                data-testid={`${testIdPrefix}-actor-${user.id}`}
-              />
-              {user.display_name}
-            </label>
+      <StepActorPicker
+        step={{ position: 0, actorIds: selected }}
+        users={users}
+        onToggle={(userId, checked) => {
+          onChange(
+            checked ? [...selected, userId] : selected.filter((id) => id !== userId),
           );
-        })}
-      </div>
-      <p className="text-muted-foreground text-xs">{t("adminFlows.actorHint")}</p>
+        }}
+        testIdPrefix={testIdPrefix}
+      />
     </div>
   );
 }

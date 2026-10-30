@@ -22,7 +22,7 @@ import { FileSearch } from "lucide-react";
 export function FrozenReviewCard({ orderId }: { orderId: string }) {
   const { t } = useTranslation();
   const findingsQuery = useOrderReviewFindings(orderId, true);
-  const [evidenceFinding, setEvidenceFinding] = useState<ReviewFinding | null>(null);
+  const [evidenceFindings, setEvidenceFindings] = useState<ReviewFinding[]>([]);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   return (
@@ -49,15 +49,15 @@ export function FrozenReviewCard({ orderId }: { orderId: string }) {
             </p>
             <FindingList
               state={{ status: "ready", findings: findingsQuery.data }}
-              onOpenEvidence={(finding) => {
-                setEvidenceFinding(finding);
+              onOpenEvidence={(groupFindings) => {
+                setEvidenceFindings(groupFindings);
                 setEvidenceOpen(true);
               }}
             />
           </>
         )}
       </CardContent>
-      <EvidenceSheet finding={evidenceFinding} open={evidenceOpen} onOpenChange={setEvidenceOpen} />
+      <EvidenceSheet findings={evidenceFindings} open={evidenceOpen} onOpenChange={setEvidenceOpen} />
     </Card>
   );
 }

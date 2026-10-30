@@ -408,6 +408,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // page behaves exactly like the draft mode, in place.
   const [localDraftId, setLocalDraftId] = useState<string | null>(null);
   const adoptedDraftIdRef = useRef<string | null>(null);
+  // 领养的两个半段（POST建壳 + SQL PUT）是否都已完成：PUT失败的领养
+  // 是"未完成动作"，后续acting操作先补齐它（完成用户已发起的事，不是
+  // 替用户保存新改动——owner裁定2026-10-31）。
+  const adoptionSqlCompleteRef = useRef(false);
   const [adoptionPending, setAdoptionPending] = useState(false);
   const [createSql, setCreateSql] = useState("");
   const createSqlRef = useRef(createSql);
@@ -460,7 +464,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [bulkLocate, setBulkLocate] = useState<{ ordinal: number; nonce: number } | null>(null);
   const [importedDigest, setImportedDigest] = useState<SqlDigest | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [evidenceFinding, setEvidenceFinding] = useState<ReviewFinding | null>(null);
+  const [evidenceFindings, setEvidenceFindings] = useState<ReviewFinding[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   // tabs-02 pattern (owner ruling 2026-10-24): controlled results tab pair so
@@ -665,37 +669,60 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
    */
   const ensureDraft = useCallback(async (): Promise<string | null> => {
     if (ensureDraftPromiseRef.current !== null) return ensureDraftPromiseRef.current;
-    if (activeDraftId !== null) return activeDraftId;
-    const adoptedDraftId = adoptedDraftIdRef.current;
-    if (adoptedDraftId !== null) return adoptedDraftId;
-    const rejectDraft = (message: string): null => {
-      setStepError(message);
-      reviewStartInFlightRef.current = false;
-      // 校验拒绝在点击的同一同步批次内发生：就地撤下pending，让按钮
-      // 保持在可交互状态（校验错误不应表现为"进行中"）。
-      setReviewStartPending(false);
-      return null;
-    };
-    const requestedIssue = (value: string): string | null => {
-      if (value === "") return null;
-      if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
-      if (new Date(value).getTime() <= Date.now()) return t("precheck.wizard.requestedSchedulePast");
-      return null;
-    };
-    if (selectedFlowId === null) {
-      return rejectDraft(t("precheck.wizard.error.needFlow"));
+    const needsAdoption = activeDraftId === null && adoptedDraftIdRef.current === null;
+    if (needsAdoption) {
+      // 校验保持同步：拒绝必须在点击的同一同步批次内置错并撤下
+      // pending（校验错误不应表现为"进行中"），也绝不留下会让下一次
+      // 点击被去重吞掉的已结算promise。
+      const rejectDraft = (message: string): null => {
+        setStepError(message);
+        reviewStartInFlightRef.current = false;
+        setReviewStartPending(false);
+        return null;
+      };
+      const requestedIssue = (value: string): string | null => {
+        if (value === "") return null;
+        if (requestedForToIso(value) === null) return t("precheck.wizard.requestedScheduleInvalid");
+        if (new Date(value).getTime() <= Date.now()) return t("precheck.wizard.requestedSchedulePast");
+        return null;
+      };
+      if (selectedFlowId === null) {
+        return rejectDraft(t("precheck.wizard.error.needFlow"));
+      }
+      if (createTitle.trim() === "") {
+        return rejectDraft(t("precheck.wizard.error.needTitle"));
+      }
+      const issue = requestedIssue(createRequestedFor);
+      if (issue !== null) {
+        return rejectDraft(issue);
+      }
     }
-    if (createTitle.trim() === "") {
-      return rejectDraft(t("precheck.wizard.error.needTitle"));
-    }
-    const issue = requestedIssue(createRequestedFor);
-    if (issue !== null) {
-      return rejectDraft(issue);
-    }
-    setStepError(null);
-    setAdoptionPending(true);
-    const metadataAtCreate = visibleMetadataRef.current;
-    const adoption = (async (): Promise<string | null> => {
+    const completion = (async (): Promise<string | null> => {
+      // 领养补齐：上一次领养的SQL PUT未落地（POST已权威建壳）时，先
+      // 补齐它，让本次acting操作面对与编辑器一致的已存SQL；重试仍
+      // 失败则拒绝本次操作，不创建第二个草稿。这是完成用户已发起的
+      // 动作，不是替用户保存新改动（owner裁定2026-10-31）。
+      const adoptedDraftId = adoptedDraftIdRef.current;
+      if (adoptedDraftId !== null && !adoptionSqlCompleteRef.current) {
+        const current = useDraftEditorStore.getState();
+        if (current.sql !== "" && current.savedVersion !== null) {
+          try {
+            const saved = (await replaceDraftSql(adoptedDraftId, { sql: current.sql }, {
+              headers: ifMatch(current.savedVersion),
+            })) as unknown as ChangeDraft;
+            store.markSaved(saved.version, saved.state, current.sql);
+          } catch (error) {
+            showActionError(error, "replaceDraftSql");
+            return null;
+          }
+        }
+        adoptionSqlCompleteRef.current = true;
+      }
+      if (activeDraftId !== null) return activeDraftId;
+      if (adoptedDraftId !== null) return adoptedDraftId;
+      setStepError(null);
+      setAdoptionPending(true);
+      const metadataAtCreate = visibleMetadataRef.current;
       let created: {
         id: string;
         version: number;
@@ -744,6 +771,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           return null;
         }
       }
+      adoptionSqlCompleteRef.current = true;
 
       // The create or SQL PUT can span user typing. markSaved acknowledges only
       // the submitted text, so any later input remains visible and dirty.
@@ -751,11 +779,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       if (sqlAfterSave !== sqlAtCreate) store.setSql(sqlAfterSave);
       return created.id;
     })();
-    ensureDraftPromiseRef.current = adoption;
+    ensureDraftPromiseRef.current = completion;
     try {
-      return await adoption;
+      return await completion;
     } finally {
-      if (ensureDraftPromiseRef.current === adoption) {
+      if (ensureDraftPromiseRef.current === completion) {
         ensureDraftPromiseRef.current = null;
         setAdoptionPending(false);
       }
@@ -942,6 +970,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     return merged;
   }, [flow, metadataQueries]);
 
+  // Owner ruling 2026-10-31: the run never issues a separate save of unsaved
+  // editor changes — it reviews the saved draft revision (the editor is just
+  // an editor until 保存并返回; review and submission both read the server
+  // draft, so results stay consistent with what would be submitted). The
+  // envelope adoption stays the first acting operation in create mode;
+  // clicking still disables the button synchronously (reviewStartPending) so
+  // a slow start can never invite a duplicate run.
   const handleRunReview = useCallback(() => {
     if (reviewStartInFlightRef.current) return;
     reviewStartInFlightRef.current = true;
@@ -951,30 +986,14 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       setReviewStartPending(false);
     };
     void (async () => {
-      // Implicit adoption first: precheck needs the server envelope.
       const draftId = await ensureDraft();
       if (draftId === null) {
         finish();
         return;
       }
-      const current = useDraftEditorStore.getState();
-      if (selectDirty(current)) {
-        // Save first: the run must freeze the exact SQL the user sees.
-        saveMutation.mutate({ draftId, sql: current.sql }, {
-          onSuccess: (_saved, variables) => {
-            if (!savedSqlMatchesEditor(variables.sql)) {
-              finish();
-              return;
-            }
-            reviewMutation.mutate({ draftId }, { onSettled: finish });
-          },
-          onError: finish,
-        });
-        return;
-      }
       reviewMutation.mutate({ draftId }, { onSettled: finish });
     })();
-  }, [ensureDraft, saveMutation, reviewMutation, savedSqlMatchesEditor]);
+  }, [ensureDraft, reviewMutation]);
 
   // ---- 保存并返回: the single secondary action (owner ruling 2026-10-24,
   // 保存信息 folded away) — persist SQL then metadata, then leave. ----
@@ -1573,7 +1592,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 <div>
                   <FindingList
                   state={findingsState}
-                  onOpenEvidence={(finding) => { setEvidenceFinding(finding); }}
+                  onOpenEvidence={(groupFindings) => { setEvidenceFindings(groupFindings); }}
                   onRetry={() => {
                     if (reviewRunError || run === null) {
                       void refetchReviewRun();
@@ -1656,10 +1675,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           uploading={saveMutation.isPending}
         />
         <EvidenceSheet
-          finding={evidenceFinding}
-          open={evidenceFinding !== null}
+          findings={evidenceFindings}
+          open={evidenceFindings.length > 0}
           onOpenChange={(open) => {
-            if (!open) setEvidenceFinding(null);
+            if (!open) setEvidenceFindings([]);
           }}
         />
 

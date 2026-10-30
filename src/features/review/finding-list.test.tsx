@@ -199,4 +199,159 @@ describe("FindingList", () => {
     expect(screen.getByTestId("findings-stale")).toHaveTextContent("风险发现已失效");
     expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
   });
+
+  it("renders backtick spans as inline code without literal backticks", () => {
+    render(<FindingList state={ready()} onOpenEvidence={() => {}} />);
+    const code = screen.getByTestId("finding-inline-code");
+    expect(code).toHaveTextContent("UPDATE orders SET status = 1");
+    // The markdown backticks are a rendering convention, not user-visible text.
+    const allText = screen
+      .getAllByTestId("finding-item")
+      .map((item) => item.textContent)
+      .join("");
+    expect(allText).not.toContain("`");
+  });
+
+  it("keeps the suggestion visible as a labelled block with normal contrast", () => {
+    render(<FindingList state={ready()} onOpenEvidence={() => {}} />);
+    const suggestions = screen.getAllByTestId("finding-suggestion");
+    expect(suggestions).toHaveLength(2);
+    for (const suggestion of suggestions) {
+      expect(suggestion).toHaveTextContent("修改建议");
+      // The block must not rely on the muted (near-disabled) foreground.
+      expect(suggestion.className).not.toContain("text-muted-foreground");
+    }
+    expect(suggestions[0]).toHaveTextContent("补充索引。");
+  });
+
+  it("merges same-group findings into one card led by the highest severity", () => {
+    const groupId = "9b0f6e21-0000-4000-8000-00000000a001";
+    render(
+      <FindingList
+        state={ready([
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f201",
+            severity: "medium",
+            category: "operability",
+            title: "目标表不存在，DROP TABLE 将执行失败",
+            message: "当前元数据快照显示 demo.x 不存在；语句未使用 IF EXISTS。",
+            suggestion: "若目的是幂等删除，可改为 DROP TABLE IF EXISTS x。",
+            fingerprint_group_id: groupId,
+          }),
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f202",
+            severity: "critical",
+            category: "correctness",
+            title: "对象 x 不存在，第 1 条语句无法执行",
+            message: "第 1 条语句的对象 x 要求状态为“存在”，已证明状态为“不存在”。",
+            suggestion: "请先确认目标对象与语句顺序是否符合预期。",
+            fingerprint_group_id: groupId,
+          }),
+        ])}
+        onOpenEvidence={() => {}}
+      />,
+    );
+    // One merged card, headline severity = highest of the group.
+    const cards = screen.getAllByTestId("finding-item");
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toHaveAttribute("data-severity", "critical");
+    expect(screen.getByText("对象 x 不存在，第 1 条语句无法执行")).toBeInTheDocument();
+    // The lower-severity finding stays fully present as a secondary sub-item:
+    // its own severity, title and advice visible, message one expand away.
+    const subs = screen.getAllByTestId("finding-sub-item");
+    expect(subs).toHaveLength(1);
+    expect(subs[0]).toHaveAttribute("data-severity", "medium");
+    expect(subs[0]).toHaveTextContent("目标表不存在，DROP TABLE 将执行失败");
+    expect(subs[0]).toHaveTextContent("若目的是幂等删除，可改为 DROP TABLE IF EXISTS x。");
+    expect(screen.getByTestId("finding-sub-detail")).toHaveTextContent("demo.x");
+  });
+
+  it("falls back to a flat card when the filter hides the other group member", async () => {
+    const groupId = "9b0f6e21-0000-4000-8000-00000000a002";
+    const user = userEvent.setup();
+    render(
+      <FindingList
+        state={ready([
+          finding({ id: "4f6f1a2b-0000-4000-8000-00000000f211", fingerprint_group_id: groupId }),
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f212",
+            severity: "critical",
+            fingerprint_group_id: groupId,
+          }),
+        ])}
+        onOpenEvidence={() => {}}
+      />,
+    );
+    await user.click(screen.getByLabelText("筛选严重级别"));
+    await user.click(await screen.findByRole("option", { name: "严重" }));
+    expect(screen.getAllByTestId("finding-item")).toHaveLength(1);
+    expect(screen.queryByTestId("finding-sub-item")).not.toBeInTheDocument();
+  });
+
+  it("opens the whole group's evidence through the single card button", () => {
+    const groupId = "9b0f6e21-0000-4000-8000-00000000a003";
+    const onOpenEvidence = vi.fn();
+    render(
+      <FindingList
+        state={ready([
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f221",
+            severity: "critical",
+            title: "对象 x 不存在，第 1 条语句无法执行",
+            evidence_ids: [],
+            fingerprint_group_id: groupId,
+          }),
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f222",
+            severity: "medium",
+            title: "目标表不存在，DROP TABLE 将执行失败",
+            evidence_ids: [EVIDENCE_ID],
+            fingerprint_group_id: groupId,
+          }),
+        ])}
+        onOpenEvidence={onOpenEvidence}
+      />,
+    );
+    // 合并卡内唯一证据按钮：主项无证据但子项有时仍显示，且一次携带
+    // 整组的发现清单（owner裁定2026-10-31：同组证据在一个按钮里）。
+    const buttons = screen.getAllByRole("button", { name: "查看审核证据" });
+    expect(buttons).toHaveLength(1);
+    buttons[0]?.click();
+    expect(onOpenEvidence).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "4f6f1a2b-0000-4000-8000-00000000f221" }),
+      expect.objectContaining({ id: "4f6f1a2b-0000-4000-8000-00000000f222" }),
+    ]);
+    // 子项 details 内不再有自己的证据按钮。
+    expect(screen.getAllByTestId("finding-sub-item")).toHaveLength(1);
+  });
+
+  it("upgrades long code spans to a copyable code block", async () => {
+    const longSql = `ALTER TABLE orders ADD COLUMN backup_reason varchar(255) NOT NULL DEFAULT '' COMMENT 'manual backup justification for this change batch'`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    render(
+      <FindingList
+        state={ready([
+          finding({
+            id: "4f6f1a2b-0000-4000-8000-00000000f301",
+            title: "大表加列",
+            message: `建议语句 \`${longSql}\` 需评估锁表。`,
+            suggestion: null,
+          }),
+        ])}
+        onOpenEvidence={() => {}}
+      />,
+    );
+    const block = screen.getByTestId("finding-block-code");
+    expect(block).toHaveTextContent(longSql);
+    // Native click (same pattern as the locate test): userEvent's pointer
+    // clipping check mis-fires on buttons nested in overflow-hidden cards.
+    screen.getByTestId("finding-copy-code").click();
+    expect(writeText).toHaveBeenCalledWith(longSql);
+    // Copy feedback is announced to assistive technology.
+    expect(await screen.findByText("代码已复制")).toBeInTheDocument();
+  });
 });

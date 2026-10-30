@@ -15,8 +15,9 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { EmptyState } from "@/shared/components/status/empty-state";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { ErrorState } from "@/shared/components/status/status-components";
-import { CircleAlert, Crosshair, FileSearch, TriangleAlert } from "lucide-react";
+import { CircleAlert, Crosshair, FileSearch, Lightbulb, Link2, TriangleAlert } from "lucide-react";
 import { useSeverityFilter } from "./use-draft-workspace";
+import { FindingText } from "./finding-text";
 
 /**
  * Structured finding list (migration contract §4 item 5): severity filter,
@@ -50,7 +51,7 @@ export type FindingListState =
 
 export interface FindingListProps {
   state: FindingListState;
-  onOpenEvidence: (finding: ReviewFinding) => void;
+  onOpenEvidence: (findings: ReviewFinding[]) => void;
   onLocate?: (finding: ReviewFinding) => void;
   onRetry?: () => void;
   /** Whether a quoted snippet currently exists in the editor text. */
@@ -67,6 +68,59 @@ const CATEGORY_KEYS: Record<string, string> = {
   compatibility: "precheck.category.compatibility",
   operability: "precheck.category.operability",
 };
+
+/**
+ * Presentation-layer grouping (owner ruling 2026-10-31): findings bound to
+ * the same server-provided fingerprint group render as ONE card led by the
+ * highest severity; the remaining same-group findings stay fully visible as
+ * secondary sub-items (title + suggestion up front, technical message and
+ * evidence one expand away). Nothing is deleted — this is the sanctioned
+ * display-layer grouping, not a semantic merge; backend-authoritative
+ * merging is proposed separately (RCP-20261031-FINDING-CONDITION-MERGE).
+ */
+const SEVERITY_RANK: Record<ReviewFinding["severity"], number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+  info: 0,
+};
+
+type FindingUnit =
+  | { kind: "single"; finding: ReviewFinding }
+  | { kind: "group"; primary: ReviewFinding; others: ReviewFinding[] };
+
+function buildUnits(findings: ReviewFinding[]): FindingUnit[] {
+  const members = new Map<string, ReviewFinding[]>();
+  for (const finding of findings) {
+    const groupId = finding.fingerprint_group_id;
+    if (groupId == null || groupId === "") continue;
+    const list = members.get(groupId) ?? [];
+    list.push(finding);
+    members.set(groupId, list);
+  }
+  const units: FindingUnit[] = [];
+  const emitted = new Set<string>();
+  for (const finding of findings) {
+    const groupId = finding.fingerprint_group_id;
+    if (groupId == null || groupId === "") {
+      units.push({ kind: "single", finding });
+      continue;
+    }
+    if (emitted.has(groupId)) continue;
+    emitted.add(groupId);
+    const sorted = [...(members.get(groupId) ?? [])].sort(
+      (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity],
+    );
+    const [top, ...rest] = sorted;
+    if (top !== undefined && sorted.length >= 2) {
+      units.push({ kind: "group", primary: top, others: rest });
+    } else {
+      units.push({ kind: "single", finding });
+    }
+  }
+  return units;
+}
 
 export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateInEditor }: FindingListProps) {
   const { t } = useTranslation();
@@ -171,7 +225,8 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
           />
         )}
         {findings !== null && visibleFindings.length > 0
-          ? visibleFindings.map((finding) => {
+          ? buildUnits(visibleFindings).map((unit) => {
+              const finding = unit.kind === "group" ? unit.primary : unit.finding;
               const badge = SEVERITY_BADGE[finding.severity];
               const locateTarget =
                 onLocate !== undefined && (locateInEditor?.(locateSnippet(finding) ?? "") ?? true)
@@ -186,6 +241,7 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
                 >
                   <header className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className={badge.className}>
+                      <span aria-hidden className="bg-current size-1.5 shrink-0 rounded-full" />
                       {t(badge.key)}
                     </Badge>
                     <Badge variant="secondary">{t(categoryKey(finding.category))}</Badge>
@@ -193,16 +249,101 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
                       {t("precheck.stagePath.stage", { position: finding.stage_position })}
                     </span>
                   </header>
-                  <h4 className="mt-2 font-medium">{finding.title}</h4>
-                  <p className="mt-1">{finding.message}</p>
-                  {finding.suggestion !== null && (
-                    <p className="text-muted-foreground mt-1">
-                      {t("precheck.findings.suggestion")}: {finding.suggestion}
-                    </p>
+                  <h4 className="mt-2 leading-snug font-semibold break-words">
+                    <FindingText text={finding.title} />
+                  </h4>
+                  <p className="mt-1.5 leading-relaxed break-words">
+                    <FindingText text={finding.message} />
+                  </p>
+                  {finding.suggestion != null && finding.suggestion !== "" && (
+                    <div
+                      className="bg-muted/40 mt-2 rounded-r-md border-l-2 border-primary p-2.5"
+                      data-testid="finding-suggestion"
+                    >
+                      <p className="flex items-center gap-1.5 text-xs font-medium">
+                        <Lightbulb className="size-3.5" aria-hidden />
+                        {t("precheck.findings.suggestion")}
+                      </p>
+                      <div className="mt-1 leading-relaxed break-words">
+                        <FindingText text={finding.suggestion} />
+                      </div>
+                    </div>
+                  )}
+                  {unit.kind === "group" && (
+                    <section className="mt-2.5" data-testid="finding-group-others">
+                      <p className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
+                        <Link2 className="size-3" aria-hidden />
+                        {t("precheck.findings.groupOthers")}
+                      </p>
+                      <div className="mt-1.5 space-y-2.5">
+                        {unit.others.map((sub) => {
+                          const subBadge = SEVERITY_BADGE[sub.severity];
+                          const subLocateTarget =
+                            onLocate !== undefined &&
+                            (locateInEditor?.(locateSnippet(sub) ?? "") ?? true)
+                              ? locateSnippet(sub)
+                              : null;
+                          return (
+                            <div
+                              key={sub.id}
+                              className="border-t pt-2.5"
+                              data-testid="finding-sub-item"
+                              data-severity={sub.severity}
+                            >
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Badge variant="outline" className={subBadge.className}>
+                                  <span aria-hidden className="bg-current size-1.5 shrink-0 rounded-full" />
+                                  {t(subBadge.key)}
+                                </Badge>
+                                <Badge variant="secondary">{t(categoryKey(sub.category))}</Badge>
+                              </div>
+                              <h5 className="mt-1 text-[13px] leading-snug font-medium break-words">
+                                <FindingText text={sub.title} />
+                              </h5>
+                              {sub.suggestion != null && sub.suggestion !== "" && (
+                                <p className="mt-1 text-[13px] leading-relaxed break-words">
+                                  <span className="font-medium">
+                                    {t("precheck.findings.suggestion")}：
+                                  </span>
+                                  <FindingText text={sub.suggestion} />
+                                </p>
+                              )}
+                              <details className="mt-1" data-testid="finding-sub-detail">
+                                <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
+                                  {t("precheck.findings.subDetail")}
+                                </summary>
+                                <p className="mt-1 text-[13px] leading-relaxed break-words">
+                                  <FindingText text={sub.message} />
+                                </p>
+                                <footer className="mt-1.5 flex flex-wrap gap-2">
+                                  {onLocate !== undefined && subLocateTarget !== null && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => { onLocate(sub); }}
+                                      data-testid={`locate-${sub.id}`}
+                                    >
+                                      <Crosshair className="size-3.5" aria-hidden />
+                                      {t("precheck.findings.locate")}
+                                    </Button>
+                                  )}
+                                </footer>
+                              </details>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
                   )}
                   <footer className="mt-2 flex flex-wrap gap-2">
-                    {finding.evidence_ids.length > 0 && (
-                      <Button variant="outline" size="sm" onClick={() => { onOpenEvidence(finding); }}>
+                    {(finding.evidence_ids.length > 0 ||
+                      (unit.kind === "group" &&
+                        unit.others.some((sub) => sub.evidence_ids.length > 0))) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { onOpenEvidence([finding, ...(unit.kind === "group" ? unit.others : [])]); }}
+                      >
                         <FileSearch className="size-3.5" aria-hidden />
                         {t("precheck.evidence.open")}
                       </Button>

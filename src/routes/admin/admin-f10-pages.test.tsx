@@ -254,6 +254,45 @@ describe("gate: 流程双表单符合新模型（§3）", () => {
     expect(within(dialog).getByTestId("flow-stage-0-exec-select-all-count").textContent)
       .toBe(`${String(execChips.length)}/${String(execChips.length)}`);
   });
+
+  it("filters step actor capsules by search without changing selections (2026-10-31)", async () => {
+    stubSession(true);
+    renderPage(<AdminFlowsPage />);
+    await screen.findByTestId("admin-flows-table");
+    await userEvent.click(screen.getByTestId("admin-flows-create-change"));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByTestId("flow-add-stage"));
+    const search = await within(dialog).findByTestId("flow-stage-0-step-0-search");
+    const total = Number(
+      within(dialog).getByTestId("flow-stage-0-step-0-select-all-count").textContent.split("/")[1] ?? "0",
+    );
+    expect(total).toBeGreaterThan(1);
+
+    // 搜索过滤胶囊："an" 是夹具人名（Anne Zhou / Administrator 等）的
+    // 真实子串，命中真子集。
+    await userEvent.type(search, "an");
+    const filtered = within(dialog).getAllByTestId(/^flow-stage-0-step-0-actor-/);
+    expect(filtered.length).toBeGreaterThan(0);
+    expect(filtered.length).toBeLessThan(total);
+    const firstChip = filtered[0] as HTMLElement;
+
+    // 筛选只隐藏胶囊，不改选中：勾选一个被筛选出的用户。
+    await userEvent.click(firstChip);
+    expect(firstChip.getAttribute("aria-checked")).toBe("true");
+    const clickedTestid = firstChip.getAttribute("data-testid");
+    expect(clickedTestid).toBeTruthy();
+
+    // 清空搜索：全部胶囊回来，刚才勾选的那一位保持选中。
+    await userEvent.clear(search);
+    const all = within(dialog).getAllByTestId(/^flow-stage-0-step-0-actor-/);
+    expect(all).toHaveLength(total);
+    expect(within(dialog).getByTestId(clickedTestid as string).getAttribute("aria-checked")).toBe("true");
+
+    // 无匹配：占位提示，不渲染任何胶囊。
+    await userEvent.type(search, "zzz无匹配");
+    expect(within(dialog).getByTestId("flow-stage-0-step-0")).toHaveTextContent("无匹配用户");
+    expect(within(dialog).queryAllByTestId(/^flow-stage-0-step-0-actor-/)).toHaveLength(0);
+  });
 });
 
 describe("gate: 公告 append-only 与单一发布指针（S005）", () => {
