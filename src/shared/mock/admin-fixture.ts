@@ -2755,7 +2755,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       const createPrio = Number(body.selection_priority ?? 100);
       if ([...world.providers.values()].some((p) => p.selection_priority === createPrio)) {
         return businessError(1005, "RESOURCE_ALREADY_EXISTS", {
-          detail: `selection_priority=${String(createPrio)} 已被其他AI Provider占用`,
+          detail: `AI Provider selection_priority=${String(createPrio)} 已被其他AI Provider占用`,
         });
       }
       // Create requires an api key (CreateAiProviderRequest Pick<api_key>);
@@ -2806,7 +2806,7 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (typeof body.selection_priority === "number" &&
         [...world.providers.values()].some((p) => p.id !== provider.id && p.selection_priority === body.selection_priority)) {
         return businessError(1005, "RESOURCE_ALREADY_EXISTS", {
-          detail: `selection_priority=${String(body.selection_priority)} 已被其他AI Provider占用`,
+          detail: `AI Provider selection_priority=${String(body.selection_priority)} 已被其他AI Provider占用`,
         });
       }
       if (typeof body.name === "string" && body.name !== "") provider.name = body.name;
