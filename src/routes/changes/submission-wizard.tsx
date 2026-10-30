@@ -54,7 +54,6 @@ import {
   useReviewRun,
 } from "@/features/review/use-draft-workspace";
 import { describeError } from "@/shared/api/error-display";
-import { useSession } from "@/features/auth/session-provider";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
@@ -392,7 +391,6 @@ function SummaryRow({
 
 export default function SubmissionWizard({ mode }: { mode: "create" | "draft" }) {
   const { t, i18n } = useTranslation();
-  const session = useSession();
   const { draftId } = useParams<{ draftId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -1275,16 +1273,6 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             <EmptyState
               title={t("precheck.new.empty")}
               testId="wizard-flow-empty"
-              action={session.user?.can_access_admin === true ? (
-                <Button
-                variant="link"
-                size="sm"
-                className="h-auto px-1 py-0"
-                onClick={() => { void navigate("/admin/flows"); }}
-              >
-                {t("precheck.wizard.manageFlows")}
-                </Button>
-              ) : undefined}
             />
           </div>
         )}
