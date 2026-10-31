@@ -5,10 +5,16 @@ import { Bell, FlaskConical, Pencil, Plus, Trash2 } from "lucide-react";
 import type {
   DingTalkNotificationConfig as DingTalkConfig,
   EmailNotificationConfig as EmailConfig,
+  FeishuNotificationConfig as FeishuConfig,
+  SlackNotificationConfig as SlackConfig,
   NotificationChannel,
+  NotificationChannelKind,
   NotificationDelivery,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
+import { SettingsNavTabs } from "@/routes/admin/settings-tabs";
+import { RulesView } from "@/routes/admin/admin-notification-rules-view";
+import { useNotificationRules } from "@/features/admin/use-admin";
 import { describeError } from "@/shared/api/error-display";
 import { PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
@@ -75,7 +81,7 @@ function describeErrorText(display: { messageKey: string; requestId: string | nu
 }
 
 interface ChannelDraft {
-  kind: "email" | "dingtalk";
+  kind: NotificationChannelKind;
   name: string;
   enabled: boolean;
   host: string;
@@ -102,6 +108,9 @@ export default function AdminNotificationsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
+  // S007三视图：渠道/规则/投递记录同页切换（不发明新路由）。
+  const [view, setView] = useState<"channels" | "rules" | "deliveries">("channels");
+  const [deliveryStateFilter, setDeliveryStateFilter] = useState<"all" | NotificationDelivery["state"]>("all");
   const pager = useCursorPage(20);
   const channelsQuery = useNotificationChannels(isAdmin, { limit: pager.pageSize, after: pager.after });
   // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
@@ -124,19 +133,48 @@ export default function AdminNotificationsPage() {
         description={t("adminNotifications.description")}
         icon={Bell}
         actions={
-          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-notifications-create">
-            <Plus />
-            {t("adminNotifications.create")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <SettingsNavTabs current="notifications" />
+            {view === "channels" && (
+              <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-notifications-create">
+                <Plus />
+                {t("adminNotifications.create")}
+              </Button>
+            )}
+          </div>
         }
       />
 
-      {channelsQuery.isPending && <LoadingState variant="page" />}
-      {channelsQuery.error !== null && (
+      <div role="tablist" aria-label={t("adminNotifications.views")} className="flex gap-2">
+        {(
+          [
+            ["channels", t("adminNotifications.channels")],
+            ["rules", t("adminNotifications.rules")],
+            ["deliveries", t("adminNotifications.deliveries")],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={view === key}
+            onClick={() => { setView(key); }}
+            data-testid={`admin-notifications-view-${key}`}
+            className={
+              "rounded-md border px-3 py-1.5 text-sm " +
+              (view === key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "channels" && channelsQuery.isPending && <LoadingState variant="page" />}
+      {view === "channels" && channelsQuery.error !== null && (
         <ErrorState error={channelsQuery.error} operationId="listNotificationChannels" onRetry={() => void channelsQuery.refetch()} />
       )}
 
-      {!channelsQuery.isPending && channelsQuery.error === null && (
+      {view === "channels" && !channelsQuery.isPending && channelsQuery.error === null && (
         <Card>
           <CardHeader className="border-b pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -189,14 +227,36 @@ export default function AdminNotificationsPage() {
         </Card>
       )}
 
+      {view === "deliveries" && (
       <Card>
         <CardHeader className="border-b pb-3">
           <CardTitle>{t("adminNotifications.deliveries")}</CardTitle>
           <CardDescription>{t("adminNotifications.deliveriesDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="px-0!">
+          <div className="mb-3 flex items-center gap-2 px-6">
+            <Label htmlFor="delivery-state-filter" className="text-sm text-muted-foreground">
+              {t("adminNotifications.filter.state")}
+            </Label>
+            <Select
+              value={deliveryStateFilter}
+              onValueChange={(value) => { if (value !== null) { setDeliveryStateFilter(value); } }}
+            >
+              <SelectTrigger id="delivery-state-filter" className="w-40" data-testid="delivery-state-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("adminNotifications.filter.all")}</SelectItem>
+                <SelectItem value="queued">{t("adminNotifications.deliveryState.queued")}</SelectItem>
+                <SelectItem value="sending">{t("adminNotifications.deliveryState.sending")}</SelectItem>
+                <SelectItem value="succeeded">{t("adminNotifications.deliveryState.succeeded")}</SelectItem>
+                <SelectItem value="failed">{t("adminNotifications.deliveryState.failed")}</SelectItem>
+                <SelectItem value="dead_letter">{t("adminNotifications.deliveryState.dead_letter")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {deliveriesQuery.isPending ? (
-            <LoadingState variant="table" columns={5} />
+            <LoadingState variant="table" columns={8} />
           ) : deliveriesQuery.error !== null ? (
             <ErrorState
               error={deliveriesQuery.error}
@@ -212,6 +272,9 @@ export default function AdminNotificationsPage() {
             <Table data-testid="admin-deliveries-table">
               <TableHeader>
                 <TableRow>
+                  <TableHead>{t("adminNotifications.column.event")}</TableHead>
+                  <TableHead>{t("adminNotifications.column.channelCol")}</TableHead>
+                  <TableHead>{t("adminNotifications.column.target")}</TableHead>
                   <TableHead>{t("adminNotifications.column.state")}</TableHead>
                   <TableHead>{t("adminNotifications.column.attempts")}</TableHead>
                   <TableHead>{t("adminNotifications.column.nextAttempt")}</TableHead>
@@ -220,8 +283,13 @@ export default function AdminNotificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deliveries.map((delivery) => (
+                {deliveries
+                  .filter((delivery) => deliveryStateFilter === "all" || delivery.state === deliveryStateFilter)
+                  .map((delivery) => (
                   <TableRow key={delivery.id} data-testid={`admin-delivery-row-${delivery.id}`}>
+                    <TableCell className="font-mono text-xs">{delivery.event_type}</TableCell>
+                    <TableCell>{delivery.channel_name}</TableCell>
+                    <TableCell className="font-mono text-xs">{delivery.masked_target}</TableCell>
                     <TableCell>
                       <StatusBadge tone={deliveryStateTone(delivery.state)}>
                         {t(`adminNotifications.deliveryState.${delivery.state}`)}
@@ -248,8 +316,13 @@ export default function AdminNotificationsPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
-      <ChannelFormDialog open={createOpen} editing={null} onClose={() => { setCreateOpen(false); }} />
+      {view === "rules" && (
+        <RulesView isAdmin={isAdmin} />
+      )}
+
+      <ChannelFormDialog open={createOpen && view === "channels"} editing={null} onClose={() => { setCreateOpen(false); }} />
       <ChannelFormDialog open={editing !== null} editing={editing} onClose={() => { setEditing(null); }} />
     </PageLayout>
   );
@@ -259,6 +332,8 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
   const { t } = useTranslation();
   const deleteChannel = useDeleteNotificationChannel();
   const testDelivery = useTestNotificationDelivery();
+  const rulesQuery = useNotificationRules(true);
+  const referencedRules = (rulesQuery.data?.items ?? []).filter((rule) => rule.channel_id === channel.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -320,6 +395,11 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
           <DialogHeader>
             <DialogTitle>{t("adminNotifications.delete.title", { name: channel.name })}</DialogTitle>
             <DialogDescription>{t("adminNotifications.delete.description")}</DialogDescription>
+            {referencedRules.length > 0 && (
+              <DialogDescription data-testid="channel-referenced-rules">
+                {t("adminNotifications.referencedRules", { count: referencedRules.length, names: referencedRules.map((rule) => rule.name).join("、") })}
+              </DialogDescription>
+            )}
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setConfirmOpen(false); }}>
@@ -384,16 +464,20 @@ function ChannelFormDialog({
 
   const submit = async () => {
     setErrorText(null);
-    const configuration: EmailConfig | DingTalkConfig =
+    const configuration: EmailConfig | DingTalkConfig | FeishuConfig | SlackConfig =
       draft.kind === "dingtalk"
         ? { webhook_host: "oapi.dingtalk.com" }
-        : {
-            host: draft.host,
-            port: draft.port,
-            tls_mode: draft.tlsMode,
-            username: draft.username,
-            from_address: draft.fromAddress,
-          };
+        : draft.kind === "feishu"
+          ? {}
+          : draft.kind === "slack"
+            ? {}
+            : {
+                host: draft.host,
+                port: draft.port,
+                tls_mode: draft.tlsMode,
+                username: draft.username,
+                from_address: draft.fromAddress,
+              };
     if (editing === null && draft.secret === "") {
       setErrorText(t("adminNotifications.secretRequired"));
       return;
@@ -442,7 +526,7 @@ function ChannelFormDialog({
               value={draft.kind}
               disabled={editing !== null}
               onValueChange={(value) => {
-                if (value !== "email" && value !== "dingtalk") return;
+                if (value !== "email" && value !== "dingtalk" && value !== "feishu" && value !== "slack") return;
                 setDraft({ ...draft, kind: value });
               }}
             >
@@ -456,6 +540,8 @@ function ChannelFormDialog({
               <SelectContent>
                 <SelectItem value="email">email</SelectItem>
                 <SelectItem value="dingtalk">dingtalk</SelectItem>
+                <SelectItem value="feishu">feishu</SelectItem>
+                <SelectItem value="slack">slack</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -520,7 +606,13 @@ function ChannelFormDialog({
             <Label htmlFor="channel-secret">{t("adminNotifications.field.secret")}</Label>
             <Input id="channel-secret" type="password" value={draft.secret} onChange={(event) => { setDraft({ ...draft, secret: event.target.value }); }} data-testid="channel-secret" />
             <p className="text-muted-foreground text-xs">
-              {editing === null ? t("adminNotifications.field.secretCreateHint") : t("adminNotifications.field.secretEditHint")}
+              {draft.kind === "feishu" || draft.kind === "slack"
+                ? editing === null
+                  ? t("adminNotifications.field.secretWebhookCreateHint")
+                  : t("adminNotifications.field.secretWebhookEditHint")
+                : editing === null
+                  ? t("adminNotifications.field.secretCreateHint")
+                  : t("adminNotifications.field.secretEditHint")}
             </p>
           </div>
           {errorText !== null && (

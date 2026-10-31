@@ -25,6 +25,7 @@ import type {
   CreateKnowledgeEntry200,
   CreateNotificationChannel200,
   CreateNotificationChannelRequest,
+  CreateNotificationRule200,
   CreateNotificationTestDelivery200,
   CreatePermissionGroup200,
   CreatePromptTool200,
@@ -37,6 +38,7 @@ import type {
   DeleteFlow200,
   DeleteKnowledgeEntry200,
   DeleteNotificationChannel200,
+  DeleteNotificationRule200,
   DeletePermissionGroup200,
   DeletePromptTool200,
   DeleteRuleSet200,
@@ -50,6 +52,7 @@ import type {
   GetFlow200,
   GetKnowledgeEntry200,
   GetNotificationChannel200,
+  GetNotificationRule200,
   GetOperationsDashboardParams,
   GetPermissionGroup200,
   GetPromptTool200,
@@ -82,6 +85,8 @@ import type {
   ListNotificationChannelsParams,
   ListNotificationDeliveries200,
   ListNotificationDeliveriesParams,
+  ListNotificationRules200,
+  ListNotificationRulesParams,
   ListPermissionGroups200,
   ListPermissionGroupsParams,
   ListPromptTools200,
@@ -93,10 +98,13 @@ import type {
   ListUsers200,
   ListUsersParams,
   NotificationChannelWrite,
+  NotificationRulePreviewRequest,
+  NotificationRuleWrite,
   NotificationTestRequest,
   NullBusinessResultResponse,
   OperationsDashboardResultResponse,
   PermissionGroupWrite,
+  PreviewNotificationRule200,
   ProblemResponse,
   PromptToolWrite,
   PublishAnnouncementRequest,
@@ -107,6 +115,7 @@ import type {
   ReplaceIdentityProviderRequest,
   ReplaceKnowledgeEntry200,
   ReplaceNotificationChannel200,
+  ReplaceNotificationRule200,
   ReplacePermissionGroup200,
   ReplacePromptTool200,
   ReplaceRuleSet200,
@@ -2652,6 +2661,227 @@ return customInstance<createNotificationTestDeliveryResponse>(getCreateNotificat
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(notificationTestRequest)
+  }
+);}
+
+
+export type listNotificationRulesResponse200 = {
+  data: ListNotificationRules200
+  status: 200
+}
+
+export type listNotificationRulesResponseSuccess = (listNotificationRulesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listNotificationRulesResponse = (listNotificationRulesResponseSuccess)
+
+export const getListNotificationRulesUrl = (params?: ListNotificationRulesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/notification-rules?${stringifiedParams}` : `/api/v4/admin/notification-rules`
+}
+
+export const listNotificationRules = async (params?: ListNotificationRulesParams, options?: Parameters<typeof customInstance>[1]): Promise<listNotificationRulesResponse> => {
+
+  return customInstance<listNotificationRulesResponse>(getListNotificationRulesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type createNotificationRuleResponse200 = {
+  data: CreateNotificationRule200
+  status: 200
+}
+
+export type createNotificationRuleResponseSuccess = (createNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type createNotificationRuleResponse = (createNotificationRuleResponseSuccess)
+
+export const getCreateNotificationRuleUrl = () => {
+
+
+
+
+  return `/api/v4/admin/notification-rules`
+}
+
+export const createNotificationRule = async (notificationRuleWrite: NotificationRuleWrite, options?: Parameters<typeof customInstance>[1]): Promise<createNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createNotificationRuleResponse>(getCreateNotificationRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRuleWrite)
+  }
+);}
+
+
+export type previewNotificationRuleResponse200 = {
+  data: PreviewNotificationRule200
+  status: 200
+}
+
+export type previewNotificationRuleResponseSuccess = (previewNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type previewNotificationRuleResponse = (previewNotificationRuleResponseSuccess)
+
+export const getPreviewNotificationRuleUrl = () => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/preview`
+}
+
+/**
+ * Resolve targets and render the message preview for a rule draft (S007). Never sends anything, never produces domain events and never mutates state. Email addresses are masked in the response.
+ */
+export const previewNotificationRule = async (notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: Parameters<typeof customInstance>[1]): Promise<previewNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<previewNotificationRuleResponse>(getPreviewNotificationRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRulePreviewRequest)
+  }
+);}
+
+
+export type getNotificationRuleResponse200 = {
+  data: GetNotificationRule200
+  status: 200
+}
+
+export type getNotificationRuleResponseSuccess = (getNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getNotificationRuleResponse = (getNotificationRuleResponseSuccess)
+
+export const getGetNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const getNotificationRule = async (ruleId: string, options?: Parameters<typeof customInstance>[1]): Promise<getNotificationRuleResponse> => {
+
+  return customInstance<getNotificationRuleResponse>(getGetNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type replaceNotificationRuleResponse200 = {
+  data: ReplaceNotificationRule200
+  status: 200
+}
+
+export type replaceNotificationRuleResponseSuccess = (replaceNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type replaceNotificationRuleResponse = (replaceNotificationRuleResponseSuccess)
+
+export const getReplaceNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const replaceNotificationRule = async (ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: Parameters<typeof customInstance>[1]): Promise<replaceNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<replaceNotificationRuleResponse>(getReplaceNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRuleWrite)
+  }
+);}
+
+
+export type deleteNotificationRuleResponse200 = {
+  data: DeleteNotificationRule200
+  status: 200
+}
+
+export type deleteNotificationRuleResponseSuccess = (deleteNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteNotificationRuleResponse = (deleteNotificationRuleResponseSuccess)
+
+export const getDeleteNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const deleteNotificationRule = async (ruleId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteNotificationRuleResponse> => {
+
+  return customInstance<deleteNotificationRuleResponse>(getDeleteNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
   }
 );}
 

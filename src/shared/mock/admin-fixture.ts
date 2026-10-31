@@ -1,6 +1,7 @@
 import { HttpResponse, http } from "msw";
 import { applySettingsToBridge, settingsBridge } from "@/shared/mock/settings-bridge";
-import type { ExecutionWindow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import type {
+  NotificationRule, ExecutionWindow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
 
@@ -274,7 +275,7 @@ const SETTINGS_FIELD_IMPACT: Record<string, Record<string, string>> = {
 };
 
 const DEFAULT_SETTINGS: Record<string, SettingsValue> = {
-  general: { registration_enabled: false, system_timezone: "Asia/Shanghai", default_locale: "zh-CN" },
+  general: { registration_enabled: false, system_timezone: "Asia/Shanghai", default_locale: "zh-CN", public_base_url: "" },
   query: { approval_enabled: true, default_timeout_ms: 30000, maximum_approved_access_duration_minutes: 43200 },
   execution: { restriction_enabled: false, windows: [], osc: { tool: "none", defaults: {} } },
   "ai-budget": { enforced: false, currency: "USD", daily_budget_minor: 10000, alert_threshold_percent: 80, input_price_per_million_minor: 0, output_price_per_million_minor: 0 },
@@ -453,6 +454,7 @@ const world = {
   identityProviders: new Map<string, FixtureIdentityProvider>(),
   notificationChannels: new Map<string, FixtureNotificationChannel>(),
   notificationDeliveries: [] as FixtureNotificationDelivery[],
+  notificationRules: new Map<string, FixtureNotificationRule>(),
   migrationRun: null as FixtureMigrationRun | null,
 };
 
@@ -476,6 +478,7 @@ export function resetAdminFixture(): void {
   world.identityProviders.clear();
   world.notificationChannels.clear();
   world.notificationDeliveries = [];
+  world.notificationRules.clear();
   world.migrationRun = null;
   seedAdminFixture();
 }
@@ -916,6 +919,8 @@ interface FixtureNotificationChannel extends NotificationChannel {
 
 type FixtureNotificationDelivery = NotificationDelivery;
 
+type FixtureNotificationRule = NotificationRule;
+
 interface FixtureMigrationCandidate {
   candidate_id: string;
   kind: "permission_group_flow_grant" | "single_stage_flow" | "multi_stage_flow" | "rule_set";
@@ -1207,12 +1212,28 @@ function seedSiteFixture(): void {
     updated_at: ts,
     secret: "smtppass-1",
   });
+  world.notificationRules.set("8c5f1a2b-0000-4000-8000-000000000001", {
+    id: "8c5f1a2b-0000-4000-8000-000000000001",
+    name: "执行失败通知提交人",
+    enabled: true,
+    flow_id: null,
+    event_type: "execution.failed",
+    target_kind: "order_submitter",
+    channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+    version: 1,
+    created_at: ts,
+    updated_at: ts,
+  });
   world.notificationDeliveries = [
     {
       id: "9d6f1a2b-0000-4000-8000-000000000001",
       domain_event_id: "5e6f1a2b-0000-4000-8000-000000000001",
+      event_type: "execution.failed",
       notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+      channel_kind: "email",
+      channel_name: "ops-mail",
       recipient_user_id: SEED_ADMIN_ID,
+      masked_target: "ye***@corp.test",
       state: "succeeded",
       delivery_attempt_count: 1,
       next_attempt_at: null,
@@ -1223,8 +1244,12 @@ function seedSiteFixture(): void {
     {
       id: "9d6f1a2b-0000-4000-8000-000000000002",
       domain_event_id: "5e6f1a2b-0000-4000-8000-000000000002",
+      event_type: "execution.result_unknown",
       notification_channel_id: ADMIN_FIXTURE_CHANNEL_EMAIL_ID,
+      channel_kind: "email",
+      channel_name: "ops-mail",
       recipient_user_id: ADMIN_FIXTURE_USER_MEMBER_ID,
+      masked_target: "op***@corp.test",
       state: "sending",
       delivery_attempt_count: 3,
       next_attempt_at: tsMuchLater,
@@ -2074,8 +2099,12 @@ export function siteFixtureHandlers(): HttpHandler[] {
       const delivery: FixtureNotificationDelivery = {
         id: uuid(),
         domain_event_id: uuid(),
+        event_type: "notification_test_delivery",
         notification_channel_id: channel.id,
+        channel_kind: channel.kind,
+        channel_name: channel.name,
         recipient_user_id: null,
+        masked_target: "group:" + channel.id.slice(0, 8),
         state: "queued",
         delivery_attempt_count: 0,
         next_attempt_at: now(),
@@ -2101,6 +2130,85 @@ export function siteFixtureHandlers(): HttpHandler[] {
       return HttpResponse.json(successEnvelope({
         task_id: delivery.id, channel_id: channel.id,
       }));
+    }),
+
+    // ----------------------------------------------- notification rules (S007) --
+    http.get("*/admin/notification-rules", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const url = new URL(request.url);
+      const items = [...world.notificationRules.values()].sort((a, b) =>
+        a.created_at.localeCompare(b.created_at),
+      );
+      return HttpResponse.json(
+        successEnvelope(pageOf(items, url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")), url.searchParams.get("after"))),
+      );
+    }),
+    http.post("*/admin/notification-rules", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null || typeof body.name !== "string" || body.name.trim() === "") {
+        return businessError(1001, "validation failed");
+      }
+      const rule: FixtureNotificationRule = {
+        id: uuid(),
+        name: body.name,
+        enabled: body.enabled === undefined ? true : (body.enabled as boolean),
+        flow_id: (body.flow_id as string | null | undefined) ?? null,
+        event_type: body.event_type as FixtureNotificationRule["event_type"],
+        target_kind: body.target_kind as FixtureNotificationRule["target_kind"],
+        channel_id: body.channel_id as string,
+        version: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      world.notificationRules.set(rule.id, rule);
+      return HttpResponse.json(successEnvelope(rule));
+    }),
+    http.post("*/admin/notification-rules/preview", () => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      return HttpResponse.json(successEnvelope({
+        targets: [{ recipient_key: "group:preview", recipient_user_id: null, masked_address: "op***@corp.test" }],
+        message_preview: "工单 YR-PREVIEW 执行失败。",
+      }));
+    }),
+    http.get("*/admin/notification-rules/:ruleId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const rule = world.notificationRules.get(String(params.ruleId));
+      if (rule === undefined) return businessError(1002, "rule not found");
+      return HttpResponse.json(successEnvelope(rule));
+    }),
+    http.put("*/admin/notification-rules/:ruleId", async ({ request, params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const existing = world.notificationRules.get(String(params.ruleId));
+      if (existing === undefined) return businessError(1002, "rule not found");
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null) return businessError(1001, "validation failed");
+      const updated: FixtureNotificationRule = {
+        ...existing,
+        name: body.name as string,
+        enabled: body.enabled as boolean,
+        flow_id: (body.flow_id as string | null | undefined) ?? null,
+        event_type: body.event_type as FixtureNotificationRule["event_type"],
+        target_kind: body.target_kind as FixtureNotificationRule["target_kind"],
+        channel_id: body.channel_id as string,
+        version: existing.version + 1,
+        updated_at: new Date().toISOString(),
+      };
+      world.notificationRules.set(updated.id, updated);
+      return HttpResponse.json(successEnvelope(updated));
+    }),
+    http.delete("*/admin/notification-rules/:ruleId", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      if (world.notificationRules.delete(String(params.ruleId))) {
+        return HttpResponse.json(successEnvelope(null));
+      }
+      return businessError(1002, "rule not found");
     }),
 
     http.get("*/admin/notification-deliveries", ({ request }) => {

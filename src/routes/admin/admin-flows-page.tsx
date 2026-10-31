@@ -64,7 +64,6 @@ function describeErrorText(display: { messageKey: string; requestId: string | nu
 interface StageDraft {
   position: number;
   datasourceId: string;
-  schemaMappings: { logical_schema: string; physical_schema: string }[];
   approvalSteps: { position: number; actorIds: string[] }[];
   executionActorIds: string[];
 }
@@ -334,10 +333,6 @@ function FlowFormDialog({
             stages: (editing.stages ?? []).map((stage) => ({
               position: stage.position,
               datasourceId: stage.datasource_id,
-              schemaMappings: stage.schema_mappings.map((mapping) => ({
-                logical_schema: mapping.logical_schema,
-                physical_schema: mapping.physical_schema,
-              })),
               approvalSteps: stage.approval_steps.map((step) => ({
                 position: step.position,
                 actorIds: step.actors.map((actor) => actor.user_id),
@@ -407,7 +402,6 @@ function FlowFormDialog({
             stages: form.stages.map((stage) => ({
               position: stage.position,
               datasource_id: stage.datasourceId,
-              schema_mappings: stage.schemaMappings,
               approval_steps: stage.approvalSteps.map((step) => ({
                 position: step.position,
                 actors: step.actorIds.map((user_id) => ({ user_id })),
@@ -520,7 +514,6 @@ function FlowFormDialog({
                           {
                             position: current.stages.length + 1,
                             datasourceId: "",
-                            schemaMappings: [],
                             approvalSteps: [{ position: 1, actorIds: [] }],
                             executionActorIds: [],
                           },
@@ -620,78 +613,6 @@ function FlowFormDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label>{t("adminFlows.schemaMappings")}</Label>
-                      <p className="text-muted-foreground text-xs">{t("adminFlows.schemaMappingsHint")}</p>
-                      <div className="flex flex-col gap-1">
-                        {stage.schemaMappings.map((mapping, mappingIndex) => (
-                          <div key={mappingIndex} className="flex items-center gap-2">
-                            <Input
-                              value={mapping.logical_schema}
-                              onChange={(event) => { setForm((current) => {
-                                  const stages = [...current.stages];
-                                  const mappings = [...stage.schemaMappings];
-                                  mappings[mappingIndex] = { ...mapping, logical_schema: event.target.value };
-                                  stages[stageIndex] = { ...stage, schemaMappings: mappings };
-                                  return { ...current, stages };
-                                }); }
-                              }
-                              placeholder={t("adminFlows.logicalSchema")}
-                              className="h-8 font-mono text-xs"
-                              maxLength={128}
-                            />
-                            <span className="text-muted-foreground text-xs">→</span>
-                            <Input
-                              value={mapping.physical_schema}
-                              onChange={(event) => { setForm((current) => {
-                                  const stages = [...current.stages];
-                                  const mappings = [...stage.schemaMappings];
-                                  mappings[mappingIndex] = { ...mapping, physical_schema: event.target.value };
-                                  stages[stageIndex] = { ...stage, schemaMappings: mappings };
-                                  return { ...current, stages };
-                                }); }
-                              }
-                              placeholder={t("adminFlows.physicalSchema")}
-                              className="h-8 font-mono text-xs"
-                              maxLength={128}
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label={t("adminFlows.mappingRemove", { index: String(mappingIndex + 1) })}
-                              onClick={() => { setForm((current) => {
-                                  const stages = [...current.stages];
-                                  stages[stageIndex] = {
-                                    ...stage,
-                                    schemaMappings: stage.schemaMappings.filter((_, index) => index !== mappingIndex),
-                                  };
-                                  return { ...current, stages };
-                                }); }
-                              }
-                            >
-                              <Trash2 />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => { setForm((current) => {
-                              const stages = [...current.stages];
-                              stages[stageIndex] = {
-                                ...stage,
-                                schemaMappings: [...stage.schemaMappings, { logical_schema: "", physical_schema: "" }],
-                              };
-                              return { ...current, stages };
-                            }); }
-                          }
-                          data-testid={`flow-stage-add-mapping-${String(stageIndex)}`}
-                        >
-                          <Plus />
-                          {t("adminFlows.addMapping")}
-                        </Button>
-                      </div>
                     </div>
                     <ApprovalStepsEditor
                       steps={stage.approvalSteps}

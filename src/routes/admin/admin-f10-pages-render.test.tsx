@@ -197,13 +197,26 @@ describe("identity providers page", () => {
 });
 
 describe("notification channels page", () => {
-  it("lists channels with secret presence and the Outbox deliveries", async () => {
+  it("lists channels with secret presence and the Outbox deliveries (S007 three views)", async () => {
     stubSession(true);
     renderPage(<AdminNotificationsPage />);
     await screen.findByTestId("admin-notifications-table");
     expect(screen.getByTestId("admin-notifications-table").textContent).toContain("ops-mail");
+    // 投递记录移入三视图：切换到投递视图后断言。
+    screen.getByTestId("admin-notifications-view-deliveries").click();
     const deliveries = await screen.findByTestId("admin-deliveries-table");
     expect(deliveries.textContent).toContain("smtp_timeout");
+  });
+});
+
+describe("notification rules view (S007)", () => {
+  it("lists rules with event vocabulary and no AI pre-review triggers", async () => {
+    stubSession(true);
+    renderPage(<AdminNotificationsPage />);
+    (screen.getByTestId("admin-notifications-view-rules")).click();
+    await screen.findByTestId("admin-rules-table");
+    const text = screen.getByTestId("admin-rules-table").textContent;
+    expect(text).toContain("执行失败通知提交人");
   });
 });
 

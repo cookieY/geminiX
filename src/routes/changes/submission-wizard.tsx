@@ -949,14 +949,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     })),
   });
   const completionCatalog = useMemo<SqlCompletionCatalog>(() => {
+    // RCP-20261031-REMOVE-FLOW-SCHEMA-MAPPINGS：流程阶段不再携带逻辑
+    // schema映射，库名联想完全来自元数据目录（查询会话作用域端点）。
     const merged: SqlCompletionCatalog = {
-      schemas: [
-        ...new Set(
-          (flow?.stages ?? []).flatMap((stage) =>
-            stage.schema_mappings.map((mapping) => mapping.logical_schema),
-          ),
-        ),
-      ],
+      schemas: [],
       tables: [],
       columns: [],
     };
@@ -968,7 +964,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       merged.columns.push(...data.columns);
     }
     return merged;
-  }, [flow, metadataQueries]);
+  }, [metadataQueries]);
 
   // Owner ruling 2026-10-31: the run never issues a separate save of unsaved
   // editor changes — it reviews the saved draft revision (the editor is just

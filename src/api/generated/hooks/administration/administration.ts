@@ -44,6 +44,7 @@ import type {
   CreateKnowledgeEntry200,
   CreateNotificationChannel200,
   CreateNotificationChannelRequest,
+  CreateNotificationRule200,
   CreateNotificationTestDelivery200,
   CreatePermissionGroup200,
   CreatePromptTool200,
@@ -56,6 +57,7 @@ import type {
   DeleteFlow200,
   DeleteKnowledgeEntry200,
   DeleteNotificationChannel200,
+  DeleteNotificationRule200,
   DeletePermissionGroup200,
   DeletePromptTool200,
   DeleteRuleSet200,
@@ -69,6 +71,7 @@ import type {
   GetFlow200,
   GetKnowledgeEntry200,
   GetNotificationChannel200,
+  GetNotificationRule200,
   GetOperationsDashboardParams,
   GetPermissionGroup200,
   GetPromptTool200,
@@ -101,6 +104,8 @@ import type {
   ListNotificationChannelsParams,
   ListNotificationDeliveries200,
   ListNotificationDeliveriesParams,
+  ListNotificationRules200,
+  ListNotificationRulesParams,
   ListPermissionGroups200,
   ListPermissionGroupsParams,
   ListPromptTools200,
@@ -112,10 +117,13 @@ import type {
   ListUsers200,
   ListUsersParams,
   NotificationChannelWrite,
+  NotificationRulePreviewRequest,
+  NotificationRuleWrite,
   NotificationTestRequest,
   NullBusinessResultResponse,
   OperationsDashboardResultResponse,
   PermissionGroupWrite,
+  PreviewNotificationRule200,
   ProblemResponse,
   PromptToolWrite,
   PublishAnnouncementRequest,
@@ -126,6 +134,7 @@ import type {
   ReplaceIdentityProviderRequest,
   ReplaceKnowledgeEntry200,
   ReplaceNotificationChannel200,
+  ReplaceNotificationRule200,
   ReplacePermissionGroup200,
   ReplacePromptTool200,
   ReplaceRuleSet200,
@@ -7101,6 +7110,623 @@ export function useCreateNotificationTestDelivery<TData = Awaited<ReturnType<typ
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getCreateNotificationTestDeliveryQueryOptions(channelId,notificationTestRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type listNotificationRulesResponse200 = {
+  data: ListNotificationRules200
+  status: 200
+}
+
+export type listNotificationRulesResponseSuccess = (listNotificationRulesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listNotificationRulesResponse = (listNotificationRulesResponseSuccess)
+
+export const getListNotificationRulesUrl = (params?: ListNotificationRulesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/notification-rules?${stringifiedParams}` : `/api/v4/admin/notification-rules`
+}
+
+export const listNotificationRules = async (params?: ListNotificationRulesParams, options?: Parameters<typeof customInstance>[1]): Promise<listNotificationRulesResponse> => {
+
+  return customInstance<listNotificationRulesResponse>(getListNotificationRulesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNotificationRulesMutationKey = () => ['listNotificationRules'] as const;
+
+export const getListNotificationRulesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listNotificationRules>>, TError,ListNotificationRulesMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listNotificationRules>>, TError,ListNotificationRulesMutationVariables, TContext> => {
+
+const mutationKey = getListNotificationRulesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listNotificationRules>>, ListNotificationRulesMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  listNotificationRules(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListNotificationRulesMutationResult = NonNullable<Awaited<ReturnType<typeof listNotificationRules>>>
+
+    export type ListNotificationRulesMutationError = unknown
+    export type ListNotificationRulesMutationVariables = {params?: ListNotificationRulesParams}
+
+    export const useListNotificationRules = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listNotificationRules>>, TError,ListNotificationRulesMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listNotificationRules>>,
+        TError,
+        ListNotificationRulesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListNotificationRulesMutationOptions(options), queryClient);
+    }
+    export type createNotificationRuleResponse200 = {
+  data: CreateNotificationRule200
+  status: 200
+}
+
+export type createNotificationRuleResponseSuccess = (createNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type createNotificationRuleResponse = (createNotificationRuleResponseSuccess)
+
+export const getCreateNotificationRuleUrl = () => {
+
+
+
+
+  return `/api/v4/admin/notification-rules`
+}
+
+export const createNotificationRule = async (notificationRuleWrite: NotificationRuleWrite, options?: Parameters<typeof customInstance>[1]): Promise<createNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createNotificationRuleResponse>(getCreateNotificationRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRuleWrite)
+  }
+);}
+
+
+
+
+
+export const getCreateNotificationRuleQueryKey = (notificationRuleWrite?: NotificationRuleWrite,) => {
+    return [
+    'POST', `/api/v4/admin/notification-rules`, notificationRuleWrite
+    ] as const;
+    }
+
+
+export const getCreateNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof createNotificationRule>>, TError = unknown>(notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCreateNotificationRuleQueryKey(notificationRuleWrite);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof createNotificationRule>>> = ({ signal }) => createNotificationRule(notificationRuleWrite, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CreateNotificationRuleQueryResult = NonNullable<Awaited<ReturnType<typeof createNotificationRule>>>
+export type CreateNotificationRuleQueryError = unknown
+
+
+export function useCreateNotificationRule<TData = Awaited<ReturnType<typeof createNotificationRule>>, TError = unknown>(
+ notificationRuleWrite: NotificationRuleWrite, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof createNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateNotificationRule<TData = Awaited<ReturnType<typeof createNotificationRule>>, TError = unknown>(
+ notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof createNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateNotificationRule<TData = Awaited<ReturnType<typeof createNotificationRule>>, TError = unknown>(
+ notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useCreateNotificationRule<TData = Awaited<ReturnType<typeof createNotificationRule>>, TError = unknown>(
+ notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCreateNotificationRuleQueryOptions(notificationRuleWrite,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type previewNotificationRuleResponse200 = {
+  data: PreviewNotificationRule200
+  status: 200
+}
+
+export type previewNotificationRuleResponseSuccess = (previewNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type previewNotificationRuleResponse = (previewNotificationRuleResponseSuccess)
+
+export const getPreviewNotificationRuleUrl = () => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/preview`
+}
+
+/**
+ * Resolve targets and render the message preview for a rule draft (S007). Never sends anything, never produces domain events and never mutates state. Email addresses are masked in the response.
+ */
+export const previewNotificationRule = async (notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: Parameters<typeof customInstance>[1]): Promise<previewNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<previewNotificationRuleResponse>(getPreviewNotificationRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRulePreviewRequest)
+  }
+);}
+
+
+
+
+
+export const getPreviewNotificationRuleQueryKey = (notificationRulePreviewRequest?: NotificationRulePreviewRequest,) => {
+    return [
+    'POST', `/api/v4/admin/notification-rules/preview`, notificationRulePreviewRequest
+    ] as const;
+    }
+
+
+export const getPreviewNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof previewNotificationRule>>, TError = unknown>(notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewNotificationRuleQueryKey(notificationRulePreviewRequest);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewNotificationRule>>> = ({ signal }) => previewNotificationRule(notificationRulePreviewRequest, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PreviewNotificationRuleQueryResult = NonNullable<Awaited<ReturnType<typeof previewNotificationRule>>>
+export type PreviewNotificationRuleQueryError = unknown
+
+
+export function usePreviewNotificationRule<TData = Awaited<ReturnType<typeof previewNotificationRule>>, TError = unknown>(
+ notificationRulePreviewRequest: NotificationRulePreviewRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof previewNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewNotificationRule<TData = Awaited<ReturnType<typeof previewNotificationRule>>, TError = unknown>(
+ notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof previewNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewNotificationRule<TData = Awaited<ReturnType<typeof previewNotificationRule>>, TError = unknown>(
+ notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function usePreviewNotificationRule<TData = Awaited<ReturnType<typeof previewNotificationRule>>, TError = unknown>(
+ notificationRulePreviewRequest: NotificationRulePreviewRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPreviewNotificationRuleQueryOptions(notificationRulePreviewRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type getNotificationRuleResponse200 = {
+  data: GetNotificationRule200
+  status: 200
+}
+
+export type getNotificationRuleResponseSuccess = (getNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getNotificationRuleResponse = (getNotificationRuleResponseSuccess)
+
+export const getGetNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const getNotificationRule = async (ruleId: string, options?: Parameters<typeof customInstance>[1]): Promise<getNotificationRuleResponse> => {
+
+  return customInstance<getNotificationRuleResponse>(getGetNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationRuleMutationKey = () => ['getNotificationRule'] as const;
+
+export const getGetNotificationRuleMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getNotificationRule>>, TError,GetNotificationRuleMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof getNotificationRule>>, TError,GetNotificationRuleMutationVariables, TContext> => {
+
+const mutationKey = getGetNotificationRuleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getNotificationRule>>, GetNotificationRuleMutationVariables> = (props) => {
+          const {ruleId} = props ?? {};
+
+          return  getNotificationRule(ruleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetNotificationRuleMutationResult = NonNullable<Awaited<ReturnType<typeof getNotificationRule>>>
+
+    export type GetNotificationRuleMutationError = unknown
+    export type GetNotificationRuleMutationVariables = {ruleId: string}
+
+    export const useGetNotificationRule = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getNotificationRule>>, TError,GetNotificationRuleMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof getNotificationRule>>,
+        TError,
+        GetNotificationRuleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGetNotificationRuleMutationOptions(options), queryClient);
+    }
+    export type replaceNotificationRuleResponse200 = {
+  data: ReplaceNotificationRule200
+  status: 200
+}
+
+export type replaceNotificationRuleResponseSuccess = (replaceNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type replaceNotificationRuleResponse = (replaceNotificationRuleResponseSuccess)
+
+export const getReplaceNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const replaceNotificationRule = async (ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: Parameters<typeof customInstance>[1]): Promise<replaceNotificationRuleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<replaceNotificationRuleResponse>(getReplaceNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationRuleWrite)
+  }
+);}
+
+
+
+
+
+export const getReplaceNotificationRuleQueryKey = (ruleId: string,
+    notificationRuleWrite?: NotificationRuleWrite,) => {
+    return [
+    'PUT', `/api/v4/admin/notification-rules/${ruleId}`, notificationRuleWrite
+    ] as const;
+    }
+
+
+export const getReplaceNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof replaceNotificationRule>>, TError = unknown>(ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReplaceNotificationRuleQueryKey(ruleId,notificationRuleWrite);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof replaceNotificationRule>>> = ({ signal }) => replaceNotificationRule(ruleId,notificationRuleWrite, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: ruleId !== null && ruleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ReplaceNotificationRuleQueryResult = NonNullable<Awaited<ReturnType<typeof replaceNotificationRule>>>
+export type ReplaceNotificationRuleQueryError = unknown
+
+
+export function useReplaceNotificationRule<TData = Awaited<ReturnType<typeof replaceNotificationRule>>, TError = unknown>(
+ ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof replaceNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof replaceNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useReplaceNotificationRule<TData = Awaited<ReturnType<typeof replaceNotificationRule>>, TError = unknown>(
+ ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof replaceNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof replaceNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useReplaceNotificationRule<TData = Awaited<ReturnType<typeof replaceNotificationRule>>, TError = unknown>(
+ ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useReplaceNotificationRule<TData = Awaited<ReturnType<typeof replaceNotificationRule>>, TError = unknown>(
+ ruleId: string,
+    notificationRuleWrite: NotificationRuleWrite, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof replaceNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getReplaceNotificationRuleQueryOptions(ruleId,notificationRuleWrite,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type deleteNotificationRuleResponse200 = {
+  data: DeleteNotificationRule200
+  status: 200
+}
+
+export type deleteNotificationRuleResponseSuccess = (deleteNotificationRuleResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteNotificationRuleResponse = (deleteNotificationRuleResponseSuccess)
+
+export const getDeleteNotificationRuleUrl = (ruleId: string,) => {
+
+
+
+
+  return `/api/v4/admin/notification-rules/${ruleId}`
+}
+
+export const deleteNotificationRule = async (ruleId: string, options?: Parameters<typeof customInstance>[1]): Promise<deleteNotificationRuleResponse> => {
+
+  return customInstance<deleteNotificationRuleResponse>(getDeleteNotificationRuleUrl(ruleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteNotificationRuleQueryKey = (ruleId: string,) => {
+    return [
+    'DELETE', `/api/v4/admin/notification-rules/${ruleId}`
+    ] as const;
+    }
+
+
+export const getDeleteNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof deleteNotificationRule>>, TError = unknown>(ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDeleteNotificationRuleQueryKey(ruleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof deleteNotificationRule>>> = ({ signal }) => deleteNotificationRule(ruleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: ruleId !== null && ruleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type DeleteNotificationRuleQueryResult = NonNullable<Awaited<ReturnType<typeof deleteNotificationRule>>>
+export type DeleteNotificationRuleQueryError = unknown
+
+
+export function useDeleteNotificationRule<TData = Awaited<ReturnType<typeof deleteNotificationRule>>, TError = unknown>(
+ ruleId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof deleteNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof deleteNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDeleteNotificationRule<TData = Awaited<ReturnType<typeof deleteNotificationRule>>, TError = unknown>(
+ ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof deleteNotificationRule>>,
+          TError,
+          Awaited<ReturnType<typeof deleteNotificationRule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDeleteNotificationRule<TData = Awaited<ReturnType<typeof deleteNotificationRule>>, TError = unknown>(
+ ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useDeleteNotificationRule<TData = Awaited<ReturnType<typeof deleteNotificationRule>>, TError = unknown>(
+ ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deleteNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getDeleteNotificationRuleQueryOptions(ruleId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

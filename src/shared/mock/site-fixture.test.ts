@@ -137,7 +137,6 @@ describe("site fixture flows", () => {
         {
           position: 1,
           datasource_id: "4f6f1a2b-0000-4000-8000-00000000a001",
-          schema_mappings: [],
           approval_steps: [{ position: 1, actors: [] }],
           execution_actors: [],
         },

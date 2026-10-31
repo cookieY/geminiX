@@ -1803,7 +1803,6 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             // Server-side catalog join projection (FlowStageView): the stage
             // name mirrors the name the submitted order's stage carries.
             datasource_name: "orders-mysql",
-            schema_mappings: [{ logical_schema: "app", physical_schema: "app" }],
             approval_steps: [
               { position: 1, actors: [{ user_id: MOCK_IDENTITY_IDS.reviewer }] },
             ],

@@ -49,7 +49,6 @@ describe("flow happy writes", () => {
         {
           position: 1,
           datasource_id: "4f6f1a2b-0000-4000-8000-00000000a001",
-          schema_mappings: [{ logical_schema: "app", physical_schema: "app_v2" }],
           approval_steps: [
             { position: 1, actors: [{ user_id: "u1" }] },
             { position: 2, actors: [{ user_id: "u2" }, { user_id: "u3" }] },
@@ -59,7 +58,6 @@ describe("flow happy writes", () => {
         {
           position: 2,
           datasource_id: "4f6f1a2b-0000-4000-8000-00000000a002",
-          schema_mappings: [],
           approval_steps: [{ position: 1, actors: [{ user_id: "u5" }] }],
           execution_actors: [{ user_id: "u6" }],
         },

@@ -142,7 +142,6 @@ export const CATALOG_FLOWS: CatalogFlowSpec[] = [
 
 export const CATALOG_FLOW_IDS: ReadonlySet<string> = new Set(CATALOG_FLOWS.map((entry) => entry.id));
 
-const SCHEMA_MAPPING = [{ logical_schema: "app", physical_schema: "app" }];
 
 /** The review fixture's read shape (FlowStageView): the datasource catalog
  * name is resolved server-side in the real backend, so the mock resolves it
@@ -163,7 +162,6 @@ export function reviewCatalogFlowViews(reviewerId: string, executorId: string): 
       datasource_name:
         CATALOG_DATASOURCES.find((candidate) => candidate.id === entry.datasource_id)?.name ??
         entry.datasource_id,
-      schema_mappings: SCHEMA_MAPPING,
       approval_steps: Array.from({ length: entry.approvers }, (_, position) => ({
         position: position + 1,
         actors: [{ user_id: reviewerId }],

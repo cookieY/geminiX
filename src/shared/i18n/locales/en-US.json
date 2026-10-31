@@ -1492,11 +1492,6 @@
     "stageTitle": "Stage {{index}}",
     "stageDatasource": "Target datasource",
     "pickDatasource": "Pick a datasource",
-    "schemaMappings": "Schema mappings",
-    "schemaMappingsHint": "Logical-to-physical schema mapping; may stay empty.",
-    "logicalSchema": "Logical schema",
-    "physicalSchema": "Physical schema",
-    "addMapping": "Add mapping",
     "approvalSteps": "Approval steps",
     "approvalStepsHint": "1..10 steps; within a step any approve passes and any reject rejects the whole item.",
     "addStep": "Add step",
@@ -1516,7 +1511,6 @@
     "stageDown": "Move stage {{index}} down",
     "stageRemove": "Remove stage {{index}}",
     "stepRemove": "Remove approval step {{index}}",
-    "mappingRemove": "Remove schema mapping {{index}}",
     "engineMismatch": "All stages of a change-review flow must bind datasources of the same engine (cross-engine stages can never pass execution preflight)."
   },
   "adminAnnouncements": {
@@ -1617,7 +1611,10 @@
       "attempts": "Attempts",
       "nextAttempt": "Next attempt",
       "lastError": "Last error",
-      "createdAt": "Created at"
+      "createdAt": "Created at",
+      "event": "Event",
+      "channelCol": "Channel",
+      "target": "Masked target"
     },
     "enabled": "Enabled",
     "disabled": "Disabled",
@@ -1641,14 +1638,22 @@
       "from": "From address",
       "secret": "Secret",
       "secretCreateHint": "Required on create.",
-      "secretEditHint": "Leave empty to keep."
+      "secretEditHint": "Leave empty to keep.",
+      "secretWebhookCreateHint": "Paste the full webhook URL (for Feishu, a JSON that may include the signing secret); stored only, never displayed.",
+      "secretWebhookEditHint": "Leave empty to keep the stored webhook; enter a new value to replace it. Never displayed."
     },
     "secretRequired": "A secret is required on create",
     "formFailed": "Save failed",
     "delete": {
       "title": "Delete channel: {{name}}",
       "description": "New events stop flowing through the channel; delivery history is preserved."
-    }
+    },
+    "views": "Notification views",
+    "filter": {
+      "state": "Filter by state",
+      "all": "All"
+    },
+    "referencedRules": "This channel is still referenced by {{count}} notification rule(s) ({{names}}); deletion will fail. Adjust the rules first."
   },
   "adminSettings": {
     "tab": {
@@ -1656,7 +1661,8 @@
       "query": "Query",
       "execution": "Execution",
       "branding": "Branding",
-      "aiBudget": "AI budget"
+      "aiBudget": "AI budget",
+      "notifications": "Notifications"
     },
     "general": {
       "title": "General settings",
@@ -1834,6 +1840,67 @@
       "emptyMeta": "New notices appear here once published",
       "empty": "Nothing has been published yet. A new notice shows up here as soon as an administrator publishes one.",
       "version": "v{{version}}"
+    }
+  },
+  "adminRules": {
+    "title": "Notification rules",
+    "description": "Deterministic matching by event, flow, recipient and channel; recipients come from the frozen order stages/steps.",
+    "create": "New rule",
+    "empty": "No notification rules yet",
+    "column": {
+      "name": "Name",
+      "event": "Trigger event",
+      "target": "Recipient",
+      "channel": "Channel",
+      "enabled": "Enabled",
+      "flow": "Flow scope"
+    },
+    "target": {
+      "order_submitter": "Order submitter",
+      "stage_approvers": "All frozen candidate reviewers of the active step",
+      "stage_executors": "All frozen candidate executors of the current stage",
+      "grant_requester": "Requester of the revoked query grant",
+      "builtin_admins": "Built-in administrators"
+    },
+    "event": {
+      "change_order.submitted": "Order submitted; first approval step activated",
+      "change_order.step_activated": "Next approval step activated",
+      "change_order.approval_decided": "Single-step approval decided",
+      "change_order.stage_ready_for_execution": "Stage fully approved; awaiting execution",
+      "change_order.rejected": "Order rejected",
+      "change_order.withdrawn": "Order withdrawn",
+      "change_order.voided": "Order voided",
+      "execution.scheduled": "Execution scheduled",
+      "execution.schedule_cancelled": "Execution schedule cancelled",
+      "execution.started": "Execution started",
+      "execution.succeeded": "Execution succeeded",
+      "execution.failed": "Execution failed",
+      "execution.partial_failed": "Execution partially failed",
+      "execution.cancelled": "Execution cancellation completed",
+      "execution.partial_cancelled": "Partial cancellation completed",
+      "execution.result_unknown": "Execution result unknown",
+      "execution.blocked_datasource_unavailable": "Schedule blocked by datasource unavailability",
+      "execution.missed_schedule": "Schedule missed its execution time",
+      "query_grant.revoked": "Query grant revoked",
+      "ai.budget_warning": "AI budget alert threshold reached",
+      "ai.budget_exhausted": "AI budget exhausted",
+      "ai.provider_failover": "AI provider failover triggered"
+    },
+    "channelMissing": "Channel missing",
+    "createTitle": "New notification rule",
+    "editTitle": "Edit notification rule ({{name}})",
+    "formDescription": "One rule = name + enabled + one trigger event + one recipient + one channel. AI pre-review outcomes can never be triggers.",
+    "formFailed": "Save failed",
+    "deleteTitle": "Delete notification rule ({{name}})",
+    "deleteDescription": "Deleted rules produce no new deliveries; historical delivery records remain.",
+    "deleteFailed": "Delete failed",
+    "previewTitle": "Preview (never sends)",
+    "previewDescription": "Resolve targets and render the fixed message; use a sample order to resolve frozen reviewers/executors. Preview never sends, never creates domain events and never mutates state.",
+    "previewSamplePlaceholder": "Sample order ID (optional)",
+    "previewRun": "Preview",
+    "previewTargets": "Resolved {{count}} delivery targets",
+    "flow": {
+      "all": "All flows"
     }
   }
 }

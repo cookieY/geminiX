@@ -1100,6 +1100,12 @@ export interface GeneralSettings {
      */
   system_timezone: string;
   default_locale: GeneralSettingsDefaultLocale;
+  /**
+     * Controlled system origin used to build "view order" links in outbound notifications (S007). Empty or null means notifications are sent without links. Never trust request Host headers for this.
+     * @maxLength 512
+     * @nullable
+     */
+  public_base_url: string | null;
 }
 
 export interface QuerySettings {
@@ -1396,12 +1402,24 @@ export interface DingTalkNotificationConfig {
   webhook_host: DingTalkNotificationConfigWebhookHost;
 }
 
+/**
+ * Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.
+ */
+export interface FeishuNotificationConfig { [key: string]: unknown }
+
+/**
+ * Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.
+ */
+export interface SlackNotificationConfig { [key: string]: unknown }
+
 export type NotificationChannelWriteKind = typeof NotificationChannelWriteKind[keyof typeof NotificationChannelWriteKind];
 
 
 export const NotificationChannelWriteKind = {
   email: 'email',
   dingtalk: 'dingtalk',
+  feishu: 'feishu',
+  slack: 'slack',
 } as const;
 
 export interface NotificationChannelWrite {
@@ -1412,7 +1430,7 @@ export interface NotificationChannelWrite {
      */
   name: string;
   enabled: boolean;
-  configuration: EmailNotificationConfig | DingTalkNotificationConfig;
+  configuration: EmailNotificationConfig | DingTalkNotificationConfig | FeishuNotificationConfig | SlackNotificationConfig;
   secret?: SecretInput;
 }
 
@@ -1424,6 +1442,8 @@ export type NotificationChannelKind = typeof NotificationChannelKind[keyof typeo
 export const NotificationChannelKind = {
   email: 'email',
   dingtalk: 'dingtalk',
+  feishu: 'feishu',
+  slack: 'slack',
 } as const;
 
 export interface NotificationChannel {
@@ -1431,7 +1451,7 @@ export interface NotificationChannel {
   kind: NotificationChannelKind;
   name: string;
   enabled: boolean;
-  configuration: EmailNotificationConfig | DingTalkNotificationConfig;
+  configuration: EmailNotificationConfig | DingTalkNotificationConfig | FeishuNotificationConfig | SlackNotificationConfig;
   secret_configured: boolean;
   /** @minimum 1 */
   version: number;
@@ -1471,8 +1491,14 @@ export const NotificationDeliveryState = {
 export interface NotificationDelivery {
   id: Uuid;
   domain_event_id: Uuid;
+  /** Internal event type joined from the outbox (delivery record information surface, S007). */
+  event_type: string;
   notification_channel_id: Uuid;
+  channel_kind: string;
+  channel_name: string;
   recipient_user_id?: Uuid | null;
+  /** Masked recipient (local segment truncated); undecryptable legacy rows show an explicit diagnostic instead of a fake value. */
+  masked_target: string;
   state: NotificationDeliveryState;
   /**
      * @minimum 0
@@ -1484,6 +1510,99 @@ export interface NotificationDelivery {
   last_error_code?: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
+}
+
+/**
+ * Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.
+ */
+export type NotificationRuleEventType = typeof NotificationRuleEventType[keyof typeof NotificationRuleEventType];
+
+
+export const NotificationRuleEventType = {
+  change_ordersubmitted: 'change_order.submitted',
+  change_orderstep_activated: 'change_order.step_activated',
+  change_orderapproval_decided: 'change_order.approval_decided',
+  change_orderstage_ready_for_execution: 'change_order.stage_ready_for_execution',
+  change_orderrejected: 'change_order.rejected',
+  change_orderwithdrawn: 'change_order.withdrawn',
+  change_ordervoided: 'change_order.voided',
+  executionscheduled: 'execution.scheduled',
+  executionschedule_cancelled: 'execution.schedule_cancelled',
+  executionstarted: 'execution.started',
+  executionsucceeded: 'execution.succeeded',
+  executionfailed: 'execution.failed',
+  executionpartial_failed: 'execution.partial_failed',
+  executioncancelled: 'execution.cancelled',
+  executionpartial_cancelled: 'execution.partial_cancelled',
+  executionresult_unknown: 'execution.result_unknown',
+  executionblocked_datasource_unavailable: 'execution.blocked_datasource_unavailable',
+  executionmissed_schedule: 'execution.missed_schedule',
+  query_grantrevoked: 'query_grant.revoked',
+  aibudget_warning: 'ai.budget_warning',
+  aibudget_exhausted: 'ai.budget_exhausted',
+  aiprovider_failover: 'ai.provider_failover',
+} as const;
+
+/**
+ * Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk/feishu/slack) always produce a single group delivery per event regardless of the target kind.
+ */
+export type NotificationRuleTargetKind = typeof NotificationRuleTargetKind[keyof typeof NotificationRuleTargetKind];
+
+
+export const NotificationRuleTargetKind = {
+  order_submitter: 'order_submitter',
+  stage_approvers: 'stage_approvers',
+  stage_executors: 'stage_executors',
+  grant_requester: 'grant_requester',
+  builtin_admins: 'builtin_admins',
+} as const;
+
+export interface NotificationRuleWrite {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  name: string;
+  enabled: boolean;
+  /** Restrict the rule to one change flow; null matches every flow. */
+  flow_id?: Uuid | null;
+  event_type: NotificationRuleEventType;
+  target_kind: NotificationRuleTargetKind;
+  channel_id: Uuid;
+}
+
+export interface NotificationRule {
+  id: Uuid;
+  name: string;
+  enabled: boolean;
+  flow_id: Uuid | null;
+  event_type: NotificationRuleEventType;
+  target_kind: NotificationRuleTargetKind;
+  channel_id: Uuid;
+  /** @minimum 1 */
+  version: number;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface NotificationRulePreviewRequest {
+  rule: NotificationRuleWrite;
+  /** Optional real order used to resolve frozen stage/step actors for the preview. The order must exist; no message is sent. */
+  sample_order_id?: Uuid | null;
+}
+
+export interface NotificationRulePreviewTarget {
+  /** Normalized dedup identity (user:{uuid} or group:{channel_id}). */
+  recipient_key: string;
+  recipient_user_id: Uuid | null;
+  /** Masked email (local segment truncated); IM group targets show the logical group identity. */
+  masked_address: string;
+}
+
+export interface NotificationRulePreview {
+  targets: NotificationRulePreviewTarget[];
+  /** Rendered fixed-template message body (no SQL, literals, evidence or credentials). */
+  message_preview: string;
 }
 
 export type AuditEventActorKind = typeof AuditEventActorKind[keyof typeof AuditEventActorKind];
@@ -1528,19 +1647,6 @@ export interface ActorRef {
   user_id: Uuid;
 }
 
-export interface SchemaMapping {
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  logical_schema: string;
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  physical_schema: string;
-}
-
 export interface ApprovalStepWrite {
   /**
      * @minimum 1
@@ -1555,7 +1661,6 @@ export interface FlowStageWrite {
   /** @minimum 1 */
   position: number;
   datasource_id: Uuid;
-  schema_mappings: SchemaMapping[];
   /**
      * @minItems 1
      * @maxItems 10
@@ -1577,7 +1682,6 @@ export interface FlowStageView {
      * @maxLength 128
      */
   datasource_name: string;
-  schema_mappings: SchemaMapping[];
   /**
      * @minItems 1
      * @maxItems 10
@@ -3801,6 +3905,60 @@ export type CreateNotificationTestDelivery200 = {
   task_id: Uuid;
   channel_id: Uuid;
 };
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListNotificationRulesParams = {
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: LimitParameter;
+after?: AfterParameter;
+};
+
+export type ListNotificationRules200 = {
+  err_code: 0;
+  message: 'ok';
+  data: Page & {
+  items?: NotificationRule[];
+};
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type CreateNotificationRule200 = {
+  err_code: 0;
+  message: 'ok';
+  data: NotificationRule;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type PreviewNotificationRule200 = {
+  err_code: 0;
+  message: 'ok';
+  data: NotificationRulePreview;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type GetNotificationRule200 = {
+  err_code: 0;
+  message: 'ok';
+  data: NotificationRule;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ReplaceNotificationRule200 = {
+  err_code: 0;
+  message: 'ok';
+  data: NotificationRule;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type DeleteNotificationRule200 = {
+  err_code: 0;
+  message: 'ok';
+  /** @nullable */
+  data: null;
   request_id: Uuid;
 } | BusinessErrorResponse;
 

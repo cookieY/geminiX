@@ -3,7 +3,7 @@
   "sources": {
     "openapi": {
       "path": "api/openapi/yearning-v4.yaml",
-      "sha256": "375cd4a0d075bfca2a3557338cb81b67ddfffb15a9fb753bef49e1dcd96e2a34"
+      "sha256": "9dc898ca1cf02ee81597f949167a8773de272951a2844058b9049a2f0de7532c"
     },
     "error_codes": {
       "path": "api/contracts/error-codes.json",
@@ -11,7 +11,7 @@
     },
     "operation_error_profiles": {
       "path": "api/contracts/operation-error-profiles.json",
-      "sha256": "3dafd7e0e347b20658bdface36b7aa7c97dac6950caf45a10c582f9c03fed46f"
+      "sha256": "b460c15fbc3b31ab536e2f95621012d8199d1d6bb40fc09d12f2cc5fdee70311"
     },
     "state_machines": {
       "path": "api/contracts/state-machines.json",
@@ -29,19 +29,19 @@
   "outputs": {
     "typescript_client": {
       "path": "src/api/generated/client",
-      "sha256": "3d0571fd90afd79659b2009927be31f6fa60dec790c70b849c7f4cf35c48b7d3"
+      "sha256": "46a5f34ea9943885ac51a5f53c5220de10b50745922dbaed78f6e90a39294c09"
     },
     "zod_runtime_schemas": {
       "path": "src/api/generated/zod",
-      "sha256": "fd7cb986baa8035cccef2c7297c5cebe13d690506f7ffc4943d5aa96c37339a9"
+      "sha256": "6f83676f7ebd2ff2b3ef4c1c970bc4a5a16075aa3b6278443b30c1b81ae70b43"
     },
     "tanstack_query_hooks": {
       "path": "src/api/generated/hooks",
-      "sha256": "6c45924a253bcccf0c8336d24b73a1166e168d5957dd405d6db28bbd480ba68d"
+      "sha256": "77f4a6f39894d4ace433a7c392b3168c217e2de7e6247e9506da6e5cc6827eb9"
     },
     "msw_mock_handlers": {
       "path": "src/api/generated/mocks",
-      "sha256": "fd976fdeb0a8e31db51f78fadad68ebca1c6bce4cf103a7a7296c35d1df4dae3"
+      "sha256": "58521f165af5b7bb8b8fde3caebf26b56908bfecd6ec1a4e5a3e6d7e588458bb"
     },
     "business_error_catalog": {
       "path": "src/api/generated/projections/business-error-catalog.ts",
@@ -49,7 +49,7 @@
     },
     "operation_error_profiles": {
       "path": "src/api/generated/projections/operation-error-profiles.ts",
-      "sha256": "cad60c0ceb8a0efe2278fcae83cd9195560ccb45889d7656a97f6debac50bf80"
+      "sha256": "284650fdc8171073ff26fa85116378220633b88a126d844ab23ca8b620917e28"
     },
     "state_display_projection": {
       "path": "src/api/generated/projections/state-display-projection.ts",
@@ -57,5 +57,5 @@
     }
   },
   "authorization_policy_generated": false,
-  "generated_at": "2026-10-30T14:31:00.678Z"
+  "generated_at": "2026-10-31T04:25:49.147Z"
 }

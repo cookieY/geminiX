@@ -91,7 +91,6 @@ describe("flow lifecycle + masking rules", () => {
       rule_set_id: baseRuleSetId,
       stages: [{
         position: 1, datasource_id: baseDatasourceId,
-        schema_mappings: [{ logical_schema: "public", physical_schema: "public" }],
         approval_steps: [{ position: 1, actors: [{ user_id: actorUserId }] }],
         execution_actors: [{ user_id: actorUserId }],
       }],

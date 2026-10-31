@@ -122,7 +122,6 @@ describe("flow write guards", () => {
       {
         position: 1,
         datasource_id: "4f6f1a2b-0000-4000-8000-00000000a001",
-        schema_mappings: [],
         approval_steps: [{ position: 1, actors: [{ user_id: "u" }] }],
         execution_actors: [{ user_id: "u" }],
       },
@@ -436,7 +435,6 @@ describe("flow model validation arms", () => {
         {
           position: 1,
           datasource_id: "4f6f1a2b-0000-4000-8000-00000000a001",
-          schema_mappings: [],
           approval_steps: [{ position: 1, actors: [{ user_id: "u" }] }],
           execution_actors: [{ user_id: "u" }],
         },
@@ -456,7 +454,7 @@ describe("flow model validation arms", () => {
     const emptyActors = {
       ...base,
       stages: [
-        { ...(base.stages[0] ?? { position: 1, datasource_id: "", schema_mappings: [] }), approval_steps: [{ position: 1, actors: [] }] },
+        { ...(base.stages[0] ?? { position: 1, datasource_id: "" }), approval_steps: [{ position: 1, actors: [] }] },
       ],
     };
     const refused = await call("POST", "/admin/flows", emptyActors);

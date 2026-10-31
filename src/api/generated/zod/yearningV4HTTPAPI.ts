@@ -443,10 +443,6 @@ export const listFlowsResponseOneDataTwoItemsItemNameMax = 128;
 
 export const listFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax = 128;
 
-export const listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
-
 export const listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax = 10;
 
 
@@ -482,10 +478,6 @@ export const ListFlowsResponse = zod.union([zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(listFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -529,10 +521,6 @@ export const ListFlowsResponse = zod.union([zod.object({
 export const createFlowBodyNameMax = 128;
 
 
-export const createFlowBodyStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const createFlowBodyStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
-
 export const createFlowBodyStagesItemApprovalStepsItemPositionMax = 10;
 
 
@@ -556,10 +544,6 @@ export const CreateFlowBody = zod.object({
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(createFlowBodyStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(createFlowBodyStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(createFlowBodyStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -587,10 +571,6 @@ export const createFlowResponseOneDataNameMax = 128;
 
 
 export const createFlowResponseOneDataStagesItemDatasourceNameMax = 128;
-
-export const createFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const createFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
 export const createFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
@@ -620,10 +600,6 @@ export const CreateFlowResponse = zod.union([zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string().min(1).max(createFlowResponseOneDataStagesItemDatasourceNameMax),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(createFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(createFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(createFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -672,10 +648,6 @@ export const getFlowResponseOneDataNameMax = 128;
 
 export const getFlowResponseOneDataStagesItemDatasourceNameMax = 128;
 
-export const getFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const getFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
-
 export const getFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
 
@@ -704,10 +676,6 @@ export const GetFlowResponse = zod.union([zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string().min(1).max(getFlowResponseOneDataStagesItemDatasourceNameMax),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(getFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(getFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(getFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -761,10 +729,6 @@ export const ReplaceFlowHeader = zod.object({
 export const replaceFlowBodyNameMax = 128;
 
 
-export const replaceFlowBodyStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const replaceFlowBodyStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
-
 export const replaceFlowBodyStagesItemApprovalStepsItemPositionMax = 10;
 
 
@@ -788,10 +752,6 @@ export const ReplaceFlowBody = zod.object({
   "stages": zod.array(zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(replaceFlowBodyStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(replaceFlowBodyStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(replaceFlowBodyStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -819,10 +779,6 @@ export const replaceFlowResponseOneDataNameMax = 128;
 
 
 export const replaceFlowResponseOneDataStagesItemDatasourceNameMax = 128;
-
-export const replaceFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const replaceFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
 
 export const replaceFlowResponseOneDataStagesItemApprovalStepsItemPositionMax = 10;
 
@@ -852,10 +808,6 @@ export const ReplaceFlowResponse = zod.union([zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemDatasourceNameMax),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(replaceFlowResponseOneDataStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(replaceFlowResponseOneDataStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({
@@ -3909,6 +3861,8 @@ export const GetSettingsNamespaceParams = zod.object({
 export const getSettingsNamespaceResponseOneDataSettingsOneRegistrationEnabledDefault = false;
 export const getSettingsNamespaceResponseOneDataSettingsOneSystemTimezoneMax = 255;
 
+export const getSettingsNamespaceResponseOneDataSettingsOnePublicBaseUrlMax = 512;
+
 export const getSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsDefault = 30000;
 export const getSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsMax = 300000;
 
@@ -3960,7 +3914,8 @@ export const GetSettingsNamespaceResponse = zod.union([zod.object({
   "settings": zod.union([zod.object({
   "registration_enabled": zod.boolean().default(getSettingsNamespaceResponseOneDataSettingsOneRegistrationEnabledDefault),
   "system_timezone": zod.string().min(1).max(getSettingsNamespaceResponseOneDataSettingsOneSystemTimezoneMax),
-  "default_locale": zod.enum(['zh-CN', 'en-US'])
+  "default_locale": zod.enum(['zh-CN', 'en-US']),
+  "public_base_url": zod.string().max(getSettingsNamespaceResponseOneDataSettingsOnePublicBaseUrlMax).nullable().describe('Controlled system origin used to build \"view order\" links in outbound notifications (S007). Empty or null means notifications are sent without links. Never trust request Host headers for this.')
 }),zod.object({
   "approval_enabled": zod.boolean(),
   "default_timeout_ms": zod.int().min(1).max(getSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsMax).default(getSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsDefault),
@@ -4025,6 +3980,8 @@ export const ReplaceSettingsNamespaceHeader = zod.object({
 export const replaceSettingsNamespaceBodySettingsOneRegistrationEnabledDefault = false;
 export const replaceSettingsNamespaceBodySettingsOneSystemTimezoneMax = 255;
 
+export const replaceSettingsNamespaceBodySettingsOnePublicBaseUrlMax = 512;
+
 export const replaceSettingsNamespaceBodySettingsTwoDefaultTimeoutMsDefault = 30000;
 export const replaceSettingsNamespaceBodySettingsTwoDefaultTimeoutMsMax = 300000;
 
@@ -4073,7 +4030,8 @@ export const ReplaceSettingsNamespaceBody = zod.object({
   "settings": zod.union([zod.object({
   "registration_enabled": zod.boolean().default(replaceSettingsNamespaceBodySettingsOneRegistrationEnabledDefault),
   "system_timezone": zod.string().min(1).max(replaceSettingsNamespaceBodySettingsOneSystemTimezoneMax),
-  "default_locale": zod.enum(['zh-CN', 'en-US'])
+  "default_locale": zod.enum(['zh-CN', 'en-US']),
+  "public_base_url": zod.string().max(replaceSettingsNamespaceBodySettingsOnePublicBaseUrlMax).nullable().describe('Controlled system origin used to build \"view order\" links in outbound notifications (S007). Empty or null means notifications are sent without links. Never trust request Host headers for this.')
 }),zod.object({
   "approval_enabled": zod.boolean(),
   "default_timeout_ms": zod.int().min(1).max(replaceSettingsNamespaceBodySettingsTwoDefaultTimeoutMsMax).default(replaceSettingsNamespaceBodySettingsTwoDefaultTimeoutMsDefault),
@@ -4115,6 +4073,8 @@ export const ReplaceSettingsNamespaceBody = zod.object({
 
 export const replaceSettingsNamespaceResponseOneDataSettingsOneRegistrationEnabledDefault = false;
 export const replaceSettingsNamespaceResponseOneDataSettingsOneSystemTimezoneMax = 255;
+
+export const replaceSettingsNamespaceResponseOneDataSettingsOnePublicBaseUrlMax = 512;
 
 export const replaceSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsDefault = 30000;
 export const replaceSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsMax = 300000;
@@ -4167,7 +4127,8 @@ export const ReplaceSettingsNamespaceResponse = zod.union([zod.object({
   "settings": zod.union([zod.object({
   "registration_enabled": zod.boolean().default(replaceSettingsNamespaceResponseOneDataSettingsOneRegistrationEnabledDefault),
   "system_timezone": zod.string().min(1).max(replaceSettingsNamespaceResponseOneDataSettingsOneSystemTimezoneMax),
-  "default_locale": zod.enum(['zh-CN', 'en-US'])
+  "default_locale": zod.enum(['zh-CN', 'en-US']),
+  "public_base_url": zod.string().max(replaceSettingsNamespaceResponseOneDataSettingsOnePublicBaseUrlMax).nullable().describe('Controlled system origin used to build \"view order\" links in outbound notifications (S007). Empty or null means notifications are sent without links. Never trust request Host headers for this.')
 }),zod.object({
   "approval_enabled": zod.boolean(),
   "default_timeout_ms": zod.int().min(1).max(replaceSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsMax).default(replaceSettingsNamespaceResponseOneDataSettingsTwoDefaultTimeoutMsDefault),
@@ -4228,6 +4189,8 @@ export const AssessSettingsImpactParams = zod.object({
 export const assessSettingsImpactBodySettingsOneRegistrationEnabledDefault = false;
 export const assessSettingsImpactBodySettingsOneSystemTimezoneMax = 255;
 
+export const assessSettingsImpactBodySettingsOnePublicBaseUrlMax = 512;
+
 export const assessSettingsImpactBodySettingsTwoDefaultTimeoutMsDefault = 30000;
 export const assessSettingsImpactBodySettingsTwoDefaultTimeoutMsMax = 300000;
 
@@ -4273,7 +4236,8 @@ export const AssessSettingsImpactBody = zod.object({
   "settings": zod.union([zod.object({
   "registration_enabled": zod.boolean().default(assessSettingsImpactBodySettingsOneRegistrationEnabledDefault),
   "system_timezone": zod.string().min(1).max(assessSettingsImpactBodySettingsOneSystemTimezoneMax),
-  "default_locale": zod.enum(['zh-CN', 'en-US'])
+  "default_locale": zod.enum(['zh-CN', 'en-US']),
+  "public_base_url": zod.string().max(assessSettingsImpactBodySettingsOnePublicBaseUrlMax).nullable().describe('Controlled system origin used to build \"view order\" links in outbound notifications (S007). Empty or null means notifications are sent without links. Never trust request Host headers for this.')
 }),zod.object({
   "approval_enabled": zod.boolean(),
   "default_timeout_ms": zod.int().min(1).max(assessSettingsImpactBodySettingsTwoDefaultTimeoutMsMax).default(assessSettingsImpactBodySettingsTwoDefaultTimeoutMsDefault),
@@ -4462,7 +4426,7 @@ export const ListNotificationChannelsResponse = zod.union([zod.object({
 }).and(zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string(),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4473,7 +4437,11 @@ export const ListNotificationChannelsResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret_configured": zod.boolean(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -4503,7 +4471,7 @@ export const createNotificationChannelBodyOneConfigurationOneUsernameMax = 320;
 
 
 export const CreateNotificationChannelBody = zod.object({
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string().min(1).max(createNotificationChannelBodyOneNameMax),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4514,7 +4482,11 @@ export const CreateNotificationChannelBody = zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret": zod.object({
   "value": zod.string().min(1)
 })
@@ -4536,7 +4508,7 @@ export const CreateNotificationChannelResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "id": zod.uuid(),
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string(),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4547,7 +4519,11 @@ export const CreateNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret_configured": zod.boolean(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -4582,7 +4558,7 @@ export const GetNotificationChannelResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "id": zod.uuid(),
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string(),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4593,7 +4569,11 @@ export const GetNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret_configured": zod.boolean(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -4633,7 +4613,7 @@ export const replaceNotificationChannelBodyConfigurationOneUsernameMax = 320;
 
 
 export const ReplaceNotificationChannelBody = zod.object({
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string().min(1).max(replaceNotificationChannelBodyNameMax),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4644,7 +4624,11 @@ export const ReplaceNotificationChannelBody = zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret": zod.object({
   "value": zod.string().min(1)
 }).optional()
@@ -4664,7 +4648,7 @@ export const ReplaceNotificationChannelResponse = zod.union([zod.object({
   "message": zod.literal("ok"),
   "data": zod.object({
   "id": zod.uuid(),
-  "kind": zod.enum(['email', 'dingtalk']),
+  "kind": zod.enum(['email', 'dingtalk', 'feishu', 'slack']),
   "name": zod.string(),
   "enabled": zod.boolean(),
   "configuration": zod.union([zod.object({
@@ -4675,7 +4659,11 @@ export const ReplaceNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-})]),
+}),zod.object({
+
+}).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
+
+}).describe('Slack Incoming Webhook channel (S007). The full webhook URL is the credential and is stored only inside the encrypted secret envelope; the configuration surface is intentionally empty.')]),
   "secret_configured": zod.boolean(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -4749,6 +4737,248 @@ export const CreateNotificationTestDeliveryResponse = zod.union([zod.object({
 })])
 
 
+export const listNotificationRulesQueryLimitDefault = 50;
+export const listNotificationRulesQueryLimitMax = 200;
+
+
+
+export const ListNotificationRulesQueryParams = zod.object({
+  "limit": zod.int().min(1).max(listNotificationRulesQueryLimitMax).default(listNotificationRulesQueryLimitDefault),
+  "after": zod.string().optional()
+})
+
+
+
+
+export const ListNotificationRulesResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "items": zod.array(zod.unknown()),
+  "page": zod.object({
+  "next_cursor": zod.string().nullable(),
+  "has_more": zod.boolean()
+})
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}))
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const createNotificationRuleBodyNameMax = 128;
+
+
+
+export const CreateNotificationRuleBody = zod.object({
+  "name": zod.string().min(1).max(createNotificationRuleBodyNameMax),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Restrict the rule to one change flow; null matches every flow.'),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid()
+})
+
+
+
+
+export const CreateNotificationRuleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+/**
+ * Resolve targets and render the message preview for a rule draft (S007). Never sends anything, never produces domain events and never mutates state. Email addresses are masked in the response.
+ */
+export const previewNotificationRuleBodyRuleNameMax = 128;
+
+
+
+export const PreviewNotificationRuleBody = zod.object({
+  "rule": zod.object({
+  "name": zod.string().min(1).max(previewNotificationRuleBodyRuleNameMax),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Restrict the rule to one change flow; null matches every flow.'),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid()
+}),
+  "sample_order_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Optional real order used to resolve frozen stage\/step actors for the preview. The order must exist; no message is sent.')
+})
+
+export const PreviewNotificationRuleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "targets": zod.array(zod.object({
+  "recipient_key": zod.string().describe('Normalized dedup identity (user:{uuid} or group:{channel_id}).'),
+  "recipient_user_id": zod.union([zod.uuid(),zod.null()]),
+  "masked_address": zod.string().describe('Masked email (local segment truncated); IM group targets show the logical group identity.')
+})),
+  "message_preview": zod.string().describe('Rendered fixed-template message body (no SQL, literals, evidence or credentials).')
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const GetNotificationRuleParams = zod.object({
+  "rule_id": zod.uuid()
+})
+
+
+
+
+export const GetNotificationRuleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const ReplaceNotificationRuleParams = zod.object({
+  "rule_id": zod.uuid()
+})
+
+export const replaceNotificationRuleHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
+
+
+export const ReplaceNotificationRuleHeader = zod.object({
+  "If-Match": zod.string().regex(replaceNotificationRuleHeaderIfMatchRegExp)
+})
+
+export const replaceNotificationRuleBodyNameMax = 128;
+
+
+
+export const ReplaceNotificationRuleBody = zod.object({
+  "name": zod.string().min(1).max(replaceNotificationRuleBodyNameMax),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]).optional().describe('Restrict the rule to one change flow; null matches every flow.'),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid()
+})
+
+
+
+
+export const ReplaceNotificationRuleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "flow_id": zod.union([zod.uuid(),zod.null()]),
+  "event_type": zod.enum(['change_order.submitted', 'change_order.step_activated', 'change_order.approval_decided', 'change_order.stage_ready_for_execution', 'change_order.rejected', 'change_order.withdrawn', 'change_order.voided', 'execution.scheduled', 'execution.schedule_cancelled', 'execution.started', 'execution.succeeded', 'execution.failed', 'execution.partial_failed', 'execution.cancelled', 'execution.partial_cancelled', 'execution.result_unknown', 'execution.blocked_datasource_unavailable', 'execution.missed_schedule', 'query_grant.revoked', 'ai.budget_warning', 'ai.budget_exhausted', 'ai.provider_failover']).describe('Frozen subscribable notification trigger vocabulary (S007). The AI pre-review family (draft precheck, review completion, review blocking) is structurally excluded and can never be configured as a trigger.'),
+  "target_kind": zod.enum(['order_submitter', 'stage_approvers', 'stage_executors', 'grant_requester', 'builtin_admins']).describe('Recipient resolution semantics. Email channels fan out per user; IM channels (dingtalk\/feishu\/slack) always produce a single group delivery per event regardless of the target kind.'),
+  "channel_id": zod.uuid(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const DeleteNotificationRuleParams = zod.object({
+  "rule_id": zod.uuid()
+})
+
+export const deleteNotificationRuleHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
+
+
+export const DeleteNotificationRuleHeader = zod.object({
+  "If-Match": zod.string().regex(deleteNotificationRuleHeaderIfMatchRegExp)
+})
+
+export const DeleteNotificationRuleResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.null(),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
 export const listNotificationDeliveriesQueryLimitDefault = 50;
 export const listNotificationDeliveriesQueryLimitMax = 200;
 
@@ -4778,8 +5008,12 @@ export const ListNotificationDeliveriesResponse = zod.union([zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
   "domain_event_id": zod.uuid(),
+  "event_type": zod.string().describe('Internal event type joined from the outbox (delivery record information surface, S007).'),
   "notification_channel_id": zod.uuid(),
+  "channel_kind": zod.string(),
+  "channel_name": zod.string(),
   "recipient_user_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "masked_target": zod.string().describe('Masked recipient (local segment truncated); undecryptable legacy rows show an explicit diagnostic instead of a fake value.'),
   "state": zod.enum(['queued', 'sending', 'succeeded', 'failed', 'dead_letter']),
   "delivery_attempt_count": zod.int().min(listNotificationDeliveriesResponseOneDataTwoItemsItemDeliveryAttemptCountMin).max(listNotificationDeliveriesResponseOneDataTwoItemsItemDeliveryAttemptCountMax),
   "next_attempt_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -4868,10 +5102,6 @@ export const listCurrentUserFlowsResponseOneDataTwoItemsItemNameMax = 128;
 
 export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax = 128;
 
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax = 128;
-
-export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax = 128;
-
 export const listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax = 10;
 
 
@@ -4907,10 +5137,6 @@ export const ListCurrentUserFlowsResponse = zod.union([zod.object({
   "position": zod.int().min(1),
   "datasource_id": zod.uuid(),
   "datasource_name": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemDatasourceNameMax),
-  "schema_mappings": zod.array(zod.object({
-  "logical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemLogicalSchemaMax),
-  "physical_schema": zod.string().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemSchemaMappingsItemPhysicalSchemaMax)
-})),
   "approval_steps": zod.array(zod.object({
   "position": zod.int().min(1).max(listCurrentUserFlowsResponseOneDataTwoItemsItemStagesItemApprovalStepsItemPositionMax),
   "actors": zod.array(zod.object({

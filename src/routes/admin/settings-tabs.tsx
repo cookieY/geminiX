@@ -7,7 +7,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
  * generic settings pages AND the standalone AI-budget page, so the tab bar
  * no longer disappears when landing on /admin/settings/ai-budget.
  */
-export type SettingsRouteNamespace = "general" | "query" | "execution" | "branding" | "ai-budget";
+export type SettingsRouteNamespace =
+  | "general"
+  | "query"
+  | "execution"
+  | "branding"
+  | "ai-budget"
+  | "notifications";
 
 export function SettingsNavTabs({ current }: { current: SettingsRouteNamespace }) {
   const { t } = useTranslation();
@@ -15,20 +21,23 @@ export function SettingsNavTabs({ current }: { current: SettingsRouteNamespace }
   return (
     <Tabs key={current} defaultValue={current} className="max-w-full">
       <TabsList className="max-w-full overflow-x-auto">
-        <TabsTrigger value="general" onClick={() => { void navigate("/admin/settings/general"); }}>
+        <TabsTrigger value="general" data-testid={"settings-tab-general"} onClick={() => { void navigate("/admin/settings/general"); }}>
           {t("adminSettings.tab.general")}
         </TabsTrigger>
-        <TabsTrigger value="query" onClick={() => { void navigate("/admin/settings/query"); }}>
+        <TabsTrigger value="query" data-testid={"settings-tab-query"} onClick={() => { void navigate("/admin/settings/query"); }}>
           {t("adminSettings.tab.query")}
         </TabsTrigger>
-        <TabsTrigger value="execution" onClick={() => { void navigate("/admin/settings/execution"); }}>
+        <TabsTrigger value="execution" data-testid={"settings-tab-execution"} onClick={() => { void navigate("/admin/settings/execution"); }}>
           {t("adminSettings.tab.execution")}
         </TabsTrigger>
-        <TabsTrigger value="branding" onClick={() => { void navigate("/admin/settings/branding"); }}>
+        <TabsTrigger value="branding" data-testid={"settings-tab-branding"} onClick={() => { void navigate("/admin/settings/branding"); }}>
           {t("adminSettings.tab.branding")}
         </TabsTrigger>
-        <TabsTrigger value="ai-budget" onClick={() => { void navigate("/admin/settings/ai-budget"); }}>
+        <TabsTrigger value="ai-budget" data-testid={"settings-tab-ai-budget"} onClick={() => { void navigate("/admin/settings/ai-budget"); }}>
           {t("adminSettings.tab.aiBudget")}
+        </TabsTrigger>
+        <TabsTrigger value="notifications" data-testid={"settings-tab-notifications"} onClick={() => { void navigate("/admin/settings/notifications"); }}>
+          {t("adminSettings.tab.notifications")}
         </TabsTrigger>
       </TabsList>
     </Tabs>

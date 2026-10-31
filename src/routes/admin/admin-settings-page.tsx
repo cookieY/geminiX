@@ -47,15 +47,16 @@ import {
 
 import { SettingsNavTabs, type SettingsRouteNamespace } from "@/routes/admin/settings-tabs";
 
-const ROUTE_NAMESPACES: SettingsRouteNamespace[] = ["general", "query", "execution", "branding"];
+type SettingsPageNamespace = Exclude<SettingsRouteNamespace, "notifications">;
+const ROUTE_NAMESPACES: SettingsPageNamespace[] = ["general", "query", "execution", "branding"];
 
 export default function AdminSettingsNamespacePage() {
   const { namespace = "" } = useParams();
   const { t } = useTranslation();
-  if (!ROUTE_NAMESPACES.includes(namespace as SettingsRouteNamespace)) {
+  if (!ROUTE_NAMESPACES.includes(namespace as SettingsPageNamespace)) {
     return <Navigate to="/admin/settings/general" replace />;
   }
-  const current = namespace as SettingsRouteNamespace;
+  const current = namespace as SettingsPageNamespace;
   // §18.47 follow-up: each namespace is an independent form. Without the
   // key, switching tabs keeps the previous namespace's draft state alive —
   // same version numbers then never trigger the re-seed and the new
@@ -79,7 +80,7 @@ export default function AdminSettingsNamespacePage() {
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.16, ease: "easeOut" }}
         >
-          <NamespaceSettings key={namespace} namespace={namespace as SettingsRouteNamespace} />
+          <NamespaceSettings key={namespace} namespace={namespace as SettingsPageNamespace} />
         </motion.div>
       </AnimatePresence>
     </PageLayout>
@@ -92,7 +93,7 @@ function describeErrorText(display: { messageKey: string; requestId: string | nu
   return display.requestId === null ? text : `${text} (${display.requestId})`;
 }
 
-function NamespaceSettings({ namespace }: { namespace: SettingsRouteNamespace }) {
+function NamespaceSettings({ namespace }: { namespace: SettingsPageNamespace }) {
   const { t } = useTranslation();
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;

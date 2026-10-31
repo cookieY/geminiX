@@ -23,7 +23,6 @@ function flow(stages: number): Flow {
       position: index + 1,
       datasource_id: "4f6f1a2b-0000-4000-8000-00000000000" + String(index + 2),
       datasource_name: "orders-mysql-" + String(index + 1),
-      schema_mappings: [],
       approval_steps: [],
       execution_actors: [],
     })),

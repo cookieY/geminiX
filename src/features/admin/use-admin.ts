@@ -34,6 +34,11 @@ import {
   listIdentityProviders,
   listKnowledgeEntries,
   listNotificationChannels,
+  listNotificationRules,
+  createNotificationRule,
+  replaceNotificationRule,
+  deleteNotificationRule,
+  previewNotificationRule,
   listNotificationDeliveries,
   listPermissionGroups,
   listPromptTools,
@@ -103,6 +108,9 @@ import type {
   ReplaceIdentityProviderRequest,
   RuleSet,
   RuleSetWrite,
+  NotificationRule,
+  NotificationRulePreview,
+  NotificationRuleWrite,
   SettingsImpactAssessment,
   SettingsRevision,
   SettingsValue,
@@ -944,6 +952,61 @@ export function useNotificationDeliveries(enabled: boolean, paging?: { limit: nu
     },
     enabled,
     placeholderData: keepPreviousData,
+  });
+}
+export function useNotificationRules(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "notification-rules"],
+    queryFn: async () => {
+      const response = await listNotificationRules({ limit: PAGE_LIMIT });
+      return response as unknown as { items: NotificationRule[]; page: { has_more: boolean; next_cursor: string | null } };
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+export function useCreateNotificationRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: NotificationRuleWrite) => {
+      return (await createNotificationRule(body)) as unknown as NotificationRule;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-rules"] });
+    },
+  });
+}
+export function useReplaceNotificationRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { ruleId: string; version: number; body: NotificationRuleWrite }) => {
+      return (await replaceNotificationRule(input.ruleId, input.body, {
+        headers: ifMatch(input.version),
+      })) as unknown as NotificationRule;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-rules"] });
+    },
+  });
+}
+export function useDeleteNotificationRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { ruleId: string; version: number }) => {
+      return (await deleteNotificationRule(input.ruleId, {
+        headers: ifMatch(input.version),
+      })) as unknown as null;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "notification-rules"] });
+    },
+  });
+}
+export function usePreviewNotificationRule() {
+  return useMutation({
+    mutationFn: async (body: { rule: NotificationRuleWrite; sample_order_id: string | null }) => {
+      return (await previewNotificationRule({ rule: body.rule, sample_order_id: body.sample_order_id })) as unknown as NotificationRulePreview;
+    },
   });
 }
 export function useCreateNotificationChannel() {

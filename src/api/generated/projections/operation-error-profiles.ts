@@ -51,7 +51,8 @@ export const OPERATION_ERROR_PROFILES: {
       "listQueryOrders",
       "listAnnouncementRevisions",
       "listKnowledgeEntries",
-      "listFlowMaskingRules"
+      "listFlowMaskingRules",
+      "listNotificationRules"
     ]
   },
   "resource_read": {
@@ -90,7 +91,8 @@ export const OPERATION_ERROR_PROFILES: {
       "getMyDashboard",
       "getOperationsDashboard",
       "getSystemHealthDashboard",
-      "getKnowledgeEntry"
+      "getKnowledgeEntry",
+      "getNotificationRule"
     ]
   },
   "auth_login": {
@@ -146,7 +148,9 @@ export const OPERATION_ERROR_PROFILES: {
       "createPromptTool",
       "createNotificationChannel",
       "createAnnouncementRevision",
-      "createKnowledgeEntry"
+      "createKnowledgeEntry",
+      "createNotificationRule",
+      "previewNotificationRule"
     ]
   },
   "admin_replace": {
@@ -166,7 +170,8 @@ export const OPERATION_ERROR_PROFILES: {
       "replacePromptTool",
       "replaceNotificationChannel",
       "replaceKnowledgeEntry",
-      "replaceFlowMaskingRule"
+      "replaceFlowMaskingRule",
+      "replaceNotificationRule"
     ]
   },
   "admin_delete": {
@@ -183,7 +188,8 @@ export const OPERATION_ERROR_PROFILES: {
       "deletePromptTool",
       "deleteAiProvider",
       "deleteNotificationChannel",
-      "deleteKnowledgeEntry"
+      "deleteKnowledgeEntry",
+      "deleteNotificationRule"
     ]
   },
   "user_delete": {

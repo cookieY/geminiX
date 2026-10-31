@@ -1492,11 +1492,6 @@
     "stageTitle": "阶段 {{index}}",
     "stageDatasource": "目标数据源",
     "pickDatasource": "选择数据源",
-    "schemaMappings": "Schema映射",
-    "schemaMappingsHint": "逻辑schema到物理schema的映射，可留空。",
-    "logicalSchema": "逻辑schema",
-    "physicalSchema": "物理schema",
-    "addMapping": "添加映射",
     "approvalSteps": "审核步骤",
     "approvalStepsHint": "1~10步；同一步骤内任一通过、任一拒绝整单。",
     "addStep": "添加步骤",
@@ -1516,7 +1511,6 @@
     "stageDown": "下移阶段{{index}}",
     "stageRemove": "删除阶段{{index}}",
     "stepRemove": "删除审批步骤{{index}}",
-    "mappingRemove": "删除Schema映射{{index}}",
     "engineMismatch": "同一审核流程的所有阶段必须绑定相同引擎类型的数据源（跨引擎阶段无法通过执行前校验）。"
   },
   "adminAnnouncements": {
@@ -1617,7 +1611,10 @@
       "attempts": "尝试次数",
       "nextAttempt": "下次尝试",
       "lastError": "最后错误",
-      "createdAt": "创建时间"
+      "createdAt": "创建时间",
+      "event": "事件",
+      "channelCol": "渠道",
+      "target": "脱敏目标"
     },
     "enabled": "启用",
     "disabled": "停用",
@@ -1641,14 +1638,22 @@
       "from": "发件地址",
       "secret": "Secret",
       "secretCreateHint": "创建时必填。",
-      "secretEditHint": "留空保持现状。"
+      "secretEditHint": "留空保持现状。",
+      "secretWebhookCreateHint": "粘贴完整Webhook URL（飞书可含签名Secret的JSON）；仅保存，不回显。",
+      "secretWebhookEditHint": "留空=保持已存Webhook；输入新值=替换，不回显。"
     },
     "secretRequired": "创建时必须提供Secret",
     "formFailed": "保存失败",
     "delete": {
       "title": "删除通道：{{name}}",
       "description": "删除后新事件不再经该通道投递；历史投递记录保留。"
-    }
+    },
+    "views": "通知视图",
+    "filter": {
+      "state": "按状态筛选",
+      "all": "全部"
+    },
+    "referencedRules": "该渠道仍被 {{count}} 条通知规则引用（{{names}}）；删除将失败，请先调整规则。"
   },
   "adminSettings": {
     "tab": {
@@ -1656,7 +1661,8 @@
       "query": "查询",
       "execution": "执行",
       "branding": "品牌",
-      "aiBudget": "AI预算"
+      "aiBudget": "AI预算",
+      "notifications": "通知"
     },
     "general": {
       "title": "通用设置",
@@ -1834,6 +1840,67 @@
       "emptyMeta": "管理员发布后将在此显示",
       "empty": "当前没有已发布的公告，管理员在「公告管理」发布后这里会立即显示。",
       "version": "v{{version}}"
+    }
+  },
+  "adminRules": {
+    "title": "通知规则",
+    "description": "按事件、流程、接收对象与渠道确定性匹配；收件人来自工单冻结阶段/步骤。",
+    "create": "新建规则",
+    "empty": "还没有通知规则",
+    "column": {
+      "name": "名称",
+      "event": "触发事件",
+      "target": "接收对象",
+      "channel": "目标渠道",
+      "enabled": "启用",
+      "flow": "适用流程"
+    },
+    "target": {
+      "order_submitter": "工单提交人",
+      "stage_approvers": "当前步骤全部冻结候选审核人",
+      "stage_executors": "当前阶段全部冻结候选执行人",
+      "grant_requester": "被撤销查询授权的申请人",
+      "builtin_admins": "内置管理员"
+    },
+    "event": {
+      "change_order.submitted": "工单提交、首个审核步骤激活",
+      "change_order.step_activated": "下一审核步骤激活",
+      "change_order.approval_decided": "单步审批批准/拒绝",
+      "change_order.stage_ready_for_execution": "当前阶段全部审批通过、等待执行",
+      "change_order.rejected": "工单被拒绝",
+      "change_order.withdrawn": "工单被撤回",
+      "change_order.voided": "工单被作废",
+      "execution.scheduled": "执行预约已创建",
+      "execution.schedule_cancelled": "执行预约已取消",
+      "execution.started": "执行开始",
+      "execution.succeeded": "执行成功",
+      "execution.failed": "执行失败",
+      "execution.partial_failed": "执行部分失败",
+      "execution.cancelled": "执行取消完成",
+      "execution.partial_cancelled": "部分取消完成",
+      "execution.result_unknown": "执行结果未知",
+      "execution.blocked_datasource_unavailable": "预约因数据源不可用被阻断",
+      "execution.missed_schedule": "预约已错过执行时间",
+      "query_grant.revoked": "查询授权被撤销",
+      "ai.budget_warning": "AI预算达到告警阈值",
+      "ai.budget_exhausted": "AI预算已耗尽",
+      "ai.provider_failover": "AI Provider触发故障切换"
+    },
+    "channelMissing": "渠道不存在",
+    "createTitle": "新建通知规则",
+    "editTitle": "编辑通知规则（{{name}}）",
+    "formDescription": "一条规则=名称+启停+一个触发事件+一个接收对象+一个渠道。AI预审完成/失败/阻断不可作为触发事件。",
+    "formFailed": "保存失败",
+    "deleteTitle": "删除通知规则（{{name}}）",
+    "deleteDescription": "删除后该规则不再产生新投递；历史投递记录保留。",
+    "deleteFailed": "删除失败",
+    "previewTitle": "预览（不发送）",
+    "previewDescription": "解析目标与消息文案；可用样例工单解析冻结审批人/执行人。预览不发送消息、不产生业务事件、不修改审批状态。",
+    "previewSamplePlaceholder": "样例工单ID（可选）",
+    "previewRun": "预览",
+    "previewTargets": "解析到 {{count}} 个投递目标",
+    "flow": {
+      "all": "全部流程"
     }
   }
 }
