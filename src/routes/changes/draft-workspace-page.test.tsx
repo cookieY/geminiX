@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MotionConfig } from "motion/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -108,14 +109,20 @@ function renderWorkspace(draftId: string) {
   });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>
-      <MemoryRouter initialEntries={[`/changes/drafts/${draftId}`]}>
-        <Routes>
-          <Route path="/changes/drafts/:draftId" element={<DraftWorkspacePage />} />
-          <Route path="/changes/orders/:orderId" element={<OrderDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    </SessionProvider>
+      {/* MotionConfig：motion的opacity/transform variants默认不读
+       * prefers-reduced-motion（setup.ts的matchMedia桩只对MotionConfig
+       * 生效）——不包这层，Tab进场动画真在rAF上播，toBeVisible在200ms
+       * 动画窗口内采样必成竞态。静态渲染与reduced-motion用户观感一致。 */}
+      <MotionConfig reducedMotion="always">
+        <SessionProvider>
+        <MemoryRouter initialEntries={[`/changes/drafts/${draftId}`]}>
+          <Routes>
+            <Route path="/changes/drafts/:draftId" element={<DraftWorkspacePage />} />
+            <Route path="/changes/orders/:orderId" element={<OrderDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </SessionProvider>
+      </MotionConfig>
     </QueryClientProvider>,
   );
   return { ...utils, queryClient };
@@ -338,7 +345,11 @@ describe("DraftWorkspacePage", () => {
     expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
 
     releaseRequest.resolve();
-    expect(await screen.findByTestId("findings-empty-all")).toBeVisible();
+    // motion在reducedMotion下仍播opacity淡入（只跳transform）：可见性
+    // 断言要跨过200ms进厂动画窗口，waitFor重试而非单帧采样。
+    await waitFor(() => {
+      expect(screen.getByTestId("findings-empty-all")).toBeVisible();
+    });
   });
 
   it("loads every finding page before applying the severity filter", async () => {
@@ -439,12 +450,21 @@ describe("DraftWorkspacePage", () => {
     expect(await screen.findByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
     expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("tab-findings"));
-    expect(await screen.findByTestId("findings-loading")).toHaveTextContent("正在加载风险发现");
+    // 后台重取的是run查询（有缓存数据，isPending=false）——findings查询
+    // 未重发，缓存发现继续呈现（stale-while-revalidate：有数据不闪loading）。
+    // 不变量=绝不退回「尚未运行预审」的idle呈现。可见性跨过淡入动画窗口。
+    await waitFor(() => {
+      expect(screen.getByTestId("finding-item")).toBeVisible();
+    });
     expect(screen.queryByTestId("findings-idle")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("findings-loading")).not.toBeInTheDocument();
 
     releaseRequest.resolve();
     fireEvent.click(screen.getByTestId("tab-overview"));
-    expect(await screen.findByTestId("review-counts")).toBeVisible();
+    await screen.findByTestId("review-counts");
+    await waitFor(() => {
+      expect(screen.getByTestId("review-counts")).toBeVisible();
+    });
   });
 
   it("keeps the findings tab in a waiting state while the review is queued", async () => {
@@ -669,14 +689,16 @@ describe("DraftWorkspacePage", () => {
       expect(screen.getByTestId("capacity-statements").textContent).toBe("2000");
       expect(screen.getByTestId("capacity-groups").textContent).toContain("2");
     }, { timeout: 4_000 });
-    // 终态后再开发现Tab（capacity计数来自本地digest，可早于run终态）。
+    // 终态后再开发现Tab：夹具用真实定时器推进 queued→running→terminal
+    // （约1.3s），同步点是run的终态呈现而非瞬间成立的本地digest。
     await waitFor(() => {
-      expect(screen.getByTestId("submit-draft")).toBeDisabled();
+      expect(screen.getByTestId("review-status").textContent).toContain("已阻断");
     }, { timeout: 4_000 });
+    expect(screen.getByTestId("submit-draft")).toBeDisabled();
     // The anomalous statement is a finding on its own fingerprint group —
     // visible outside the aggregate (单条异常不被聚合隐藏).
     fireEvent.click(screen.getByTestId("tab-findings"));
-    const findings = await screen.findAllByTestId("finding-item");
+    const findings = await screen.findAllByTestId("finding-item", {}, { timeout: 4_000 });
     const anomalyFinding = findings.find((node) =>
       node.textContent.includes("无 WHERE 条件的批量 DML"),
     );
