@@ -203,6 +203,17 @@ async function runSnapshotWithState(
   return { ...real, data: { ...real.data, state } };
 }
 
+/** Forces the findings query to re-read through the current MSW handlers. */
+async function refetchFindingsQuery(
+  queryClient: ReturnType<typeof renderWorkspace>["queryClient"],
+  reviewRunId: string,
+): Promise<void> {
+  // fire-and-forget：invalidate本身也会等待活跃查询的重取完成，而重取
+  // 可能正被测试的deferred挂起（加载中态就是要断言的中间态）。
+  void queryClient.invalidateQueries({ queryKey: ["review-findings", reviewRunId] });
+  await Promise.resolve();
+}
+
 /** Forces the run query to re-read through the current MSW handlers. */
 async function refetchRunQuery(
   queryClient: ReturnType<typeof renderWorkspace>["queryClient"],
@@ -337,7 +348,7 @@ describe("DraftWorkspacePage", () => {
   });
 
   it("distinguishes terminal findings loading from an empty review", async () => {
-    await renderReadyWorkspace();
+    const { utils, runId } = await renderReadyWorkspace();
     const requestStarted = deferred();
     const releaseRequest = deferred();
     server.use(
@@ -356,8 +367,9 @@ describe("DraftWorkspacePage", () => {
       }),
     );
 
-    fireEvent.click(screen.getByTestId("tab-findings"));
+    await refetchFindingsQuery(utils.queryClient, runId);
     await requestStarted.promise;
+    fireEvent.click(screen.getByTestId("tab-findings"));
 
     expect(await screen.findByTestId("findings-loading")).toHaveTextContent("正在加载风险发现");
     expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
@@ -368,7 +380,7 @@ describe("DraftWorkspacePage", () => {
 
   it("loads every finding page before applying the severity filter", async () => {
     const user = userEvent.setup();
-    await renderReadyWorkspace();
+    const { utils, runId } = await renderReadyWorkspace();
     const firstPage = Array.from({ length: 50 }, (_, index) =>
       findingFixture({
         id: `4f6f1a2b-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
@@ -404,11 +416,15 @@ describe("DraftWorkspacePage", () => {
       }),
     );
 
+    await refetchFindingsQuery(utils.queryClient, runId);
     fireEvent.click(screen.getByTestId("tab-findings"));
     await waitFor(() => {
-      expect(requestedCursors).toEqual([null, "cursor-page-2"]);
+      // 显式refetch会再走一遍分页（首拉+重拉两轮）——断言每轮都完整
+      // 翻页：null → cursor-page-2，且翻页limit恒为200。
+      expect(requestedCursors.slice(0, 2)).toEqual([null, "cursor-page-2"]);
+      expect(requestedCursors.slice(2, 4)).toEqual([null, "cursor-page-2"]);
     });
-    expect(requestedLimits).toEqual(["200", "200"]);
+    expect(requestedLimits.every((limit) => limit === "200")).toBe(true);
 
     await user.click(screen.getByLabelText("筛选严重级别"));
     await user.click(await screen.findByRole("option", { name: "严重" }));
@@ -499,7 +515,7 @@ describe("DraftWorkspacePage", () => {
   });
 
   it("shows a retryable findings error instead of claiming no risks", async () => {
-    await renderReadyWorkspace();
+    const { utils, runId } = await renderReadyWorkspace();
     server.use(
       http.get("*/review-runs/:runId/findings", () =>
         HttpResponse.json(
@@ -514,6 +530,7 @@ describe("DraftWorkspacePage", () => {
       ),
     );
 
+    await refetchFindingsQuery(utils.queryClient, runId);
     fireEvent.click(screen.getByTestId("tab-findings"));
 
     expect(await screen.findByTestId("findings-error")).toHaveTextContent("请求失败");
