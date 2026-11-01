@@ -62,6 +62,34 @@ describe("xlsx sheet writer", () => {
     expect(xml).toContain("&lt;script&gt;");
     expect(xml).not.toContain("<script>");
   });
+
+  it("serializes every JSON cell shape: null/undefined empty, numbers numeric, long digits and objects as strings", () => {
+    const sheet = createXlsxSheet();
+    sheet.appendPage(
+      pageOf(
+        [[null, undefined, true, 3.5, 1234567890123456789n, { k: 1 }], ["12", "012345678901234567890", 2n, "—", -0.25, [1]]],
+        false,
+        null,
+      ),
+    );
+    const xml = sheetXml(sheet.finish());
+    // null / undefined cells are omitted from the row entirely.
+    expect(xml).not.toMatch(/r="A2"/);
+    expect(xml).not.toMatch(/r="B2"/);
+    // booleans stringify losslessly; floats and small bigints stay numeric.
+    expect(xml).toContain("<c r=\"C2\" t=\"inlineStr\"><is><t xml:space=\"preserve\">true</t></is></c>");
+    expect(xml).toContain("<c r=\"D2\" t=\"n\"><v>3.5</v></c>");
+    expect(xml).toContain("<c r=\"C3\" t=\"n\"><v>2</v></c>");
+    expect(xml).toContain("<c r=\"E3\" t=\"n\"><v>-0.25</v></c>");
+    // 16+ digit numeric-looking text (exact BigInt digits included) stays an
+    // inline string — a t="n" cell would corrupt it into float precision —
+    // and JSON objects/arrays render their JSON form, never [object Object].
+    expect(xml).toContain("<c r=\"E2\" t=\"inlineStr\"><is><t xml:space=\"preserve\">1234567890123456789</t></is></c>");
+    expect(xml).toContain("<c r=\"B3\" t=\"inlineStr\"><is><t xml:space=\"preserve\">012345678901234567890</t></is></c>");
+    expect(xml).toContain("<c r=\"F2\" t=\"inlineStr\"><is><t xml:space=\"preserve\">{&quot;k&quot;:1}</t></is></c>");
+    expect(xml).toContain("<c r=\"F3\" t=\"inlineStr\"><is><t xml:space=\"preserve\">[1]</t></is></c>");
+    expect(xml).not.toContain("[object Object]");
+  });
 });
 
 describe("export controller", () => {

@@ -16,8 +16,10 @@ import path from "node:path";
 
 const DIST = "dist";
 const EVIDENCE = "tests/performance/bundle-budget.json";
-// ~25% headroom over the FE-F11 measurements (JS 235.1 KiB, CSS 15.4 KiB).
-const BUDGET_JS_KIB = 300;
+// Owner ruling 2026-11-02: the ephemeral-precheck batch moved the first
+// screen to 302.1 KiB gzip; the initial-JS budget is raised 300 → 500 KiB
+// (CSS keeps its FE-F11 measurement-derived cap).
+const BUDGET_JS_KIB = 500;
 const BUDGET_CSS_KIB = 24;
 
 function fail(message) {

@@ -135,10 +135,13 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
     const body: CreateAiProviderRateVersionRequest = {
       currency: draft.currency === "USD" ? "USD" : "CNY",
       timezone: draft.timezone,
-      effective_from: new Date(`${draft.effective_from}T00:00:00`).toISOString(),
+      // Anchor the picked calendar date at UTC midnight: a local-midnight
+      // Date would serialize via toISOString one day early for every
+      // timezone east of UTC (the deployment default is Asia/Shanghai).
+      effective_from: new Date(`${draft.effective_from}T00:00:00Z`).toISOString(),
       ...(draft.effective_until === ""
         ? {}
-        : { effective_until: new Date(`${draft.effective_until}T00:00:00`).toISOString() }),
+        : { effective_until: new Date(`${draft.effective_until}T00:00:00Z`).toISOString() }),
       windows: draft.windows.map((w) => ({
         start_minute: w.start_minute,
         end_minute: w.end_minute,
@@ -441,8 +444,13 @@ function basisLabel(basis: AiCallUsage["calc_basis"]): string {
   }
 }
 
-function tokenText(value: number | undefined, notReported: string): string {
-  return value === undefined ? notReported : String(value);
+// The OpenAPI doc comment says "null means unknown" while the generated
+// type only marks the field optional, and the shared mock world already
+// sends explicit null on this shape — the defense covers both encodings.
+// Either way the UI must show the not-reported mark, never a literal
+// "null" (and never a fabricated zero cost: Number(null) is 0).
+function tokenText(value: number | undefined | null, notReported: string): string {
+  return value == null ? notReported : String(value);
 }
 
 export function ProviderUsagePanel({ providerId }: { providerId: string }) {
@@ -520,19 +528,19 @@ export function ProviderUsagePanel({ providerId }: { providerId: string }) {
                       : call.rate_source === "global_settings"
                         ? t("admin.providers.pricing.globalSettings")
                         : t("admin.providers.pricing.rateVersion")}
-                    {call.currency !== undefined ? ` (${call.currency})` : ""}
+                    {call.currency != null ? ` (${call.currency})` : ""}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {tokenText(call.input_tokens, notReported)} / {tokenText(call.output_tokens, notReported)}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {tokenText(call.cached_tokens, notReported)} / {tokenText(call.cache_write_tokens, notReported)}
-                    {call.reasoning_tokens !== undefined
+                    {call.reasoning_tokens != null
                       ? ` (R ${String(call.reasoning_tokens)})`
                       : ""}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    {call.reference_amount === undefined
+                    {call.reference_amount == null || call.reference_amount === ""
                       ? t("admin.providers.pricing.notComputable")
                       : (Number(call.reference_amount) / 1e9).toFixed(8)}
                   </TableCell>

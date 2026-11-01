@@ -481,6 +481,7 @@ export function resetAdminFixture(): void {
   world.groups.clear();
   world.maskingRules.clear();
   world.announcementRevisions.clear();
+  world.rateVersions.clear();
   world.announcementPublication = { revision_id: null, version: 1, published_by: null, published_at: null };
   world.auditEvents = [];
   world.identityProviders.clear();
@@ -2195,11 +2196,15 @@ export function siteFixtureHandlers(): HttpHandler[] {
       }
       const now = new Date().toISOString();
       for (const prev of world.rateVersions.values()) {
-        if (prev.provider_id === pid && prev.effective_until === null) {
+        if (prev.provider_id === pid && prev.effective_until == null) {
           prev.effective_until = body.effective_from ?? now;
         }
       }
       const id = uuid();
+      // The stored row keeps the wire shape verbatim: an absent
+      // effective_until stays absent (the backend omits it via omitempty on
+      // its non-nullable optional). The closing loop below therefore treats
+      // absent and null alike — both mean "open version".
       const row = { id, provider_id: pid, ...body, version: world.rateVersions.size + 1, created_at: now };
       world.rateVersions.set(id, row);
       return HttpResponse.json(successEnvelope(row));
