@@ -5944,7 +5944,8 @@ export const RunDraftReviewResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "run_id": zod.uuid()
+  "run_id": zod.uuid(),
+  "result_ref": zod.string().optional().describe('Read path of the ephemeral run (\/review-runs\/{run_id}).')
 }),
   "request_id": zod.uuid()
 }),zod.object({

@@ -4508,6 +4508,8 @@ export type RunDraftReview200 = {
   message: 'ok';
   data: {
   run_id: Uuid;
+  /** Read path of the ephemeral run (/review-runs/{run_id}). */
+  result_ref?: string;
 };
   request_id: Uuid;
 } | BusinessErrorResponse;
