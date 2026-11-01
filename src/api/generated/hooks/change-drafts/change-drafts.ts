@@ -49,7 +49,7 @@ import type {
   RevealDraftSql200,
   RevealRequest,
   RunDraftReview200,
-  SubmitChangeDraft200,
+  RunDraftReviewBody,
   UpdateChangeDraft200,
   UpdateChangeDraftRequest
 } from '../yearningV4HTTPAPI.schemas';
@@ -1217,22 +1217,31 @@ export type runDraftReviewResponseError = (runDraftReviewResponse429) & {
 
 export type runDraftReviewResponse = (runDraftReviewResponseSuccess | runDraftReviewResponseError)
 
-export const getRunDraftReviewUrl = (draftId: string,) => {
+export const getRunDraftReviewUrl = () => {
 
 
 
 
-  return `/api/v4/change-drafts/${draftId}/review-runs`
+  return `/api/v4/review-runs`
 }
 
-export const runDraftReview = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<runDraftReviewResponse> => {
+/**
+ * Ephemeral AI precheck (RCP-20261101-EPHEMERAL-PRECHECK). The request carries the current editor SQL plus the flow; nothing is persisted before submission - no draft row, no SQL payload, no run rows. The run executes in process memory with a TTL and is readable via GET /review-runs/{review_run_id} until it expires or the process restarts, after which the client must precheck again. Submitting an order materializes the accepted run. draft_id is optional UI anchoring only and is never written by this operation.
+ */
+export const runDraftReview = async (runDraftReviewBody: RunDraftReviewBody, options?: Parameters<typeof customInstance>[1]): Promise<runDraftReviewResponse> => {
 
-  return customInstance<runDraftReviewResponse>(getRunDraftReviewUrl(draftId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<runDraftReviewResponse>(getRunDraftReviewUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(runDraftReviewBody)
   }
 );}
 
@@ -1240,29 +1249,29 @@ export const runDraftReview = async (draftId: string, options?: Parameters<typeo
 
 
 
-export const getRunDraftReviewQueryKey = (draftId: string,) => {
+export const getRunDraftReviewQueryKey = (runDraftReviewBody?: RunDraftReviewBody,) => {
     return [
-    'POST', `/api/v4/change-drafts/${draftId}/review-runs`
+    'POST', `/api/v4/review-runs`, runDraftReviewBody
     ] as const;
     }
 
 
-export const getRunDraftReviewQueryOptions = <TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+export const getRunDraftReviewQueryOptions = <TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(runDraftReviewBody: RunDraftReviewBody, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getRunDraftReviewQueryKey(draftId);
+  const queryKey =  queryOptions?.queryKey ?? getRunDraftReviewQueryKey(runDraftReviewBody);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof runDraftReview>>> = ({ signal }) => runDraftReview(draftId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runDraftReview>>> = ({ signal }) => runDraftReview(runDraftReviewBody, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: draftId !== null && draftId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type RunDraftReviewQueryResult = NonNullable<Awaited<ReturnType<typeof runDraftReview>>>
@@ -1270,7 +1279,7 @@ export type RunDraftReviewQueryError = ProblemResponse
 
 
 export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(
- draftId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>> & Pick<
+ runDraftReviewBody: RunDraftReviewBody, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof runDraftReview>>,
           TError,
@@ -1280,7 +1289,7 @@ export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftRevi
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>> & Pick<
+ runDraftReviewBody: RunDraftReviewBody, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof runDraftReview>>,
           TError,
@@ -1290,122 +1299,16 @@ export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftRevi
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ runDraftReviewBody: RunDraftReviewBody, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useRunDraftReview<TData = Awaited<ReturnType<typeof runDraftReview>>, TError = ProblemResponse>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ runDraftReviewBody: RunDraftReviewBody, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runDraftReview>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getRunDraftReviewQueryOptions(draftId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export type submitChangeDraftResponse200 = {
-  data: SubmitChangeDraft200
-  status: 200
-}
-
-export type submitChangeDraftResponseSuccess = (submitChangeDraftResponse200) & {
-  headers: Headers;
-};
-;
-
-export type submitChangeDraftResponse = (submitChangeDraftResponseSuccess)
-
-export const getSubmitChangeDraftUrl = (draftId: string,) => {
-
-
-
-
-  return `/api/v4/change-drafts/${draftId}/submission`
-}
-
-export const submitChangeDraft = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<submitChangeDraftResponse> => {
-
-  return customInstance<submitChangeDraftResponse>(getSubmitChangeDraftUrl(draftId),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getSubmitChangeDraftQueryKey = (draftId: string,) => {
-    return [
-    'POST', `/api/v4/change-drafts/${draftId}/submission`
-    ] as const;
-    }
-
-
-export const getSubmitChangeDraftQueryOptions = <TData = Awaited<ReturnType<typeof submitChangeDraft>>, TError = unknown>(draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getSubmitChangeDraftQueryKey(draftId);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof submitChangeDraft>>> = ({ signal }) => submitChangeDraft(draftId, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: draftId !== null && draftId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type SubmitChangeDraftQueryResult = NonNullable<Awaited<ReturnType<typeof submitChangeDraft>>>
-export type SubmitChangeDraftQueryError = unknown
-
-
-export function useSubmitChangeDraft<TData = Awaited<ReturnType<typeof submitChangeDraft>>, TError = unknown>(
- draftId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof submitChangeDraft>>,
-          TError,
-          Awaited<ReturnType<typeof submitChangeDraft>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSubmitChangeDraft<TData = Awaited<ReturnType<typeof submitChangeDraft>>, TError = unknown>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof submitChangeDraft>>,
-          TError,
-          Awaited<ReturnType<typeof submitChangeDraft>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSubmitChangeDraft<TData = Awaited<ReturnType<typeof submitChangeDraft>>, TError = unknown>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-
-export function useSubmitChangeDraft<TData = Awaited<ReturnType<typeof submitChangeDraft>>, TError = unknown>(
- draftId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof submitChangeDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getSubmitChangeDraftQueryOptions(draftId,options)
+  const queryOptions = getRunDraftReviewQueryOptions(runDraftReviewBody,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

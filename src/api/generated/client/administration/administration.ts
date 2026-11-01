@@ -17,6 +17,8 @@ import type {
   AssessSettingsImpactRequest,
   ConfirmLegacyMigrationCandidateRequest,
   CreateAiProvider200,
+  CreateAiProviderRateVersion200,
+  CreateAiProviderRateVersionRequest,
   CreateAiProviderRequest,
   CreateAnnouncementRevisionRequest,
   CreateDatasource200,
@@ -67,8 +69,13 @@ import type {
   LegacyMigrationRunResultResponse,
   ListAiProviderModels200,
   ListAiProviderModelsRequest,
+  ListAiProviderRateVersions200,
   ListAiProviders200,
   ListAiProvidersParams,
+  ListAiUsageCalls200,
+  ListAiUsageCallsParams,
+  ListAiUsageSummary200,
+  ListAiUsageSummaryParams,
   ListAnnouncementRevisionsParams,
   ListAuditEvents200,
   ListAuditEventsParams,
@@ -2249,6 +2256,155 @@ return customInstance<listAiProviderModelsResponse>(getListAiProviderModelsUrl()
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(listAiProviderModelsRequest)
+  }
+);}
+
+
+export type listAiProviderRateVersionsResponse200 = {
+  data: ListAiProviderRateVersions200
+  status: 200
+}
+
+export type listAiProviderRateVersionsResponseSuccess = (listAiProviderRateVersionsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiProviderRateVersionsResponse = (listAiProviderRateVersionsResponseSuccess)
+
+export const getListAiProviderRateVersionsUrl = (providerId: string,) => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/${providerId}/rate-versions`
+}
+
+export const listAiProviderRateVersions = async (providerId: string, options?: Parameters<typeof customInstance>[1]): Promise<listAiProviderRateVersionsResponse> => {
+
+  return customInstance<listAiProviderRateVersionsResponse>(getListAiProviderRateVersionsUrl(providerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type createAiProviderRateVersionResponse200 = {
+  data: CreateAiProviderRateVersion200
+  status: 200
+}
+
+export type createAiProviderRateVersionResponseSuccess = (createAiProviderRateVersionResponse200) & {
+  headers: Headers;
+};
+;
+
+export type createAiProviderRateVersionResponse = (createAiProviderRateVersionResponseSuccess)
+
+export const getCreateAiProviderRateVersionUrl = (providerId: string,) => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/${providerId}/rate-versions`
+}
+
+export const createAiProviderRateVersion = async (providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: Parameters<typeof customInstance>[1]): Promise<createAiProviderRateVersionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createAiProviderRateVersionResponse>(getCreateAiProviderRateVersionUrl(providerId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createAiProviderRateVersionRequest)
+  }
+);}
+
+
+export type listAiUsageCallsResponse200 = {
+  data: ListAiUsageCalls200
+  status: 200
+}
+
+export type listAiUsageCallsResponseSuccess = (listAiUsageCallsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiUsageCallsResponse = (listAiUsageCallsResponseSuccess)
+
+export const getListAiUsageCallsUrl = (params?: ListAiUsageCallsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/ai-usage/calls?${stringifiedParams}` : `/api/v4/admin/ai-usage/calls`
+}
+
+export const listAiUsageCalls = async (params?: ListAiUsageCallsParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiUsageCallsResponse> => {
+
+  return customInstance<listAiUsageCallsResponse>(getListAiUsageCallsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type listAiUsageSummaryResponse200 = {
+  data: ListAiUsageSummary200
+  status: 200
+}
+
+export type listAiUsageSummaryResponseSuccess = (listAiUsageSummaryResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiUsageSummaryResponse = (listAiUsageSummaryResponseSuccess)
+
+export const getListAiUsageSummaryUrl = (params?: ListAiUsageSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/ai-usage/summary?${stringifiedParams}` : `/api/v4/admin/ai-usage/summary`
+}
+
+export const listAiUsageSummary = async (params?: ListAiUsageSummaryParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiUsageSummaryResponse> => {
+
+  return customInstance<listAiUsageSummaryResponse>(getListAiUsageSummaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
   }
 );}
 

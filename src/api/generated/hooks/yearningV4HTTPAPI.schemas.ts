@@ -956,7 +956,36 @@ export type PromptTool = PromptToolWrite & {
   updated_at: Timestamp;
 };
 
-export type AiProviderWriteConfiguration = { [key: string]: unknown };
+/**
+ * Omit entirely to use the provider default; never simulated via prompts.
+ */
+export type AiProviderConfigurationWriteReasoningEffort = typeof AiProviderConfigurationWriteReasoningEffort[keyof typeof AiProviderConfigurationWriteReasoningEffort];
+
+
+export const AiProviderConfigurationWriteReasoningEffort = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * User-writable generation parameters. Providing this object replaces the stored user overrides as a whole (keys omitted inside a provided object are cleared); omitting the configuration field entirely preserves the stored configuration (M2 keep semantics). Unknown keys, including the system-managed structured_output_mode, are rejected.
+ */
+export interface AiProviderConfigurationWrite {
+  /** Omit entirely to use the provider default; never simulated via prompts. */
+  reasoning_effort?: AiProviderConfigurationWriteReasoningEffort;
+  /**
+     * @minimum 256
+     * @maximum 200000
+     */
+  max_tokens?: number;
+  /**
+     * 0 is a valid explicit value and is never treated as omitted.
+     * @minimum 0
+     * @maximum 2
+     */
+  temperature?: number;
+}
 
 export interface AiProviderWrite {
   /**
@@ -979,7 +1008,239 @@ export interface AiProviderWrite {
      */
   selection_priority: number;
   api_key?: SecretInput;
-  configuration?: AiProviderWriteConfiguration;
+  /** Explicit full replacement of the user generation-parameter overrides (M2 semantics). Omitted preserves the stored configuration; an empty object is an explicit clear of all user overrides and triggers real change detection and probe re-negotiation. The system-managed structured_output_mode key is rejected here and only written by the server probe. */
+  configuration?: AiProviderConfigurationWrite;
+}
+
+export type AiProviderConfigurationReasoningEffort = typeof AiProviderConfigurationReasoningEffort[keyof typeof AiProviderConfigurationReasoningEffort];
+
+
+export const AiProviderConfigurationReasoningEffort = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * Server-managed system key negotiated by the enable probe; never accepted on write.
+ */
+export type AiProviderConfigurationStructuredOutputMode = typeof AiProviderConfigurationStructuredOutputMode[keyof typeof AiProviderConfigurationStructuredOutputMode];
+
+
+export const AiProviderConfigurationStructuredOutputMode = {
+  json_schema: 'json_schema',
+  json_object: 'json_object',
+} as const;
+
+/**
+ * Typed read-back of the stored provider configuration. Absent keys mean not configured (the request omits them; provider-side defaults apply and are never fabricated as values). structured_output_mode is the server-negotiated system key, read-only for clients.
+ */
+export interface AiProviderConfiguration {
+  reasoning_effort?: AiProviderConfigurationReasoningEffort;
+  /**
+     * @minimum 256
+     * @maximum 200000
+     */
+  max_tokens?: number;
+  /**
+     * @minimum 0
+     * @maximum 2
+     */
+  temperature?: number;
+  /** Server-managed system key negotiated by the enable probe; never accepted on write. */
+  structured_output_mode?: AiProviderConfigurationStructuredOutputMode;
+}
+
+export interface AiProviderRateWindow {
+  id: Uuid;
+  /**
+     * @minimum 0
+     * @maximum 1439
+     */
+  start_minute: number;
+  /**
+     * Half-open [start_minute, end_minute) within a day; cross-midnight input is stored as two normalized windows.
+     * @minimum 1
+     * @maximum 1440
+     */
+  end_minute: number;
+  /**
+     * Currency units per million input tokens (bounded decimal string).
+     * @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$
+     */
+  input_price: string;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  output_price: string;
+  /**
+     * Omitted means not configured; reported cached-read volume then stays in the base reference (partial basis).
+     * @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$
+     */
+  cached_read_price?: string;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  cached_write_price?: string;
+}
+
+export type AiProviderRateVersionCurrency = typeof AiProviderRateVersionCurrency[keyof typeof AiProviderRateVersionCurrency];
+
+
+export const AiProviderRateVersionCurrency = {
+  CNY: 'CNY',
+  USD: 'USD',
+} as const;
+
+export interface AiProviderRateVersion {
+  id: Uuid;
+  provider_id: Uuid;
+  currency: AiProviderRateVersionCurrency;
+  /** IANA zone name used to resolve the billing time-of-day window. */
+  timezone: string;
+  effective_from: Timestamp;
+  effective_until?: Timestamp;
+  /** @minimum 1 */
+  version: number;
+  windows: AiProviderRateWindow[];
+  created_at: Timestamp;
+}
+
+export type CreateAiProviderRateVersionRequestCurrency = typeof CreateAiProviderRateVersionRequestCurrency[keyof typeof CreateAiProviderRateVersionRequestCurrency];
+
+
+export const CreateAiProviderRateVersionRequestCurrency = {
+  CNY: 'CNY',
+  USD: 'USD',
+} as const;
+
+export type CreateAiProviderRateVersionRequestWindowsItem = {
+  /**
+     * @minimum 0
+     * @maximum 1439
+     */
+  start_minute: number;
+  /**
+     * A value not greater than start_minute means a cross-midnight window that is normalized into two same-day windows at write time; overlap after normalization is rejected.
+     * @minimum 1
+     * @maximum 1440
+     */
+  end_minute: number;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  input_price: string;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  output_price: string;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  cached_read_price?: string;
+  /** @pattern ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$ */
+  cached_write_price?: string;
+};
+
+export interface CreateAiProviderRateVersionRequest {
+  currency: CreateAiProviderRateVersionRequestCurrency;
+  timezone: string;
+  effective_from: string;
+  effective_until?: string;
+  /**
+     * @minItems 1
+     * @maxItems 24
+     */
+  windows: CreateAiProviderRateVersionRequestWindowsItem[];
+}
+
+export type AiCallUsageReasoningEffort = typeof AiCallUsageReasoningEffort[keyof typeof AiCallUsageReasoningEffort];
+
+
+export const AiCallUsageReasoningEffort = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * global_settings marks the legacy global-price compatibility default, never disguised as a provider-verified rate.
+ */
+export type AiCallUsageRateSource = typeof AiCallUsageRateSource[keyof typeof AiCallUsageRateSource];
+
+
+export const AiCallUsageRateSource = {
+  provider_version: 'provider_version',
+  global_settings: 'global_settings',
+  none: 'none',
+} as const;
+
+export type AiCallUsageCalcBasis = typeof AiCallUsageCalcBasis[keyof typeof AiCallUsageCalcBasis];
+
+
+export const AiCallUsageCalcBasis = {
+  full_detail: 'full_detail',
+  partial_detail: 'partial_detail',
+  base_only: 'base_only',
+  not_computable: 'not_computable',
+} as const;
+
+export type AiCallUsageOutcome = typeof AiCallUsageOutcome[keyof typeof AiCallUsageOutcome];
+
+
+export const AiCallUsageOutcome = {
+  ok: 'ok',
+  schema_failed: 'schema_failed',
+  error: 'error',
+} as const;
+
+export interface AiCallUsage {
+  id: Uuid;
+  review_run_id: Uuid;
+  stage_position: number;
+  model_turn: number;
+  /** Position within the model turn (initial attempt, backoff retries, schema-repair turn each get their own row). */
+  call_index: number;
+  provider_id: Uuid;
+  model_name: string;
+  sent_at: Timestamp;
+  reasoning_effort?: AiCallUsageReasoningEffort;
+  max_tokens?: number;
+  /** Bounded decimal snapshot of the configured value. */
+  temperature?: string;
+  rate_version_id?: Uuid;
+  rate_window_id?: Uuid;
+  /** global_settings marks the legacy global-price compatibility default, never disguised as a provider-verified rate. */
+  rate_source: AiCallUsageRateSource;
+  /** @pattern ^[A-Z]{3}$ */
+  currency?: string;
+  /** Null means unknown (not reported or invalid); zero is an explicit upstream zero. */
+  input_tokens?: number;
+  output_tokens?: number;
+  cached_tokens?: number;
+  cache_write_tokens?: number;
+  /** Detail only; never charged again on top of completion tokens. */
+  reasoning_tokens?: number;
+  usage_reported: boolean;
+  /** Bounded decimal reference cost in currency units; null when not computable (unknown totals or no rate). */
+  reference_amount?: string;
+  calc_basis: AiCallUsageCalcBasis;
+  detail_note: string;
+  outcome: AiCallUsageOutcome;
+  http_status?: number;
+  created_at: Timestamp;
+}
+
+export interface AiUsageSummary {
+  /**
+     * Rows without an attributable currency (no rate configured) are excluded from the per-currency grouping instead of being reported with an invalid code.
+     * @pattern ^[A-Z]{3}$
+     */
+  currency: string;
+  /** Calls in range with an attributable currency. */
+  calls: number;
+  /** Sum of computable reference amounts (bounded decimal); empty string when no call in range was computable. */
+  reference_amount: string;
+  /** Calls with a reference amount; the sample base for coverage, missing samples never count as zero. */
+  computable_calls: number;
+  /** Sum of known input tokens across all reported calls. */
+  input_tokens_known: number;
+  /** Hit-rate denominator - sum of known input tokens over the calls that reported cache detail only; missing samples never count as zero and percentages are never averaged. */
+  input_tokens_cache_known: number;
+  /** Hit-rate numerator - sum of known cached-read tokens. */
+  cached_tokens_known: number;
+  /** Number of calls (not fields) that reported cache detail; hit rate is cached_tokens_known / input_tokens_cache_known when the denominator is positive. */
+  cache_detail_samples: number;
 }
 
 export type CreateAiProviderRequest = AiProviderWrite & { [key: string]: unknown } & Required<Pick<AiProviderWrite & { [key: string]: unknown }, 'api_key'>>;
@@ -993,6 +1254,7 @@ export interface AiProvider {
   enabled: boolean;
   selection_priority: number;
   api_key_configured: boolean;
+  configuration?: AiProviderConfiguration;
   /** @minimum 1 */
   version: number;
   created_at: Timestamp;
@@ -1398,6 +1660,9 @@ export const DingTalkNotificationConfigWebhookHost = {
   oapidingtalkcom: 'oapi.dingtalk.com',
 } as const;
 
+/**
+ * DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {"access_token": "...", "sign_secret": "..."} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.
+ */
 export interface DingTalkNotificationConfig {
   webhook_host: DingTalkNotificationConfigWebhookHost;
 }
@@ -3805,6 +4070,65 @@ export type ListAiProviderModels200 = {
   request_id: Uuid;
 } | BusinessErrorResponse;
 
+export type ListAiProviderRateVersions200 = {
+  err_code: 0;
+  message: 'ok';
+  data: AiProviderRateVersion[];
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type CreateAiProviderRateVersion200 = {
+  err_code: 0;
+  message: 'ok';
+  data: AiProviderRateVersion;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListAiUsageCallsParams = {
+/**
+ * Filter per-HTTP-call usage rows by review run.
+ */
+run_id?: Uuid;
+/**
+ * Filter by three-letter currency code (CNY or USD).
+ * @pattern ^[A-Z]{3}$
+ */
+currency?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: LimitParameter;
+after?: AfterParameter;
+};
+
+export type ListAiUsageCalls200 = {
+  err_code: 0;
+  message: 'ok';
+  data: Page & {
+  items?: AiCallUsage[];
+};
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type ListAiUsageSummaryParams = {
+/**
+ * Inclusive RFC3339 lower bound on call send time. Defaults to 30 days before to.
+ */
+from?: string;
+/**
+ * Exclusive RFC3339 upper bound on call send time. Defaults to now.
+ */
+to?: string;
+};
+
+export type ListAiUsageSummary200 = {
+  err_code: 0;
+  message: 'ok';
+  data: AiUsageSummary[];
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
 export type GetSettingsNamespace200 = {
   err_code: 0;
   message: 'ok';
@@ -4167,17 +4491,24 @@ export type RevealDraftSql200 = {
   request_id: Uuid;
 } | BusinessErrorResponse;
 
+export type RunDraftReviewBody = {
+  flow_id: Uuid;
+  draft_id?: Uuid;
+  /** Current editor SQL reviewed verbatim (max 32 MiB). */
+  sql: string;
+  /**
+     * Optional explicit locale; overrides the header when present.
+     * @maxLength 16
+     */
+  output_locale?: string;
+};
+
 export type RunDraftReview200 = {
   err_code: 0;
   message: 'ok';
-  data: Task;
-  request_id: Uuid;
-} | BusinessErrorResponse;
-
-export type SubmitChangeDraft200 = {
-  err_code: 0;
-  message: 'ok';
-  data: ChangeOrder;
+  data: {
+  run_id: Uuid;
+};
   request_id: Uuid;
 } | BusinessErrorResponse;
 
@@ -4203,6 +4534,37 @@ export type ListReviewRunFindings200 = {
   data: Page & {
   items?: ReviewFinding[];
 };
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+/**
+ * Required only for draftless create-mode submission.
+ */
+export type SubmitChangeDraftBodyMetadata = {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  title?: string;
+  /** @maxLength 4096 */
+  description?: string;
+  requested_scheduled_for?: string;
+};
+
+export type SubmitChangeDraftBody = {
+  flow_id: Uuid;
+  draft_id?: Uuid;
+  /** SQL submitted verbatim; must equal the prechecked text. */
+  sql: string;
+  run_id: Uuid;
+  /** Required only for draftless create-mode submission. */
+  metadata?: SubmitChangeDraftBodyMetadata;
+};
+
+export type SubmitChangeDraft200 = {
+  err_code: 0;
+  message: 'ok';
+  data: ChangeOrder;
   request_id: Uuid;
 } | BusinessErrorResponse;
 

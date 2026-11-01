@@ -36,6 +36,8 @@ import type {
   AssessSettingsImpactRequest,
   ConfirmLegacyMigrationCandidateRequest,
   CreateAiProvider200,
+  CreateAiProviderRateVersion200,
+  CreateAiProviderRateVersionRequest,
   CreateAiProviderRequest,
   CreateAnnouncementRevisionRequest,
   CreateDatasource200,
@@ -86,8 +88,13 @@ import type {
   LegacyMigrationRunResultResponse,
   ListAiProviderModels200,
   ListAiProviderModelsRequest,
+  ListAiProviderRateVersions200,
   ListAiProviders200,
   ListAiProvidersParams,
+  ListAiUsageCalls200,
+  ListAiUsageCallsParams,
+  ListAiUsageSummary200,
+  ListAiUsageSummaryParams,
   ListAnnouncementRevisionsParams,
   ListAuditEvents200,
   ListAuditEventsParams,
@@ -6006,7 +6013,377 @@ export function useListAiProviderModels<TData = Awaited<ReturnType<typeof listAi
 
 
 
-export type getSettingsNamespaceResponse200 = {
+export type listAiProviderRateVersionsResponse200 = {
+  data: ListAiProviderRateVersions200
+  status: 200
+}
+
+export type listAiProviderRateVersionsResponseSuccess = (listAiProviderRateVersionsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiProviderRateVersionsResponse = (listAiProviderRateVersionsResponseSuccess)
+
+export const getListAiProviderRateVersionsUrl = (providerId: string,) => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/${providerId}/rate-versions`
+}
+
+export const listAiProviderRateVersions = async (providerId: string, options?: Parameters<typeof customInstance>[1]): Promise<listAiProviderRateVersionsResponse> => {
+
+  return customInstance<listAiProviderRateVersionsResponse>(getListAiProviderRateVersionsUrl(providerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAiProviderRateVersionsMutationKey = () => ['listAiProviderRateVersions'] as const;
+
+export const getListAiProviderRateVersionsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviderRateVersions>>, TError,ListAiProviderRateVersionsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listAiProviderRateVersions>>, TError,ListAiProviderRateVersionsMutationVariables, TContext> => {
+
+const mutationKey = getListAiProviderRateVersionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listAiProviderRateVersions>>, ListAiProviderRateVersionsMutationVariables> = (props) => {
+          const {providerId} = props ?? {};
+
+          return  listAiProviderRateVersions(providerId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListAiProviderRateVersionsMutationResult = NonNullable<Awaited<ReturnType<typeof listAiProviderRateVersions>>>
+
+    export type ListAiProviderRateVersionsMutationError = unknown
+    export type ListAiProviderRateVersionsMutationVariables = {providerId: string}
+
+    export const useListAiProviderRateVersions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiProviderRateVersions>>, TError,ListAiProviderRateVersionsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listAiProviderRateVersions>>,
+        TError,
+        ListAiProviderRateVersionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListAiProviderRateVersionsMutationOptions(options), queryClient);
+    }
+    export type createAiProviderRateVersionResponse200 = {
+  data: CreateAiProviderRateVersion200
+  status: 200
+}
+
+export type createAiProviderRateVersionResponseSuccess = (createAiProviderRateVersionResponse200) & {
+  headers: Headers;
+};
+;
+
+export type createAiProviderRateVersionResponse = (createAiProviderRateVersionResponseSuccess)
+
+export const getCreateAiProviderRateVersionUrl = (providerId: string,) => {
+
+
+
+
+  return `/api/v4/admin/ai-providers/${providerId}/rate-versions`
+}
+
+export const createAiProviderRateVersion = async (providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: Parameters<typeof customInstance>[1]): Promise<createAiProviderRateVersionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createAiProviderRateVersionResponse>(getCreateAiProviderRateVersionUrl(providerId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createAiProviderRateVersionRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateAiProviderRateVersionQueryKey = (providerId: string,
+    createAiProviderRateVersionRequest?: CreateAiProviderRateVersionRequest,) => {
+    return [
+    'POST', `/api/v4/admin/ai-providers/${providerId}/rate-versions`, createAiProviderRateVersionRequest
+    ] as const;
+    }
+
+
+export const getCreateAiProviderRateVersionQueryOptions = <TData = Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError = unknown>(providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCreateAiProviderRateVersionQueryKey(providerId,createAiProviderRateVersionRequest);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof createAiProviderRateVersion>>> = ({ signal }) => createAiProviderRateVersion(providerId,createAiProviderRateVersionRequest, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: providerId !== null && providerId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CreateAiProviderRateVersionQueryResult = NonNullable<Awaited<ReturnType<typeof createAiProviderRateVersion>>>
+export type CreateAiProviderRateVersionQueryError = unknown
+
+
+export function useCreateAiProviderRateVersion<TData = Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError = unknown>(
+ providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createAiProviderRateVersion>>,
+          TError,
+          Awaited<ReturnType<typeof createAiProviderRateVersion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateAiProviderRateVersion<TData = Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError = unknown>(
+ providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createAiProviderRateVersion>>,
+          TError,
+          Awaited<ReturnType<typeof createAiProviderRateVersion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateAiProviderRateVersion<TData = Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError = unknown>(
+ providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useCreateAiProviderRateVersion<TData = Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError = unknown>(
+ providerId: string,
+    createAiProviderRateVersionRequest: CreateAiProviderRateVersionRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createAiProviderRateVersion>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCreateAiProviderRateVersionQueryOptions(providerId,createAiProviderRateVersionRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type listAiUsageCallsResponse200 = {
+  data: ListAiUsageCalls200
+  status: 200
+}
+
+export type listAiUsageCallsResponseSuccess = (listAiUsageCallsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiUsageCallsResponse = (listAiUsageCallsResponseSuccess)
+
+export const getListAiUsageCallsUrl = (params?: ListAiUsageCallsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/ai-usage/calls?${stringifiedParams}` : `/api/v4/admin/ai-usage/calls`
+}
+
+export const listAiUsageCalls = async (params?: ListAiUsageCallsParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiUsageCallsResponse> => {
+
+  return customInstance<listAiUsageCallsResponse>(getListAiUsageCallsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAiUsageCallsMutationKey = () => ['listAiUsageCalls'] as const;
+
+export const getListAiUsageCallsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiUsageCalls>>, TError,ListAiUsageCallsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listAiUsageCalls>>, TError,ListAiUsageCallsMutationVariables, TContext> => {
+
+const mutationKey = getListAiUsageCallsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listAiUsageCalls>>, ListAiUsageCallsMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  listAiUsageCalls(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListAiUsageCallsMutationResult = NonNullable<Awaited<ReturnType<typeof listAiUsageCalls>>>
+
+    export type ListAiUsageCallsMutationError = unknown
+    export type ListAiUsageCallsMutationVariables = {params?: ListAiUsageCallsParams}
+
+    export const useListAiUsageCalls = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiUsageCalls>>, TError,ListAiUsageCallsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listAiUsageCalls>>,
+        TError,
+        ListAiUsageCallsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListAiUsageCallsMutationOptions(options), queryClient);
+    }
+    export type listAiUsageSummaryResponse200 = {
+  data: ListAiUsageSummary200
+  status: 200
+}
+
+export type listAiUsageSummaryResponseSuccess = (listAiUsageSummaryResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAiUsageSummaryResponse = (listAiUsageSummaryResponseSuccess)
+
+export const getListAiUsageSummaryUrl = (params?: ListAiUsageSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v4/admin/ai-usage/summary?${stringifiedParams}` : `/api/v4/admin/ai-usage/summary`
+}
+
+export const listAiUsageSummary = async (params?: ListAiUsageSummaryParams, options?: Parameters<typeof customInstance>[1]): Promise<listAiUsageSummaryResponse> => {
+
+  return customInstance<listAiUsageSummaryResponse>(getListAiUsageSummaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAiUsageSummaryMutationKey = () => ['listAiUsageSummary'] as const;
+
+export const getListAiUsageSummaryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiUsageSummary>>, TError,ListAiUsageSummaryMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof listAiUsageSummary>>, TError,ListAiUsageSummaryMutationVariables, TContext> => {
+
+const mutationKey = getListAiUsageSummaryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof listAiUsageSummary>>, ListAiUsageSummaryMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  listAiUsageSummary(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ListAiUsageSummaryMutationResult = NonNullable<Awaited<ReturnType<typeof listAiUsageSummary>>>
+
+    export type ListAiUsageSummaryMutationError = unknown
+    export type ListAiUsageSummaryMutationVariables = {params?: ListAiUsageSummaryParams}
+
+    export const useListAiUsageSummary = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof listAiUsageSummary>>, TError,ListAiUsageSummaryMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof listAiUsageSummary>>,
+        TError,
+        ListAiUsageSummaryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getListAiUsageSummaryMutationOptions(options), queryClient);
+    }
+    export type getSettingsNamespaceResponse200 = {
   data: GetSettingsNamespace200
   status: 200
 }

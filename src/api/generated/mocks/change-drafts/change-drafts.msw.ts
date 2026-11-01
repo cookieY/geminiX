@@ -20,17 +20,14 @@ import type {
 } from 'msw';
 
 import {
-  ChangeOrderState,
   DraftState,
   FlowType,
-  ReviewRunState,
-  StageState
+  ReviewRunState
 } from '../../client/yearningV4HTTPAPI.schemas';
 import type {
   BusinessErrorResponse,
   CreateChangeDraft200,
   DeleteChangeDraft200,
-  ExecutionSchedule,
   GetChangeDraft200,
   GetReviewRun200,
   ListChangeDrafts200,
@@ -39,12 +36,10 @@ import type {
   ListMyFlowDatasourceSchemas200,
   ListMyFlowDatasourceTables200,
   ListReviewRunFindings200,
-  Problem,
   ReplaceDraftSql200,
   RevealDraftSql200,
   ReviewRunUsage,
   RunDraftReview200,
-  SubmitChangeDraft200,
   UpdateChangeDraft200
 } from '../../client/yearningV4HTTPAPI.schemas';
 
@@ -93,17 +88,9 @@ export const getRevealDraftSqlResponseBusinessErrorResponseMock = (overrideRespo
 
 export const getRevealDraftSqlResponseMock = (): RevealDraftSql200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {reveal_id: faker.string.uuid(), sql: faker.string.alpha({length: {min: 10, max: 20}}), watermark: faker.string.alpha({length: {min: 10, max: 20}}), valid_until: faker.date.past().toISOString().slice(0, 19) + 'Z'}, request_id: faker.string.uuid()},{...getRevealDraftSqlResponseBusinessErrorResponseMock()},]))
 
-export const getRunDraftReviewResponseProblemMock = (overrideResponse: Partial<Problem> = {}): Problem => ({...{type: faker.internet.url(), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.number.int({min: 400, max: 599}), detail: faker.string.alpha({length: {min: 10, max: 20}}), instance: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), request_id: faker.string.uuid()}, ...overrideResponse});
-
 export const getRunDraftReviewResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
 
-export const getRunDraftReviewResponseMock = (): RunDraftReview200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {id: faker.string.uuid(), kind: faker.helpers.arrayElement(['sql_grouping','ai_review','migration_dry_run','admin_connection_test','ai_provider_connection_test','identity_provider_connection_test','notification_test_delivery'] as const), state: faker.helpers.arrayElement(['queued','running','succeeded','failed','cancelled'] as const), progress: {completed: faker.number.int({min: 0}), total: faker.number.int({min: 0}), unit: faker.string.alpha({length: {min: 10, max: 20}})}, result_ref: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), undefined]), error: faker.helpers.arrayElement([faker.helpers.arrayElement([{...getRunDraftReviewResponseProblemMock()},null,]), undefined]), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'}, request_id: faker.string.uuid()},{...getRunDraftReviewResponseBusinessErrorResponseMock()},]))
-
-export const getSubmitChangeDraftResponseExecutionScheduleMock = (overrideResponse: Partial<ExecutionSchedule> = {}): ExecutionSchedule => ({...{id: faker.string.uuid(), stage_id: faker.string.uuid(), scheduled_for: faker.date.past().toISOString().slice(0, 19) + 'Z', state: faker.helpers.arrayElement(['scheduled','running','cancelled','missed','blocked'] as const)}, ...overrideResponse});
-
-export const getSubmitChangeDraftResponseBusinessErrorResponseMock = (overrideResponse: Partial<BusinessErrorResponse> = {}): BusinessErrorResponse => ({...{err_code: faker.helpers.arrayElement([1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1101,1102,1103,1104,1105,1106,1107,1108,1109,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,3001,3002,3003,3004,3005,3006,3007,3008,3009,3010,3011,3012,4001,4002,4003,4004,4005,4006,4007,4008,4009,4010,4011,5001,5002,5003,5004,5005] as const), message: faker.string.alpha({length: {min: 10, max: 20}}), data: null, request_id: faker.string.uuid(), retryable: faker.datatype.boolean(), meta: faker.helpers.arrayElement([{}, undefined])}, ...overrideResponse});
-
-export const getSubmitChangeDraftResponseMock = (): SubmitChangeDraft200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {id: faker.string.uuid(), display_number: faker.helpers.fromRegExp("^YR-[0-9]{8}-[0-9]{6}$"), submitter_user_id: faker.string.uuid(), submitter_username: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), submitter_display_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), title: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), state: faker.helpers.arrayElement(Object.values(ChangeOrderState)), requested_scheduled_for: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), undefined]), current_stage_position: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.number.int({min: 1}), null]), undefined]), stages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), position: faker.number.int({min: 1}), datasource_name: faker.string.alpha({length: {min: 10, max: 20}}), state: faker.helpers.arrayElement(Object.values(StageState)), approval_steps: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), execution_actors: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), username: faker.string.alpha({length: {min: 10, max: 20}}), display_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), email: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.internet.email(), null]), undefined]), is_builtin_admin: faker.datatype.boolean(), version: faker.number.int({min: 1}), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'}))})), has_sql: true, sql_hash: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), snapshot_hash: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), manually_verified: faker.datatype.boolean(), version: faker.number.int({min: 1}), submitted_at: faker.date.past().toISOString().slice(0, 19) + 'Z', terminal_at: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), undefined]), active_schedule: faker.helpers.arrayElement([faker.helpers.arrayElement([{...getSubmitChangeDraftResponseExecutionScheduleMock()},null,]), undefined])}, request_id: faker.string.uuid()},{...getSubmitChangeDraftResponseBusinessErrorResponseMock()},]))
+export const getRunDraftReviewResponseMock = (): RunDraftReview200 => (faker.helpers.arrayElement([{err_code: 0, message: "ok", data: {run_id: faker.string.uuid()}, request_id: faker.string.uuid()},{...getRunDraftReviewResponseBusinessErrorResponseMock()},]))
 
 export const getGetReviewRunResponseReviewRunUsageMock = (overrideResponse: Partial<ReviewRunUsage> = {}): ReviewRunUsage => ({...{provider_name: faker.string.alpha({length: {min: 10, max: 20}}), model_name: faker.string.alpha({length: {min: 10, max: 20}}), input_tokens: faker.number.int({min: 0}), output_tokens: faker.number.int({min: 0}), amount_minor: faker.number.int({min: 0}), currency: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse});
 
@@ -249,24 +236,12 @@ export const getRevealDraftSqlMockHandler = (overrideResponse?: RevealDraftSql20
 }
 
 export const getRunDraftReviewMockHandler = (overrideResponse?: RunDraftReview200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<RunDraftReview200> | RunDraftReview200), options?: RequestHandlerOptions) => {
-  return http.post('*/change-drafts/:draftId/review-runs', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+  return http.post('*/review-runs', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getRunDraftReviewResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
-export const getSubmitChangeDraftMockHandler = (overrideResponse?: SubmitChangeDraft200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SubmitChangeDraft200> | SubmitChangeDraft200), options?: RequestHandlerOptions) => {
-  return http.post('*/change-drafts/:draftId/submission', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getSubmitChangeDraftResponseMock(),
       { status: 200
       })
   }, options)
@@ -308,7 +283,6 @@ export const getChangeDraftsMock = () => [
   getReplaceDraftSqlMockHandler(),
   getRevealDraftSqlMockHandler(),
   getRunDraftReviewMockHandler(),
-  getSubmitChangeDraftMockHandler(),
   getGetReviewRunMockHandler(),
   getListReviewRunFindingsMockHandler()
 ]

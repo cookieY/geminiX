@@ -30,7 +30,7 @@ import type {
   RevealDraftSql200,
   RevealRequest,
   RunDraftReview200,
-  SubmitChangeDraft200,
+  RunDraftReviewBody,
   UpdateChangeDraft200,
   UpdateChangeDraftRequest
 } from '../yearningV4HTTPAPI.schemas';
@@ -508,54 +508,31 @@ export type runDraftReviewResponseError = (runDraftReviewResponse429) & {
 
 export type runDraftReviewResponse = (runDraftReviewResponseSuccess | runDraftReviewResponseError)
 
-export const getRunDraftReviewUrl = (draftId: string,) => {
+export const getRunDraftReviewUrl = () => {
 
 
 
 
-  return `/api/v4/change-drafts/${draftId}/review-runs`
+  return `/api/v4/review-runs`
 }
 
-export const runDraftReview = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<runDraftReviewResponse> => {
+/**
+ * Ephemeral AI precheck (RCP-20261101-EPHEMERAL-PRECHECK). The request carries the current editor SQL plus the flow; nothing is persisted before submission - no draft row, no SQL payload, no run rows. The run executes in process memory with a TTL and is readable via GET /review-runs/{review_run_id} until it expires or the process restarts, after which the client must precheck again. Submitting an order materializes the accepted run. draft_id is optional UI anchoring only and is never written by this operation.
+ */
+export const runDraftReview = async (runDraftReviewBody: RunDraftReviewBody, options?: Parameters<typeof customInstance>[1]): Promise<runDraftReviewResponse> => {
 
-  return customInstance<runDraftReviewResponse>(getRunDraftReviewUrl(draftId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<runDraftReviewResponse>(getRunDraftReviewUrl(),
   {
     ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-export type submitChangeDraftResponse200 = {
-  data: SubmitChangeDraft200
-  status: 200
-}
-
-export type submitChangeDraftResponseSuccess = (submitChangeDraftResponse200) & {
-  headers: Headers;
-};
-;
-
-export type submitChangeDraftResponse = (submitChangeDraftResponseSuccess)
-
-export const getSubmitChangeDraftUrl = (draftId: string,) => {
-
-
-
-
-  return `/api/v4/change-drafts/${draftId}/submission`
-}
-
-export const submitChangeDraft = async (draftId: string, options?: Parameters<typeof customInstance>[1]): Promise<submitChangeDraftResponse> => {
-
-  return customInstance<submitChangeDraftResponse>(getSubmitChangeDraftUrl(draftId),
-  {
-    ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(runDraftReviewBody)
   }
 );}
 

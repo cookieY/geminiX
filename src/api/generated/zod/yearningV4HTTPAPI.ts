@@ -3587,6 +3587,12 @@ export const ListAiProvidersQueryParams = zod.object({
   "after": zod.string().optional()
 })
 
+export const listAiProvidersResponseOneDataItemsItemConfigurationMaxTokensMin = 256;
+export const listAiProvidersResponseOneDataItemsItemConfigurationMaxTokensMax = 200000;
+
+export const listAiProvidersResponseOneDataItemsItemConfigurationTemperatureMin = 0;
+export const listAiProvidersResponseOneDataItemsItemConfigurationTemperatureMax = 2;
+
 
 
 
@@ -3603,6 +3609,12 @@ export const ListAiProvidersResponse = zod.union([zod.object({
   "enabled": zod.boolean(),
   "selection_priority": zod.int(),
   "api_key_configured": zod.boolean(),
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional(),
+  "max_tokens": zod.int().min(listAiProvidersResponseOneDataItemsItemConfigurationMaxTokensMin).max(listAiProvidersResponseOneDataItemsItemConfigurationMaxTokensMax).optional(),
+  "temperature": zod.number().min(listAiProvidersResponseOneDataItemsItemConfigurationTemperatureMin).max(listAiProvidersResponseOneDataItemsItemConfigurationTemperatureMax).optional(),
+  "structured_output_mode": zod.enum(['json_schema', 'json_object']).optional().describe('Server-managed system key negotiated by the enable probe; never accepted on write.')
+}).optional().describe('Typed read-back of the stored provider configuration. Absent keys mean not configured (the request omits them; provider-side defaults apply and are never fabricated as values). structured_output_mode is the server-negotiated system key, read-only for clients.'),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -3631,6 +3643,12 @@ export const createAiProviderBodyOneProviderKindMax = 64;
 export const createAiProviderBodyOneSelectionPriorityMax = 100;
 
 
+export const createAiProviderBodyOneConfigurationOneMaxTokensMin = 256;
+export const createAiProviderBodyOneConfigurationOneMaxTokensMax = 200000;
+
+export const createAiProviderBodyOneConfigurationOneTemperatureMin = 0;
+export const createAiProviderBodyOneConfigurationOneTemperatureMax = 2;
+
 
 
 export const CreateAiProviderBody = zod.object({
@@ -3643,12 +3661,20 @@ export const CreateAiProviderBody = zod.object({
   "api_key": zod.object({
   "value": zod.string().min(1)
 }),
-  "configuration": zod.looseObject({
-
-}).optional()
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional().describe('Omit entirely to use the provider default; never simulated via prompts.'),
+  "max_tokens": zod.int().min(createAiProviderBodyOneConfigurationOneMaxTokensMin).max(createAiProviderBodyOneConfigurationOneMaxTokensMax).optional(),
+  "temperature": zod.number().min(createAiProviderBodyOneConfigurationOneTemperatureMin).max(createAiProviderBodyOneConfigurationOneTemperatureMax).optional().describe('0 is a valid explicit value and is never treated as omitted.')
+}).describe('User-writable generation parameters. Providing this object replaces the stored user overrides as a whole (keys omitted inside a provided object are cleared); omitting the configuration field entirely preserves the stored configuration (M2 keep semantics). Unknown keys, including the system-managed structured_output_mode, are rejected.').optional().describe('Explicit full replacement of the user generation-parameter overrides (M2 semantics). Omitted preserves the stored configuration; an empty object is an explicit clear of all user overrides and triggers real change detection and probe re-negotiation. The system-managed structured_output_mode key is rejected here and only written by the server probe.')
 }).and(zod.looseObject({
 
 }))
+
+export const createAiProviderResponseOneDataConfigurationMaxTokensMin = 256;
+export const createAiProviderResponseOneDataConfigurationMaxTokensMax = 200000;
+
+export const createAiProviderResponseOneDataConfigurationTemperatureMin = 0;
+export const createAiProviderResponseOneDataConfigurationTemperatureMax = 2;
 
 
 
@@ -3665,6 +3691,12 @@ export const CreateAiProviderResponse = zod.union([zod.object({
   "enabled": zod.boolean(),
   "selection_priority": zod.int(),
   "api_key_configured": zod.boolean(),
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional(),
+  "max_tokens": zod.int().min(createAiProviderResponseOneDataConfigurationMaxTokensMin).max(createAiProviderResponseOneDataConfigurationMaxTokensMax).optional(),
+  "temperature": zod.number().min(createAiProviderResponseOneDataConfigurationTemperatureMin).max(createAiProviderResponseOneDataConfigurationTemperatureMax).optional(),
+  "structured_output_mode": zod.enum(['json_schema', 'json_object']).optional().describe('Server-managed system key negotiated by the enable probe; never accepted on write.')
+}).optional().describe('Typed read-back of the stored provider configuration. Absent keys mean not configured (the request omits them; provider-side defaults apply and are never fabricated as values). structured_output_mode is the server-negotiated system key, read-only for clients.'),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -3684,6 +3716,12 @@ export const GetAiProviderParams = zod.object({
   "provider_id": zod.uuid()
 })
 
+export const getAiProviderResponseOneDataConfigurationMaxTokensMin = 256;
+export const getAiProviderResponseOneDataConfigurationMaxTokensMax = 200000;
+
+export const getAiProviderResponseOneDataConfigurationTemperatureMin = 0;
+export const getAiProviderResponseOneDataConfigurationTemperatureMax = 2;
+
 
 
 
@@ -3699,6 +3737,12 @@ export const GetAiProviderResponse = zod.union([zod.object({
   "enabled": zod.boolean(),
   "selection_priority": zod.int(),
   "api_key_configured": zod.boolean(),
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional(),
+  "max_tokens": zod.int().min(getAiProviderResponseOneDataConfigurationMaxTokensMin).max(getAiProviderResponseOneDataConfigurationMaxTokensMax).optional(),
+  "temperature": zod.number().min(getAiProviderResponseOneDataConfigurationTemperatureMin).max(getAiProviderResponseOneDataConfigurationTemperatureMax).optional(),
+  "structured_output_mode": zod.enum(['json_schema', 'json_object']).optional().describe('Server-managed system key negotiated by the enable probe; never accepted on write.')
+}).optional().describe('Typed read-back of the stored provider configuration. Absent keys mean not configured (the request omits them; provider-side defaults apply and are never fabricated as values). structured_output_mode is the server-negotiated system key, read-only for clients.'),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -3733,6 +3777,12 @@ export const replaceAiProviderBodyProviderKindMax = 64;
 export const replaceAiProviderBodySelectionPriorityMax = 100;
 
 
+export const replaceAiProviderBodyConfigurationOneMaxTokensMin = 256;
+export const replaceAiProviderBodyConfigurationOneMaxTokensMax = 200000;
+
+export const replaceAiProviderBodyConfigurationOneTemperatureMin = 0;
+export const replaceAiProviderBodyConfigurationOneTemperatureMax = 2;
+
 
 
 export const ReplaceAiProviderBody = zod.object({
@@ -3745,10 +3795,18 @@ export const ReplaceAiProviderBody = zod.object({
   "api_key": zod.object({
   "value": zod.string().min(1)
 }).optional(),
-  "configuration": zod.looseObject({
-
-}).optional()
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional().describe('Omit entirely to use the provider default; never simulated via prompts.'),
+  "max_tokens": zod.int().min(replaceAiProviderBodyConfigurationOneMaxTokensMin).max(replaceAiProviderBodyConfigurationOneMaxTokensMax).optional(),
+  "temperature": zod.number().min(replaceAiProviderBodyConfigurationOneTemperatureMin).max(replaceAiProviderBodyConfigurationOneTemperatureMax).optional().describe('0 is a valid explicit value and is never treated as omitted.')
+}).describe('User-writable generation parameters. Providing this object replaces the stored user overrides as a whole (keys omitted inside a provided object are cleared); omitting the configuration field entirely preserves the stored configuration (M2 keep semantics). Unknown keys, including the system-managed structured_output_mode, are rejected.').optional().describe('Explicit full replacement of the user generation-parameter overrides (M2 semantics). Omitted preserves the stored configuration; an empty object is an explicit clear of all user overrides and triggers real change detection and probe re-negotiation. The system-managed structured_output_mode key is rejected here and only written by the server probe.')
 })
+
+export const replaceAiProviderResponseOneDataConfigurationMaxTokensMin = 256;
+export const replaceAiProviderResponseOneDataConfigurationMaxTokensMax = 200000;
+
+export const replaceAiProviderResponseOneDataConfigurationTemperatureMin = 0;
+export const replaceAiProviderResponseOneDataConfigurationTemperatureMax = 2;
 
 
 
@@ -3765,6 +3823,12 @@ export const ReplaceAiProviderResponse = zod.union([zod.object({
   "enabled": zod.boolean(),
   "selection_priority": zod.int(),
   "api_key_configured": zod.boolean(),
+  "configuration": zod.object({
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional(),
+  "max_tokens": zod.int().min(replaceAiProviderResponseOneDataConfigurationMaxTokensMin).max(replaceAiProviderResponseOneDataConfigurationMaxTokensMax).optional(),
+  "temperature": zod.number().min(replaceAiProviderResponseOneDataConfigurationTemperatureMin).max(replaceAiProviderResponseOneDataConfigurationTemperatureMax).optional(),
+  "structured_output_mode": zod.enum(['json_schema', 'json_object']).optional().describe('Server-managed system key negotiated by the enable probe; never accepted on write.')
+}).optional().describe('Typed read-back of the stored provider configuration. Absent keys mean not configured (the request omits them; provider-side defaults apply and are never fabricated as values). structured_output_mode is the server-negotiated system key, read-only for clients.'),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -3842,6 +3906,231 @@ export const ListAiProviderModelsResponse = zod.union([zod.object({
   "data": zod.object({
   "items": zod.array(zod.string())
 }),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const ListAiProviderRateVersionsParams = zod.object({
+  "provider_id": zod.uuid()
+})
+
+
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemStartMinuteMin = 0;
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemStartMinuteMax = 1439;
+
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemEndMinuteMax = 1440;
+
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemInputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemOutputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemCachedReadPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const listAiProviderRateVersionsResponseOneDataItemWindowsItemCachedWritePriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+
+
+export const ListAiProviderRateVersionsResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.array(zod.object({
+  "id": zod.uuid(),
+  "provider_id": zod.uuid(),
+  "currency": zod.enum(['CNY', 'USD']),
+  "timezone": zod.string().describe('IANA zone name used to resolve the billing time-of-day window.'),
+  "effective_from": zod.iso.datetime({"offset":true}),
+  "effective_until": zod.iso.datetime({"offset":true}).optional(),
+  "version": zod.int().min(1),
+  "windows": zod.array(zod.object({
+  "id": zod.uuid(),
+  "start_minute": zod.int().min(listAiProviderRateVersionsResponseOneDataItemWindowsItemStartMinuteMin).max(listAiProviderRateVersionsResponseOneDataItemWindowsItemStartMinuteMax),
+  "end_minute": zod.int().min(1).max(listAiProviderRateVersionsResponseOneDataItemWindowsItemEndMinuteMax).describe('Half-open [start_minute, end_minute) within a day; cross-midnight input is stored as two normalized windows.'),
+  "input_price": zod.string().regex(listAiProviderRateVersionsResponseOneDataItemWindowsItemInputPriceRegExp).describe('Currency units per million input tokens (bounded decimal string).'),
+  "output_price": zod.string().regex(listAiProviderRateVersionsResponseOneDataItemWindowsItemOutputPriceRegExp),
+  "cached_read_price": zod.string().regex(listAiProviderRateVersionsResponseOneDataItemWindowsItemCachedReadPriceRegExp).optional().describe('Omitted means not configured; reported cached-read volume then stays in the base reference (partial basis).'),
+  "cached_write_price": zod.string().regex(listAiProviderRateVersionsResponseOneDataItemWindowsItemCachedWritePriceRegExp).optional()
+})),
+  "created_at": zod.iso.datetime({"offset":true})
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const CreateAiProviderRateVersionParams = zod.object({
+  "provider_id": zod.uuid()
+})
+
+export const createAiProviderRateVersionBodyWindowsItemStartMinuteMin = 0;
+export const createAiProviderRateVersionBodyWindowsItemStartMinuteMax = 1439;
+
+export const createAiProviderRateVersionBodyWindowsItemEndMinuteMax = 1440;
+
+export const createAiProviderRateVersionBodyWindowsItemInputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionBodyWindowsItemOutputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionBodyWindowsItemCachedReadPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionBodyWindowsItemCachedWritePriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionBodyWindowsMax = 24;
+
+
+
+export const CreateAiProviderRateVersionBody = zod.object({
+  "currency": zod.enum(['CNY', 'USD']),
+  "timezone": zod.string(),
+  "effective_from": zod.iso.datetime({"offset":true}),
+  "effective_until": zod.iso.datetime({"offset":true}).optional(),
+  "windows": zod.array(zod.object({
+  "start_minute": zod.int().min(createAiProviderRateVersionBodyWindowsItemStartMinuteMin).max(createAiProviderRateVersionBodyWindowsItemStartMinuteMax),
+  "end_minute": zod.int().min(1).max(createAiProviderRateVersionBodyWindowsItemEndMinuteMax).describe('A value not greater than start_minute means a cross-midnight window that is normalized into two same-day windows at write time; overlap after normalization is rejected.'),
+  "input_price": zod.string().regex(createAiProviderRateVersionBodyWindowsItemInputPriceRegExp),
+  "output_price": zod.string().regex(createAiProviderRateVersionBodyWindowsItemOutputPriceRegExp),
+  "cached_read_price": zod.string().regex(createAiProviderRateVersionBodyWindowsItemCachedReadPriceRegExp).optional(),
+  "cached_write_price": zod.string().regex(createAiProviderRateVersionBodyWindowsItemCachedWritePriceRegExp).optional()
+})).min(1).max(createAiProviderRateVersionBodyWindowsMax)
+})
+
+
+export const createAiProviderRateVersionResponseOneDataWindowsItemStartMinuteMin = 0;
+export const createAiProviderRateVersionResponseOneDataWindowsItemStartMinuteMax = 1439;
+
+export const createAiProviderRateVersionResponseOneDataWindowsItemEndMinuteMax = 1440;
+
+export const createAiProviderRateVersionResponseOneDataWindowsItemInputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionResponseOneDataWindowsItemOutputPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionResponseOneDataWindowsItemCachedReadPriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+export const createAiProviderRateVersionResponseOneDataWindowsItemCachedWritePriceRegExp = new RegExp('^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$');
+
+
+export const CreateAiProviderRateVersionResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "provider_id": zod.uuid(),
+  "currency": zod.enum(['CNY', 'USD']),
+  "timezone": zod.string().describe('IANA zone name used to resolve the billing time-of-day window.'),
+  "effective_from": zod.iso.datetime({"offset":true}),
+  "effective_until": zod.iso.datetime({"offset":true}).optional(),
+  "version": zod.int().min(1),
+  "windows": zod.array(zod.object({
+  "id": zod.uuid(),
+  "start_minute": zod.int().min(createAiProviderRateVersionResponseOneDataWindowsItemStartMinuteMin).max(createAiProviderRateVersionResponseOneDataWindowsItemStartMinuteMax),
+  "end_minute": zod.int().min(1).max(createAiProviderRateVersionResponseOneDataWindowsItemEndMinuteMax).describe('Half-open [start_minute, end_minute) within a day; cross-midnight input is stored as two normalized windows.'),
+  "input_price": zod.string().regex(createAiProviderRateVersionResponseOneDataWindowsItemInputPriceRegExp).describe('Currency units per million input tokens (bounded decimal string).'),
+  "output_price": zod.string().regex(createAiProviderRateVersionResponseOneDataWindowsItemOutputPriceRegExp),
+  "cached_read_price": zod.string().regex(createAiProviderRateVersionResponseOneDataWindowsItemCachedReadPriceRegExp).optional().describe('Omitted means not configured; reported cached-read volume then stays in the base reference (partial basis).'),
+  "cached_write_price": zod.string().regex(createAiProviderRateVersionResponseOneDataWindowsItemCachedWritePriceRegExp).optional()
+})),
+  "created_at": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const listAiUsageCallsQueryCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+export const listAiUsageCallsQueryLimitDefault = 50;
+export const listAiUsageCallsQueryLimitMax = 200;
+
+
+
+export const ListAiUsageCallsQueryParams = zod.object({
+  "run_id": zod.uuid().optional().describe('Filter per-HTTP-call usage rows by review run.'),
+  "currency": zod.string().regex(listAiUsageCallsQueryCurrencyRegExp).optional().describe('Filter by three-letter currency code (CNY or USD).'),
+  "limit": zod.int().min(1).max(listAiUsageCallsQueryLimitMax).default(listAiUsageCallsQueryLimitDefault),
+  "after": zod.string().optional()
+})
+
+export const listAiUsageCallsResponseOneDataTwoItemsItemCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+
+export const ListAiUsageCallsResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "items": zod.array(zod.unknown()),
+  "page": zod.object({
+  "next_cursor": zod.string().nullable(),
+  "has_more": zod.boolean()
+})
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "review_run_id": zod.uuid(),
+  "stage_position": zod.int(),
+  "model_turn": zod.int(),
+  "call_index": zod.int().describe('Position within the model turn (initial attempt, backoff retries, schema-repair turn each get their own row).'),
+  "provider_id": zod.uuid(),
+  "model_name": zod.string(),
+  "sent_at": zod.iso.datetime({"offset":true}),
+  "reasoning_effort": zod.enum(['low', 'medium', 'high']).optional(),
+  "max_tokens": zod.int().optional(),
+  "temperature": zod.string().optional().describe('Bounded decimal snapshot of the configured value.'),
+  "rate_version_id": zod.uuid().optional(),
+  "rate_window_id": zod.uuid().optional(),
+  "rate_source": zod.enum(['provider_version', 'global_settings', 'none']).describe('global_settings marks the legacy global-price compatibility default, never disguised as a provider-verified rate.'),
+  "currency": zod.string().regex(listAiUsageCallsResponseOneDataTwoItemsItemCurrencyRegExp).optional(),
+  "input_tokens": zod.int().optional().describe('Null means unknown (not reported or invalid); zero is an explicit upstream zero.'),
+  "output_tokens": zod.int().optional(),
+  "cached_tokens": zod.int().optional(),
+  "cache_write_tokens": zod.int().optional(),
+  "reasoning_tokens": zod.int().optional().describe('Detail only; never charged again on top of completion tokens.'),
+  "usage_reported": zod.boolean(),
+  "reference_amount": zod.string().optional().describe('Bounded decimal reference cost in currency units; null when not computable (unknown totals or no rate).'),
+  "calc_basis": zod.enum(['full_detail', 'partial_detail', 'base_only', 'not_computable']),
+  "detail_note": zod.string(),
+  "outcome": zod.enum(['ok', 'schema_failed', 'error']),
+  "http_status": zod.int().optional(),
+  "created_at": zod.iso.datetime({"offset":true})
+}))
+})),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+export const ListAiUsageSummaryQueryParams = zod.object({
+  "from": zod.iso.datetime({"offset":true}).optional().describe('Inclusive RFC3339 lower bound on call send time. Defaults to 30 days before to.'),
+  "to": zod.iso.datetime({"offset":true}).optional().describe('Exclusive RFC3339 upper bound on call send time. Defaults to now.')
+})
+
+export const listAiUsageSummaryResponseOneDataItemCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+
+export const ListAiUsageSummaryResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.array(zod.object({
+  "currency": zod.string().regex(listAiUsageSummaryResponseOneDataItemCurrencyRegExp).describe('Rows without an attributable currency (no rate configured) are excluded from the per-currency grouping instead of being reported with an invalid code.'),
+  "calls": zod.int().describe('Calls in range with an attributable currency.'),
+  "reference_amount": zod.string().describe('Sum of computable reference amounts (bounded decimal); empty string when no call in range was computable.'),
+  "computable_calls": zod.int().describe('Calls with a reference amount; the sample base for coverage, missing samples never count as zero.'),
+  "input_tokens_known": zod.int().describe('Sum of known input tokens across all reported calls.'),
+  "input_tokens_cache_known": zod.int().describe('Hit-rate denominator - sum of known input tokens over the calls that reported cache detail only; missing samples never count as zero and percentages are never averaged.'),
+  "cached_tokens_known": zod.int().describe('Hit-rate numerator - sum of known cached-read tokens.'),
+  "cache_detail_samples": zod.int().describe('Number of calls (not fields) that reported cache detail; hit rate is cached_tokens_known \/ input_tokens_cache_known when the denominator is positive.')
+})),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
@@ -4437,7 +4726,7 @@ export const ListNotificationChannelsResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -4482,7 +4771,7 @@ export const CreateNotificationChannelBody = zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -4519,7 +4808,7 @@ export const CreateNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -4569,7 +4858,7 @@ export const GetNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -4624,7 +4913,7 @@ export const ReplaceNotificationChannelBody = zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -4659,7 +4948,7 @@ export const ReplaceNotificationChannelResponse = zod.union([zod.object({
   "from_address": zod.email()
 }),zod.object({
   "webhook_host": zod.enum(['oapi.dingtalk.com'])
-}),zod.object({
+}).describe('DingTalk custom robot channel. The configuration surface carries no sensitive fields; the secret envelope stores either the raw webhook access token or a JSON object {\"access_token\": \"...\", \"sign_secret\": \"...\"} — the optional sign secret is required when the robot uses the sign security mode and requests then carry the official timestamp+ signature query parameters.'),zod.object({
 
 }).describe('Feishu custom bot channel (S007). The configuration surface carries no sensitive fields; the webhook (which embeds its token) and the optional signing secret are stored only inside the encrypted secret envelope.'),zod.object({
 
@@ -5624,138 +5913,38 @@ export const RevealDraftSqlResponse = zod.union([zod.object({
 })])
 
 
-export const RunDraftReviewParams = zod.object({
-  "draft_id": zod.uuid()
-})
-
+/**
+ * Ephemeral AI precheck (RCP-20261101-EPHEMERAL-PRECHECK). The request carries the current editor SQL plus the flow; nothing is persisted before submission - no draft row, no SQL payload, no run rows. The run executes in process memory with a TTL and is readable via GET /review-runs/{review_run_id} until it expires or the process restarts, after which the client must precheck again. Submitting an order materializes the accepted run. draft_id is optional UI anchoring only and is never written by this operation.
+ */
 export const runDraftReviewHeaderIdempotencyKeyMax = 128;
 
 
 export const runDraftReviewHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
-export const runDraftReviewHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
 export const runDraftReviewHeaderAcceptLanguageMax = 1024;
 
 
 
 export const RunDraftReviewHeader = zod.object({
   "Idempotency-Key": zod.string().min(1).max(runDraftReviewHeaderIdempotencyKeyMax).regex(runDraftReviewHeaderIdempotencyKeyRegExp),
-  "If-Match": zod.string().regex(runDraftReviewHeaderIfMatchRegExp),
-  "Accept-Language": zod.string().max(runDraftReviewHeaderAcceptLanguageMax).optional().describe('Language preference for AI summary and finding title\/message\/suggestion. zh\/en variants are negotiated in preference order to zh-CN\/en-US; unsupported or malformed preferences default to zh-CN. The chosen locale is frozen when review starts, including task retries and model turns. Existing results are never automatically translated. Structured keys, enums, evidence IDs, anonymous tokens and technical identifiers retain their original values. Locale participates in idempotency identity.')
+  "Accept-Language": zod.string().max(runDraftReviewHeaderAcceptLanguageMax).optional().describe('Language preference for AI summary and finding title\/message\/suggestion. zh\/en variants are negotiated in preference order to zh-CN\/en-US; unsupported or malformed preferences default to zh-CN. The chosen locale is frozen when review starts, including retries and model turns.')
 })
 
-export const runDraftReviewResponseOneDataProgressCompletedMin = 0;
-
-export const runDraftReviewResponseOneDataProgressTotalMin = 0;
-
-export const runDraftReviewResponseOneDataErrorOneStatusMin = 400;
-export const runDraftReviewResponseOneDataErrorOneStatusMax = 599;
+export const runDraftReviewBodyOutputLocaleMax = 16;
 
 
+
+export const RunDraftReviewBody = zod.object({
+  "flow_id": zod.uuid(),
+  "draft_id": zod.uuid().optional(),
+  "sql": zod.string().describe('Current editor SQL reviewed verbatim (max 32 MiB).'),
+  "output_locale": zod.string().max(runDraftReviewBodyOutputLocaleMax).optional().describe('Optional explicit locale; overrides the header when present.')
+})
 
 export const RunDraftReviewResponse = zod.union([zod.object({
   "err_code": zod.literal(0),
   "message": zod.literal("ok"),
   "data": zod.object({
-  "id": zod.uuid(),
-  "kind": zod.enum(['sql_grouping', 'ai_review', 'migration_dry_run', 'admin_connection_test', 'ai_provider_connection_test', 'identity_provider_connection_test', 'notification_test_delivery']),
-  "state": zod.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
-  "progress": zod.object({
-  "completed": zod.int().min(runDraftReviewResponseOneDataProgressCompletedMin),
-  "total": zod.int().min(runDraftReviewResponseOneDataProgressTotalMin),
-  "unit": zod.string()
-}),
-  "result_ref": zod.string().nullish(),
-  "error": zod.union([zod.object({
-  "type": zod.url(),
-  "title": zod.string(),
-  "status": zod.int().min(runDraftReviewResponseOneDataErrorOneStatusMin).max(runDraftReviewResponseOneDataErrorOneStatusMax),
-  "detail": zod.string(),
-  "instance": zod.string().optional(),
-  "request_id": zod.uuid()
-}),zod.null()]).optional(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-}),
-  "request_id": zod.uuid()
-}),zod.object({
-  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
-  "message": zod.string(),
-  "data": zod.null(),
-  "request_id": zod.uuid(),
-  "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
-})])
-
-
-export const SubmitChangeDraftParams = zod.object({
-  "draft_id": zod.uuid()
-})
-
-export const submitChangeDraftHeaderIdempotencyKeyMax = 128;
-
-
-export const submitChangeDraftHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
-export const submitChangeDraftHeaderIfMatchRegExp = new RegExp('^\\"[1-9][0-9]*\\"$');
-
-
-export const SubmitChangeDraftHeader = zod.object({
-  "Idempotency-Key": zod.string().min(1).max(submitChangeDraftHeaderIdempotencyKeyMax).regex(submitChangeDraftHeaderIdempotencyKeyRegExp),
-  "If-Match": zod.string().regex(submitChangeDraftHeaderIfMatchRegExp)
-})
-
-export const submitChangeDraftResponseOneDataDisplayNumberRegExp = new RegExp('^YR-[0-9]{8}-[0-9]{6}$');
-
-
-
-
-export const submitChangeDraftResponseOneDataManuallyVerifiedDefault = false;
-
-
-export const SubmitChangeDraftResponse = zod.union([zod.object({
-  "err_code": zod.literal(0),
-  "message": zod.literal("ok"),
-  "data": zod.object({
-  "id": zod.uuid(),
-  "display_number": zod.string().regex(submitChangeDraftResponseOneDataDisplayNumberRegExp),
-  "submitter_user_id": zod.uuid(),
-  "submitter_username": zod.string().optional().describe('Submitter username snapshot frozen at submission (§18.58).'),
-  "submitter_display_name": zod.string().optional().describe('Submitter display-name snapshot frozen at submission (§18.58).'),
-  "title": zod.string().optional(),
-  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
-  "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time frozen at submission (§18.56 ruling B). Displayed on the order and prefilled for the frozen executor\'s schedule confirmation; never an execution authorization.'),
-  "current_stage_position": zod.int().min(1).nullish(),
-  "stages": zod.array(zod.object({
-  "id": zod.uuid(),
-  "position": zod.int().min(1),
-  "datasource_name": zod.string(),
-  "state": zod.enum(['pending', 'approval_active', 'execution_pending', 'scheduled', 'running', 'succeeded', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'skipped']),
-  "approval_steps": zod.array(zod.looseObject({
-
-})),
-  "execution_actors": zod.array(zod.object({
-  "id": zod.uuid(),
-  "username": zod.string(),
-  "display_name": zod.string().optional(),
-  "email": zod.email().nullish(),
-  "is_builtin_admin": zod.boolean(),
-  "version": zod.int().min(1),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-}))
-})).min(1),
-  "has_sql": zod.literal(true),
-  "sql_hash": zod.string().optional(),
-  "snapshot_hash": zod.string().optional(),
-  "manually_verified": zod.boolean().default(submitChangeDraftResponseOneDataManuallyVerifiedDefault),
-  "version": zod.int().min(1),
-  "submitted_at": zod.iso.datetime({"offset":true}),
-  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
-  "active_schedule": zod.union([zod.object({
-  "id": zod.uuid(),
-  "stage_id": zod.uuid(),
-  "scheduled_for": zod.iso.datetime({"offset":true}),
-  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
-}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
+  "run_id": zod.uuid()
 }),
   "request_id": zod.uuid()
 }),zod.object({
@@ -5889,6 +6078,102 @@ export const ListReviewRunFindingsResponse = zod.union([zod.object({
   "evidence_ids": zod.array(zod.uuid())
 }))
 })),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})])
+
+
+/**
+ * Submit the ephemeral precheck result as an immutable workorder (RCP-20261101-EPHEMERAL-PRECHECK). The request carries the flow, the current SQL and the ephemeral run_id; the server verifies the SQL is byte-identical to what was prechecked, materializes the run in the submission transaction (the only persistence point for review content), and freezes the order. draft_id is omitted for direct create-mode submission; the draft is never modified by precheck and is only marked submitted here.
+ */
+export const submitChangeDraftHeaderIdempotencyKeyMax = 128;
+
+
+export const submitChangeDraftHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
+
+
+export const SubmitChangeDraftHeader = zod.object({
+  "Idempotency-Key": zod.string().min(1).max(submitChangeDraftHeaderIdempotencyKeyMax).regex(submitChangeDraftHeaderIdempotencyKeyRegExp)
+})
+
+export const submitChangeDraftBodyMetadataTitleMax = 128;
+
+export const submitChangeDraftBodyMetadataDescriptionMax = 4096;
+
+
+
+export const SubmitChangeDraftBody = zod.object({
+  "flow_id": zod.uuid(),
+  "draft_id": zod.uuid().optional(),
+  "sql": zod.string().describe('SQL submitted verbatim; must equal the prechecked text.'),
+  "run_id": zod.uuid(),
+  "metadata": zod.object({
+  "title": zod.string().min(1).max(submitChangeDraftBodyMetadataTitleMax).optional(),
+  "description": zod.string().max(submitChangeDraftBodyMetadataDescriptionMax).optional(),
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).optional()
+}).optional().describe('Required only for draftless create-mode submission.')
+})
+
+export const submitChangeDraftResponseOneDataDisplayNumberRegExp = new RegExp('^YR-[0-9]{8}-[0-9]{6}$');
+
+
+
+
+export const submitChangeDraftResponseOneDataManuallyVerifiedDefault = false;
+
+
+export const SubmitChangeDraftResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string().regex(submitChangeDraftResponseOneDataDisplayNumberRegExp),
+  "submitter_user_id": zod.uuid(),
+  "submitter_username": zod.string().optional().describe('Submitter username snapshot frozen at submission (§18.58).'),
+  "submitter_display_name": zod.string().optional().describe('Submitter display-name snapshot frozen at submission (§18.58).'),
+  "title": zod.string().optional(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time frozen at submission (§18.56 ruling B). Displayed on the order and prefilled for the frozen executor\'s schedule confirmation; never an execution authorization.'),
+  "current_stage_position": zod.int().min(1).nullish(),
+  "stages": zod.array(zod.object({
+  "id": zod.uuid(),
+  "position": zod.int().min(1),
+  "datasource_name": zod.string(),
+  "state": zod.enum(['pending', 'approval_active', 'execution_pending', 'scheduled', 'running', 'succeeded', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'skipped']),
+  "approval_steps": zod.array(zod.looseObject({
+
+})),
+  "execution_actors": zod.array(zod.object({
+  "id": zod.uuid(),
+  "username": zod.string(),
+  "display_name": zod.string().optional(),
+  "email": zod.email().nullish(),
+  "is_builtin_admin": zod.boolean(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}))
+})).min(1),
+  "has_sql": zod.literal(true),
+  "sql_hash": zod.string().optional(),
+  "snapshot_hash": zod.string().optional(),
+  "manually_verified": zod.boolean().default(submitChangeDraftResponseOneDataManuallyVerifiedDefault),
+  "version": zod.int().min(1),
+  "submitted_at": zod.iso.datetime({"offset":true}),
+  "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
+  "active_schedule": zod.union([zod.object({
+  "id": zod.uuid(),
+  "stage_id": zod.uuid(),
+  "scheduled_for": zod.iso.datetime({"offset":true}),
+  "state": zod.enum(['scheduled', 'running', 'cancelled', 'missed', 'blocked'])
+}),zod.null()]).optional().describe('The live execution schedule while the order is scheduled (owner ruling 2026-10-30): present only in state=scheduled, null otherwise. Drives the scheduled-state executor card (planned time + cancel affordance).')
+}),
   "request_id": zod.uuid()
 }),zod.object({
   "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),

@@ -30,29 +30,32 @@ export const OPERATION_ERROR_PROFILES: {
       1001
     ],
     "operations": [
-      "listUsers",
-      "listFlows",
-      "listLegacyMigrationRuns",
-      "listIdentityProviders",
-      "listDatasources",
-      "listPermissionGroups",
-      "listRuleSets",
-      "listPromptTools",
+      "listAiProviderRateVersions",
       "listAiProviders",
-      "listNotificationChannels",
-      "listNotificationDeliveries",
+      "listAiUsageCalls",
+      "listAiUsageSummary",
+      "listAnnouncementRevisions",
       "listAuditEvents",
-      "listCurrentUserFlows",
       "listChangeDrafts",
       "listChangeOrders",
+      "listCurrentUserFlows",
+      "listDatasources",
+      "listFlowMaskingRules",
+      "listFlows",
+      "listIdentityProviders",
+      "listKnowledgeEntries",
+      "listLegacyMigrationRuns",
+      "listNotificationChannels",
+      "listNotificationDeliveries",
+      "listNotificationRules",
+      "listPermissionGroups",
+      "listPromptTools",
       "listQueryAccessRequests",
       "listQueryGrants",
-      "listQuerySessions",
       "listQueryOrders",
-      "listAnnouncementRevisions",
-      "listKnowledgeEntries",
-      "listFlowMaskingRules",
-      "listNotificationRules"
+      "listQuerySessions",
+      "listRuleSets",
+      "listUsers"
     ]
   },
   "resource_read": {
@@ -745,6 +748,16 @@ export const OPERATION_ERROR_PROFILES: {
       "listMyFlowDatasourceSchemas",
       "listMyFlowDatasourceTables",
       "listMyFlowDatasourceColumns"
+    ]
+  },
+  "ai_rate_version_create": {
+    "err_codes": [
+      1001,
+      1002,
+      1005
+    ],
+    "operations": [
+      "createAiProviderRateVersion"
     ]
   }
 },

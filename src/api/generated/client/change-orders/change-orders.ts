@@ -45,11 +45,54 @@ import type {
   RevealRawReviewEvidence200,
   RevealRequest,
   ScheduleRequest,
+  SubmitChangeDraft200,
+  SubmitChangeDraftBody,
   VoidChangeOrder200,
   WithdrawChangeOrder200
 } from '../yearningV4HTTPAPI.schemas';
 
 import { customInstance } from '../../../../shared/api/mutator';
+
+export type submitChangeDraftResponse200 = {
+  data: SubmitChangeDraft200
+  status: 200
+}
+
+export type submitChangeDraftResponseSuccess = (submitChangeDraftResponse200) & {
+  headers: Headers;
+};
+;
+
+export type submitChangeDraftResponse = (submitChangeDraftResponseSuccess)
+
+export const getSubmitChangeDraftUrl = () => {
+
+
+
+
+  return `/api/v4/change-orders`
+}
+
+/**
+ * Submit the ephemeral precheck result as an immutable workorder (RCP-20261101-EPHEMERAL-PRECHECK). The request carries the flow, the current SQL and the ephemeral run_id; the server verifies the SQL is byte-identical to what was prechecked, materializes the run in the submission transaction (the only persistence point for review content), and freezes the order. draft_id is omitted for direct create-mode submission; the draft is never modified by precheck and is only marked submitted here.
+ */
+export const submitChangeDraft = async (submitChangeDraftBody: SubmitChangeDraftBody, options?: Parameters<typeof customInstance>[1]): Promise<submitChangeDraftResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<submitChangeDraftResponse>(getSubmitChangeDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(submitChangeDraftBody)
+  }
+);}
+
 
 export type listChangeOrdersResponse200 = {
   data: ListChangeOrders200
