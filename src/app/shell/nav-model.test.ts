@@ -13,8 +13,11 @@ describe("navigation IA baseline (spec §5.1)", () => {
   });
 
   it("has no AI group and no chat route — v4 has no chat shell", () => {
+    // 2026-10-31 owner ruling：AI预算迁入审核引擎分组（成本控制贴Provider
+    // 域）。本断言保持原意——无AI聊天分组、无chat路由；不再禁止管理条目
+    // 名称里出现"ai"（AI预算是合法条目）。
+    expect(NAV_GROUPS.some((group) => group.labelKey.toLowerCase().includes("ai"))).toBe(false);
     const flat = NAV_GROUPS.flatMap((group) => group.items);
-    expect(flat.some((item) => item.labelKey.toLowerCase().includes("ai"))).toBe(false);
     expect(flat.some((item) => item.to.includes("chat"))).toBe(false);
   });
 

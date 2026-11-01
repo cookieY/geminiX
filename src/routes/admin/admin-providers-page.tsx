@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Pencil, PlugZap, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, PlugZap, Plus, Trash2, Undo2 } from "lucide-react";
 import type {
   AiProvider,
   AiProviderWrite,
@@ -37,6 +37,9 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { ProviderPricingPanel, ProviderUsagePanel } from "@/features/admin/provider-pricing";
 import {
   Select,
   SelectContent,
@@ -81,6 +84,14 @@ interface ProviderFormState {
   enabled: boolean;
   selectionPriority: string;
   apiKey: string;
+  // S008生成参数：字符串态承载三态——""=服务商默认（不发送）、temperature
+  // "0"是显式零（Number转换后0仍发送，绝不按默认折叠）。
+  reasoningEffort: "" | "low" | "medium" | "high";
+  maxTokens: string;
+  temperature: string;
+  /** 初始参数快照：per-field撤销（撤销修改）恢复到这里；与“服务商默认”
+      （清空值）语义分离（deliverable：撤销修改与使用服务商默认分离）。 */
+  initialParams: { reasoningEffort: "" | "low" | "medium" | "high"; maxTokens: string; temperature: string };
 }
 
 function emptyProviderForm(): ProviderFormState {
@@ -92,7 +103,37 @@ function emptyProviderForm(): ProviderFormState {
     enabled: true,
     selectionPriority: "10",
     apiKey: "",
+    reasoningEffort: "",
+    maxTokens: "",
+    temperature: "",
+    initialParams: { reasoningEffort: "", maxTokens: "", temperature: "" },
   };
+}
+
+/**
+ * S008参数写入语义（M2）：三项全部保持初始值 → 整个configuration键省略
+ * （保留已存配置）；任一项被改动 → 提供显式对象整体替换，对象内留空的键
+ * =清除该用户覆盖（即“使用服务商默认”）。temperature的"0"经trim保留为
+ * 显式0（Number("0")=0，从不被当默认折叠）。
+ */
+function configurationWrite(form: ProviderFormState): AiProviderWrite["configuration"] {
+  const initial = form.initialParams;
+  const touched =
+    form.reasoningEffort !== initial.reasoningEffort ||
+    form.maxTokens !== initial.maxTokens ||
+    form.temperature !== initial.temperature;
+  if (!touched) return undefined;
+  const configuration: NonNullable<AiProviderWrite["configuration"]> = {};
+  if (form.reasoningEffort !== "") configuration.reasoning_effort = form.reasoningEffort;
+  if (form.maxTokens !== "") {
+    const parsed = Number(form.maxTokens);
+    if (Number.isFinite(parsed) && form.maxTokens.trim() !== "") configuration.max_tokens = parsed;
+  }
+  if (form.temperature !== "") {
+    const parsed = Number(form.temperature);
+    if (Number.isFinite(parsed) && form.temperature.trim() !== "") configuration.temperature = parsed;
+  }
+  return configuration;
 }
 
 function providerFormForEdit(provider: AiProvider): ProviderFormState {
@@ -106,6 +147,15 @@ function providerFormForEdit(provider: AiProvider): ProviderFormState {
     // Never prefilled: an empty key field on edit means "keep the stored
     // key" (gate: Secret永不回填).
     apiKey: "",
+    // S008参数完整回填：已存值优先，未配置=服务商默认（空串）。
+    reasoningEffort: provider.configuration?.reasoning_effort ?? "",
+    maxTokens: provider.configuration?.max_tokens != null ? String(provider.configuration.max_tokens) : "",
+    temperature: provider.configuration?.temperature != null ? String(provider.configuration.temperature) : "",
+    initialParams: {
+      reasoningEffort: provider.configuration?.reasoning_effort ?? "",
+      maxTokens: provider.configuration?.max_tokens != null ? String(provider.configuration.max_tokens) : "",
+      temperature: provider.configuration?.temperature != null ? String(provider.configuration.temperature) : "",
+    },
   };
 }
 
@@ -196,6 +246,7 @@ function ProviderFormDialog({
         enabled: form.enabled,
         selection_priority: Number(form.selectionPriority),
         api_key: apiKey,
+        configuration: configurationWrite(form),
       } as CreateAiProviderRequest;
       createMutation.mutate(write, {
         onSuccess: onClose,
@@ -215,6 +266,7 @@ function ProviderFormDialog({
         enabled: form.enabled,
         selection_priority: Number(form.selectionPriority),
         ...(apiKey === undefined ? {} : { api_key: apiKey }),
+        configuration: configurationWrite(form),
       };
       replaceMutation.mutate(
         { id: editing.id, version: editing.version, write },
@@ -240,7 +292,24 @@ function ProviderFormDialog({
           </DialogTitle>
           <DialogDescription>{t("admin.providers.formDescription")}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {/* S008三分组（owner 2026-10-31开工FE包）：连接配置/生成参数/参考计价
+            （费率+费用统计同组，PRD界面-01/02）。创建态无provider id，
+            计价/费用组以提示占位。 */}
+        <Tabs defaultValue="connection">
+          <TabsList className="max-w-full overflow-x-auto">
+            <TabsTrigger value="connection" data-testid="provider-tab-connection">
+              {t("admin.providers.tabs.connection")}
+            </TabsTrigger>
+            <TabsTrigger value="generation" data-testid="provider-tab-generation">
+              {t("admin.providers.tabs.generation")}
+            </TabsTrigger>
+            <TabsTrigger value="pricing" data-testid="provider-tab-pricing">
+              {t("admin.providers.tabs.pricing")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="connection">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor="provider-name">{t("admin.providers.name")}</Label>
             <Input
@@ -287,9 +356,8 @@ function ProviderFormDialog({
               视觉顺序即填写顺序。 */}
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label htmlFor="provider-api-key">{t("admin.providers.apiKey")}</Label>
-            <Input
+            <PasswordInput
               id="provider-api-key"
-              type="password"
               value={form.apiKey}
               onChange={(event) => { setForm({ ...form, apiKey: event.target.value }); }}
               autoComplete="new-password"
@@ -385,7 +453,102 @@ function ProviderFormDialog({
               {t("admin.providers.enabled")}
             </Label>
           </div>
-        </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="generation">
+          <div className="flex flex-col gap-4" data-testid="provider-generation-panel">
+            <p className="text-muted-foreground text-xs">{t("admin.providers.gen.hint")}</p>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="provider-gen-reasoning">{t("admin.providers.gen.reasoningEffort")}</Label>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={form.reasoningEffort === "" ? "default" : form.reasoningEffort}
+                  onValueChange={(next) => {
+                    if (next === null) return;
+                    const value = next === "default" ? "" : (next as "low" | "medium" | "high");
+                    setForm({ ...form, reasoningEffort: value });
+                  }}
+                >
+                  <SelectTrigger id="provider-gen-reasoning" data-testid="provider-gen-reasoning" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">{t("admin.providers.gen.reasoningEffortDefault")}</SelectItem>
+                    <SelectItem value="low">low</SelectItem>
+                    <SelectItem value="medium">medium</SelectItem>
+                    <SelectItem value="high">high</SelectItem>
+                  </SelectContent>
+                </Select>
+                <ParamRevertButton
+                  dirty={form.reasoningEffort !== form.initialParams.reasoningEffort}
+                  initial={form.initialParams.reasoningEffort}
+                  onRevert={(value) => { setForm({ ...form, reasoningEffort: value as ProviderFormState["reasoningEffort"] }); }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="provider-gen-max-tokens">{t("admin.providers.gen.maxTokens")}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="provider-gen-max-tokens"
+                  type="number"
+                  min={256}
+                  max={200000}
+                  value={form.maxTokens}
+                  onChange={(event) => { setForm({ ...form, maxTokens: event.target.value }); }}
+                  placeholder={t("admin.providers.gen.reasoningEffortDefault")}
+                  data-testid="provider-gen-max-tokens"
+                  className="w-48 font-mono"
+                />
+                <span className="text-muted-foreground text-xs">{t("admin.providers.gen.maxTokensRange")}</span>
+                <ParamRevertButton
+                  dirty={form.maxTokens !== form.initialParams.maxTokens}
+                  initial={form.initialParams.maxTokens}
+                  onRevert={(value) => { setForm({ ...form, maxTokens: value }); }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="provider-gen-temperature">{t("admin.providers.gen.temperature")}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="provider-gen-temperature"
+                  type="number"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={form.temperature}
+                  onChange={(event) => { setForm({ ...form, temperature: event.target.value }); }}
+                  placeholder={t("admin.providers.gen.reasoningEffortDefault")}
+                  data-testid="provider-gen-temperature"
+                  className="w-48 font-mono"
+                />
+                <span className="text-muted-foreground text-xs">{t("admin.providers.gen.temperatureRange")}</span>
+                <ParamRevertButton
+                  dirty={form.temperature !== form.initialParams.temperature}
+                  initial={form.initialParams.temperature}
+                  onRevert={(value) => { setForm({ ...form, temperature: value }); }}
+                />
+              </div>
+            </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="pricing">
+            {editing === null ? (
+              <p className="text-muted-foreground text-sm" data-testid="provider-pricing-create-hint">
+                {t("admin.providers.pricing.empty")}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                <ProviderPricingPanel providerId={editing.id} />
+                <ProviderUsagePanel providerId={editing.id} />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
         {errorKey !== null ? (
           <Alert variant="destructive" data-testid="provider-form-error">
             <AlertTitle>{t(errorKey)}</AlertTitle>
@@ -412,6 +575,33 @@ function ProviderFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** per-field撤销（恢复初始快照）；与“服务商默认”（清空值）分离。 */
+function ParamRevertButton({
+  dirty,
+  initial,
+  onRevert,
+}: {
+  dirty: boolean;
+  initial: string;
+  onRevert: (initial: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (!dirty) return null;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      onClick={() => { onRevert(initial); }}
+      data-testid="provider-gen-revert"
+      aria-label={t("admin.providers.gen.revert")}
+      title={t("admin.providers.gen.revert")}
+    >
+      <Undo2 aria-hidden />
+    </Button>
   );
 }
 

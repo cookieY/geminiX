@@ -118,6 +118,10 @@ import type {
   UpdateUserRequest,
   User,
   UserDeletionImpact,
+  AiProviderRateVersion,
+  CreateAiProviderRateVersionRequest,
+  AiCallUsage,
+  AiUsageSummary,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 
 /**
@@ -1054,11 +1058,114 @@ export function useTestNotificationDelivery() {
       const { createNotificationTestDelivery } = await import(
         "@/api/generated/client/administration/administration"
       );
-      return (await createNotificationTestDelivery(input.channelId, input.body as never)) as unknown as NotificationDelivery;
+      // 受理回执（task_id + channel_id）——测试投递是异步任务，
+      // 结果经 GET /tasks/{task_id} 轮询（2026-10-31三轮）。
+      return (await createNotificationTestDelivery(input.channelId, input.body as never)) as unknown as {
+        task_id: string;
+        channel_id: string;
+      };
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin", "notification-deliveries"] });
     },
+  });
+}
+
+// ---- S008 生成参数/参考计价（FE包 2026-10-31） ------------------------------
+
+export function useAiProviderRateVersions(providerId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "ai-provider-rate-versions", providerId],
+    queryFn: async () => {
+      const { listAiProviderRateVersions } = await import(
+        "@/api/generated/client/administration/administration"
+      );
+      const response = await listAiProviderRateVersions(providerId as string);
+      return pageItems<AiProviderRateVersion>(
+        response as unknown as { items?: AiProviderRateVersion[] },
+      );
+    },
+    enabled: enabled && providerId !== null,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateAiProviderRateVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      providerId: string;
+      body: CreateAiProviderRateVersionRequest;
+    }) => {
+      const { createAiProviderRateVersion } = await import(
+        "@/api/generated/client/administration/administration"
+      );
+      await createAiProviderRateVersion(input.providerId, input.body);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "ai-provider-rate-versions"] });
+    },
+  });
+}
+
+export function useAiUsageCalls(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "ai-usage", "calls"],
+    queryFn: async () => {
+      const { listAiUsageCalls } = await import(
+        "@/api/generated/client/administration/administration"
+      );
+      const response = await listAiUsageCalls();
+      return pageItems<AiCallUsage>(
+        response as unknown as { items?: AiCallUsage[] },
+      );
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** 测试投递任务轮询（owner 2026-10-31三轮：投递后页面须显示是否成功）。
+ * 真实后端把测试投递落为async_task（queued/running→succeeded/failed），
+ * 页面按1.5s间隔轮询直到终态；错误/加载态由调用方按pending呈现。 */
+export function useNotificationTestTask(taskId: string | null) {
+  return useQuery({
+    queryKey: ["admin", "notification-test-task", taskId],
+    queryFn: async () => {
+      const { getTask } = await import("@/api/generated/client/tasks/tasks");
+      const task = (await getTask(taskId as string)) as unknown as {
+        id: string;
+        kind: string;
+        state: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+        error: { title?: string } | null;
+      };
+      return task;
+    },
+    enabled: taskId !== null,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      return state === undefined || state === "queued" || state === "running" ? 1500 : false;
+    },
+  });
+}
+
+/** S008参考计价日汇总（AI预算页用量环图消费）。reference_amount为纳单位
+ * 十进制串；金额换算到主币单位由调用方完成。 */
+export function useAiUsageSummaryToday(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "ai-usage", "summary", "today"],
+    queryFn: async () => {
+      const { customInstance } = await import("@/shared/api/mutator");
+      // 今日窗口：本地零点≤发送<现在（系统时区每日00:00重置口径）。
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const from = start.toISOString();
+      const to = new Date().toISOString();
+      return customInstance<AiUsageSummary[]>(
+        `/api/v4/admin/ai-usage/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      );
+    },
+    enabled,
   });
 }
 

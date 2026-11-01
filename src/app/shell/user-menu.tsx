@@ -1,7 +1,9 @@
 import { lazy, Suspense, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/components/ui/button";
+import { UserAvatar } from "@/shared/components/user-avatar";
 import type { SessionUser } from "@/shared/session/session";
+import { useSession } from "@/features/auth/session-provider";
 
 const UserMenuSheet = lazy(() =>
   import("./user-menu-sheet").then((module) => ({ default: module.UserMenuSheet })),
@@ -18,6 +20,10 @@ const UserMenuSheet = lazy(() =>
  */
 export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   const { t } = useTranslation();
+  // 无覆盖时读真实会话身份（头像显示登录人，不再是品牌占位Y）。
+  const session = useSession();
+  const avatarName =
+    userOverride?.displayName.trim() || session.user?.display_name?.trim() || session.user?.username.trim() || "Yearning";
   const [open, setOpen] = useState(false);
   const [requested, setRequested] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -41,9 +47,10 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
           setOpen(true);
         }}
       >
-        <span className="bg-muted flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
-          Y
-        </span>
+        {/* avatar-13（owner 2026-10-31）：名字确定性配色+缩写。 */}
+        <UserAvatar
+          name={avatarName}
+        />
       </Button>
       {requested && (
         <Suspense fallback={null}>

@@ -14,7 +14,7 @@ import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import {
   Select,
@@ -255,9 +255,8 @@ function PasswordChangeForm() {
     <form className="flex max-w-sm flex-col gap-3" onSubmit={handleSubmit} noValidate>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-old-password">{t("profile.security.oldPassword")}</Label>
-        <Input
+        <PasswordInput
           id="profile-old-password"
-          type="password"
           autoComplete="current-password"
           value={oldPassword}
           onChange={(event) => { setOldPassword(event.target.value); }}
@@ -266,9 +265,8 @@ function PasswordChangeForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-new-password">{t("profile.security.newPassword")}</Label>
-        <Input
+        <PasswordInput
           id="profile-new-password"
-          type="password"
           autoComplete="new-password"
           value={newPassword}
           onChange={(event) => { setNewPassword(event.target.value); }}
@@ -281,9 +279,8 @@ function PasswordChangeForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-confirm-password">{t("profile.security.confirmPassword")}</Label>
-        <Input
+        <PasswordInput
           id="profile-confirm-password"
-          type="password"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(event) => { setConfirmPassword(event.target.value); }}

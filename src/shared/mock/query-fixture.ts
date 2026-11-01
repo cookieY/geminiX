@@ -486,6 +486,9 @@ function sessionView(row: FixtureQuerySession) {
   return {
     id: row.id,
     user_id: row.user_id,
+    // 与真实读面对齐（session.go SessionView含grant_id；2026-10-31会话
+    // 复用判定依赖它）。
+    grant_id: row.grant_id,
     state: row.state,
     capabilities: row.capabilities.map((capability) => ({ ...capability })),
     created_at: row.created_at,

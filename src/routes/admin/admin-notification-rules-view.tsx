@@ -29,10 +29,12 @@ import { PendingButton } from "@/shared/components/pending-button";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
+import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -112,24 +114,25 @@ export function RulesView({ isAdmin }: { isAdmin: boolean }) {
       {rulesQuery.error !== null && (
         <ErrorState error={rulesQuery.error} operationId="listNotificationRules" onRetry={() => void rulesQuery.refetch()} />
       )}
-      {isAdmin && (
-        <div>
-          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-rules-create">
-            <Plus />
-            {t("adminRules.create")}
-          </Button>
-        </div>
-      )}
-      {rulesQuery.data !== undefined && rules.length === 0 && (
-        <EmptyState title={t("adminRules.empty")} testId="admin-rules-empty" />
-      )}
-      {rules.length > 0 && (
+      {rulesQuery.data !== undefined && (
         <Card>
           <CardHeader className="border-b pb-3">
             <CardTitle>{t("adminRules.title")}</CardTitle>
             <CardDescription>{t("adminRules.description")}</CardDescription>
+            {/* 新建规则=表头行最右（owner四轮裁定，与通知通道卡一致）。 */}
+            {isAdmin && (
+              <CardAction>
+                <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-rules-create">
+                  <Plus />
+                  {t("adminRules.create")}
+                </Button>
+              </CardAction>
+            )}
           </CardHeader>
           <CardContent className="px-0!">
+            {rules.length === 0 ? (
+              <EmptyState title={t("adminRules.empty")} testId="admin-rules-empty" />
+            ) : (
             <Table data-testid="admin-rules-table">
               <TableHeader>
                 <TableRow>
@@ -151,14 +154,9 @@ export function RulesView({ isAdmin }: { isAdmin: boolean }) {
                       <TableCell>{t(`adminRules.target.${rule.target_kind}`)}</TableCell>
                       <TableCell>{channel?.name ?? t("adminRules.channelMissing")}</TableCell>
                       <TableCell>
-                        <span
-                          className={
-                            "rounded px-1.5 py-0.5 text-xs " +
-                            (rule.enabled ? "bg-emerald-500/10 text-emerald-600" : "bg-stone-500/10 text-stone-500")
-                          }
-                        >
+                        <StatusBadge tone={rule.enabled ? "emerald" : "stone"}>
                           {rule.enabled ? t("common.enabled") : t("common.disabled")}
-                        </span>
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => { setEditing(rule); }} data-testid={`admin-rule-edit-${rule.id}`}>
@@ -171,6 +169,7 @@ export function RulesView({ isAdmin }: { isAdmin: boolean }) {
                 })}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       )}

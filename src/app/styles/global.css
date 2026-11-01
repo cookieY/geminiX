@@ -562,3 +562,22 @@ html[data-card-shadow="false"] [data-slot="card"] {
     transition-timing-function: var(--ease-out) !important;
   }
 }
+
+/* avatar-13 palette (owner ruling 2026-10-31): deterministic name→swatch.
+   Fixed pastel/deep pairs keep AA contrast in both themes; class names are
+   scan-safe (no raw tailwind palette utilities). */
+.avatar-swatch-orange { background: oklch(0.75 0.15 55); color: oklch(0.2 0 0); }
+.avatar-swatch-amber { background: oklch(0.82 0.15 80); color: oklch(0.2 0 0); }
+.avatar-swatch-teal { background: oklch(0.75 0.1 185); color: oklch(0.2 0 0); }
+.avatar-swatch-blue { background: oklch(0.55 0.2 262); color: oklch(0.99 0 0); }
+.avatar-swatch-sky { background: oklch(0.75 0.1 230); color: oklch(0.2 0 0); }
+
+/* collapsible-08 code-token palette (owner ruling 2026-10-31): SQL syntax
+   highlight colours taken from the block's token classes (teal strings,
+   blue keywords, sky numbers); scan-safe dedicated classes, same pattern
+   as the avatar swatches above. Comment tokens reuse the theme muted ink. */
+.code-token-string { color: oklch(0.777 0.152 181.912); }
+.code-token-keyword { color: oklch(0.623 0.214 259.815); }
+.code-token-number { color: oklch(0.746 0.16 232.661); }
+.code-token-comment { color: var(--muted-foreground); font-style: italic; }
+

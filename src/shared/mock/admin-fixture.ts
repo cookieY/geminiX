@@ -375,11 +375,17 @@ interface FixtureNamespace {
 
 interface FixtureAdminTask {
   id: string;
-  kind: "admin_connection_test" | "ai_provider_connection_test" | "identity_provider_connection_test";
+  kind:
+    | "admin_connection_test"
+    | "ai_provider_connection_test"
+    | "identity_provider_connection_test"
+    | "notification_test_delivery";
   state: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   progress: { completed: number; total: number; unit: string };
   result_ref: string | null;
-  error: null;
+  // notification_test_delivery 失败时携带有界失败名（对齐真实后端
+  // failure_name→Task.error 的Problem形态）。
+  error: null | { type: string; title: string; status: number; detail: string; instance?: string; request_id: string };
   created_at: string;
   updated_at: string;
 }
@@ -438,6 +444,8 @@ const world = {
   settings: new Map<string, FixtureNamespace>(),
   revisions: new Map<string, SettingsRevision[]>(),
   tasks: new Map<string, FixtureAdminTask>(),
+  /** S008参考费率版本（append-only；新版本起点收口旧开放版）。 */
+  rateVersions: new Map<string, Record<string, unknown>>(),
   /** Single-use impact tokens: key → proposed settings hash. */
   impactTokens: new Map<string, string>(),
   users: new Map<string, FixtureUser>(),
@@ -609,6 +617,8 @@ export function seedAdminFixture(): void {
     enabled: true,
     selection_priority: 1,
     api_key_configured: true,
+    // S008生成参数读回（owner 2026-10-31开工FE包）：已存值优先回填。
+    configuration: { reasoning_effort: "medium", temperature: 0.7, structured_output_mode: "json_schema" },
     version: 1,
     created_at: ts,
     updated_at: ts,
@@ -2125,11 +2135,129 @@ export function siteFixtureHandlers(): HttpHandler[] {
         }
         delivery.updated_at = now();
       }, TASK_RUNNING_TO_DONE_MS);
-      // F12 RCP-20261017方向A（No.015）：受理回执（task_id + channel_id），
-      // 投递结果经 listNotificationDeliveries 观测。
+      // F12 RCP-20261017方向A（No.015）：受理回执（task_id + channel_id）。
+      // 2026-10-31三轮：真实后端的测试投递是async_task（getTask轮询观测），
+      // fixture同步注册一个可轮询任务——结果与上方delivery行同因（渠道停用
+      // 即失败，失败名CHANNEL_DISABLED）。
+      const task: FixtureAdminTask = {
+        id: uuid(),
+        kind: "notification_test_delivery",
+        state: "queued",
+        progress: { completed: 0, total: 1, unit: "deliveries" },
+        result_ref: null,
+        error: null,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.tasks.set(task.id, task);
+      advanceTask(task, () => {
+        task.progress.completed = 1;
+        if (!channel.enabled) {
+          task.error = {
+            type: "about:blank",
+            title: "CHANNEL_DISABLED",
+            status: 1001,
+            detail: "channel disabled",
+            request_id: "",
+          };
+        }
+      }, !channel.enabled);
       return HttpResponse.json(successEnvelope({
-        task_id: delivery.id, channel_id: channel.id,
+        task_id: task.id, channel_id: channel.id,
       }));
+    }),
+
+    // S008费率版本（FE包2026-10-31）：append-only列表+创建（收口旧开放版）。
+    http.get("*/admin/ai-providers/:providerId/rate-versions", ({ params }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const pid = String(params.providerId);
+      const rows = [...world.rateVersions.values()]
+        .filter((v) => v.provider_id === pid)
+        .sort((a, b) => String(b.effective_from).localeCompare(String(a.effective_from)));
+      return HttpResponse.json(successEnvelope({ items: rows, page: { next_cursor: null, has_more: false } }));
+    }),
+    http.post("*/admin/ai-providers/:providerId/rate-versions", async ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body === null || typeof body.currency !== "string" || typeof body.timezone !== "string"
+        || !Array.isArray(body.windows) || body.windows.length === 0) {
+        return businessError(1001, "rate version body invalid");
+      }
+      const pid = String(new URL(request.url).pathname.split("/")[5]);
+      const provider = world.providers.get(pid);
+      if (provider === undefined) return businessError(1002, "provider not found");
+      // 预算币种一致性（保存端校验的fixture近似）：预算开启时仅同币种。
+      const budget = world.settings.get("ai-budget") as { currency?: string; enforced?: boolean } | undefined;
+      if (budget?.enforced && budget.currency !== body.currency) {
+        return businessError(1001, "RATE_CURRENCY_MISMATCH");
+      }
+      const now = new Date().toISOString();
+      for (const prev of world.rateVersions.values()) {
+        if (prev.provider_id === pid && prev.effective_until === null) {
+          prev.effective_until = body.effective_from ?? now;
+        }
+      }
+      const id = uuid();
+      const row = { id, provider_id: pid, ...body, version: world.rateVersions.size + 1, created_at: now };
+      world.rateVersions.set(id, row);
+      return HttpResponse.json(successEnvelope(row));
+    }),
+
+    // S008调用明细（FE包2026-10-31）：逐HTTP调用台账读面。
+    http.get("*/admin/ai-usage/calls", ({ request }) => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      void request;
+      const rows = [
+        {
+          id: "0b1e2f3a-0000-4000-8000-00000000d001",
+          review_run_id: "0b1e2f3a-0000-4000-8000-000000000001",
+          stage_position: 1, model_turn: 1, call_index: 1,
+          provider_id: ADMIN_FIXTURE_PROVIDER_PRIMARY_ID,
+          model_name: "glm-4.6", sent_at: now(),
+          reasoning_effort: "medium", max_tokens: 4096, temperature: "0.7",
+          rate_version_id: null, rate_window_id: null, rate_source: "global_settings",
+          currency: "CNY", input_tokens: 1200, output_tokens: 380,
+          cached_tokens: null, cache_write_tokens: null, reasoning_tokens: 210,
+          usage_reported: true, reference_amount: "0.00632100",
+          calc_basis: "partial_detail",
+        },
+        {
+          id: "0b1e2f3a-0000-4000-8000-00000000d002",
+          review_run_id: "0b1e2f3a-0000-4000-8000-000000000001",
+          stage_position: 1, model_turn: 2, call_index: 1,
+          provider_id: ADMIN_FIXTURE_PROVIDER_PRIMARY_ID,
+          model_name: "glm-4.6", sent_at: now(),
+          reasoning_effort: null, max_tokens: null, temperature: null,
+          rate_version_id: null, rate_window_id: null, rate_source: "none",
+          currency: null, input_tokens: null, output_tokens: null,
+          cached_tokens: null, cache_write_tokens: null, reasoning_tokens: null,
+          usage_reported: false, reference_amount: null,
+          calc_basis: "not_computable",
+        },
+      ];
+      return HttpResponse.json(successEnvelope({ items: rows, page: { next_cursor: null, has_more: false } }));
+    }),
+
+    // S008参考计价汇总读面（2026-10-31三轮：AI预算页用量环图消费）。
+    // 固定一行USD：reference_amount为纳单位十进制串（3.671→"3671000000"）。
+    http.get("*/admin/ai-usage/summary", () => {
+      const guard = adminGuard();
+      if (guard !== null) return guard;
+      return HttpResponse.json(successEnvelope([
+        {
+          currency: "USD",
+          calls: 3,
+          reference_amount: "3671000000",
+          computable_calls: 3,
+          input_tokens_known: 12000,
+          input_tokens_cache_known: 8000,
+          cached_tokens_known: 4000,
+          cache_detail_samples: 2,
+        },
+      ]));
     }),
 
     // ----------------------------------------------- notification rules (S007) --

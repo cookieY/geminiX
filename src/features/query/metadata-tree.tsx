@@ -166,7 +166,7 @@ function SchemaNode({
                     <Table2 className="size-3.5 text-muted-foreground" />
                     <span className="truncate font-mono text-xs">{table.table_name}</span>
                     {table.relation_kind !== "table" && (
-                      <Badge variant="outline" className="ml-auto text-[10px]">
+                      <Badge variant="outline" className="ml-auto text-[11px]">
                         {table.relation_kind}
                       </Badge>
                     )}
@@ -208,10 +208,10 @@ function ColumnList({
       {columnsQuery.isPending && <LoadingState variant="inline" />}
       {columns.map((column) => (
         <div key={column.column_name} className="flex items-center gap-1 py-0.5">
-          <span className="text-muted-foreground truncate font-mono text-[11px]">{column.column_name}</span>
-          <span className="text-muted-foreground/70 shrink-0 font-mono text-[10px]">{column.data_type}</span>
+          <span className="text-muted-foreground truncate font-mono text-xs">{column.column_name}</span>
+          <span className="text-muted-foreground/70 shrink-0 font-mono text-[11px]">{column.data_type}</span>
           {column.masked && (
-            <Badge variant="secondary" className="ml-auto shrink-0 gap-0.5 text-[10px]">
+            <Badge variant="secondary" className="ml-auto shrink-0 gap-0.5 text-[11px]">
               <EyeOff className="size-2.5" />
               {t("query.tree.masked")}
             </Badge>

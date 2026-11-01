@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
+  Copy,
   Database,
   Download,
   EyeOff,
@@ -21,6 +22,7 @@ import { describeError, type ErrorDisplay } from "@/shared/api/error-display";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { ContextMenu } from "@/shared/components/context-menu";
 import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -442,7 +444,7 @@ export default function QueryWorkspacePage() {
                         setLoadValue({ text: entry.sql, nonce: Date.now() });
                         setLeftPanel("tree");
                       }}
-                      className="hover:bg-accent block w-full truncate px-2 py-1.5 text-left font-mono text-[11px]"
+                      className="hover:bg-accent block w-full truncate px-2 py-1.5 text-left font-mono text-xs"
                       title={entry.sql}
                       data-testid={`query-history-${entry.id}`}
                     >
@@ -567,31 +569,30 @@ export default function QueryWorkspacePage() {
       </div>
 
       {inspectMenu !== null && (
-        <div
-          className="fixed inset-0 z-50"
-          onClick={() => { setInspectMenu(null); }}
-          onContextMenu={(event) => { event.preventDefault(); setInspectMenu(null); }}
-          data-testid="query-inspect-overlay"
-        >
-          <div
-            className="bg-popover text-popover-foreground absolute w-44 rounded-md border p-1"
-            style={{ left: inspectMenu.x, top: inspectMenu.y }}
-            onClick={(event) => { event.stopPropagation(); }}
-          >
-            <button
-              type="button"
-              className="hover:bg-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs"
-              onClick={() => {
+        <ContextMenu
+          position={{ x: inspectMenu.x, y: inspectMenu.y }}
+          onClose={() => { setInspectMenu(null); }}
+          overlayTestId="query-inspect-overlay"
+          panelTestId="query-inspect-panel"
+          items={[
+            {
+              icon: Copy,
+              label: t("query.tree.copyName"),
+              testId: "query-inspect-copy",
+              onClick: () => {
+                if ("clipboard" in navigator) void navigator.clipboard.writeText(`"${inspectMenu.schema}"."${inspectMenu.table}"`);
+              },
+            },
+            {
+              icon: Table2,
+              label: t("query.tree.viewStructure"),
+              testId: "query-inspect-open",
+              onClick: () => {
                 setInspectTarget({ schema: inspectMenu.schema, table: inspectMenu.table });
-                setInspectMenu(null);
-              }}
-              data-testid="query-inspect-open"
-            >
-              <Table2 className="size-3.5" aria-hidden />
-              {t("query.tree.viewStructure")}
-            </button>
-          </div>
-        </div>
+              },
+            },
+          ]}
+        />
       )}
 
       <Dialog open={inspectTarget !== null} onOpenChange={(next) => { if (!next) setInspectTarget(null); }}>

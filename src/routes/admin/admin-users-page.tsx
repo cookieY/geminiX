@@ -16,6 +16,7 @@ import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
@@ -413,9 +414,8 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="user-create-password">{t("adminUsers.password")}</Label>
-            <Input
+            <PasswordInput
               id="user-create-password"
-              type="password"
               autoComplete="new-password"
               value={form.password}
               onChange={(event) => { setForm({ ...form, password: event.target.value }); }}
@@ -425,9 +425,8 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="user-create-confirm-password">{t("adminUsers.confirmPassword")}</Label>
-            <Input
+            <PasswordInput
               id="user-create-confirm-password"
-              type="password"
               autoComplete="new-password"
               value={form.confirmPassword}
               onChange={(event) => { setForm({ ...form, confirmPassword: event.target.value }); }}

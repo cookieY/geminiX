@@ -140,16 +140,17 @@ function findingFixture(overrides: Partial<ReviewFinding> = {}): ReviewFinding {
   };
 }
 
-function renderDetail(orderId: string) {
+function renderDetail(orderId: string, entry: "changes" | "approvals" = "changes") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <MemoryRouter initialEntries={[`/changes/orders/${orderId}`]}>
+        <MemoryRouter initialEntries={[`/${entry}/orders/${orderId}`]}>
           <Routes>
             <Route path="/changes/orders/:orderId" element={<OrderDetailPage />} />
+            <Route path="/approvals/orders/:orderId" element={<OrderDetailPage />} />
           </Routes>
         </MemoryRouter>
       </SessionProvider>
@@ -162,9 +163,11 @@ interface SubmittedFixture {
   review_run_id: string;
 }
 
-/** Drives the real fixture path to a submitted order: create → SQL → run →
- * ready → submit. The run plants findings; the order freezes the run link
- * so the approval page has a genuine frozen snapshot to project. */
+/** Drives the real fixture path to a submitted order: create → SQL →
+ * ephemeral precheck → ready → submit. The run plants findings; the order
+ * freezes the run link so the approval page has a genuine frozen snapshot
+ * to project (RCP-20261101: precheck carries the SQL verbatim, submit posts
+ * /change-orders with the run id). */
 async function submitReadyDraft(): Promise<string> {
   const created = (await (
     await fetch("/change-drafts", {
@@ -174,15 +177,22 @@ async function submitReadyDraft(): Promise<string> {
     })
   ).json()) as { data: { id: string } };
   const draftId = created.data.id;
+  const sql = "UPDATE orders SET status = 1 WHERE user_id = 42;";
   await fetch(`/change-drafts/${draftId}/sql`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sql: "UPDATE orders SET status = 1 WHERE user_id = 42;" }),
+    body: JSON.stringify({ sql }),
   });
-  await fetch(`/change-drafts/${draftId}/review-runs`, { method: "POST" });
+  const started = (await (
+    await fetch("/review-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, draft_id: draftId, sql }),
+    })
+  ).json()) as { data: { run_id: string } };
   await waitFor(
     async () => {
-      const response = (await (await fetch(`/change-drafts/${draftId}`)).json()) as {
+      const response = (await (await fetch(`/review-runs/${started.data.run_id}`)).json()) as {
         data: { state: string };
       };
       if (response.data.state !== "ready") throw new Error("run not finished yet");
@@ -191,7 +201,16 @@ async function submitReadyDraft(): Promise<string> {
     { timeout: 4_000 },
   );
   const submitted = (await (
-    await fetch(`/change-drafts/${draftId}/submission`, { method: "POST" })
+    await fetch("/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flow_id: FIXTURE_FLOW_ID,
+        draft_id: draftId,
+        sql,
+        run_id: started.data.run_id,
+      }),
+    })
   ).json()) as { data: SubmittedFixture };
   return submitted.data.id;
 }
@@ -200,7 +219,7 @@ describe("approval decision on the order detail page", () => {
   it("renders the decision card for the frozen reviewer and rejects the whole order immediately", async () => {
     const user = userEvent.setup();
     seedFixtureOrder(approvalOrder());
-    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
+    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701", "approvals");
     const card = await screen.findByTestId("approval-decision-card");
     expect(card).toBeVisible();
 
@@ -218,10 +237,32 @@ describe("approval decision on the order detail page", () => {
     });
   });
 
+  // owner ruling 2026-10-31（自审自执按钮分流）：同一人既是提交人又是当前
+  // 冻结审批人时，动作集按入口二选一——审批入口只出通过/拒绝，我的工单
+  // 入口只出撤回/作废。夹具正是该场景（submitter 与审批人同为 henry）。
+  it("scopes the self-actor's action set by entry context", async () => {
+    seedFixtureOrder(approvalOrder());
+    // 我的工单入口：撤回/作废在场，审批决策不渲染。
+    const mine = renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
+    expect(await mine.findByTestId("withdraw-order")).toBeInTheDocument();
+    expect(mine.getByTestId("void-order")).toBeInTheDocument();
+    expect(mine.queryByTestId("approval-approve")).toBeNull();
+    expect(mine.queryByTestId("approval-reject")).toBeNull();
+    mine.unmount();
+    // 审核队列入口：通过/拒绝在场，撤回/作废不渲染。
+    const queue = renderDetail("ad6f1a2b-0000-4000-8000-00000000f701", "approvals");
+    expect(await queue.findByTestId("approval-approve")).toBeInTheDocument();
+    expect(queue.getByTestId("approval-reject")).toBeInTheDocument();
+    // 决策卡到场时头部也早已渲染，直接断言缺席即可。
+    expect(queue.queryByTestId("withdraw-order")).toBeNull();
+    expect(queue.queryByTestId("void-order")).toBeNull();
+    queue.unmount();
+  });
+
   it("the final approve leaves the order at execution-pending and removes the decision card", async () => {
     const user = userEvent.setup();
     seedFixtureOrder(approvalOrder());
-    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
+    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701", "approvals");
     await user.click(await screen.findByTestId("approval-approve"));
     await user.click(screen.getByTestId("approval-decision-confirm"));
     await waitFor(() => {
@@ -260,7 +301,7 @@ describe("approval decision on the order detail page", () => {
           }),
         ),
       );
-      renderDetail(orderId);
+      renderDetail(orderId, "approvals");
       await screen.findByTestId("approval-decision-card");
       const readsBeforeConfirm = detailGets;
       await user.click(screen.getByTestId("approval-approve"));
@@ -282,7 +323,7 @@ describe("approval decision on the order detail page", () => {
 
   it("offers no transfer, add-signer or remove-signer affordance anywhere (W004)", async () => {
     seedFixtureOrder(approvalOrder());
-    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
+    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701", "approvals");
     await screen.findByTestId("approval-decision-card");
     const page = screen.getByTestId("order-detail-page");
     for (const forbidden of ["转交", "加签", "减签", "改派"]) {

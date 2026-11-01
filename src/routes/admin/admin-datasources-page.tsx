@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import {
@@ -301,9 +302,8 @@ function CredentialPurposeRow({
               {state.mode === "replace" ? (
                 <div className="flex flex-col gap-1">
                   <Label htmlFor={`credential-password-${purpose}`}>{t("admin.datasources.password")}</Label>
-                  <Input
+                  <PasswordInput
                     id={`credential-password-${purpose}`}
-                    type="password"
                     value={state.password}
                     onChange={(event) => { onChange({ ...state, password: event.target.value }); }}
                     autoComplete="new-password"

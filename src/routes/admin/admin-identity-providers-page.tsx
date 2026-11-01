@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -640,9 +641,8 @@ function ProviderFormDialog({
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="idp-secret">{t("adminIdp.field.secret")}</Label>
-            <Input
+            <PasswordInput
               id="idp-secret"
-              type="password"
               value={kind === "ldap" ? ldapDraft.secret : oidcDraft.secret}
               onChange={(event) => {
                 if (kind === "ldap") setLdapDraft({ ...ldapDraft, secret: event.target.value });

@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  CircleDollarSign,
   Database,
   FilePlus2,
   FileStack,
@@ -84,6 +85,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { labelKey: "nav.reviewEngine.skills", to: "/admin/review-engine/skills", icon: Puzzle, visibility: "admin" },
       { labelKey: "nav.reviewEngine.knowledge", to: "/admin/review-engine/knowledge", icon: BookOpen, visibility: "admin" },
       { labelKey: "nav.reviewEngine.providers", to: "/admin/review-engine/providers", icon: KeyRound, visibility: "admin" },
+      // AI预算从系统设置迁入（owner 2026-10-31）——成本控制贴着Provider域。
+      { labelKey: "nav.reviewEngine.aiBudget", to: "/admin/review-engine/ai-budget", icon: CircleDollarSign, visibility: "admin" },
       { labelKey: "nav.reviewEngine.ruleSets", to: "/admin/rule-sets", icon: Layers, visibility: "admin" },
     ],
   },

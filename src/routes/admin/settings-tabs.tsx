@@ -4,15 +4,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 
 /**
  * Settings area navigation (§18.47): the five namespace tabs shared by the
- * generic settings pages AND the standalone AI-budget page, so the tab bar
- * no longer disappears when landing on /admin/settings/ai-budget.
+ * generic settings pages AND the standalone notifications page, so the tab
+ * bar no longer disappears when landing on /admin/settings/notifications.
+ * AI预算已迁至审核引擎分组（owner 2026-10-31），不再是设置tab。
  */
 export type SettingsRouteNamespace =
   | "general"
   | "query"
   | "execution"
   | "branding"
-  | "ai-budget"
   | "notifications";
 
 export function SettingsNavTabs({ current }: { current: SettingsRouteNamespace }) {
@@ -32,9 +32,6 @@ export function SettingsNavTabs({ current }: { current: SettingsRouteNamespace }
         </TabsTrigger>
         <TabsTrigger value="branding" data-testid={"settings-tab-branding"} onClick={() => { void navigate("/admin/settings/branding"); }}>
           {t("adminSettings.tab.branding")}
-        </TabsTrigger>
-        <TabsTrigger value="ai-budget" data-testid={"settings-tab-ai-budget"} onClick={() => { void navigate("/admin/settings/ai-budget"); }}>
-          {t("adminSettings.tab.aiBudget")}
         </TabsTrigger>
         <TabsTrigger value="notifications" data-testid={"settings-tab-notifications"} onClick={() => { void navigate("/admin/settings/notifications"); }}>
           {t("adminSettings.tab.notifications")}

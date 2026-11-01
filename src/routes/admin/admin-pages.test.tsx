@@ -1108,3 +1108,68 @@ describe("parameter draft helpers (§18.81)", () => {
     expect(paramTypeKey(["l"])).toBe("paramTypeStringList");
   });
 });
+
+describe("provider generation parameters & reference pricing (S008 FE, 2026-10-31)", () => {
+  async function openEditDialog(): Promise<HTMLElement> {
+    renderPage(<AdminProvidersPage />);
+    await screen.findByTestId(`provider-row-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await openRowActions(`provider-actions-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`);
+    await userEvent.click(screen.getByTestId(`provider-edit-${ADMIN_FIXTURE_PROVIDER_PRIMARY_ID}`));
+    return await screen.findByRole("dialog");
+  }
+
+  it("backs the generation params from the stored configuration (已存值优先)", async () => {
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    // fixture primary: {reasoning_effort:"medium", temperature:0.7}
+    expect(within(dialog).getByTestId("provider-gen-reasoning")).toHaveTextContent("medium");
+    // jsdom的number输入在jest-dom toHaveValue下返回null——直接断言.value属性。
+    expect(within(dialog).getByTestId<HTMLInputElement>("provider-gen-max-tokens").value).toBe("");
+    expect(within(dialog).getByTestId<HTMLInputElement>("provider-gen-temperature").value).toBe("0.7");
+  });
+
+  it("keeps temperature 0 as an explicit value through the write payload", async () => {
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    const temperature = within(dialog).getByTestId("provider-gen-temperature");
+    await userEvent.type(temperature, "0");
+    await userEvent.click(within(dialog).getByTestId("provider-submit"));
+    // fixture write handler validates configuration; "0" must arrive as 0
+    // (never folded to default) — an invalid clear would 1001 and surface
+    // the error alert.
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("separates per-field revert from provider-default clearing", async () => {
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    const reasoning = within(dialog).getByTestId("provider-gen-reasoning");
+    await userEvent.click(reasoning);
+    await userEvent.click(await screen.findByRole("option", { name: "high" }));
+    // dirty → revert appears; restore initial snapshot (medium).
+    const revert = within(dialog).getByTestId("provider-gen-revert");
+    await userEvent.click(revert);
+    expect(within(dialog).getByTestId("provider-gen-reasoning")).toHaveTextContent("medium");
+    expect(within(dialog).queryByTestId("provider-gen-revert")).not.toBeInTheDocument();
+  });
+
+  it("shows the pricing tab with the standing reference declaration and creates a version", async () => {
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-pricing"));
+    // 界面-02：声明常驻（渲染文本级断言）。
+    expect(within(dialog).getByText(/参考成本估算/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/不构成账单或实际扣款/)).toBeInTheDocument();
+    // 打开新建表单：模板按钮在表单内（显式动作）；随后保存（fixture收口+版本行）。
+    await userEvent.click(within(dialog).getByTestId("rate-new-version"));
+    expect(within(dialog).getByTestId("rate-apply-template")).toBeInTheDocument();
+    await userEvent.type(within(dialog).getByTestId("rate-from"), "2026-11-01");
+    await userEvent.type(within(dialog).getByTestId("rate-input-price-0"), "1.5");
+    await userEvent.type(within(dialog).getByTestId("rate-output-price-0"), "6");
+    await userEvent.click(within(dialog).getByTestId("rate-submit"));
+    await waitFor(() => {
+      expect(within(dialog).getByTestId("provider-rate-table")).toBeInTheDocument();
+    });
+  });
+});

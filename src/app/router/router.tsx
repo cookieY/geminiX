@@ -82,6 +82,13 @@ export const appRouter = createBrowserRouter([
         element: Loadable(ApprovalQueuePage),
       },
       {
+        // owner ruling 2026-10-31（自审自执按钮分流）：审核队列的工单详情
+        // 入口走审批上下文——详情页据此只出通过/拒绝；我的工单的
+        // /changes/orders/:id 只出撤回/作废（同一人身兼两角色时二选一）。
+        path: "approvals/orders/:orderId",
+        element: Loadable(OrderDetailPage),
+      },
+      {
         // Query-access eligibility approvals (legacy /server/query/list).
         path: "approvals/query-access",
         element: (
@@ -138,6 +145,14 @@ export const appRouter = createBrowserRouter([
         ),
       },
       {
+        // AI预算迁至审核引擎分组（owner 2026-10-31：放在系统设置里操作
+        // 不顺手）；后端settings命名空间API不变，仅页面路由搬家。
+        path: "admin/review-engine/ai-budget",
+        element: (
+          <RequireAdminCapability>{Loadable(AdminAiBudgetPage)}</RequireAdminCapability>
+        ),
+      },
+      {
         path: "admin/rule-sets",
         element: (
           <RequireAdminCapability>{Loadable(AdminRuleSetsPage)}</RequireAdminCapability>
@@ -149,10 +164,9 @@ export const appRouter = createBrowserRouter([
         element: <Navigate to="/admin/settings/general" replace />,
       },
       {
+        // AI预算旧路径保留重定向（书签/外链不破）。
         path: "admin/settings/ai-budget",
-        element: (
-          <RequireAdminCapability>{Loadable(AdminAiBudgetPage)}</RequireAdminCapability>
-        ),
+        element: <Navigate to="/admin/review-engine/ai-budget" replace />,
       },
       {
         path: "admin/settings/:namespace",

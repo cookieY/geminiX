@@ -162,6 +162,9 @@ describe("gate: 查询仅单SELECT且无限总量分页", () => {
     await screen.findByTestId("query-workspace");
     await chooseSchema("app");
     fireEvent.contextMenu(screen.getByTestId("query-tree-table-app-users"));
+    // context-menu-01形态（owner 2026-10-31七轮）：动画面板+复制表名+查看表结构。
+    await screen.findByTestId("query-inspect-panel");
+    expect(screen.getByTestId("query-inspect-copy")).toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("query-inspect-open"));
     const dialog = await screen.findByTestId("query-table-structure");
     expect(dialog).toBeVisible();
@@ -212,10 +215,14 @@ describe("gate: admin撤销用户可感知且admin不能查看查询", () => {
     // stub alone keeps the henry identity, which owns the seeded session).
     window.localStorage.setItem("yearning-mock-auth", "admin");
     renderAt("/query");
-    // A granted world serves the flow entry to the admin identity exactly
+    // A granted world serves the flow catalog to the admin identity exactly
     // like to a regular user (permission-group semantics, backend
     // flowGranted has no admin exclusion)…
-    await screen.findByTestId(/query-flow-enter-/);
+    await screen.findByTestId(/query-flow-apply-/);
+    // …but the admin ACTOR owns no grant, so under the owner 2026-10-31
+    // ruling (no grant → no enter button) the catalog row offers apply —
+    // enter is hidden exactly as for any ungranted user.
+    expect(screen.queryByTestId(/query-flow-enter-/)).toBeNull();
     // …while the admin still owns no query objects of its own (no session
     // rows — it never went through the request/approval chain).
     await waitFor(() => {
@@ -225,24 +232,41 @@ describe("gate: admin撤销用户可感知且admin不能查看查询", () => {
 });
 
 describe("query entry mode branches (server-driven)", () => {
-  it("converts QUERY_GRANT_REQUIRED into the access-request guidance", async () => {
+  it("reuses the active session for the same grant+datasources instead of creating a new one (owner 2026-10-31)", async () => {
+    seedQueryScenario("query-session");
+    stubSession(false);
+    const creates: string[] = [];
+    server.events.on("request:start", ({ request }) => {
+      if (request.method === "POST" && new URL(request.url).pathname.endsWith("/query-sessions")) {
+        creates.push(request.url);
+      }
+    });
+    renderAt("/query");
+    await userEvent.click(await screen.findByTestId(/query-flow-enter-/));
+    // 复用种子在途会话qs-fixture-active：直接进入工作台，零新建POST。
+    await screen.findByTestId("query-workspace");
+    expect(creates).toHaveLength(0);
+    server.events.removeAllListeners();
+  });
+
+  it("hides the enter button and offers apply when review is required without a grant (owner 2026-10-31六轮)", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderAt("/query");
     expect(await screen.findByRole("heading", { level: 1, name: "查询" })).toBeVisible();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    const flow = await screen.findByTestId(/query-flow-enter-/);
-    await userEvent.click(flow);
-    expect(await screen.findByTestId("query-needs-access-hint")).toHaveTextContent("需要访问审批");
+    // 无资格（且该流程带审批步骤=资格必经审批）：不显示「进入查询」，
+    // 直接显示「申请访问」——不再要求先吃一次4001（§18.49服务端驱动
+    // 保留为资格中途过期的兜底）。
+    expect(await screen.findByTestId(/query-flow-apply-/)).toBeVisible();
+    expect(screen.queryByTestId(/query-flow-enter-/)).toBeNull();
   });
 
   it("opens the access-request dialog without any SQL input (Q001)", async () => {
     seedQueryScenario("query-flow");
     stubSession(false);
     renderAt("/query");
-    // §18.49: apply is server-driven — the grant-required answer reveals it.
-    await userEvent.click(await screen.findByTestId(/query-flow-enter-/));
-    await screen.findByTestId("query-needs-access-hint");
+    // owner 2026-10-31六轮：无资格时申请访问直达（进入按钮已隐藏）。
     await userEvent.click(await screen.findByTestId(/query-flow-apply-/));
     const dialog = await screen.findByTestId("query-access-request-dialog");
     expect(dialog).toBeInTheDocument();

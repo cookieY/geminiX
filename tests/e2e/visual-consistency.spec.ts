@@ -25,7 +25,7 @@ const PAGE_ROUTES: RouteCase[] = [
   { path: "/admin/settings/query" },
   { path: "/admin/settings/execution" },
   { path: "/admin/settings/branding" },
-  { path: "/admin/settings/ai-budget" },
+  { path: "/admin/review-engine/ai-budget" },
   { path: "/admin/settings/notifications" },
   { path: "/admin/identity-providers" },
   { path: "/changes/mine", listToolbar: true },

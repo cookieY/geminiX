@@ -10,6 +10,8 @@ import {
   SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
+import { avatarColorFor, avatarInitialsOf } from "@/shared/components/user-avatar";
+import { cn } from "@/shared/lib/utils";
 import { Separator } from "@/shared/components/ui/separator";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -66,7 +68,12 @@ export function UserMenuSheet({
         </SheetHeader>
         <div className="flex flex-col items-center justify-center gap-4 px-6 pt-10">
           <Avatar className="h-16 w-16">
-            <AvatarFallback>Y</AvatarFallback>
+            {/* avatar-13（owner 2026-10-31）：名字确定性配色+缩写。 */}
+            <AvatarFallback
+              className={cn("text-lg", avatarColorFor(displayName))}
+            >
+              {avatarInitialsOf(displayName)}
+            </AvatarFallback>
           </Avatar>
           <div className="text-center">
             <p className="text-lg font-semibold">{displayName}</p>

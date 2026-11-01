@@ -119,6 +119,27 @@ export default function QueryEntryPage() {
     setNeedsAccessHint(null);
     setEnteringFlowId(flow.id);
     try {
+      // owner ruling 2026-10-31：查询时间范围内同一数据源=同一个会话——离开
+      // 页面再进入复用在途会话，不再新开（「进行中的会话」列表因此不再
+      // 越积越多）。显式「退出查询」是审计过的终态动作，会话结束后才允许
+      // 真正新建。匹配口径：同资格（有审批流程=同grant；直进=grant为空）
+      // + 同数据源集合。
+      const wanted =
+        match === null
+          ? (flow.query_capabilities ?? []).map((capability) => capability.datasource_id)
+          : [...match.request.datasource_ids];
+      const signature = (ids: string[]) => [...ids].sort().join(",");
+      const expectedGrant = match === null ? null : match.grant.id;
+      const existing = sessions.find(
+        (row) =>
+          (expectedGrant === null ? row.grant_id == null : row.grant_id === expectedGrant) &&
+          signature(row.capabilities.map((capability) => capability.datasource_id)) ===
+            signature(wanted),
+      );
+      if (existing !== undefined) {
+        void navigate(`/query/sessions/${existing.id}`);
+        return;
+      }
       const created = await createSession.mutateAsync({
         flow_id: flow.id,
         grant_id: match === null ? null : match.grant.id,
@@ -230,22 +251,31 @@ export default function QueryEntryPage() {
                         )}
                       </div>
                       <div className="flex shrink-0 flex-row gap-2">
-                        {match === null && needsAccessFlows.has(flow.id) && (
+                        {/* owner ruling 2026-10-31六轮：无资格不显示「进入查询」。
+                            带审批步骤的查询流程资格必经审批——有活跃资格（match）
+                            才显示进入，否则只显示申请访问；无审批步骤仍是直进
+                            路径（Q002）。§18.49服务端驱动保留为兜底（资格中途
+                            过期→4001→needsAccessFlows）。 */}
+                        {(needsAccessFlows.has(flow.id) ||
+                          (match === null &&
+                            flow.flow_type === "query_access" &&
+                            (flow.approval_steps?.length ?? 0) > 0)) ? (
                           <Button size="sm" variant="outline" onClick={() => { setRequestFlow(flow); }} data-testid={`query-flow-apply-${flow.id}`}>
                             <FilePlus2 />
                             {t("query.entry.applyAccess")}
                           </Button>
+                        ) : (
+                          <PendingButton
+                            size="sm"
+                            pending={createSession.isPending && enteringFlowId === flow.id}
+                            disabled={createSession.isPending && enteringFlowId !== flow.id}
+                            onClick={() => { void enter(flow, match); }}
+                            data-testid={`query-flow-enter-${flow.id}`}
+                          >
+                            {t("query.entry.enter")}
+                            <ChevronRight />
+                          </PendingButton>
                         )}
-                        <PendingButton
-                          size="sm"
-                          pending={createSession.isPending && enteringFlowId === flow.id}
-                          disabled={createSession.isPending && enteringFlowId !== flow.id}
-                          onClick={() => { void enter(flow, match); }}
-                          data-testid={`query-flow-enter-${flow.id}`}
-                        >
-                          {t("query.entry.enter")}
-                          <ChevronRight />
-                        </PendingButton>
                       </div>
                     </div>
                   );

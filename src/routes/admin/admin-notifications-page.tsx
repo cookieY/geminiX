@@ -1,7 +1,7 @@
 import i18next from "@/shared/i18n";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bell, FlaskConical, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, FlaskConical, Pencil, Plus, Trash2 } from "lucide-react";
 import type {
   DingTalkNotificationConfig as DingTalkConfig,
   EmailNotificationConfig as EmailConfig,
@@ -26,7 +26,7 @@ import type { StatusTone } from "@/shared/lib/status-tone";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -34,12 +34,16 @@ import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { PasswordInput } from "@/shared/components/ui/password-input";
+import { AnimatePresence, motion } from "motion/react";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   useCreateNotificationChannel,
   useDeleteNotificationChannel,
   useNotificationChannels,
   useNotificationDeliveries,
+  useNotificationTestTask,
   useReplaceNotificationChannel,
   useTestNotificationDelivery,
 } from "@/features/admin/use-admin";
@@ -90,6 +94,9 @@ interface ChannelDraft {
   username: string;
   fromAddress: string;
   secret: string;
+  // 钉钉专用：加签Secret（机器人安全设置=加签模式时必填）；与Webhook
+  // 一同组成{access_token,sign_secret}信封（senders.SendDingTalk口径）。
+  signSecret: string;
 }
 
 const EMPTY_CHANNEL: ChannelDraft = {
@@ -102,7 +109,30 @@ const EMPTY_CHANNEL: ChannelDraft = {
   username: "",
   fromAddress: "",
   secret: "",
+  signSecret: "",
 };
+
+// 钉钉机器人凭据=webhook URL里的access_token路径段（senders.SendDingTalk）。
+// 允许粘贴完整Webhook地址（取access_token参数），也兼容直接粘贴裸token。
+function dingTalkToken(raw: string): string {
+  const text = raw.trim();
+  try {
+    const url = new URL(text);
+    const token = url.searchParams.get("access_token");
+    if (token !== null && token !== "") return token;
+  } catch {
+    // 非URL输入按裸access_token处理。
+  }
+  return text;
+}
+
+// 钉钉凭据信封：填了加签Secret走{access_token,sign_secret}信封（后端加签
+// 模式），否则裸token（与存量渠道/免签机器人兼容）。
+function dingTalkSecretValue(token: string, signSecret: string): string {
+  const sign = signSecret.trim();
+  if (sign === "") return token;
+  return JSON.stringify({ access_token: token, sign_secret: sign });
+}
 
 export default function AdminNotificationsPage() {
   const { t } = useTranslation();
@@ -132,56 +162,69 @@ export default function AdminNotificationsPage() {
         title={t("adminNotifications.title")}
         description={t("adminNotifications.description")}
         icon={Bell}
-        actions={
-          <div className="flex items-center gap-2">
-            <SettingsNavTabs current="notifications" />
-            {view === "channels" && (
-              <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-notifications-create">
-                <Plus />
-                {t("adminNotifications.create")}
-              </Button>
-            )}
-          </div>
-        }
+        actions={<SettingsNavTabs current="notifications" />}
       />
 
-      <div role="tablist" aria-label={t("adminNotifications.views")} className="flex gap-2">
-        {(
-          [
-            ["channels", t("adminNotifications.channels")],
-            ["rules", t("adminNotifications.rules")],
-            ["deliveries", t("adminNotifications.deliveries")],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={view === key}
-            onClick={() => { setView(key); }}
-            data-testid={`admin-notifications-view-${key}`}
-            className={
-              "rounded-md border px-3 py-1.5 text-sm " +
-              (view === key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* tabs-02 reference（owner ruling 2026-10-24）：UI库Tabs + TransitionPanel
+          切换动效（滑入+模糊），不再用手写按钮组。 */}
+      <Tabs
+        value={view}
+        onValueChange={(next) => {
+          if (next === "channels" || next === "rules" || next === "deliveries") setView(next as "channels" | "rules" | "deliveries");
+        }}
+      >
+        <TabsList aria-label={t("adminNotifications.views")}>
+          {(
+            [
+              ["channels", t("adminNotifications.channels")],
+              ["rules", t("adminNotifications.rules")],
+              ["deliveries", t("adminNotifications.deliveries")],
+            ] as const
+          ).map(([key, label]) => (
+            <TabsTrigger
+              key={key}
+              value={key}
+              data-testid={`admin-notifications-view-${key}`}
+            >
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-      {view === "channels" && channelsQuery.isPending && <LoadingState variant="page" />}
-      {view === "channels" && channelsQuery.error !== null && (
-        <ErrorState error={channelsQuery.error} operationId="listNotificationChannels" onRetry={() => void channelsQuery.refetch()} />
-      )}
+      {/* 与设置族四命名空间页同一动效（owner ruling 2026-10-31二轮：六个
+          设置tab切换一致）——AnimatePresence fade/rise按view键控；三视图
+          各自条件渲染，同一时刻只挂载当前视图（owner四轮）。 */}
+      <AnimatePresence mode="wait">
+        {view === "channels" && (
+        <motion.div
+          key="channels"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className="flex flex-col gap-5"
+        >
+          {channelsQuery.isPending && <LoadingState variant="page" />}
+          {channelsQuery.error !== null && (
+            <ErrorState error={channelsQuery.error} operationId="listNotificationChannels" onRetry={() => void channelsQuery.refetch()} />
+          )}
 
-      {view === "channels" && !channelsQuery.isPending && channelsQuery.error === null && (
-        <Card>
+          {!channelsQuery.isPending && channelsQuery.error === null && (
+            <Card>
           <CardHeader className="border-b pb-3">
             <CardTitle className="flex items-center gap-2">
               <Bell className="size-4" />
               {t("adminNotifications.channels")}
             </CardTitle>
             <CardDescription>{t("adminNotifications.channelsDescription")}</CardDescription>
+            {/* 新建通道=表头行最右（owner四轮裁定，与其他表格卡一致）。 */}
+            <CardAction>
+              <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-notifications-create">
+                <Plus />
+                {t("adminNotifications.create")}
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent className="px-0!">
             {channels.length === 0 ? (
@@ -224,11 +267,34 @@ export default function AdminNotificationsPage() {
                 />
               ) : null}
           </CardContent>
-        </Card>
-      )}
+          </Card>
+          )}
+        </motion.div>
+        )}
 
-      {view === "deliveries" && (
-      <Card>
+        {view === "rules" && (
+        <motion.div
+          key="rules"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className="flex flex-col gap-5"
+        >
+          <RulesView isAdmin={isAdmin} />
+        </motion.div>
+        )}
+
+        {view === "deliveries" && (
+        <motion.div
+          key="deliveries"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className="flex flex-col gap-5"
+        >
+        <Card>
         <CardHeader className="border-b pb-3">
           <CardTitle>{t("adminNotifications.deliveries")}</CardTitle>
           <CardDescription>{t("adminNotifications.deliveriesDescription")}</CardDescription>
@@ -316,11 +382,9 @@ export default function AdminNotificationsPage() {
           )}
         </CardContent>
       </Card>
-      )}
-
-      {view === "rules" && (
-        <RulesView isAdmin={isAdmin} />
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       <ChannelFormDialog open={createOpen && view === "channels"} editing={null} onClose={() => { setCreateOpen(false); }} />
       <ChannelFormDialog open={editing !== null} editing={editing} onClose={() => { setEditing(null); }} />
@@ -332,6 +396,10 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
   const { t } = useTranslation();
   const deleteChannel = useDeleteNotificationChannel();
   const testDelivery = useTestNotificationDelivery();
+  // 2026-10-31三轮：测试投递是异步任务——受理回执的task_id经
+  // useNotificationTestTask轮询到终态，行内显示是否投递成功。
+  const [testTaskId, setTestTaskId] = useState<string | null>(null);
+  const testTaskQuery = useNotificationTestTask(testTaskId);
   const rulesQuery = useNotificationRules(true);
   const referencedRules = (rulesQuery.data?.items ?? []).filter((rule) => rule.channel_id === channel.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -362,6 +430,7 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
               onClick={() => { testDelivery.mutate(
                   { channelId: channel.id, body: {} },
                   {
+                    onSuccess: (receipt) => { setTestTaskId(receipt.task_id); setErrorText(null); },
                     onError: (error) => { setErrorText(describeErrorText(describeError(error, "createNotificationTestDelivery"))); },
                   },
                 ); }
@@ -386,6 +455,41 @@ function ChannelRow({ channel, onEdit }: { channel: NotificationChannel; onEdit:
             <Alert variant="destructive">
               <AlertDescription>{errorText}</AlertDescription>
             </Alert>
+          </TableCell>
+        </TableRow>
+      )}
+      {testTaskId !== null && (
+        <TableRow>
+          <TableCell colSpan={5} data-testid={`admin-channel-test-result-${channel.id}`}>
+            {(() => {
+              // 终态=成功/失败/取消；查询错误或未终态=进行中（Worker异步消费，
+              // 真实后端测试投递不落投递记录表，结果只在任务面）。
+              const state = testTaskQuery.data?.state;
+              if (state === "succeeded") {
+                return (
+                  <div className="flex items-center gap-2 text-xs text-[var(--risk-safe)]">
+                    <CheckCircle2 className="size-4" aria-hidden />
+                    {t("adminNotifications.testResult.succeeded")}
+                  </div>
+                );
+              }
+              if (state === "failed" || state === "cancelled") {
+                const failureName = testTaskQuery.data?.error?.title ?? testTaskQuery.error?.message;
+                return (
+                  <div className="flex items-center gap-2 text-xs text-destructive">
+                    <AlertTriangle className="size-4" aria-hidden />
+                    {t("adminNotifications.testResult.failed")}
+                    {failureName !== undefined && failureName !== "" ? `（${failureName}）` : null}
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Spinner className="size-4" aria-hidden />
+                  {t("adminNotifications.testResult.running")}
+                </div>
+              );
+            })()}
           </TableCell>
         </TableRow>
       )}
@@ -457,6 +561,7 @@ function ChannelFormDialog({
         username: String(configuration.username ?? ""),
         fromAddress: String(configuration.from_address ?? ""),
         secret: "",
+        signSecret: "",
       });
     }
   }
@@ -464,6 +569,12 @@ function ChannelFormDialog({
 
   const submit = async () => {
     setErrorText(null);
+    // 钉钉：输入框收完整Webhook URL或裸token，提交按后端口径归一为
+    // access_token；填了加签Secret则组成{access_token,sign_secret}信封。
+    const dingToken = draft.kind === "dingtalk" ? dingTalkToken(draft.secret) : "";
+    const secretValue = draft.kind === "dingtalk"
+      ? dingTalkSecretValue(dingToken, draft.signSecret)
+      : draft.secret;
     const configuration: EmailConfig | DingTalkConfig | FeishuConfig | SlackConfig =
       draft.kind === "dingtalk"
         ? { webhook_host: "oapi.dingtalk.com" }
@@ -478,8 +589,12 @@ function ChannelFormDialog({
                 username: draft.username,
                 from_address: draft.fromAddress,
               };
-    if (editing === null && draft.secret === "") {
-      setErrorText(t("adminNotifications.secretRequired"));
+    if (editing === null && (draft.kind === "dingtalk" ? dingToken : draft.secret) === "") {
+      setErrorText(
+        draft.kind === "dingtalk"
+          ? t("adminNotifications.webhookRequired")
+          : t("adminNotifications.secretRequired"),
+      );
       return;
     }
     try {
@@ -489,7 +604,7 @@ function ChannelFormDialog({
           name: draft.name,
           enabled: draft.enabled,
           configuration,
-          secret: { value: draft.secret },
+          secret: { value: secretValue },
         });
       } else {
         await replaceChannel.mutateAsync({
@@ -500,7 +615,7 @@ function ChannelFormDialog({
             name: draft.name,
             enabled: draft.enabled,
             configuration,
-            secret: draft.secret === "" ? undefined : { value: draft.secret },
+            secret: secretValue === "" ? undefined : { value: secretValue },
           },
         });
       }
@@ -602,19 +717,61 @@ function ChannelFormDialog({
               </div>
             </>
           )}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="channel-secret">{t("adminNotifications.field.secret")}</Label>
-            <Input id="channel-secret" type="password" value={draft.secret} onChange={(event) => { setDraft({ ...draft, secret: event.target.value }); }} data-testid="channel-secret" />
-            <p className="text-muted-foreground text-xs">
-              {draft.kind === "feishu" || draft.kind === "slack"
-                ? editing === null
-                  ? t("adminNotifications.field.secretWebhookCreateHint")
-                  : t("adminNotifications.field.secretWebhookEditHint")
-                : editing === null
-                  ? t("adminNotifications.field.secretCreateHint")
-                  : t("adminNotifications.field.secretEditHint")}
-            </p>
-          </div>
+          {draft.kind === "dingtalk" ? (
+            // 钉钉凭据=机器人Webhook URL（含access_token）+可选加签Secret，
+            // 两个独立输入框；提交时解析出access_token并按需组成信封
+            // （senders.SendDingTalk口径）。
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="channel-webhook">{t("adminNotifications.field.webhook")}</Label>
+                <PasswordInput
+                  id="channel-webhook"
+                  value={draft.secret}
+                  onChange={(event) => { setDraft({ ...draft, secret: event.target.value }); }}
+                  autoComplete="new-password"
+                  data-testid="channel-webhook"
+                />
+                <p className="text-muted-foreground text-xs">
+                  {editing === null
+                    ? t("adminNotifications.field.webhookCreateHint")
+                    : t("adminNotifications.field.webhookEditHint")}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="channel-sign-secret">{t("adminNotifications.field.signSecret")}</Label>
+                <PasswordInput
+                  id="channel-sign-secret"
+                  value={draft.signSecret}
+                  onChange={(event) => { setDraft({ ...draft, signSecret: event.target.value }); }}
+                  autoComplete="new-password"
+                  data-testid="channel-sign-secret"
+                />
+                <p className="text-muted-foreground text-xs">
+                  {t("adminNotifications.field.signSecretHint")}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="channel-secret">{t("adminNotifications.field.secret")}</Label>
+              <PasswordInput
+                id="channel-secret"
+                value={draft.secret}
+                onChange={(event) => { setDraft({ ...draft, secret: event.target.value }); }}
+                autoComplete="new-password"
+                data-testid="channel-secret"
+              />
+              <p className="text-muted-foreground text-xs">
+                {draft.kind === "feishu" || draft.kind === "slack"
+                  ? editing === null
+                    ? t("adminNotifications.field.secretWebhookCreateHint")
+                    : t("adminNotifications.field.secretWebhookEditHint")
+                  : editing === null
+                    ? t("adminNotifications.field.secretCreateHint")
+                    : t("adminNotifications.field.secretEditHint")}
+              </p>
+            </div>
+          )}
           {errorText !== null && (
             <Alert variant="destructive" data-testid="channel-form-error">
               <AlertTitle>{t("adminNotifications.formFailed")}</AlertTitle>

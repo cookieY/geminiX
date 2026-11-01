@@ -142,7 +142,7 @@ test("a datasource connection test materializes the capability matrix with expla
 test("a high-impact budget change saves only through the two-step confirmation", async ({
   page,
 }) => {
-  await page.goto("/admin/settings/ai-budget");
+  await page.goto("/admin/review-engine/ai-budget");
   await expect(page.getByTestId("ai-budget-r008-note")).toContainText("不存在单工单");
   await page.getByTestId("ai-budget-enforced").click();
   await page.getByTestId("ai-budget-assess").click();

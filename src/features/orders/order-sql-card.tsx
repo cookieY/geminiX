@@ -1,20 +1,12 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRecordOrderSqlCopy, useRevealOrderSql, type OrderSqlReveal } from "@/features/orders/use-approvals";
+import { SqlFileViewer } from "@/features/orders/sql-file-viewer";
 import { describeError } from "@/shared/api/error-display";
 import { PendingButton } from "@/shared/components/pending-button";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { ClipboardCopy, Eye, FileCode2, ShieldAlert } from "lucide-react";
-
-// §18.45: the revealed plaintext renders in the read-only Monaco viewer —
-// SQL highlighting plus line numbers/folding for bulk statements inside the
-// hard height cap. Lazily imported so an unrevealed detail page never
-// downloads the editor chunk at all.
-const SqlReadOnlyViewer = lazy(() =>
-  import("@/features/review/sql-editor-panel").then((module) => ({ default: module.SqlReadOnlyViewer })),
-);
 
 /**
  * Frozen SQL Revision viewer (PRD F7 item 1 — the reviewer judges the exact
@@ -80,73 +72,80 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
   };
 
   return (
-    <Card data-testid="order-sql-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <FileCode2 className="size-4" aria-hidden />
-          {t("orders.sql.title")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        {error !== null && (
-          <p role="alert" className="text-destructive text-xs" data-testid="order-sql-error">
-            {error}
-          </p>
-        )}
-        {revealed === null ? (
-          <div className="flex items-center gap-3">
-            <PendingButton
-              size="sm"
-              variant="outline"
-              onClick={revealNow}
-              pending={reveal.isPending}
-              data-testid="reveal-order-sql"
-            >
-              <Eye className="size-3.5" aria-hidden />
-              {t("orders.sql.reveal")}
-            </PendingButton>
-            <p className="text-muted-foreground text-xs">{t("orders.sql.revealNote")}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2" data-testid="order-sql-view">
-            <p className="text-muted-foreground flex items-center gap-1 text-xs">
-              <ShieldAlert className="size-3.5" aria-hidden />
-              {revealed.watermark}
-            </p>
-            <Suspense
-              fallback={
-                <div
-                  className="bg-muted text-muted-foreground flex h-20 items-center justify-center gap-2 rounded-md border text-xs"
-                  data-testid="order-sql-loading"
-                >
-                  <Spinner className="size-3.5" />
-                  {t("orders.sql.loading")}
-                </div>
-              }
-            >
-              <SqlReadOnlyViewer value={revealed.sql} data-testid="order-sql-readonly" />
-            </Suspense>
-            <div className="flex items-center gap-2">
+    <Card
+      data-testid="order-sql-card"
+      className={revealed === null ? undefined : "gap-0 py-0"}
+    >
+      {revealed === null ? (
+        <>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <FileCode2 className="size-4" aria-hidden />
+              {t("orders.sql.title")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            {error !== null && (
+              <p role="alert" className="text-destructive text-xs" data-testid="order-sql-error">
+                {error}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
               <PendingButton
-                variant="outline"
                 size="sm"
-                pending={copyAudit.isPending}
-                onClick={copyRevealed}
-                data-testid="copy-order-sql"
+                variant="outline"
+                onClick={revealNow}
+                pending={reveal.isPending}
+                data-testid="reveal-order-sql"
               >
-                <ClipboardCopy className="size-3.5" aria-hidden />
-                {t("orders.sql.copy")}
+                <Eye className="size-3.5" aria-hidden />
+                {t("orders.sql.reveal")}
               </PendingButton>
-              <Button variant="ghost" size="sm" onClick={closeReveal} data-testid="close-order-sql">
-                {t("orders.sql.close")}
-              </Button>
-              <span className="text-muted-foreground text-xs">
-                {t("orders.sql.validUntil", { time: revealed.validUntil.replace("T", " ").replace("Z", " UTC") })}
-              </span>
+              <p className="text-muted-foreground text-xs">{t("orders.sql.revealNote")}</p>
             </div>
+          </CardContent>
+        </>
+      ) : (
+        /* collapsible-08 "Expandable Code" silhouette (owner ruling
+           2026-10-31, second round): the card itself becomes the block —
+           flush mono header bar → numbered code → show-more trigger — with
+           the audit row (watermark / validity / copy / close) as the bottom
+           bar. No nested box, no padded inset. */
+        <div className="flex flex-col" data-testid="order-sql-view">
+          <SqlFileViewer value={revealed.sql} data-testid="order-sql-readonly" />
+          {error !== null && (
+            <p
+              role="alert"
+              className="border-t border-border px-3 py-2 text-xs text-destructive"
+              data-testid="order-sql-error"
+            >
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2">
+            <p className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-xs">
+              <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{revealed.watermark}</span>
+            </p>
+            <span className="text-muted-foreground whitespace-nowrap text-xs">
+              {t("orders.sql.validUntil", { time: revealed.validUntil.replace("T", " ").replace("Z", " UTC") })}
+            </span>
+            <PendingButton
+              variant="outline"
+              size="sm"
+              pending={copyAudit.isPending}
+              onClick={copyRevealed}
+              data-testid="copy-order-sql"
+            >
+              <ClipboardCopy className="size-3.5" aria-hidden />
+              {t("orders.sql.copy")}
+            </PendingButton>
+            <Button variant="ghost" size="sm" onClick={closeReveal} data-testid="close-order-sql">
+              {t("orders.sql.close")}
+            </Button>
           </div>
-        )}
-      </CardContent>
+        </div>
+      )}
     </Card>
   );
 }

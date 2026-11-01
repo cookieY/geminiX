@@ -72,7 +72,10 @@ export default function AdminSettingsNamespacePage() {
         icon={SlidersHorizontal}
         actions={<SettingsNavTabs current={current} />}
       />
-      <AnimatePresence mode="wait" initial={false}>
+      {/* 六个设置tab动效对称（owner ruling 2026-10-31二轮）：去掉
+          initial={false}，从独立设置页（通知/AI预算）切回命名空间页时
+          同样播放入场动画。 */}
+      <AnimatePresence mode="wait">
         <motion.div
           key={namespace}
           initial={{ opacity: 0, y: 10 }}

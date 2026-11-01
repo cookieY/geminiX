@@ -23,6 +23,7 @@ import {
 import { ShineBorder } from "@/shared/components/ui/shine-border";
 import { BrandTypewriter } from "./brand-typewriter";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { ShieldAlert } from "lucide-react";
 import { BrandLogo } from "@/app/shell/brand-logo";
@@ -244,11 +245,10 @@ export default function LoginPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">{t("login.password")}</Label>
-                <Input
+                <PasswordInput
                   id="password"
                   className="rounded-lg"
                   name="password"
-                  type="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => {

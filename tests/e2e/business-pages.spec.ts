@@ -140,9 +140,11 @@ test("gate 2b: the builtin admin identity owns no query objects", async ({ page 
   await expect(page.getByTestId("query-entry")).toBeVisible();
   // §18.48 (owner ruling): the builtin admin gets no business rights by
   // implicit override, but explicit grants apply to it like to any user —
-  // this granted scenario world serves the flow entry, while the admin
-  // still owns no sessions or grants of its own.
-  await expect(page.getByTestId(/query-flow-enter-/).first()).toBeVisible();
+  // this granted scenario world serves the flow catalog, while the admin
+  // owns no grant of its own, so under the owner 2026-10-31 ruling
+  // (no grant → no enter button) the row offers apply instead of enter.
+  await expect(page.getByTestId(/query-flow-apply-/).first()).toBeVisible();
+  await expect(page.getByTestId(/query-flow-enter-/)).toHaveCount(0);
   await expect(page.locator('[data-testid^="query-session-"]')).toHaveCount(0);
 });
 

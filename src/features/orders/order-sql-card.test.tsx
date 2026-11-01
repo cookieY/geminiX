@@ -7,23 +7,15 @@ import { server } from "@/test/msw/server";
 import "@/shared/i18n";
 import { OrderSqlCard } from "./order-sql-card";
 
-// jsdom cannot host the lazy Monaco chunk (approval-workspace precedent);
-// the revealed SQL renders through the read-only viewer stub.
-vi.mock("@/features/review/sql-editor-panel", () => ({
-  SqlReadOnlyViewer: ({
-    value,
-    "data-testid": testId,
-  }: {
-    value: string;
-    "data-testid"?: string;
-  }) => <pre data-testid={testId ?? "sql-readonly-stub"}>{value}</pre>,
-}));
-
 /**
  * SEC-0035 copy-audit regression: the clipboard write is issued inside the
  * click's user-activation window, the audit request fires only after the
  * plaintext actually reached the clipboard, and both failure paths surface
  * through the inline error alert — no silent swallowing.
+ *
+ * The revealed plaintext renders through the collapsible-08 file viewer
+ * (sql-file-viewer): mono header with the total line count, numbered lines,
+ * first rows visible, remainder behind the show-more trigger.
  */
 
 const ORDER_ID = "0d6f1a2b-0000-4000-8000-000000000701";
@@ -34,10 +26,10 @@ function envelope(data: unknown) {
   return { err_code: 0, message: "ok", data, request_id: REQUEST_ID };
 }
 
-function revealResponse() {
+function revealResponse(sql = "UPDATE orders SET status = 1;") {
   return envelope({
     reveal_id: REVEAL_ID,
-    sql: "UPDATE orders SET status = 1;",
+    sql,
     watermark: "Yearning SQL Viewer: henry @ 2026-10-21T00:00:00Z",
     valid_until: "2026-10-21T00:05:00Z",
   });
@@ -54,10 +46,10 @@ function renderCard() {
   );
 }
 
-async function reveal(user: ReturnType<typeof userEvent.setup>) {
+async function reveal(user: ReturnType<typeof userEvent.setup>, sql?: string) {
   server.use(
     http.post("*/change-orders/:orderId/sql-reveals", () =>
-      HttpResponse.json(revealResponse()),
+      HttpResponse.json(revealResponse(sql)),
     ),
   );
   renderCard();
@@ -149,5 +141,55 @@ describe("OrderSqlCard copy audit (SEC-0035)", () => {
     await waitFor(() => {
       expect(copyAuditCalls).toBe(0);
     });
+  });
+});
+
+describe("OrderSqlCard frozen-SQL file viewer (collapsible-08)", () => {
+  const PREVIEW = 5;
+  const longSql = Array.from({ length: 8 }, (_, i) => `SELECT ${String(i + 1)};`).join("\n");
+
+  it("shows the file header with the total line count and keeps only the preview lines mounted", async () => {
+    const user = userEvent.setup();
+    await reveal(user, longSql);
+    const viewer = screen.getByTestId("order-sql-readonly");
+    // 行文本被高亮拆成多个 token span，整行断言走 textContent 拼接。
+    const codeText = () => viewer.textContent;
+    expect(codeText()).toContain("SELECT 1;");
+    expect(codeText()).toContain(`SELECT ${String(PREVIEW)};`);
+    // The collapsible panel is unmounted while closed: line 6+ must not be
+    // in the DOM at all, not merely hidden.
+    expect(codeText()).not.toContain("SELECT 6;");
+    expect(codeText()).not.toContain("SELECT 8;");
+    expect(screen.getByTestId("order-sql-line-count").textContent).toBe("8 行");
+    expect(screen.getByTestId("order-sql-more-trigger").textContent).toContain("展开剩余 3 行");
+    // 语法高亮（collapsible-08 token 词汇）：关键字/数字走专用类，标点走
+    // muted——不引入 raw palette 工具类。
+    expect(viewer.querySelector(".code-token-keyword")?.textContent).toBe("SELECT");
+    expect(viewer.querySelector(".code-token-number")?.textContent).toBe("1");
+  });
+
+  it("expands the remaining lines on the show-more trigger and collapses back", async () => {
+    const user = userEvent.setup();
+    await reveal(user, longSql);
+    const viewer = screen.getByTestId("order-sql-readonly");
+    const codeText = () => viewer.textContent;
+    const trigger = screen.getByTestId("order-sql-more-trigger");
+    await user.click(trigger);
+    expect(codeText()).toContain("SELECT 6;");
+    expect(codeText()).toContain("SELECT 8;");
+    expect(trigger.textContent).toContain("收起");
+    await user.click(trigger);
+    expect(codeText()).not.toContain("SELECT 6;");
+    expect(trigger.textContent).toContain("展开剩余 3 行");
+  });
+
+  it("omits the collapsible chrome entirely for short statements", async () => {
+    const user = userEvent.setup();
+    await reveal(user);
+    expect(screen.getByTestId("order-sql-line-count").textContent).toBe("1 行");
+    expect(screen.getByTestId("order-sql-readonly").textContent).toContain(
+      "UPDATE orders SET status = 1;",
+    );
+    expect(screen.queryByTestId("order-sql-more-trigger")).toBeNull();
   });
 });

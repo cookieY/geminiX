@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { HttpResponse, http } from "msw";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/test/msw/server";
-import { resetAdminFixture } from "@/shared/mock/admin-fixture";
+import { ADMIN_FIXTURE_CHANNEL_EMAIL_ID, resetAdminFixture } from "@/shared/mock/admin-fixture";
+import { openRowActions } from "@/test/row-actions";
 import { resetQueryFixture, seedQueryScenario } from "@/shared/mock/query-fixture";
 import { SessionProvider } from "@/features/auth/session-provider";
 import "@/shared/i18n";
@@ -170,16 +171,23 @@ describe("settings namespaces", () => {
 });
 
 
-describe("settings tabs (§18.47)", () => {
-  it("the AI-budget page carries the shared settings tab bar", async () => {
+describe("settings tabs (§18.47; AI预算迁出 2026-10-31)", () => {
+  it("the AI-budget page no longer carries the settings tab bar (moved to review engine)", async () => {
     stubSession(true);
     renderPage(<AdminAiBudgetPage />);
     expect(await screen.findByTestId("admin-settings-ai-budget")).toBeVisible();
-    // The five namespace tabs render with ai-budget active — the bar no
-    // longer disappears on the standalone page.
-    for (const label of ["通用", "查询", "执行", "品牌", "AI预算"]) {
-      expect(screen.getByRole("tab", { name: label })).toBeVisible();
+    // AI预算归审核引擎分组（owner裁定）——设置tab条不在此页渲染。
+    expect(screen.queryByTestId("settings-tab-general")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("settings-tab-ai-budget")).not.toBeInTheDocument();
+  });
+
+  it("the notifications page keeps the five-tab settings bar", async () => {
+    stubSession(true);
+    renderPage(<AdminNotificationsPage />);
+    for (const label of ["通用", "查询", "执行", "品牌", "通知"]) {
+      expect(await screen.findByRole("tab", { name: label })).toBeVisible();
     }
+    expect(screen.queryByTestId("settings-tab-ai-budget")).not.toBeInTheDocument();
   });
 });
 
@@ -196,16 +204,61 @@ describe("identity providers page", () => {
   });
 });
 
+describe("AI budget usage ring (2026-10-31三轮)", () => {
+  it("renders the today-usage ring with fixture summary totals", async () => {
+    stubSession(true);
+    renderPage(<AdminAiBudgetPage />);
+    const ring = await screen.findByTestId("ai-budget-usage-ring");
+    // fixture：daily 10000 minor=100；参考用量3.671纳单位→3.67主币单位。
+    await waitFor(() => { expect(ring.textContent).toContain("3.67"); });
+    expect(ring.textContent).toContain("100");
+    expect(ring.textContent).toContain("USD");
+  });
+});
+
 describe("notification channels page", () => {
   it("lists channels with secret presence and the Outbox deliveries (S007 three views)", async () => {
     stubSession(true);
     renderPage(<AdminNotificationsPage />);
     await screen.findByTestId("admin-notifications-table");
     expect(screen.getByTestId("admin-notifications-table").textContent).toContain("ops-mail");
-    // 投递记录移入三视图：切换到投递视图后断言。
-    screen.getByTestId("admin-notifications-view-deliveries").click();
+    // 投递记录移入三视图：切换到投递视图后断言。Base UI Tab 不响应程序化
+    // element.click()（激活走真实指针序列），须用 userEvent。
+    await userEvent.click(screen.getByTestId("admin-notifications-view-deliveries"));
     const deliveries = await screen.findByTestId("admin-deliveries-table");
     expect(deliveries.textContent).toContain("smtp_timeout");
+    // 四轮回归：单视图互斥——切到投递后渠道表格不再挂载。
+    expect(screen.queryByTestId("admin-notifications-table")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("admin-notifications-view-channels"));
+    await screen.findByTestId("admin-notifications-table");
+    expect(screen.queryByTestId("admin-deliveries-table")).not.toBeInTheDocument();
+  });
+
+  it("keeps the create button in the table card header, not the page header (四轮)", async () => {
+    stubSession(true);
+    renderPage(<AdminNotificationsPage />);
+    const create = await screen.findByTestId("admin-notifications-create");
+    // 按钮落在卡片头（card-action槽），不在页头actions。
+    expect(create.closest('[data-slot="card-action"]')).not.toBeNull();
+    expect(create.closest('[data-slot="page-actions"]')).toBeNull();
+  });
+
+  it("shows the test-delivery outcome on the channel row (async task poll)", async () => {
+    stubSession(true);
+    renderPage(<AdminNotificationsPage />);
+    await screen.findByTestId("admin-notifications-table");
+    await openRowActions(`admin-channel-actions-${ADMIN_FIXTURE_CHANNEL_EMAIL_ID}`);
+    await userEvent.click(screen.getByTestId(`admin-channel-test-${ADMIN_FIXTURE_CHANNEL_EMAIL_ID}`));
+    // 受理后先出现进行中占位；fixture任务在~900ms内到终态=成功。
+    const result = await screen.findByTestId(
+      `admin-channel-test-result-${ADMIN_FIXTURE_CHANNEL_EMAIL_ID}`,
+      {},
+      { timeout: 4000 },
+    );
+    await waitFor(
+      () => { expect(result.textContent).toContain("测试投递成功"); },
+      { timeout: 4000 },
+    );
   });
 });
 
@@ -213,7 +266,8 @@ describe("notification rules view (S007)", () => {
   it("lists rules with event vocabulary and no AI pre-review triggers", async () => {
     stubSession(true);
     renderPage(<AdminNotificationsPage />);
-    (screen.getByTestId("admin-notifications-view-rules")).click();
+    (await screen.findByTestId("admin-notifications-view-rules"));
+    await userEvent.click(screen.getByTestId("admin-notifications-view-rules"));
     await screen.findByTestId("admin-rules-table");
     const text = screen.getByTestId("admin-rules-table").textContent;
     expect(text).toContain("执行失败通知提交人");

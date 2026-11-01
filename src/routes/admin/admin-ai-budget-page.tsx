@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { CircleDollarSign, History, ShieldAlert } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
+import { ChartContainer, type ChartConfig } from "@/shared/components/ui/chart";
+import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 import type {
   AiBudgetSettings,
   SettingsImpactAssessment,
   SettingsValue,
 } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import {
+  useAiUsageSummaryToday,
   useAssessSettingsImpact,
   useReplaceSettings,
   useSettingsNamespace,
@@ -18,7 +21,6 @@ import { useSession } from "@/features/auth/session-provider";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { describeError } from "@/shared/api/error-display";
-import { SettingsNavTabs } from "@/routes/admin/settings-tabs";
 import { PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 import { ErrorState } from "@/shared/components/status/status-components";
@@ -53,8 +55,9 @@ import {
 } from "@/shared/components/ui/table";
 
 /**
- * AI预算 settings namespace (route /admin/settings/ai-budget; migration
- * contract §2 splits the legacy /manager/setting into per-namespace pages).
+ * AI预算 settings namespace (route /admin/review-engine/ai-budget —迁自
+ * /admin/settings/ai-budget，owner 2026-10-31：贴着审核引擎Provider域更顺手；
+ * 后端settings命名空间API不变).
  * R008 boundary made visible: only a global daily AI cost budget and a
  * provider cost alert threshold exist — no per-order token or cost budget
  * is configurable anywhere, and the page states that boundary explicitly.
@@ -72,6 +75,74 @@ const CURRENCIES = ["USD", "CNY", "EUR", "JPY", "GBP"] as const;
 
 function formFor(settings: AiBudgetSettings): AiBudgetSettings {
   return { ...settings };
+}
+
+/** 今日用量环图（owner 2026-10-31三轮，参考图：粗描边进度环+中心
+ * "已用 / 总量"）。数据=S008参考计价日汇总（纳单位→主币单位）对
+ * 单日预算（最小货币单位→主币单位）；无匹配币种汇总=诚实按0计。 */
+function BudgetUsageRing({
+  usedMajor,
+  budgetMajor,
+  currency,
+}: {
+  usedMajor: number;
+  budgetMajor: number;
+  currency: string;
+}) {
+  const { t } = useTranslation();
+  const budget = Math.max(budgetMajor, 0);
+  const used = Math.max(usedMajor, 0);
+  const pct = budget > 0 ? used / budget : 0;
+  const chartConfig = { used: { color: "var(--primary)" } } satisfies ChartConfig;
+  const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(2));
+  // recharts v3：环半径是图表级像素数（innerRadius/outerRadius只收number），
+  // 固定220px方形容器保证环/描边宽度稳定（描边≈outer−inner=26px）。
+  // ChartContainer默认aspect-video（16:9）会把svg撑成长方形（中心叠字上移、
+  // 说明文字被盖）。工具类互搏不可靠（twMerge不认v4尾部!后缀、样式表顺序
+  // 不可控，owner四轮两度复现288px高）——内联样式优先级必胜，直接钉死
+  // 220×220；initialDimension同值避免首测闪变。
+  return (
+    <div className="flex flex-col items-center gap-3" data-testid="ai-budget-usage-ring">
+      <div className="relative size-[220px]">
+        <ChartContainer
+          config={chartConfig}
+          className="size-[220px]"
+          style={{ width: 220, height: 220, aspectRatio: "auto" }}
+          initialDimension={{ width: 220, height: 220 }}
+        >
+          <RadialBarChart
+            data={[{ used: budget > 0 ? Math.min(used, budget) : 0 }]}
+            startAngle={90}
+            endAngle={-270}
+            innerRadius={84}
+            outerRadius={110}
+          >
+            <PolarAngleAxis
+              type="number"
+              domain={[0, budget > 0 ? budget : 1]}
+              tick={false}
+              axisLine={false}
+            />
+            <RadialBar
+              dataKey="used"
+              background={{ className: "fill-muted" }}
+              cornerRadius={13}
+              className="fill-primary"
+            />
+          </RadialBarChart>
+        </ChartContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <p className="text-2xl font-semibold tabular-nums text-foreground">
+            {fmt(used)} / {fmt(budget)}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            {t("admin.aiBudget.usageLabel", { currency })} · {(pct * 100).toFixed(0)}%
+          </p>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-xs">{t("admin.aiBudget.usageHint")}</p>
+    </div>
+  );
 }
 
 function AiBudgetPanel({
@@ -102,6 +173,11 @@ function AiBudgetPanel({
   const [assessment, setAssessment] = useState<SettingsImpactAssessment | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
+  // 今日参考用量（S008汇总）；币种与预算一致才可计，未匹配=0。
+  const usageQuery = useAiUsageSummaryToday(true);
+  const usageRow = usageQuery.data?.find((row) => row.currency === form.currency) ?? null;
+  const usedMajor =
+    usageRow !== null && usageRow.reference_amount !== "" ? Number(usageRow.reference_amount) / 1e9 : 0;
 
   const dirty = JSON.stringify(form) !== JSON.stringify(current.settings);
 
@@ -203,19 +279,28 @@ function AiBudgetPanel({
             <p className="text-muted-foreground text-xs">{t("admin.aiBudget.inputPriceHint")}</p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="ai-budget-output-price">{t("admin.aiBudget.outputPrice")}</Label>
-            <Input
-              id="ai-budget-output-price"
-              type="number"
-              min={0}
-              value={form.output_price_per_million_minor}
-              onChange={(event) => { setForm({ ...form, output_price_per_million_minor: Number(event.target.value) }); }}
-              data-testid="ai-budget-output-price"
-            />
-            <p className="text-muted-foreground text-xs">{t("admin.aiBudget.outputPriceHint")}</p>
-          </div>
+          <Label htmlFor="ai-budget-output-price">{t("admin.aiBudget.outputPrice")}</Label>
+          <Input
+            id="ai-budget-output-price"
+            type="number"
+            min={0}
+            value={form.output_price_per_million_minor}
+            onChange={(event) => { setForm({ ...form, output_price_per_million_minor: Number(event.target.value) }); }}
+            data-testid="ai-budget-output-price"
+          />
+          <p className="text-muted-foreground text-xs">{t("admin.aiBudget.outputPriceHint")}</p>
+        </div>
 
           <p className="text-muted-foreground text-xs">{t("admin.aiBudget.alertHint")}</p>
+        </div>
+
+        {/* 参考图1红框位：右列下方三行的用量环图（owner 2026-10-31三轮）。 */}
+        <div className="flex items-center justify-center md:col-start-2 md:row-start-3 md:row-span-3">
+          <BudgetUsageRing
+            usedMajor={usedMajor}
+            budgetMajor={form.daily_budget_minor / 100}
+            currency={form.currency}
+          />
         </div>
       </div>
       {errorKey !== null ? (
@@ -352,22 +437,24 @@ export default function AdminAiBudgetPage() {
         description={t("admin.aiBudget.description")}
         icon={CircleDollarSign}
         actions={
-          <>
-            <SettingsNavTabs current="ai-budget" />
-            {query.data !== undefined ? (
-              <Badge variant="outline" data-testid="ai-budget-version">
-                {t("admin.aiBudget.version", { version: query.data.version })}
-              </Badge>
-            ) : null}
-          </>
+          query.data !== undefined ? (
+            <Badge variant="outline" data-testid="ai-budget-version">
+              {t("admin.aiBudget.version", { version: query.data.version })}
+            </Badge>
+          ) : undefined
         }
       />
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16, ease: "easeOut" }}
-        className="flex flex-col gap-5"
-      >
+      {/* 与设置族四命名空间页同一动效（owner ruling 2026-10-31二轮：六个
+          设置tab切换一致）——AnimatePresence fade/rise，含exit。 */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="ai-budget"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className="flex flex-col gap-5"
+        >
       <Card>
         {query.isPending ? (
           <CardContent>
@@ -467,6 +554,7 @@ export default function AdminAiBudgetPage() {
         </CardContent>
       </Card>
       </motion.div>
+      </AnimatePresence>
     </PageLayout>
   );
 }
