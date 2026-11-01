@@ -86,13 +86,11 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await expect(page.getByTestId("changes-new-page")).toBeVisible();
       await page.getByTestId(`use-flow-${FIXTURE_FLOW_ID}`).click();
       await page.getByTestId("draft-title-input").fill("视觉基线草稿");
-      // Implicit drafts: running the review adopts + saves silently; the
-      // URL never moves.
+      // Ephemeral precheck (RCP-20261101): running the review sends the
+      // editor SQL verbatim to POST /review-runs — no draft is created or
+      // adopted, the URL never moves, and the page root stays draftless.
       await typeSql(page, "sql-editor", "UPDATE orders SET status = 1 WHERE user_id = 42;");
       await page.getByTestId("run-review").click();
-      await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
-        "data-draft-id", /.+/
-      );
       // The run button disables while queued/running and re-enables exactly
       // when the terminal state lands — a locale-neutral terminal signal
       // (fixture timeline ≈1.3s). The result card is fed by a follow-up read
@@ -103,6 +101,12 @@ export const KEY_PAGE_TYPES: KeyPageType[] = [
       await expect(page.getByTestId("run-review")).toBeEnabled({ timeout: 10_000 });
       await expect(page.getByTestId("review-status")).toBeVisible();
       await expect(page.getByTestId("review-counts")).toBeVisible({ timeout: 10_000 });
+      // Sampled AFTER the terminal state settles: a regression to
+      // adopt-on-precheck would set data-draft-id inside that window and
+      // fail here (an earlier sample would pass vacuously).
+      await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
+        "data-draft-id", /.+/
+      );
       // The verdict read and the run button settle independently: capture only
       // a state that holds for two samples, otherwise a busy runner records
       // the disabled button of a follow-up poll and reads as a pixel diff.

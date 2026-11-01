@@ -37,13 +37,13 @@ async function openDraftComposer(page: Page, title: string): Promise<void> {
 async function reviewToReady(page: Page): Promise<void> {
   await page.getByTestId("sql-editor").click();
   await page.keyboard.type(SQL_TEXT);
-  // Implicit save: the explicit save button is gone; running the review
-  // persists the typed SQL first (owner ruling 2026-10-24).
+  // 瞬态预审（RCP-20261101）：预审把编辑器SQL逐字送审，不落草稿；提交
+  // 时由 POST /change-orders 携带 {sql, run_id} 建单。
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
   );

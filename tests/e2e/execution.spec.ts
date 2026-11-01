@@ -59,9 +59,9 @@ async function submitAndApprove(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
-  // The first acting operation adopts the implicit draft silently; the page
-  // root carries its id once precheck has created and reviewed that draft.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  // 瞬态预审（RCP-20261101）：预审不领养；提交走 POST /change-orders
+  // 携带 {sql, run_id}，服务端比对送审文本。
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
   );

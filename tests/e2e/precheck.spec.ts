@@ -47,9 +47,9 @@ async function runReviewThroughUi(page: Page): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText(/审核结果完整|已阻断|部分完成|预审失败/, {
     timeout: 8_000,
   });
-  // Running the review is the acting operation that adopts the implicit
-  // draft and exposes its id on the page root.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  // 瞬态预审（RCP-20261101）：预审绝不领养——页面根不携带草稿id，
+  // 草稿只在 保存并返回 时创建。
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
   );
@@ -92,12 +92,13 @@ test("editing never auto-reviews; the explicit run produces Ready and unlocks su
   await page.waitForTimeout(2_000);
   expect(reviewRunCalls).toEqual([]);
 
-  // The explicit action creates exactly one run and reaches Ready.
+  // The explicit action creates exactly one run and reaches Ready. The run
+  // is ephemeral: no draft is adopted, the page root stays draftless.
   await page.getByTestId("run-review").click();
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
   );

@@ -38,8 +38,10 @@ async function openDraftComposer(page: Page, title: string): Promise<void> {
   await page.getByTestId("draft-title-input").fill(title);
 }
 
-/** Imports a SQL file through the real dialog and uploads it. */
-async function importSqlFile(page: Page, sql: string, name: string): Promise<string> {
+/** Imports a SQL file through the real dialog. The import is purely local
+ * (RCP-20261101): the text lands in the page's create-mode state and the
+ * browser-side digest drives the bulk view — no draft is created. */
+async function importSqlFile(page: Page, sql: string, name: string): Promise<void> {
   await page.getByTestId("open-bulk-import").click();
   await expect(page.getByTestId("bulk-import-dialog")).toBeVisible();
   await page.getByTestId("bulk-import-input").setInputFiles({
@@ -49,16 +51,11 @@ async function importSqlFile(page: Page, sql: string, name: string): Promise<str
   });
   await expect(page.getByTestId("bulk-import-ok")).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("bulk-import-confirm").click();
-  // Import confirmation is the first acting operation that adopts the
-  // implicit draft; its id then appears on the page root.
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  // 导入只在本地落SQL：页面根保持无草稿id，草稿仅由 保存并返回 创建。
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
-    { timeout: 15_000 },
   );
-  const draftId = await page.getByTestId("changes-new-page").getAttribute("data-draft-id");
-  if (draftId === null) throw new Error("bulk import did not adopt a draft");
-  return draftId;
 }
 
 function visibleRowCount(page: Page): Promise<number> {
@@ -85,8 +82,8 @@ test("100k-statement draft stays interactive in the virtualized browser", async 
   // The draft is bulk: the Monaco editor must not exist anywhere in the DOM.
   await expect(page.getByTestId("bulk-browser")).toBeVisible({ timeout: 30_000 });
   expect(await page.locator(".monaco-editor").count()).toBe(0);
-  // The server counts land via the draft refetch; pre-review the group
-  // figure is the labelled local estimate (also 2 for this workload).
+  // Pre-review the figures come from the local digest (RCP-20261101: import
+  // is local-only); the group figure carries the browser-side estimate label.
   await expect(page.getByTestId("capacity-statements")).toHaveText("100000", {
     timeout: 15_000,
   });
@@ -177,10 +174,12 @@ test("import can be cancelled mid-read without touching the draft", async ({ pag
   );
 });
 
-test("leaving and returning recovers the frozen review without re-running", async ({ page }) => {
+test("leaving loses the ephemeral review; re-entry never re-runs and auto-reveals the bulk draft", async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   await openDraftComposer(page, "断线恢复草稿");
-  const draftId = await importSqlFile(page, buildBulkSql(100000), "bulk-recovery.sql");
+  await importSqlFile(page, buildBulkSql(100000), "bulk-recovery.sql");
   await expect(page.getByTestId("capacity-statements")).toHaveText("100000", {
     timeout: 15_000,
   });
@@ -197,31 +196,28 @@ test("leaving and returning recovers the frozen review without re-running", asyn
   await expect(page.getByTestId("review-status")).toContainText(/已阻断|运行中|队列中/, {
     timeout: 15_000,
   });
-  // Disconnect equivalent: leave the workspace through the real list and
-  // reopen the adopted draft. The URL stayed on /changes/new during implicit
-  // adoption, so browser back cannot return to this draft. The page unmounts
-  // (event feed stops), and on re-entry it re-subscribes and re-fetches the
-  // frozen run from the server. (A full
-  // browser reload resets the in-memory mock world — documented mock-layer
-  // limitation, migration contract §11.4; run-recovery across real reloads
-  // is covered by the component suite.)
-  await page.getByRole("link", { name: "我的工单" }).click();
-  const draftRow = page.getByTestId("mine-draft-row").filter({ hasText: "断线恢复草稿" });
-  await expect(draftRow).toBeVisible({ timeout: 15_000 });
-  await draftRow.click();
-  await expect(page).toHaveURL(new RegExp(`/changes/drafts/${draftId}$`));
-  await expect(page.getByTestId("review-status")).toContainText("已阻断", { timeout: 60_000 });
 
-  // Re-entry starts without session plaintext: the browser is rebuilt only
-  // after an explicit, audited SQL reveal.
-  await expect(page.getByTestId("bulk-digest-pending")).toBeVisible();
-  await expect(page.getByTestId("bulk-browser")).toHaveCount(0);
-  await page.getByTestId("reveal-sql").click();
+  // 保存并返回 is the single adoption path (RCP-20261101): it creates the
+  // server draft envelope, PUTs the bulk SQL and leaves to 我的工单.
+  await page.getByTestId("wizard-save-draft").click();
+  const draftRow = page.getByTestId("mine-draft-row").filter({ hasText: "断线恢复草稿" });
+  await expect(draftRow).toBeVisible({ timeout: 30_000 });
+
+  // Re-entry: the ephemeral run lived only in the left page's client state —
+  // the fresh workspace honestly presents 未预审 and never fabricates a
+  // result (瞬态Run不落库; remount semantics pinned at component level).
+  await draftRow.click();
+  await expect(page).toHaveURL(/\/changes\/drafts\/[0-9a-f-]+$/);
+  await expect(page.getByTestId("review-status")).toContainText("未预审", {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("submit-draft")).toBeDisabled();
+
+  // Owner ruling 2026-11-01: entering a draft with SQL auto-reveals the
+  // audited plaintext — the bulk browser rebuilds without any manual click.
   await expect(page.getByTestId("bulk-browser")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("capacity-statements")).toHaveText("100000", { timeout: 30_000 });
-  await page.getByTestId("tab-findings").click();
-  await expect(
-    page.getByTestId("finding-item").filter({ hasText: "无 WHERE 条件的批量 DML" }),
-  ).toHaveCount(1);
+
+  // Nothing re-ran on its own: re-precheck stays an explicit user action.
   expect(runCreationCalls).toHaveLength(1);
 });

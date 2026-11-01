@@ -742,6 +742,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               headers: ifMatch(current.savedVersion),
             })) as unknown as ChangeDraft;
             store.markSaved(saved.version, saved.state, current.sql);
+            // Same stale-cache hazard as the first-adoption PUT below: the
+            // detail query may hold the envelope-only snapshot (has_sql
+            // false) from the failed first attempt's window.
+            void queryClient.invalidateQueries({ queryKey: ["change-draft", adoptedDraftId] });
           } catch (error) {
             showActionError(error, "replaceDraftSql");
             return null;
@@ -797,6 +801,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             headers: ifMatch(created.version),
           })) as unknown as ChangeDraft;
           store.markSaved(saved.version, saved.state, sqlAtCreate);
+          // The adoption PUT changes the draft row (has_sql/sql_size_bytes/
+          // statement_count/version); without this invalidation the detail
+          // query keeps serving the envelope-only snapshot for a full
+          // staleTime window, and a quick re-entry renders a SQL-less draft
+          // (empty editor, no auto-reveal). The completion PUT above shares
+          // the hazard; every plain save path invalidates too.
+          void queryClient.invalidateQueries({ queryKey: ["change-draft", created.id] });
         } catch (error) {
           showActionError(error, "replaceDraftSql");
           return null;
@@ -819,7 +830,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         setAdoptionPending(false);
       }
     }
-  }, [activeDraftId, createMutation, createRequestedFor, createTitle, selectedFlowId, showActionError, store, t]);
+  }, [activeDraftId, createMutation, createRequestedFor, createTitle, queryClient, selectedFlowId, showActionError, store, t]);
 
   // 批量导入只在本地落SQL（RCP-20261101）：服务端写入只剩 保存并返回；
   // 创建态未领养时导入文本进 createSql 本地态，领养/草稿态进编辑器store。

@@ -49,7 +49,9 @@ async function submitOrder(page: Page, title: string): Promise<void> {
   await expect(page.getByTestId("review-status")).toContainText("审核结果完整", {
     timeout: 8_000,
   });
-  await expect(page.getByTestId("changes-new-page")).toHaveAttribute(
+  // 瞬态预审（RCP-20261101）：预审不领养，提交时才把 {sql, run_id} 送到
+  // POST /change-orders。
+  await expect(page.getByTestId("changes-new-page")).not.toHaveAttribute(
     "data-draft-id",
     /.+/,
   );
