@@ -28,6 +28,7 @@
       "skills": "Skills",
       "knowledge": "Internal Experience",
       "providers": "Providers",
+      "aiBudget": "AI budget",
       "ruleSets": "Rule sets"
     },
     "homeNext": "Home (new)"
@@ -242,7 +243,9 @@
     "actions": "Actions",
     "clear": "Clear",
     "createdToast": "User created.",
-    "savedToast": "Saved."
+    "savedToast": "Saved.",
+    "showPlaintext": "Show plaintext",
+    "hidePlaintext": "Hide plaintext"
   },
   "table": {
     "pagination": {
@@ -323,6 +326,7 @@
       "summaryTitle": "Order summary",
       "summaryHint": "Review these details before submitting",
       "summary.unselected": "Not selected",
+      "timeline.unselected": "No flow selected",
       "summary.precheck": "AI precheck",
       "summary.requestedFor": "Scheduled for",
       "summary.datasources": "Target datasources",
@@ -330,7 +334,7 @@
       "precheck.idle": "Not run",
       "precheck.queued": "Queued",
       "precheck.running": "Reviewing",
-      "precheck.outdated": "Outdated",
+      "precheck.outdated": "SQL modified",
       "precheck.passed": "Passed",
       "precheck.failed": "Failed",
       "saveMeta": "Save details",
@@ -369,7 +373,7 @@
       "blocked": "Blocked",
       "partial": "Partial",
       "failed": "Review failed",
-      "outdated": "Result outdated"
+      "outdated": "SQL modified"
     },
     "stage": {
       "pending": "Pending",
@@ -394,8 +398,8 @@
       "idleDescription": "Run the AI precheck to see findings here.",
       "waitingTitle": "AI precheck in progress",
       "waitingDescription": "Findings will appear after every review stage completes.",
-      "staleTitle": "Findings are outdated",
-      "staleDescription": "This result belongs to older draft content or a previous flow. Run the AI precheck again.",
+      "staleTitle": "SQL modified",
+      "staleDescription": "This result reflects the SQL sent for the last precheck. Run the AI precheck again.",
       "loading": "Loading findings…",
       "incompleteTitle": "Review did not complete",
       "incompleteDescription": "These results cover only the review stages that completed. Do not treat them as confirmation that no risks were found. Any available findings remain listed below.",
@@ -408,7 +412,9 @@
       "groupOthers": "Other findings in this statement group",
       "subDetail": "Technical details",
       "copyCode": "Copy code",
-      "copyCodeDone": "Code copied"
+      "copyCodeDone": "Code copied",
+      "expiredTitle": "Precheck result expired",
+      "expiredDescription": "The precheck result has expired. Run the AI precheck again."
     },
     "evidence": {
       "open": "View evidence",
@@ -439,9 +445,8 @@
     "blocked": {
       "flowUpdated": "The flow template changed: reload the template and re-run every stage precheck.",
       "submitted": "The draft has been submitted as a work order.",
-      "unsaved": "There are unsaved SQL changes. Save the SQL first.",
       "gate": "Submission is blocked by the review gate",
-      "outdated": "The review was frozen on an older draft revision. Run the precheck again."
+      "outdated": "The SQL was modified. Run the precheck again."
     },
     "submit": {
       "ready": "Review is complete and submission is unlocked.",
@@ -663,6 +668,10 @@
       "reveal": "Reveal SQL plaintext",
       "revealNote": "Plaintext requires an explicit reveal, is watermarked with the viewer identity and stays valid for 5 minutes; every reveal and copy is audited.",
       "loading": "Loading SQL…",
+      "fileLabel": "SQL",
+      "lineCount": "{{count}} lines",
+      "showMore": "Show {{count}} more lines",
+      "collapse": "Collapse",
       "copy": "Copy",
       "close": "Hide",
       "validUntil": "Valid until {{time}}",
@@ -1069,7 +1078,74 @@
       "deleteTitle": "Delete provider",
       "deleteDescription": "Delete provider {{name}}? The review runtime will no longer select it.",
       "deleteErrorHint": "The provider is still referenced by the review runtime; disable it instead.",
-      "kindOpenaiCompatible": "OpenAI Compatible"
+      "kindOpenaiCompatible": "OpenAI Compatible",
+      "tabs": {
+        "connection": "Connection",
+        "generation": "Generation parameters",
+        "pricing": "Reference pricing"
+      },
+      "gen": {
+        "reasoningEffort": "Reasoning effort",
+        "reasoningEffortDefault": "Provider default",
+        "maxTokens": "Max output tokens",
+        "temperature": "Sampling temperature",
+        "hint": "Leave empty to use the provider default (the parameter is not sent); temperature 0 is an explicit value and is never treated as default. Saving any change triggers probe re-negotiation and updates the review plan identity.",
+        "revert": "Revert change",
+        "reverted": "Restored to initial",
+        "maxTokensRange": "256 – 200000",
+        "temperatureRange": "0 – 2; 0 is an explicit zero"
+      },
+      "pricing": {
+        "empty": "No reference rate version configured yet.",
+        "newVersion": "New rate version",
+        "currency": "Currency",
+        "timezone": "Billing timezone (IANA)",
+        "effectiveFrom": "Effective from",
+        "effectiveUntil": "Effective until (empty = open-ended, auto-closed when a newer version starts)",
+        "window": "Window",
+        "baseWindow": "Base price (all-day 00:00–24:00)",
+        "inputPrice": "Input price",
+        "outputPrice": "Output price",
+        "cachedRead": "Cached-read price",
+        "cachedWrite": "Cached-write price",
+        "unit": "CNY or USD / million tokens",
+        "crossMidnight": "End ≤ start is treated as cross-midnight and normalized into two same-day windows",
+        "addWindow": "Add window",
+        "removeWindow": "Remove",
+        "applyTemplate": "Apply global reference template",
+        "templateHint": "Fills the base window input/output prices from the global settings reference prices (explicit action; never overwrites filled values automatically)",
+        "declaration": "All prices and amounts on this page are reference-cost estimates — never a bill or an actual charge; actual billing is determined by the model provider.",
+        "usageDeclaration": "Usage statistics and call details follow the same reference basis: missing fields render as not reported / not computable, never as zero cost.",
+        "version": "Version",
+        "effective": "Effective",
+        "windows": "Windows",
+        "current": "Current",
+        "openEnded": "Open-ended",
+        "usage": "Usage statistics",
+        "usageSummary": "Reference-cost totals per currency (computable calls in range)",
+        "calls": "Call details",
+        "callTime": "Call time",
+        "stageTurn": "Stage/turn",
+        "params": "Parameter snapshot",
+        "rateSource": "Rate source",
+        "tokens": "Input/Output",
+        "cache": "Cache read/write",
+        "reasoningTokens": "Reasoning detail",
+        "amount": "Reference amount",
+        "basis": "Calculation",
+        "basisFull": "Full detail",
+        "basisPartial": "Partial detail",
+        "basisBase": "Base only",
+        "basisNone": "Not computable",
+        "notReported": "Not reported",
+        "notComputable": "Not computed",
+        "globalSettings": "Legacy global price",
+        "none": "No rate configured",
+        "rateVersion": "Rate version",
+        "created": "Created",
+        "createFailed": "Failed to save the rate version",
+        "close": "Close"
+      }
     },
     "aiBudget": {
       "title": "AI budget",
@@ -1121,7 +1197,9 @@
       "inputPrice": "Input price (per 1M tokens)",
       "outputPrice": "Output price (per 1M tokens)",
       "inputPriceHint": "Bill by actual token usage; both 0 = flat per-stage estimate. In minor currency units.",
-      "outputPriceHint": "Bill by actual token usage; both 0 = flat per-stage estimate. In minor currency units."
+      "outputPriceHint": "Bill by actual token usage; both 0 = flat per-stage estimate. In minor currency units.",
+      "usageLabel": "Used today · {{currency}}",
+      "usageHint": "Ring = today's reference cost vs daily budget (S008 reference pricing); calls without a configured rate are not computable."
     },
     "ruleSets": {
       "title": "Rule sets",
@@ -1213,6 +1291,7 @@
       "loadFailed": "Failed to load metadata",
       "insertTemplate": "Insert SELECT template",
       "viewStructure": "View table structure",
+      "copyName": "Copy table name",
       "masked": "masked"
     },
     "run": {
@@ -1600,6 +1679,7 @@
     "editTitle": "Edit channel: {{name}}",
     "formDescription": "Secrets never prefill.",
     "channels": "Channels",
+    "rules": "Rules",
     "channelsDescription": "Channel changes apply immediately; test deliveries go through the same Outbox loop.",
     "empty": "No notification channels.",
     "column": {
@@ -1640,7 +1720,12 @@
       "secretCreateHint": "Required on create.",
       "secretEditHint": "Leave empty to keep.",
       "secretWebhookCreateHint": "Paste the full webhook URL (for Feishu, a JSON that may include the signing secret); stored only, never displayed.",
-      "secretWebhookEditHint": "Leave empty to keep the stored webhook; enter a new value to replace it. Never displayed."
+      "secretWebhookEditHint": "Leave empty to keep the stored webhook; enter a new value to replace it. Never displayed.",
+      "webhook": "Webhook",
+      "webhookCreateHint": "Paste the robot webhook URL (https://oapi.dingtalk.com/robot/send?access_token=…) or just the access_token; stored only, never echoed back.",
+      "webhookEditHint": "Leave empty to keep the stored credential; to change either part, re-enter both the webhook and sign secret (full replacement, not echoed).",
+      "signSecret": "Sign secret",
+      "signSecretHint": "Optional. Required when the robot uses the sign security mode (SEC-prefixed key); stored encrypted with the webhook, never echoed."
     },
     "secretRequired": "A secret is required on create",
     "formFailed": "Save failed",
@@ -1653,7 +1738,13 @@
       "state": "Filter by state",
       "all": "All"
     },
-    "referencedRules": "This channel is still referenced by {{count}} notification rule(s) ({{names}}); deletion will fail. Adjust the rules first."
+    "referencedRules": "This channel is still referenced by {{count}} notification rule(s) ({{names}}); deletion will fail. Adjust the rules first.",
+    "webhookRequired": "A webhook is required when creating",
+    "testResult": {
+      "running": "Test delivery in progress… (asynchronous)",
+      "succeeded": "Test delivery succeeded",
+      "failed": "Test delivery failed"
+    }
   },
   "adminSettings": {
     "tab": {
@@ -1661,7 +1752,6 @@
       "query": "Query",
       "execution": "Execution",
       "branding": "Branding",
-      "aiBudget": "AI budget",
       "notifications": "Notifications"
     },
     "general": {

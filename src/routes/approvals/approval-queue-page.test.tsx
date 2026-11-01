@@ -107,7 +107,7 @@ function renderQueue() {
           <Routes>
             <Route path="/approvals/changes" element={<ApprovalQueuePage />} />
             <Route
-              path="/changes/orders/:orderId"
+              path="/approvals/orders/:orderId"
               element={<p data-testid="order-detail-target" />}
             />
           </Routes>

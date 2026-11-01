@@ -76,7 +76,9 @@ describe("review events wiring", () => {
     try {
       await startReviewEvents();
       stopReviewEvents();
-      // Drive a full run while the feed is down: the outbox holds the events.
+      // Drive the chain while the feed is down: the outbox holds the events
+      // (瞬态Run不发事件——RCP-20261101后端明示ephemeralFinish不发；这里
+      // 用提交工单产生持久域事件change_order.submitted).
       const create = (await (
         await fetch("/change-drafts", {
           method: "POST",
@@ -92,10 +94,19 @@ describe("review events wiring", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sql: "SELECT 1;" }),
       });
+      // RCP-20261101瞬态预审：POST /review-runs送当前SQL，响应直接给run_id。
       const run = (await (
-        await fetch(`/change-drafts/${create.data.id}/review-runs`, { method: "POST" })
-      ).json()) as { data: { result_ref: string | null } };
-      const runId = run.data.result_ref?.split("/").pop() ?? "";
+        await fetch("/review-runs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            flow_id: "4f6f1a2b-0000-4000-8000-000000000001",
+            draft_id: create.data.id,
+            sql: "SELECT 1;",
+          }),
+        })
+      ).json()) as { data: { run_id: string } };
+      const runId = run.data.run_id;
       await new Promise((resolve) => {
         setTimeout(resolve, 1_700);
       });
@@ -109,26 +120,44 @@ describe("review events wiring", () => {
           }>;
         };
       };
-      // The authoritative HTTP read model keeps the accepted frozen summary;
-      // the event notification omits these read-model-only fields so its
-      // strict domain-event schema can accept and deliver it.
+      // The authoritative HTTP read model keeps the accepted frozen summary.
       expect(frozenRun.data.stage_results[0]?.summary).toContain("AI 审核已完成");
       expect(frozenRun.data.stage_results[0]?.summary_locale).toBe("zh-CN");
+
+      // Submission materializes the ephemeral run and emits the persisted
+      // domain event (change_order.submitted) — the outbox holds it while
+      // the feed is down.
+      const submitted = (await (
+        await fetch("/change-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            flow_id: "4f6f1a2b-0000-4000-8000-000000000001",
+            draft_id: create.data.id,
+            sql: "SELECT 1;",
+            run_id: runId,
+          }),
+        })
+      ).json()) as { data: { id: string } };
+      const orderSubject = `change-orders/${submitted.data.id}`;
 
       // Immediate remount after stop: the client converges the previous loop
       // instead of silently dying (the stop→start race the review gate
       // caught), and the new transport drains the outbox from the resume
-      // point — the subscriber sees the terminal review event.
-      await startReviewEvents();
+      // point — the subscriber sees the submitted event.
+      // 订阅先于重启挂上：mock传输重启后立即整排清空outbox，
+      // 重启后再订阅会错过首发（竞态），先订阅再拉起才是对被测
+      // 行为（stop→start后outbox续传）的确定性断言。
       const client = getReviewEventClient();
       const seen: string[] = [];
-      client.subscribe(`review-runs/${runId}`, (event) => {
+      client.subscribe(orderSubject, (event) => {
         seen.push(event.type);
       });
+      await startReviewEvents();
       await new Promise((resolve) => {
         setTimeout(resolve, 600);
       });
-      expect(seen).toContain("io.yearning.v4.review.completed");
+      expect(seen).toContain("io.yearning.v4.change_order.submitted");
     } finally {
       mockFlag().VITE_ENABLE_MOCK = previous;
       stopReviewEvents();

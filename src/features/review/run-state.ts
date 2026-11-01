@@ -80,13 +80,6 @@ export function gateBlockers(gate: SubmissionGate | null | undefined): GateBlock
   }));
 }
 
-/** Draft states that carry a review result a local SQL edit would void. */
-const RESULT_STATES: readonly DraftState[] = ["ready", "blocked", "partial", "failed", "outdated"];
-
-export function hasReviewResult(state: DraftState | null | undefined): boolean {
-  return state !== null && state !== undefined && RESULT_STATES.includes(state);
-}
-
 export interface SubmissionDecision {
   submitEnabled: boolean;
   /** i18n key explaining a disabled submit; null when enabled. */
@@ -96,26 +89,27 @@ export interface SubmissionDecision {
 }
 
 export interface SubmissionInput {
+  /** Draft envelope state; only "submitted" still gates here (RCP-20261101:
+   * draft.state ∈ {draft, submitted} — review states moved onto the run). */
   draftState: DraftState | null;
   runPhase: RunPhase;
   gate: SubmissionGate | null | undefined;
-  /** Editor text differs from the last saved SQL — hash match is impossible. */
-  dirty: boolean;
-  flowUpdated: boolean;
   /**
-   * The presented run belongs to the current draft revision (run.draft_revision
-   * === draft.revision). A ready run frozen on older inputs must never unlock
-   * submission (deliverable: Ready失效处理).
+   * The editor text differs from the SQL sent for the last AI precheck
+   * (RCP-20261101-EPHEMERAL-PRECHECK). Submission carries the editor SQL
+   * verbatim and the server compares it with the prechecked text, so any
+   * local change must force a re-precheck first.
    */
-  reviewCurrent: boolean;
+  sqlChangedSincePrecheck: boolean;
+  flowUpdated: boolean;
 }
 
 /**
  * Mirrors the backend submission gate (R002) for presentation only: every
- * blocked outcome, incomplete result, high/critical finding, unsaved change,
- * stale template and stale revision keeps the submit action disabled with an
- * explanation. The backend re-validates all of it inside the submission
- * transaction; the enabled button is never the safety boundary.
+ * blocked outcome, incomplete result, high/critical finding, changed SQL and
+ * stale template keeps the submit action disabled with an explanation. The
+ * backend re-validates all of it inside the submission transaction; the
+ * enabled button is never the safety boundary.
  */
 export function submissionDecision(input: SubmissionInput): SubmissionDecision {
   if (input.flowUpdated) {
@@ -124,10 +118,7 @@ export function submissionDecision(input: SubmissionInput): SubmissionDecision {
   if (input.draftState === "submitted") {
     return { submitEnabled: false, reasonKey: "precheck.blocked.submitted", flowUpdated: false };
   }
-  if (input.dirty) {
-    return { submitEnabled: false, reasonKey: "precheck.blocked.unsaved", flowUpdated: false };
-  }
-  if (!input.reviewCurrent) {
+  if (input.sqlChangedSincePrecheck) {
     return { submitEnabled: false, reasonKey: "precheck.blocked.outdated", flowUpdated: false };
   }
   if (input.runPhase !== "ready") {
@@ -156,20 +147,19 @@ export function submissionDecision(input: SubmissionInput): SubmissionDecision {
 }
 
 /**
- * The phase the workspace should present. A local unsaved SQL edit voids any
- * prior result immediately (PRD F4: SQL变化后立即本地标记outdated), and a
- * server-side voided draft ("outdated") stays voided for its finished run —
- * only a newly active run presents a live phase over it.
+ * The phase the workspace should present (RCP-20261101-EPHEMERAL-PRECHECK):
+ * the run is ephemeral client state, so staleness is a pure local comparison
+ * — the editor text versus the SQL sent for the last precheck. A mismatch
+ * voids any finished result immediately (PRD F4: SQL变化后立即本地标记
+ * outdated); the draft envelope carries no review state anymore.
  */
-export function presentPhase(serverState: DraftState | null, runPhase: RunPhase, dirty: boolean): RunPhase {
-  // A run in flight always presents live progress, whatever the draft state.
+export function presentPhase(
+  runPhase: RunPhase,
+  sqlChangedSincePrecheck: boolean,
+  hasResult: boolean,
+): RunPhase {
+  // A run in flight always presents live progress, whatever changed locally.
   if (runPhase === "queued" || runPhase === "running") return runPhase;
-  if (serverState === "outdated") return "outdated";
-  if (dirty && hasReviewResult(serverState)) return "outdated";
-  if (runPhase !== "idle") return runPhase;
-  if (serverState === null) return "idle";
-  if (serverState === "draft" || serverState === "reviewing" || serverState === "submitted") {
-    return "idle";
-  }
-  return serverState;
+  if (sqlChangedSincePrecheck && hasResult) return "outdated";
+  return runPhase;
 }

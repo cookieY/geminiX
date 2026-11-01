@@ -23,20 +23,18 @@ import {
   listQuerySessionTables, listQuerySessions,
 } from "@/api/generated/client/query-sessions/query-sessions";
 import {
-  createChangeDraft, getChangeDraft, getReviewRun, replaceDraftSql, runDraftReview,
-  submitChangeDraft,
+  createChangeDraft, getReviewRun, replaceDraftSql, runDraftReview,
 } from "@/api/generated/client/change-drafts/change-drafts";
 import {
   cancelExecutionAttempt, createExecutionAttempt, createExecutionSchedule,
   createExecutionVerification, decideChangeOrder, getChangeOrder, getExecutionAttempt,
+  submitChangeDraft,
 } from "@/api/generated/client/change-orders/change-orders";
-import { getTask } from "@/api/generated/client/tasks/tasks";
 import { bootContract } from "./boot";
 import { mode, record } from "./harness";
 import { loginAs } from "./roles";
 
 interface IdVersion { id: string; version?: number; revision?: number }
-interface TaskView { id: string; state?: string; result_ref?: string | null }
 
 const asView = <T>(value: unknown): T => value as T;
 const suffix = crypto.randomUUID().slice(0, 8);
@@ -93,21 +91,18 @@ async function draftToSubmittedOrder(title: string): Promise<string> {
       { headers: idem() }));
   const draft = asView<IdVersion | undefined>(created.value);
   if (!draft?.id) throw new Error(`draft not created: ${created.errCode} ${created.status}`);
-  const withSql = await record("replaceDraftSql", "exec-chain", () =>
+  await record("replaceDraftSql", "exec-chain", () =>
     replaceDraftSql(draft.id, { sql: DDL }, { headers: ifMatch(draftETag(draft), true) }));
-  const current = asView<IdVersion | undefined>(withSql.value) ?? draft;
-  const reviewTask = await record("runDraftReview", "exec-chain", () =>
-    runDraftReview(draft.id, { headers: ifMatch(draftETag(current), true) }));
-  let task = asView<TaskView | undefined>(reviewTask.value) ?? null;
+  // RCP-20261101瞬态预审：请求体携带当前SQL逐字送审，响应直接给run_id
+  // （不再经过任务行），轮询GET /review-runs/{id}至终态。
+  const started = await record("runDraftReview", "exec-chain", () =>
+    runDraftReview({ flow_id: changeFlowId, draft_id: draft.id, sql: DDL },
+      { headers: idem() }));
+  const startView = asView<{ run_id?: string; result_ref?: string | null } | undefined>(started.value);
+  const match = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(startView?.result_ref ?? "");
+  const runId = startView?.run_id ?? match?.[1] ?? null;
+  if (!runId) throw new Error(`review start carries no run id (${started.errCode} ${started.status})`);
   const deadline = Date.now() + 120_000;
-  while (task != null && task.state !== "succeeded" && task.state !== "failed" && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 700));
-    const currentTask: TaskView | null = task;
-    task = asView<TaskView | undefined>(await getTask(currentTask!.id)) ?? null;
-  }
-  const match = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(task?.result_ref ?? "");
-  const runId = match?.[1] ?? null;
-  if (!runId) throw new Error(`review task carries no run id (state=${task?.state})`);
   let run = asView<{ state?: string } | undefined>(await getReviewRun(runId));
   while (run?.state !== "ready" && run?.state !== "failed" && run?.state !== "blocked"
     && run?.state !== "partial" && run?.state !== "timeout" && Date.now() < deadline) {
@@ -115,11 +110,11 @@ async function draftToSubmittedOrder(title: string): Promise<string> {
     run = asView<{ state?: string } | undefined>(await getReviewRun(runId));
   }
   expect(run?.state).toBe("ready");
-  // The submit gate pins the row version: refetch the draft first. The
-  // submission endpoint requires an Idempotency-Key.
-  const fresh = asView<IdVersion>(await getChangeDraft(draft.id));
+  // RCP-20261101提交：POST /change-orders携带{flow, draft, sql, run_id}，
+  // 服务端比对送审文本；不再需要草稿If-Match。幂等键必填。
   const submitted = await record("submitChangeDraft", "exec-chain", () =>
-    submitChangeDraft(draft.id, { headers: ifMatch(draftETag(fresh), true) }));
+    submitChangeDraft({ flow_id: changeFlowId, draft_id: draft.id, sql: DDL, run_id: runId! },
+      { headers: idem() }));
   const order = asView<IdVersion | undefined>(submitted.value);
   if (!order?.id) throw new Error(`order not submitted: ${submitted.errCode} ${submitted.status}`);
   return order.id;

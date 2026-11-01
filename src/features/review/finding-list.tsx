@@ -44,6 +44,7 @@ export type FindingListState =
   | { status: "idle" }
   | { status: "waiting" }
   | { status: "stale" }
+  | { status: "expired" }
   | { status: "loading" }
   | { status: "error"; error: unknown; operationId?: string }
   | { status: "incomplete"; findings: ReviewFinding[] }
@@ -187,6 +188,13 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
             <CircleAlert className="size-4" aria-hidden />
             <AlertTitle>{t("precheck.findings.staleTitle")}</AlertTitle>
             <AlertDescription>{t("precheck.findings.staleDescription")}</AlertDescription>
+          </Alert>
+        )}
+        {state.status === "expired" && (
+          <Alert data-testid="findings-expired">
+            <CircleAlert className="size-4" aria-hidden />
+            <AlertTitle>{t("precheck.findings.expiredTitle")}</AlertTitle>
+            <AlertDescription>{t("precheck.findings.expiredDescription")}</AlertDescription>
           </Alert>
         )}
         {state.status === "loading" && (

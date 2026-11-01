@@ -30,14 +30,11 @@ import {
   revealRawReviewEvidence,
 } from "@/api/generated/client/change-orders/change-orders";
 import { getCurrentAnnouncement } from "@/api/generated/client/announcements/announcements";
-import { getTask } from "@/api/generated/client/tasks/tasks";
 import { bootContract } from "./boot";
 import { mode, record } from "./harness";
 import { loginAs } from "./roles";
 
 interface IdVersion { id: string; version?: number; revision?: number }
-interface TaskView { id: string; state?: string; result_ref?: string | null }
-
 const asView = <T>(value: unknown): T => value as T;
 const suffix = crypto.randomUUID().slice(0, 8);
 // §18.74：If-Match 目标是行version（评审完成后SQL revision与它分叉，
@@ -252,25 +249,21 @@ describe("review evidence family", () => {
         { headers: idem() }));
     const draft = asView<IdVersion | undefined>(created.value);
     if (!draft?.id) throw new Error(`draft not created: ${created.errCode} ${created.status}`);
-    const withSql = await record("replaceDraftSql", "evidence-chain", () =>
-      replaceDraftSql(draft.id, { sql: "create table if not exists f12_contract_b4 (id bigint primary key);" },
+    const evidenceSql = "create table if not exists f12_contract_b4 (id bigint primary key);";
+    await record("replaceDraftSql", "evidence-chain", () =>
+      replaceDraftSql(draft.id, { sql: evidenceSql },
         { headers: ifMatch(draftETag(draft), true) }));
-    const current = asView<IdVersion | undefined>(withSql.value) ?? draft;
-    const reviewTask = await record("runDraftReview", "evidence-chain", () =>
-      runDraftReview(draft.id, { headers: ifMatch(draftETag(current), true) }),
+    // RCP-20261101瞬态预审：请求体携带当前SQL逐字送审，响应直接给run_id
+    // （不再经过任务行），轮询GET /review-runs/{id}至终态。
+    const started = await record("runDraftReview", "evidence-chain", () =>
+      runDraftReview({ flow_id: baseFlowId, draft_id: draft.id, sql: evidenceSql },
+        { headers: idem() }),
       mode === "real" ? "stub-backed review (low-severity finding)" : undefined);
-    // Poll the review task, then derive the run id from its result_ref —
-    // the mock publishes `/review-runs/<id>`, the backend `sql_grouping/<id>`.
-    let task = asView<TaskView | undefined>(reviewTask.value) ?? null;
+    const startView = asView<{ run_id?: string; result_ref?: string | null } | undefined>(started.value);
+    const match = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(startView?.result_ref ?? "");
+    const runId = startView?.run_id ?? match?.[1] ?? null;
+    expect(runId, `review start carries the run id (${started.errCode} ${started.status})`).not.toBeNull();
     const deadline = Date.now() + 120_000;
-    while (task != null && task.state !== "succeeded" && task.state !== "failed" && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 700));
-      const currentTask: TaskView | null = task;
-      task = asView<TaskView | undefined>(await getTask(currentTask!.id)) ?? null;
-    }
-    const match = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(task?.result_ref ?? "");
-    const runId = match?.[1] ?? null;
-    expect(runId, `review task result_ref carries the run id (state=${task?.state})`).not.toBeNull();
     let run = asView<{ state?: string } | undefined>(await getReviewRun(runId!));
     while (run?.state !== "ready" && run?.state !== "failed" && run?.state !== "blocked"
       && run?.state !== "partial" && run?.state !== "timeout" && Date.now() < deadline) {

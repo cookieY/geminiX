@@ -51,7 +51,7 @@ describe("review fixture negative paths (coverage sweep)", () => {
     expect(copy.body.err_code).toBe(1002);
   });
 
-  it("rejects run-review across the draft state machine", async () => {
+  it("guards the ephemeral precheck body and its draft anchor (RCP-20261101)", async () => {
     async function createDraft(title: string): Promise<string> {
       const created = (await req("/change-drafts", {
           method: "POST",
@@ -60,26 +60,36 @@ describe("review fixture negative paths (coverage sweep)", () => {
         })).body as { data: { id: string } };
       return created.data.id;
     }
-    // No SQL yet: 1001.
-    const emptyId = await createDraft("空SQL草稿");
-    const empty = await jsonPost(`/change-drafts/${emptyId}/review-runs`, {});
+    // 空SQL：1001并把原因放meta.detail（F-UX-003）。
+    const empty = await jsonPost("/review-runs", { flow_id: FIXTURE_FLOW_ID, sql: "" });
     expect(empty.body.err_code).toBe(1001);
 
-    // A submitted draft: 1010 already submitted (drive through the fixture
-    // helpers: save, run to ready, submit needs a gate — instead reuse the
-    // reviewing guard by starting a run and racing a second one).
-    const draftId = await createDraft("状态机草稿");
-    await fetch(`/change-drafts/${draftId}/sql`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sql: "UPDATE orders SET status = 1 WHERE user_id = 42;" }),
+    // 非法请求体（缺sql/flow_id）：1001。
+    expect((await jsonPost("/review-runs", { flow_id: FIXTURE_FLOW_ID })).body.err_code).toBe(1001);
+    expect((await jsonPost("/review-runs", { sql: "SELECT 1;" })).body.err_code).toBe(1001);
+
+    // draft_id仅UI锚定：未知草稿1002；流程不一致1001；正常锚定放行。
+    const draftId = await createDraft("锚定校验草稿");
+    expect(
+      (await jsonPost("/review-runs", {
+        flow_id: FIXTURE_FLOW_ID,
+        draft_id: "7e6f1a2b-0000-4000-8000-00000000dead",
+        sql: "SELECT 1;",
+      })).body.err_code,
+    ).toBe(1002);
+    expect(
+      (await jsonPost("/review-runs", {
+        flow_id: "99999999-0000-4000-8000-0000000000ff",
+        draft_id: draftId,
+        sql: "SELECT 1;",
+      })).body.err_code,
+    ).toBe(1001);
+    const ok = await jsonPost("/review-runs", {
+      flow_id: FIXTURE_FLOW_ID,
+      draft_id: draftId,
+      sql: "SELECT 1;",
     });
-    const first = await jsonPost(`/change-drafts/${draftId}/review-runs`, {});
-    expect(first.body.err_code).toBe(0);
-    // reviewing: second run must 1010 (run in flight — the fixture advances
-    // queued→running on timers; either in-flight state rejects).
-    const second = await jsonPost(`/change-drafts/${draftId}/review-runs`, {});
-    expect([0, 1010]).toContain(second.body.err_code);
+    expect(ok.body.err_code).toBe(0);
   });
 
   it("returns the anonymous problem shape for a foreign-owner draft read", async () => {
@@ -145,26 +155,25 @@ describe("review fixture negative paths (coverage sweep)", () => {
   });
 
   it("sweeps review-run, findings, evidence and raw-reveal guards", async () => {
-    // Drive a draft to a finished run (fixture timers 400/900ms), then hit
-    // the read guards around runs/findings/evidence.
-    async function createReadyDraft(): Promise<string> {
-      const created = (await req("/change-drafts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "守卫扫雷草稿" }),
-        })).body as { data: { id: string } };
-      const draftId = created.data.id;
-      await fetch(`/change-drafts/${draftId}/sql`, {
-        method: "PUT",
+    // Drive an ephemeral precheck to a finished run (fixture timers
+    // 400/900ms), then hit the read guards around runs/findings/evidence.
+    const created = (await req("/change-drafts", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sql: "UPDATE orders SET status = 1 WHERE user_id = 42;" }),
-      });
-      await fetch(`/change-drafts/${draftId}/review-runs`, { method: "POST" });
-      return draftId;
-    }
-    const draftId = await createReadyDraft();
-    const draft = (await req(`/change-drafts/${draftId}`)).body as { data: { review_run_id: string | null } };
-    expect(draft.data.review_run_id).not.toBeNull();
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, title: "守卫扫雷草稿" }),
+      })).body as { data: { id: string } };
+    const started = await jsonPost("/review-runs", {
+      flow_id: FIXTURE_FLOW_ID,
+      draft_id: created.data.id,
+      sql: "UPDATE orders SET status = 1 WHERE user_id = 42;",
+    });
+    const runId = (started.body.data as { run_id: string }).run_id;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1_600);
+    });
+    // 预审不写草稿：run只挂在瞬态世界里（RCP-20261101）。
+    const draft = (await req(`/change-drafts/${created.data.id}`)).body as { data: { review_run_id: string | null } };
+    expect(draft.data.review_run_id).toBeNull();
 
     // Unknown run/findings ids → 1002.
     expect((await req("/review-runs/7e6f1a2b-0000-4000-8000-00000000dead")).body.err_code).toBe(1002);
@@ -173,14 +182,15 @@ describe("review fixture negative paths (coverage sweep)", () => {
     expect((await req("/review-findings/7e6f1a2b-0000-4000-8000-00000000dead/evidence")).body.err_code).toBe(1002);
     // Raw reveals: unknown evidence 1002, non-retained 1011.
     expect((await jsonPost("/review-evidence/7e6f1a2b-0000-4000-8000-00000000dead/raw-reveals", {})).body.err_code).toBe(1002);
-    // A live finding's evidence without a raw payload answers 1011.
-    const findings = (await req(`/review-runs/${String(draft.data.review_run_id)}/findings`)).body as { data: { items: Array<{ id: string; evidence_ids: string[] }> } };
+    // RCP-20261101瞬态预审：送审证据在内存携带raw信封——raw reveal直接
+    // 成功（err_code 0）；1011（raw未保留）只适用于无raw的物化证据。
+    const findings = (await req(`/review-runs/${runId}/findings`)).body as { data: { items: Array<{ id: string; evidence_ids: string[] }> } };
     const withEvidence = findings.data.items.find((entry) => entry.evidence_ids.length > 0);
     const firstEvidenceId = withEvidence?.evidence_ids[0] ?? "";
     if (firstEvidenceId !== "") {
       expect(
         (await jsonPost(`/review-evidence/${firstEvidenceId}/raw-reveals`, {})).body.err_code,
-      ).toBe(1011);
+      ).toBe(0);
     }
     // Cancellation for an unknown attempt → 1002.
     expect((await jsonPost("/execution-attempts/7e6f1a2b-0000-4000-8000-00000000dead/cancellation", { reason: "x" })).body.err_code).toBe(1002);

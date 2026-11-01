@@ -28,6 +28,7 @@
       "skills": "审核技能",
       "knowledge": "内部经验",
       "providers": "Provider管理",
+      "aiBudget": "AI预算",
       "ruleSets": "规则集"
     },
     "homeNext": "首页（新版）"
@@ -242,7 +243,9 @@
     "actions": "操作",
     "clear": "清空",
     "createdToast": "用户已创建。",
-    "savedToast": "已保存。"
+    "savedToast": "已保存。",
+    "showPlaintext": "显示明文",
+    "hidePlaintext": "隐藏明文"
   },
   "table": {
     "pagination": {
@@ -323,6 +326,7 @@
       "summaryTitle": "工单摘要",
       "summaryHint": "提交前请核对以下信息",
       "summary.unselected": "未选择",
+      "timeline.unselected": "未选择流程",
       "summary.precheck": "AI 预审",
       "summary.requestedFor": "期望执行",
       "summary.datasources": "目标数据源",
@@ -330,7 +334,7 @@
       "precheck.idle": "未运行",
       "precheck.queued": "排队中",
       "precheck.running": "审核中",
-      "precheck.outdated": "已过期",
+      "precheck.outdated": "SQL已修改",
       "precheck.passed": "通过",
       "precheck.failed": "未通过",
       "saveMeta": "保存信息",
@@ -369,7 +373,7 @@
       "blocked": "已阻断",
       "partial": "部分完成",
       "failed": "预审失败",
-      "outdated": "结果已失效"
+      "outdated": "SQL已修改"
     },
     "stage": {
       "pending": "等待",
@@ -394,8 +398,8 @@
       "idleDescription": "运行 AI 预审后，风险发现会显示在这里。",
       "waitingTitle": "AI 预审进行中",
       "waitingDescription": "风险发现将在所有审核阶段完成后显示。",
-      "staleTitle": "风险发现已失效",
-      "staleDescription": "当前结果来自旧版草稿或旧流程，请重新运行 AI 预审。",
+      "staleTitle": "SQL已修改",
+      "staleDescription": "当前结果对应上次送审的SQL，请重新运行 AI 预审。",
       "loading": "正在加载风险发现…",
       "incompleteTitle": "审核未完整完成",
       "incompleteDescription": "当前结果只代表已完成的审核阶段，不能据此认定本次预审未发现风险。已有发现仍可在下方查看。",
@@ -408,7 +412,9 @@
       "groupOthers": "同组其他发现",
       "subDetail": "技术细节",
       "copyCode": "复制代码",
-      "copyCodeDone": "代码已复制"
+      "copyCodeDone": "代码已复制",
+      "expiredTitle": "预审结果已过期",
+      "expiredDescription": "预审结果已过期，请重新运行 AI 预审。"
     },
     "evidence": {
       "open": "查看审核证据",
@@ -439,9 +445,8 @@
     "blocked": {
       "flowUpdated": "流程模板已更新：请重新加载模板并重新运行全部阶段预审。",
       "submitted": "草稿已提交为工单。",
-      "unsaved": "存在未保存的SQL修改，请先保存SQL。",
       "gate": "提交流程被审核门禁阻断",
-      "outdated": "预审结果基于旧版本草稿，请重新运行预审。"
+      "outdated": "SQL已修改，请重新预审。"
     },
     "submit": {
       "ready": "审核结果完整，可以提交审批。",
@@ -663,6 +668,10 @@
       "reveal": "查看SQL明文",
       "revealNote": "明文经显式Reveal获取，带查看者水印，5分钟内有效；每次查看与复制均写审计。",
       "loading": "加载 SQL 原文…",
+      "fileLabel": "SQL",
+      "lineCount": "{{count}} 行",
+      "showMore": "展开剩余 {{count}} 行",
+      "collapse": "收起",
       "copy": "复制",
       "close": "收起",
       "validUntil": "有效期至 {{time}}",
@@ -1069,7 +1078,74 @@
       "deleteTitle": "删除 Provider",
       "deleteDescription": "确认删除 Provider {{name}}？删除后审核运行时将不再选择该 Provider。",
       "deleteErrorHint": "Provider 仍被审核运行时引用，删除失败；可先停用。",
-      "kindOpenaiCompatible": "OpenAI Compatible"
+      "kindOpenaiCompatible": "OpenAI Compatible",
+      "tabs": {
+        "connection": "连接配置",
+        "generation": "生成参数",
+        "pricing": "参考计价"
+      },
+      "gen": {
+        "reasoningEffort": "推理等级",
+        "reasoningEffortDefault": "服务商默认",
+        "maxTokens": "最大输出 Token",
+        "temperature": "采样温度",
+        "hint": "留空=使用服务商默认（请求不携带该参数）；temperature 填 0 是显式取值，不会按默认处理。修改任意参数保存后触发探针重新协商，评审计划身份随之更新。",
+        "revert": "撤销修改",
+        "reverted": "已恢复初始值",
+        "maxTokensRange": "256 – 200000",
+        "temperatureRange": "0 – 2；0 为显式零"
+      },
+      "pricing": {
+        "empty": "尚未配置参考费率版本。",
+        "newVersion": "新建费率版本",
+        "currency": "币种",
+        "timezone": "计费时区（IANA）",
+        "effectiveFrom": "生效自",
+        "effectiveUntil": "生效至（留空=开放，直至新版本起点自动收口）",
+        "window": "时段",
+        "baseWindow": "基础价（全天 00:00–24:00）",
+        "inputPrice": "输入价",
+        "outputPrice": "输出价",
+        "cachedRead": "缓存读取价",
+        "cachedWrite": "缓存写入价",
+        "unit": "元或美元 / 百万 Token",
+        "crossMidnight": "结束时间≤开始时间按跨午夜处理（拆分为两段同日窗口）",
+        "addWindow": "添加时段",
+        "removeWindow": "删除",
+        "applyTemplate": "应用全局参考价模板",
+        "templateHint": "把全局设置中的输入/输出参考价填入基础时段（显式动作，不自动覆盖已填值）",
+        "declaration": "本页所有价格与金额均为参考成本估算，不构成账单或实际扣款依据；实际计费以模型服务商账单为准。",
+        "usageDeclaration": "费用统计与调用明细同样为参考口径：缺失字段显示「未返回/未计算」，不代表零成本。",
+        "version": "版本",
+        "effective": "生效期",
+        "windows": "时段数",
+        "current": "当前生效",
+        "openEnded": "开放",
+        "usage": "费用统计",
+        "usageSummary": "按币种分组的参考费用合计（统计期内可计算调用）",
+        "calls": "调用明细",
+        "callTime": "调用时间",
+        "stageTurn": "阶段/轮次",
+        "params": "参数快照",
+        "rateSource": "价格来源",
+        "tokens": "输入/输出",
+        "cache": "缓存读/写",
+        "reasoningTokens": "推理明细",
+        "amount": "参考金额",
+        "basis": "计算方式",
+        "basisFull": "完整明细",
+        "basisPartial": "部分明细",
+        "basisBase": "仅基础价",
+        "basisNone": "未计算",
+        "notReported": "未返回",
+        "notComputable": "未计算",
+        "globalSettings": "全局兼容价",
+        "none": "未配置费率",
+        "rateVersion": "费率版本",
+        "created": "创建时间",
+        "createFailed": "费率保存失败",
+        "close": "关闭"
+      }
     },
     "aiBudget": {
       "title": "AI 预算",
@@ -1121,7 +1197,9 @@
       "inputPrice": "输入单价（每百万token）",
       "outputPrice": "输出单价（每百万token）",
       "inputPriceHint": "按实际token用量计价；两项均为0时回退每阶段固定估算。最小货币单位计。",
-      "outputPriceHint": "按实际token用量计价；两项均为0时回退每阶段固定估算。最小货币单位计。"
+      "outputPriceHint": "按实际token用量计价；两项均为0时回退每阶段固定估算。最小货币单位计。",
+      "usageLabel": "今日已用 · {{currency}}",
+      "usageHint": "环图=今日参考费用/单日预算（S008参考计价口径）；未配置费率的调用不可计。"
     },
     "ruleSets": {
       "title": "规则集",
@@ -1213,6 +1291,7 @@
       "loadFailed": "元数据加载失败",
       "insertTemplate": "插入 SELECT 模板",
       "viewStructure": "查看表结构",
+      "copyName": "复制表名",
       "masked": "脱敏"
     },
     "run": {
@@ -1600,6 +1679,7 @@
     "editTitle": "编辑通道：{{name}}",
     "formDescription": "Secret永不回填。",
     "channels": "通知通道",
+    "rules": "通知规则",
     "channelsDescription": "通道变更即时生效；测试投递走同一Outbox链路。",
     "empty": "暂无通知通道。",
     "column": {
@@ -1640,7 +1720,12 @@
       "secretCreateHint": "创建时必填。",
       "secretEditHint": "留空保持现状。",
       "secretWebhookCreateHint": "粘贴完整Webhook URL（飞书可含签名Secret的JSON）；仅保存，不回显。",
-      "secretWebhookEditHint": "留空=保持已存Webhook；输入新值=替换，不回显。"
+      "secretWebhookEditHint": "留空=保持已存Webhook；输入新值=替换，不回显。",
+      "webhook": "Webhook",
+      "webhookCreateHint": "粘贴机器人Webhook地址（https://oapi.dingtalk.com/robot/send?access_token=…），也可只填 access_token；仅保存，不回显。",
+      "webhookEditHint": "留空=保持已存凭据；修改任一项需同时重填Webhook与加签Secret（整体替换，不回显）。",
+      "signSecret": "加签Secret",
+      "signSecretHint": "可选。机器人安全设置=加签模式时必填（SEC开头密钥）；与Webhook一同加密保存，不回显。"
     },
     "secretRequired": "创建时必须提供Secret",
     "formFailed": "保存失败",
@@ -1653,7 +1738,13 @@
       "state": "按状态筛选",
       "all": "全部"
     },
-    "referencedRules": "该渠道仍被 {{count}} 条通知规则引用（{{names}}）；删除将失败，请先调整规则。"
+    "referencedRules": "该渠道仍被 {{count}} 条通知规则引用（{{names}}）；删除将失败，请先调整规则。",
+    "webhookRequired": "创建时必须提供Webhook",
+    "testResult": {
+      "running": "测试投递进行中…（异步执行，稍候）",
+      "succeeded": "测试投递成功",
+      "failed": "测试投递失败"
+    }
   },
   "adminSettings": {
     "tab": {
@@ -1661,7 +1752,6 @@
       "query": "查询",
       "execution": "执行",
       "branding": "品牌",
-      "aiBudget": "AI预算",
       "notifications": "通知"
     },
     "general": {

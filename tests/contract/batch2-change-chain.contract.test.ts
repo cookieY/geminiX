@@ -14,14 +14,14 @@ import {
   createChangeDraft, deleteChangeDraft, getChangeDraft, getReviewRun,
   listMyFlowDatasourceColumns, listMyFlowDatasourceSchemas, listMyFlowDatasourceTables,
   listReviewRunFindings, revealDraftSql, replaceDraftSql, runDraftReview,
-  submitChangeDraft, updateChangeDraft,
+  updateChangeDraft,
 } from "@/api/generated/client/change-drafts/change-drafts";
 import {
   cancelExecutionAttempt, copyChangeOrderToDraft, createChangeOrderComment,
   createExecutionAttempt, decideChangeOrder, getChangeOrder, getExecutionAttempt,
   listChangeOrderComments, listChangeOrderTimeline, listExecutionAttemptStatements,
-  listOrderReviewFindings, recordOrderSqlCopy, revealOrderSql, voidChangeOrder,
-  withdrawChangeOrder,
+  listOrderReviewFindings, recordOrderSqlCopy, revealOrderSql, submitChangeDraft,
+  voidChangeOrder, withdrawChangeOrder,
 } from "@/api/generated/client/change-orders/change-orders";
 import { getTask } from "@/api/generated/client/tasks/tasks";
 import { bootContract } from "./boot";
@@ -42,9 +42,12 @@ const headers = (version?: number, idem = true): Record<string, string> => ({
   ...(idem ? { "Idempotency-Key": `f12-contract-${crypto.randomUUID()}` } : {}),
 });
 
-function runIdFromTask(resultRef: string | null | undefined): string | null {
-  if (!resultRef) return null;
-  const m = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(resultRef);
+function runIdFromStart(value: unknown): string | null {
+  const direct = asView<{ run_id?: string } | undefined>(value)?.run_id;
+  if (direct) return direct;
+  const ref = asView<TaskView | undefined>(value)?.result_ref;
+  if (!ref) return null;
+  const m = /(?:sql_grouping|review-runs)\/([0-9a-f-]{36})/i.exec(ref);
   return (m?.[1] as string | undefined) ?? null;
 }
 
@@ -83,22 +86,17 @@ async function draftToSubmittedOrder(title: string): Promise<{ draftId: string; 
       { headers: { "Idempotency-Key": crypto.randomUUID() } }));
   const draft = asView<IdVersion | undefined>(created.value);
   if (!draft?.id) throw new Error(`draft not created: ${created.errCode} ${created.status}`);
-  const withSql = await record("replaceDraftSql", title, () =>
+  await record("replaceDraftSql", title, () =>
     replaceDraftSql(draft.id, { sql: DDL }, { headers: headers(draftETag(draft)) }));
-  const current = asView<IdVersion | undefined>(withSql.value) ?? draft;
-  const reviewTask = await record("runDraftReview", title, () =>
-    runDraftReview(draft.id, { headers: headers(draftETag(current)) }));
-  let task = asView<TaskView | undefined>(reviewTask.value) ?? null;
-  const deadline = Date.now() + 90_000;
-  while (task != null && task.state !== "succeeded" && task.state !== "failed" && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 700));
-    const currentTask: TaskView | null = task;
-    const polled = await record("getTask", "review-task-poll", () => getTask(currentTask!.id));
-    task = (asView<TaskView | undefined>(polled.value) ?? null) as TaskView | null;
-  }
-  if (!task?.id) throw new Error(`review task missing: ${reviewTask.errCode} ${reviewTask.status}`);
-  const runId = runIdFromTask(task.result_ref);
-  expect(runId, `review task result_ref carries the run id (state=${task?.state})`).toBeTruthy();
+  // RCP-20261101瞬态预审：请求体携带当前SQL逐字送审，响应直接给run_id
+  // （不再经过任务行），轮询GET /review-runs/{id}至终态。
+  const started = await record("runDraftReview", title, () =>
+    runDraftReview(
+      { flow_id: fx.flowId, draft_id: draft.id, sql: DDL },
+      { headers: headers() },
+    ));
+  const runId = runIdFromStart(started.value);
+  expect(runId, `review start carries the run id (${started.errCode} ${started.status})`).toBeTruthy();
   const run = await record("getReviewRun", title, () => getReviewRun(runId!));
   let runView = asView<{ state?: string; gate?: { passed?: boolean } } | undefined>(run.value);
   const runDeadline = Date.now() + 90_000;
@@ -109,9 +107,15 @@ async function draftToSubmittedOrder(title: string): Promise<{ draftId: string; 
   }
   expect(runView?.state).toBe("ready");
   await record("listReviewRunFindings", title, () => listReviewRunFindings(runId!));
-  const fresh = await record("getChangeDraft", "pre-submit", () => getChangeDraft(draft.id));
+  // RCP-20261101提交：POST /change-orders携带{flow, draft, sql, run_id}，
+  // 服务端比对送审文本；不再需要草稿If-Match。提交前草稿态仍为draft
+  // （瞬态预审不写草稿状态）。
+  await record("getChangeDraft", "pre-submit", () => getChangeDraft(draft.id));
   const submitted = await record("submitChangeDraft", title, () =>
-    submitChangeDraft(draft.id, { headers: headers(draftETag(asView<IdVersion | undefined>(fresh.value))) }));
+    submitChangeDraft(
+      { flow_id: fx.flowId, draft_id: draft.id, sql: DDL, run_id: runId! },
+      { headers: headers() },
+    ));
   const order = asView<IdVersion | undefined>(submitted.value);
   if (!order?.id) throw new Error(`order not submitted: ${submitted.errCode} ${submitted.status}`);
   return { draftId: draft.id, orderId: order.id };

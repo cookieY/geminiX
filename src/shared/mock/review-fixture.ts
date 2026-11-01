@@ -96,6 +96,9 @@ interface FixtureRun {
   finished_at: string | null;
   /** Fixture-internal local digest backing bulk runs; never serialized. */
   digest?: SqlDigest;
+  /** RCP-20261101瞬态预审：逐字送审的SQL（提交时逐字比对）；持久化run
+   * （工单冻结面）不带——materialize后SQL以草稿/工单为准。 */
+  sql?: string;
 }
 
 interface FixtureFinding {
@@ -446,6 +449,12 @@ export function resetReviewFixture(): void {
 /** Test seam: seeds a persisted order with an explicit aggregate state so
  * order-page tests can stage states the happy path cannot reach (running,
  * result_unknown) without a real execution engine behind the mock. */
+/** Test seam: run ids in creation order (瞬态Run只存在内存世界里——
+ * RCP-20261101后客户端拿不到草稿行上的run引用，测试从这里取最新Run)。 */
+export function fixtureRunIds(): string[] {
+  return [...world.runs.keys()];
+}
+
 export function seedFixtureOrder(order: FixtureOrder): void {
   world.orders.set(order.id, order);
   world.orderSequence = Math.max(world.orderSequence, orderNumberSuffix(order.display_number));
@@ -1630,82 +1639,22 @@ function terminalRunShape(
   }
 }
 
-function advanceRun(
-  draft: FixtureDraft,
-  run: FixtureRun,
-  task: FixtureTask,
-  summaryLocale: "zh-CN" | "en-US",
-): void {
+/**
+ * RCP-20261101瞬态预审推进：queued→running→terminal 只推进run自身——
+ * 不写草稿（无state/版本推进）、不发领域事件（后端ephemeralFinish明示
+ * 「不写草稿、不发事件」，客户端靠HTTP轮询）、无任务行。Run只在内存
+ * 里，服务重启/TTL过期等价于world.runs里没有它（读取报1002，客户端按
+ * 「已过期」呈现）。
+ */
+function advanceEphemeralRun(run: FixtureRun, summaryLocale: "zh-CN" | "en-US"): void {
   const behavior = currentBehavior();
   setTimeout(() => {
     run.state = "running";
     run.started_at = now();
     run.version += 1;
-    task.state = "running";
-    task.updated_at = now();
     setTimeout(() => {
       terminalRunShape(behavior, run, summaryLocale);
       run.version += 1;
-      // The run freezes its inputs at draft_revision; if the draft moved on
-      // while the run was in flight, the terminal result is born outdated
-      // instead of overriding the newer inputs (state-machines.json
-      // change_draft: only a current-revision run may end ready).
-      if (
-        run.state === "ready" ||
-        run.state === "blocked" ||
-        run.state === "partial" ||
-        run.state === "failed"
-      ) {
-        if (run.draft_revision === draft.revision) {
-          draft.state = run.state;
-        } else if (draft.state !== "outdated") {
-          draft.state = "outdated";
-        }
-      }
-      draft.version += 1;
-      draft.updated_at = now();
-      task.state = behavior === "provider_failed" ? "failed" : "succeeded";
-      task.updated_at = now();
-
-      const reviewData = {
-        review_run_id: run.id,
-        draft_id: draft.id,
-        draft_revision: run.draft_revision,
-        state: run.state,
-        stage_results: run.stage_results.map((stage) => ({
-          stage_position: stage.stage_position,
-          state: stage.state,
-          highest_severity: stage.highest_severity,
-          finding_count: stage.finding_count,
-          evidence_count: stage.evidence_count,
-          snapshot_hash: stage.snapshot_hash,
-        })),
-        gate: run.gate,
-        statement_count: run.statement_count,
-        fingerprint_group_count: run.fingerprint_group_count,
-        aggregate_version: run.version,
-      };
-      const runSubject = `review-runs/${run.id}`;
-      emit(runSubject, run.state === "ready" ? "io.yearning.v4.review.completed" : "io.yearning.v4.review.blocked", reviewData);
-      emit(
-        `change-drafts/${draft.id}`,
-        "io.yearning.v4.change_draft.state_changed",
-        {
-          aggregate_id: draft.id,
-          from: "reviewing",
-          to: draft.state,
-          reason_code:
-            draft.state === "ready"
-              ? "precheck_passed"
-              : draft.state === "blocked"
-                ? "precheck_blocked"
-                : draft.state === "partial"
-                  ? "precheck_partial"
-                  : "precheck_failed",
-          aggregate_version: draft.version,
-        },
-        { kind: "system" },
-      );
     }, RUNNING_TO_TERMINAL_MS);
   }, QUEUED_TO_RUNNING_MS);
 }
@@ -2048,39 +1997,52 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       );
     }),
 
-    http.post("*/change-drafts/:draftId/review-runs", ({ request, params }) => {
-      const draft = world.drafts.get(String(params.draftId));
-      if (draft === undefined) return businessError(1002, "draft not found");
-      if (revisionConflict(request, draft)) {
-        return businessError(1003, "draft revision changed elsewhere");
+    // ---- 瞬态AI预审（RCP-20261101-EPHEMERAL-PRECHECK）----
+    // POST /review-runs：逐字评审请求体里的编辑器SQL——不落草稿、不写SQL、
+    // 不领养；draft_id仅UI锚定（校验归属/流程一致）。Run只在内存，终态事件
+    // 只发review-runs/{id}主题；过期等价于world.runs里没有它（读取1002）。
+    http.post("*/review-runs", async ({ request }) => {
+      const body = (await request.json().catch(() => null)) as {
+        flow_id?: unknown;
+        draft_id?: unknown;
+        sql?: unknown;
+        output_locale?: unknown;
+      } | null;
+      if (
+        body === null || typeof body.flow_id !== "string" || body.flow_id === "" ||
+        typeof body.sql !== "string" || typeof body.draft_id !== "string" && body.draft_id !== undefined
+      ) {
+        return businessError(1001, "请求参数不合法");
       }
-      // state-machines.json change_draft: run_review is legal from
-      // draft/outdated/ready/failed/partial/blocked (ready re-run supersedes
-      // the previous run, RCP-20261024-REVIEW-RERUN-FROM-READY) — never from
-      // reviewing or submitted.
-      if (draft.state === "reviewing") {
-        return businessError(1010, "a review run is already in flight");
+      if (typeof body.draft_id === "string" && body.draft_id !== "") {
+        const draft = world.drafts.get(body.draft_id);
+        if (draft === undefined) return businessError(1002, "draft not found");
+        if (draft.flow_id !== body.flow_id) return businessError(1001, "请求参数不合法");
+        if (draft.state === "submitted") return businessError(1010, "draft already submitted");
       }
-      if (draft.state === "submitted") return businessError(1010, "draft already submitted");
-      // F-UX-003 parity：缺SQL的1001把原因放meta.detail（后端
-      // writeReviewErr同形：message="业务处理失败"+meta.detail），
-      // UI逐字透传而非泛化文案。
-      if (!draft.has_sql) {
+      // F-UX-003 parity：空SQL的1001把原因放meta.detail（与后端
+      // writeReviewErr同形），UI逐字透传而非泛化文案。
+      if (body.sql === "") {
         return businessError(1001, "业务处理失败", {
-          detail: "SQL尚未保存：先在草稿中保存SQL，再发起AI预审",
+          detail: "SQL为空：请先在编辑器中输入SQL，再发起AI预审",
         });
       }
-      const summaryLocale = request.headers.get("accept-language")?.startsWith("en-US")
-        ? "en-US"
-        : "zh-CN";
+      const summaryLocale =
+        (typeof body.output_locale === "string" && (body.output_locale === "en-US" || body.output_locale === "zh-CN"))
+          ? body.output_locale
+          : request.headers.get("accept-language")?.startsWith("en-US")
+            ? "en-US"
+            : "zh-CN";
 
+      const digest = digestSqlText(body.sql);
+      const runId = uuid();
       const run: FixtureRun = {
-        id: uuid(),
-        draft_id: draft.id,
-        draft_revision: draft.revision,
+        id: runId,
+        draft_id: typeof body.draft_id === "string" && body.draft_id !== "" ? body.draft_id : "",
+        draft_revision: 0,
         state: "queued",
-        statement_count: draft.statement_count ?? 1,
-        fingerprint_group_count: 1,
+        statement_count: digest.statementCount,
+        fingerprint_group_count: Math.min(digest.groupCount, FINGERPRINT_MAX_UNIQUE),
         stage_results: [
           {
             stage_position: 1,
@@ -2090,7 +2052,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             gate_passed: false,
             finding_count: 0,
             evidence_count: 0,
-            snapshot_hash: `snap-${String(draft.revision)}`,
+            snapshot_hash: `snap-${runId.slice(0, 8)}-pending`,
             summary: null,
             summary_locale: null,
           },
@@ -2102,52 +2064,101 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         started_at: null,
         finished_at: null,
       };
-      // Bulk runs group the draft through the same local digest scanner the
-      // UI uses for navigation; the authoritative fingerprinting still
-      // happens server-side, the fixture only mirrors its observable counts.
-      run.digest = digestSqlText(draft.sql ?? "");
-      run.statement_count = run.digest.statementCount;
-      run.fingerprint_group_count = Math.min(run.digest.groupCount, FINGERPRINT_MAX_UNIQUE);
+      run.sql = body.sql;
+      run.digest = digest;
       world.runs.set(run.id, run);
-      draft.review_run_id = run.id;
-      draft.state = "reviewing";
-      draft.version += 1;
-      draft.updated_at = now();
-
-      const task: FixtureTask = {
-        id: uuid(),
-        kind: "ai_review",
-        state: "queued",
-        progress: { completed: 0, total: 3, unit: "stages" },
-        result_ref: `/review-runs/${run.id}`,
-        error: null,
-        created_at: now(),
-        updated_at: now(),
-      };
-      world.tasks.set(task.id, task);
-      advanceRun(draft, run, task, summaryLocale);
-      return HttpResponse.json(successEnvelope({ ...task }));
+      advanceEphemeralRun(run, summaryLocale);
+      return HttpResponse.json(
+        successEnvelope({ run_id: run.id, result_ref: `/review-runs/${run.id}` }),
+      );
     }),
 
-    http.post("*/change-drafts/:draftId/submission", ({ request, params }) => {
-      const draft = world.drafts.get(String(params.draftId));
-      if (draft === undefined) return businessError(1002, "draft not found");
-      // draft_submit profile is C1004-only (no VERSION_CONFLICT): the stale
-      // If-Match surfaces as concurrent modification, mirroring the backend
-      // profile alignment (governance commit, FE-F7 escalation follow-up).
-      if (revisionConflict(request, draft)) {
-        return businessError(1004, "draft revision changed elsewhere");
+    // ---- 提交（RCP-20261101）：POST /change-orders ----
+    // 请求携带{flow_id, draft_id?, sql, run_id, metadata?}：服务端比对SQL与
+    // 预审文本（防审A提B），物化Run并冻结工单——这是审核内容唯一落库点。
+    // 无draft_id的创建态直提用metadata补建壳行；草稿只在此处标submitted。
+    http.post("*/change-orders", async ({ request }) => {
+      const body = (await request.json().catch(() => null)) as {
+        flow_id?: unknown;
+        draft_id?: unknown;
+        sql?: unknown;
+        run_id?: unknown;
+        metadata?: {
+          title?: unknown;
+          description?: unknown;
+          requested_scheduled_for?: unknown;
+        } | null;
+      } | null;
+      if (
+        body === null || typeof body.flow_id !== "string" || body.flow_id === "" ||
+        typeof body.sql !== "string" || typeof body.run_id !== "string" || body.run_id === ""
+      ) {
+        return businessError(1001, "请求参数不合法");
       }
-      const run = draft.review_run_id === null ? undefined : world.runs.get(draft.review_run_id);
-      if (draft.state !== "ready" || run === undefined || run.state !== "ready" || !run.gate.passed) {
+      const run = world.runs.get(body.run_id);
+      // Run消失（TTL过期/重启）或非瞬态来源：按REVIEW_OUTDATED处理，meta
+      // 提示重新预审（后端ErrReviewOutdated同形）。
+      if (run === undefined || run.sql === undefined) {
+        return businessError(2001, "业务处理失败", {
+          detail: "预审结果已过期，请重新预审",
+        });
+      }
+      if (run.state !== "ready" || !run.gate.passed) {
         return businessError(2013, "submission gate failed");
       }
-      if (run.draft_revision !== draft.revision) {
-        return businessError(2001, "review is outdated for the current draft revision");
+      // 防审A提B：提交SQL必须与送审文本逐字一致。
+      if (run.sql !== body.sql) {
+        return businessError(2001, "业务处理失败", {
+          detail: "SQL与预审文本不一致，请重新预审",
+        });
+      }
+      let draft: FixtureDraft | undefined;
+      if (typeof body.draft_id === "string" && body.draft_id !== "") {
+        draft = world.drafts.get(body.draft_id);
+        if (draft === undefined) return businessError(1002, "draft not found");
+        if (draft.flow_id !== body.flow_id) return businessError(1001, "请求参数不合法");
+        if (draft.state === "submitted") return businessError(1010, "draft already submitted");
+      } else {
+        // 创建态无草稿直提：metadata.title必填（后端ensureDraftForSubmitV2
+        // 同校验），补建已提交壳行承载工单快照。
+        const title = typeof body.metadata?.title === "string" ? body.metadata.title : "";
+        if (title === "") {
+          return businessError(1001, "业务处理失败", { detail: "标题必填" });
+        }
+        const description = typeof body.metadata?.description === "string" ? body.metadata.description : null;
+        const requested = parseRequestedSchedule(body.metadata?.requested_scheduled_for);
+        const shellId = uuid();
+        draft = {
+          id: shellId,
+          owner_user_id: currentIdentityId(),
+          flow_id: body.flow_id,
+          title,
+          description,
+          requested_scheduled_for: requested,
+          revision: 1,
+          state: "draft",
+          has_sql: true,
+          sql: body.sql,
+          sql_size_bytes: body.sql.length,
+          statement_count: run.statement_count,
+          review_run_id: null,
+          version: 1,
+          created_at: now(),
+          updated_at: now(),
+        };
+        world.drafts.set(shellId, draft);
       }
       draft.state = "submitted";
+      draft.has_sql = true;
+      draft.sql = body.sql;
+      draft.sql_size_bytes = body.sql.length;
+      draft.statement_count = run.statement_count;
+      draft.review_run_id = run.id;
       draft.version += 1;
       draft.updated_at = now();
+      // Run物化：从瞬态转为工单冻结面——sql比对字段随消费清除（后端
+      // EphemeralTake后内存副本不可再读，同Run不可二次提交）。
+      run.sql = undefined;
       const submittedAt = now();
       world.orderSequence += 1;
       // Submission freezes the order directly in stage_approval_active with
@@ -2184,14 +2195,14 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           },
         ],
         has_sql: true,
-        sql_hash: `hash-${String(draft.revision)}`,
+        sql_hash: `hash-${run.id.slice(0, 8)}`,
         snapshot_hash: `snap-${run.id.slice(0, 8)}`,
         manually_verified: false,
         version: 1,
         submitted_at: submittedAt,
         terminal_at: null,
         review_run_id: run.id,
-        sql_text: draft.sql ?? "",
+        sql_text: body.sql,
       };
       world.orders.set(order.id, order);
       world.orderComments.set(order.id, []);
@@ -2200,10 +2211,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         `change-orders/${order.id}`,
         "io.yearning.v4.change_order.submitted",
         {
-          aggregate_id: order.id,
+          // domain-event.ts orderSubmittedDataSchema（strictObject）：
+          // 字段集必须逐字匹配，多余键会被事件客户端zod校验整条丢弃。
+          order_id: order.id,
           display_number: order.display_number,
-          draft_id: draft.id,
-          flow_id: draft.flow_id,
+          submitter_user_id: draft.owner_user_id,
+          stage_count: order.stages.length,
+          snapshot_hash: order.snapshot_hash,
           aggregate_version: order.version,
         },
         { kind: "user", user_id: draft.owner_user_id },
@@ -2213,7 +2227,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
         "io.yearning.v4.change_draft.state_changed",
         {
           aggregate_id: draft.id,
-          from: "ready",
+          from: "draft",
           to: "submitted",
           reason_code: "submitted",
           aggregate_version: draft.version,

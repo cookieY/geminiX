@@ -6,30 +6,29 @@ import type { RunPhase } from "./run-state";
 
 /**
  * The submission dock mirrors the backend gate (R002): Ready + passing gate
- * is the only unlock; High/Critical, partial/failed/outdated, unsaved SQL
- * and a flow template change all disable submit with an explanation. The
- * enabled button is presentation only — the backend re-validates.
+ * on unchanged SQL is the only unlock; High/Critical, partial/failed
+ * outcomes, a post-precheck SQL edit and a flow template change all disable
+ * submit with an explanation. The enabled button is presentation only — the
+ * backend re-validates.
  */
 
 const READY_GATE = { passed: true, reason_codes: [] as string[] };
 
 function renderDock(overrides: {
-  draftState?: "draft" | "reviewing" | "ready" | "blocked" | "partial" | "failed" | "outdated" | "submitted" | null;
+  draftState?: "draft" | "submitted" | null;
   phase?: RunPhase;
   gate?: { passed: boolean; reason_codes: string[] } | null;
-  dirty?: boolean;
+  sqlChangedSincePrecheck?: boolean;
   flowUpdated?: boolean;
-  reviewCurrent?: boolean;
   variant?: "dock" | "panel";
 } = {}) {
   return render(
     <SubmissionDock
-      draftState={overrides.draftState ?? "ready"}
+      draftState={overrides.draftState ?? "draft"}
       phase={overrides.phase ?? "ready"}
       gate={overrides.gate === undefined ? READY_GATE : overrides.gate}
-      dirty={overrides.dirty ?? false}
+      sqlChangedSincePrecheck={overrides.sqlChangedSincePrecheck ?? false}
       flowUpdated={overrides.flowUpdated ?? false}
-      reviewCurrent={overrides.reviewCurrent ?? true}
       submitting={false}
       onSubmit={() => {}}
       variant={overrides.variant}
@@ -51,7 +50,6 @@ describe("SubmissionDock", () => {
     ["panel", "running"],
   ] as const)("shows neutral review progress instead of a gate failure on the %s dock while %s", (variant, phase) => {
     renderDock({
-      draftState: "reviewing",
       phase,
       gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
       variant,
@@ -65,10 +63,10 @@ describe("SubmissionDock", () => {
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
   });
 
-  it("disables submit on unsaved SQL changes", () => {
-    renderDock({ dirty: true });
+  it("disables submit when the SQL changed since the last precheck", () => {
+    renderDock({ sqlChangedSincePrecheck: true });
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
-    expect(screen.getByTestId("submission-readiness").textContent).toContain("未保存");
+    expect(screen.getByTestId("submission-readiness").textContent).toContain("SQL已修改，请重新预审");
   });
 
   it("disables submit on a flow template update with the strongest banner", () => {
@@ -91,7 +89,6 @@ describe("SubmissionDock", () => {
     "shows the final gate explanation for a terminal %s result",
     (phase) => {
       renderDock({
-        draftState: phase,
         phase,
         gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
       });
@@ -102,24 +99,11 @@ describe("SubmissionDock", () => {
     },
   );
 
-  it("disables submit when the run was frozen on an older draft revision", () => {
+  it("hides gate reasons for a result whose SQL changed after the precheck", () => {
     renderDock({
-      reviewCurrent: false,
+      sqlChangedSincePrecheck: true,
       gate: { passed: false, reason_codes: ["stage_review_incomplete"] },
     });
-    expect(screen.getByTestId("submit-draft")).toBeDisabled();
-    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
-    expect(screen.getByTestId("submission-readiness").textContent).toContain("旧版本草稿");
-  });
-
-  it("hides stale gate reasons for unsaved and outdated results", () => {
-    const gate = { passed: false, reason_codes: ["stage_review_incomplete"] };
-
-    const dirty = renderDock({ dirty: true, gate });
-    expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
-    dirty.unmount();
-
-    renderDock({ draftState: "outdated", phase: "outdated", gate });
     expect(screen.queryByTestId("gate-blockers")).not.toBeInTheDocument();
   });
 
@@ -137,12 +121,11 @@ describe("SubmissionDock", () => {
   it("keeps the submit label and exposes progress while a submission is pending", () => {
     render(
       <SubmissionDock
-        draftState="ready"
+        draftState="draft"
         phase="ready"
         gate={READY_GATE}
-        dirty={false}
+        sqlChangedSincePrecheck={false}
         flowUpdated={false}
-        reviewCurrent={true}
         submitting
         onSubmit={() => {}}
       />,

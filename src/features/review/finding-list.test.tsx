@@ -196,7 +196,8 @@ describe("FindingList", () => {
     idle.unmount();
 
     render(<FindingList state={{ status: "stale" }} onOpenEvidence={() => {}} />);
-    expect(screen.getByTestId("findings-stale")).toHaveTextContent("风险发现已失效");
+    // RCP-20261101：staleness文案=SQL已修改（本地比对，非旧版草稿）。
+    expect(screen.getByTestId("findings-stale")).toHaveTextContent("SQL已修改");
     expect(screen.queryByTestId("findings-empty-all")).not.toBeInTheDocument();
   });
 

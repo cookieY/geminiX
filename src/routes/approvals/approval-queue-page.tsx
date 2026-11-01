@@ -60,7 +60,7 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
   return (
     <TableRow
       className="cursor-pointer"
-      onClick={() => { void navigate(`/changes/orders/${order.id}`); }}
+      onClick={() => { void navigate(`/approvals/orders/${order.id}`); }}
       data-testid="approval-queue-row"
       data-row-key={order.id}
     >
@@ -103,7 +103,7 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
           aria-label={t("approvals.queue.open")}
           onClick={(event) => {
             event.stopPropagation();
-            void navigate(`/changes/orders/${order.id}`);
+            void navigate(`/approvals/orders/${order.id}`);
           }}
           data-testid={`open-approval-${order.display_number}`}
         >

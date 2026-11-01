@@ -48,26 +48,34 @@ async function saveSql(draftId: string, sql: string): Promise<FixtureDraftView> 
   return ((await response.json()) as { data: FixtureDraftView }).data;
 }
 
-async function runReview(draftId: string): Promise<string> {
-  const response = await fetch(
-    `https://yearning.test/change-drafts/${draftId}/review-runs`,
-    { method: "POST" },
-  );
-  const body = (await response.json()) as { data: { id: string; result_ref: string | null } | null };
-  if (body.data === null) {
-    throw new Error(`review-runs POST failed: ${JSON.stringify(body)}`);
+async function startPrecheck(body: {
+  flow_id: string;
+  draft_id?: string;
+  sql: string;
+}): Promise<string> {
+  // RCP-20261101瞬态预审：POST /review-runs逐字评审请求体SQL，响应直接给
+  // run_id（不再经过任务行）。
+  const response = await fetch("https://yearning.test/review-runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const parsed = (await response.json()) as {
+    err_code: number;
+    data: { run_id?: string } | null;
+  };
+  if (parsed.err_code !== 0 || parsed.data?.run_id === undefined) {
+    throw new Error(`review-runs POST failed: ${JSON.stringify(parsed)}`);
   }
-  // The POST returns the async Task; its result_ref points at the Review Run
-  // (ai-review-production-prd.md §13) — that resource is what the workspace reads.
-  const runId = body.data.result_ref?.split("/").pop();
-  if (runId === undefined || runId === "") {
-    throw new Error(`task carries no result_ref: ${JSON.stringify(body)}`);
-  }
-  return runId;
+  return parsed.data.run_id;
 }
 
-async function runToTerminal(draftId: string): Promise<string> {
-  const runId = await runReview(draftId);
+async function runToTerminal(sql: string, draftId?: string): Promise<string> {
+  const runId = await startPrecheck(
+    draftId === undefined
+      ? { flow_id: FIXTURE_FLOW_ID, sql }
+      : { flow_id: FIXTURE_FLOW_ID, draft_id: draftId, sql },
+  );
   // Fixture timeline: queued → (400ms) → running → (900ms) → terminal.
   // Real timers only: fake timers stall the undici/MSW network stack.
   await new Promise((resolve) => {
@@ -123,54 +131,73 @@ describe("review fixture draft and run lifecycle", () => {
     expect(saved.has_sql).toBe(true);
   });
 
-  it("states the missing-SQL cause in meta.detail when reviewing a draft without SQL (F-UX-003)", async () => {
-    const draft = await createDraft();
-    const response = await fetch(
-      `https://yearning.test/change-drafts/${draft.id}/review-runs`,
-      { method: "POST" },
-    );
+  it("states the empty-SQL cause in meta.detail when prechecking without SQL (F-UX-003)", async () => {
+    const response = await fetch("https://yearning.test/review-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, sql: "" }),
+    });
     const body = (await response.json()) as { err_code: number; meta?: { detail?: string } };
     expect(body.err_code).toBe(1001);
-    expect(body.meta?.detail).toContain("SQL尚未保存");
+    expect(body.meta?.detail).toContain("SQL为空");
   });
 
-  it("advances the run to the ready terminal state and voids it on edit", async () => {
+  it("advances the ephemeral run to ready without touching the draft (RCP-20261101)", async () => {
     const draft = await createDraft();
-    await saveSql(draft.id, "SELECT 1;");
-    const runId = await runToTerminal(draft.id);
+    const sql = "SELECT 1;";
+    await saveSql(draft.id, sql);
+    const runId = await runToTerminal(sql, draft.id);
 
     const finished = (await (
       await fetch(`https://yearning.test/review-runs/${runId}`)
-    ).json()) as { data: { state: string; gate: { passed: boolean }; draft_revision: number } };
+    ).json()) as { data: { state: string; gate: { passed: boolean } } };
     expect(finished.data.state).toBe("ready");
     expect(finished.data.gate.passed).toBe(true);
-    expect(finished.data.draft_revision).toBe(2);
 
-    // Editing a ready draft voids the result server-side (review_inputs_changed).
-    const edit = await saveSql(draft.id, "SELECT 2;");
-    expect(edit.state).toBe("outdated");
+    // 预审绝不写草稿：行版本、状态、review_run_id全部不动（staleness是
+    // 客户端本地比对，服务端只在提交时逐字核对SQL）。
+    const detail = (await (
+      await fetch(`https://yearning.test/change-drafts/${draft.id}`)
+    ).json()) as { data: { state: string; version: number; review_run_id: string | null } };
+    expect(detail.data.state).toBe("draft");
+    expect(detail.data.version).toBe(draft.version + 1); // 仅saveSql自身推进
+    expect(detail.data.review_run_id).toBeNull();
   });
 
-  it("rejects submission with SUBMISSION_GATE_FAILED when no ready run exists", async () => {
+  it("rejects submission with REVIEW_OUTDATED when the precheck run is gone", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "DROP TABLE orders;");
-    const response = await fetch(
-      `https://yearning.test/change-drafts/${draft.id}/submission`,
-      { method: "POST" },
-    );
-    const body = (await response.json()) as { err_code: number };
-    // draft_submit profile: 2013 SUBMISSION_GATE_FAILED, never a fake success.
-    expect(body.err_code).toBe(2013);
+    const response = await fetch("https://yearning.test/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flow_id: FIXTURE_FLOW_ID,
+        draft_id: draft.id,
+        sql: "DROP TABLE orders;",
+        run_id: "7e6f1a2b-0000-4000-8000-00000000dead",
+      }),
+    });
+    const body = (await response.json()) as { err_code: number; meta?: { detail?: string } };
+    // 后端ErrReviewOutdated：Run消失（TTL过期/重启）→2001，meta提示重新预审。
+    expect(body.err_code).toBe(2001);
+    expect(body.meta?.detail).toContain("重新预审");
   });
 
-  it("succeeds submission for a ready draft and freezes the order", async () => {
+  it("succeeds submission for a ready precheck and freezes the order", async () => {
     const draft = await createDraft();
-    await saveSql(draft.id, "SELECT 1;");
-    await runToTerminal(draft.id);
-    const response = await fetch(
-      `https://yearning.test/change-drafts/${draft.id}/submission`,
-      { method: "POST" },
-    );
+    const sql = "SELECT 1;";
+    await saveSql(draft.id, sql);
+    const runId = await runToTerminal(sql, draft.id);
+    const response = await fetch("https://yearning.test/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flow_id: FIXTURE_FLOW_ID,
+        draft_id: draft.id,
+        sql,
+        run_id: runId,
+      }),
+    });
     const body = (await response.json()) as {
       data: { display_number: string; state: string; snapshot_hash: string } | null;
     };
@@ -185,7 +212,36 @@ describe("review fixture draft and run lifecycle", () => {
     expect(body.data?.snapshot_hash).not.toBe("");
   });
 
-  it("enforces If-Match optimistic concurrency on SQL, run and submission", async () => {
+  it("submits draftless create-mode orders with metadata and rejects a missing title", async () => {
+    const sql = "SELECT 1;";
+    const runId = await runToTerminal(sql);
+    const missing = await fetch("https://yearning.test/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, sql, run_id: runId }),
+    });
+    expect(((await missing.json()) as { err_code: number }).err_code).toBe(1001);
+
+    // 每次提交消费Run：再提交一次需要重新预审。
+    const secondRunId = await runToTerminal(sql);
+    const created = await fetch("https://yearning.test/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flow_id: FIXTURE_FLOW_ID,
+        sql,
+        run_id: secondRunId,
+        metadata: { title: "无草稿直提工单" },
+      }),
+    });
+    const body = (await created.json()) as {
+      data: { display_number: string; state: string } | null;
+    };
+    expect(body.data?.display_number).toMatch(/^YR-[0-9]{8}-[0-9]{6}$/);
+    expect(body.data?.state).toBe("stage_approval_active");
+  });
+
+  it("enforces If-Match optimistic concurrency on SQL and metadata only (RCP-20261101)", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "SELECT 1;");
     const stale = { "If-Match": '"1"' };
@@ -195,21 +251,7 @@ describe("review fixture draft and run lifecycle", () => {
       body: JSON.stringify({ sql: "SELECT 2;" }),
     });
     expect(((await put.json()) as { err_code: number }).err_code).toBe(1003);
-
-    const runPost = await fetch(
-      `https://yearning.test/change-drafts/${draft.id}/review-runs`,
-      { method: "POST", headers: stale },
-    );
-    expect(((await runPost.json()) as { err_code: number }).err_code).toBe(1003);
-
-    const submit = await fetch(
-      `https://yearning.test/change-drafts/${draft.id}/submission`,
-      { method: "POST", headers: stale },
-    );
-    // draft_submit profile is C1004-only: the stale If-Match answers
-    // CONCURRENT_MODIFICATION, not 1003 (SQL PUT above keeps 1003 —
-    // draft_update declares both codes).
-    expect(((await submit.json()) as { err_code: number }).err_code).toBe(1004);
+    // 预审与提交不再携带If-Match（瞬态端点无行版本可比）。
   });
 
   it("enforces If-Match on metadata PATCH against the draft row version (§18.74)", async () => {
@@ -232,76 +274,62 @@ describe("review fixture draft and run lifecycle", () => {
     expect(body.data?.title).toBe("改得动的标题");
   });
 
-  it("re-runs a review from a ready draft; the new run supersedes the old (RCP-20261024-REVIEW-RERUN-FROM-READY)", async () => {
+  it("re-prechecks freely; each run is independent and the draft stays untouched (RCP-20261101)", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "SELECT 1;");
-    const runIdOf = (task: { result_ref?: string } | null): string =>
-      typeof task?.result_ref === "string" ? (task.result_ref.split("/").pop() ?? "") : "";
-    const first = (await (
-      await fetch(`https://yearning.test/change-drafts/${draft.id}/review-runs`, {
-        method: "POST",
-      })
-    ).json()) as { data: { result_ref?: string } | null };
-    const firstRunId = runIdOf(first.data);
+    const firstRunId = await startPrecheck({
+      flow_id: FIXTURE_FLOW_ID,
+      draft_id: draft.id,
+      sql: "SELECT 1;",
+    });
     expect(firstRunId).not.toBe("");
     // wait for terminal: ready (fixture timeline ≈0.4s running + 1.3s terminal)
     await new Promise((resolve) => {
       setTimeout(resolve, 1_800);
     });
-    // ready re-run is legal now: a new run replaces the old as the draft's
-    // review_run_id; reviewing/submitted remain rejected elsewhere.
-    const second = (await (
-      await fetch(`https://yearning.test/change-drafts/${draft.id}/review-runs`, {
-        method: "POST",
-      })
-    ).json()) as { err_code: number; data: { result_ref?: string } | null };
-    expect(second.err_code).toBe(0);
-    const secondRunId = runIdOf(second.data);
-    expect(secondRunId).not.toBe("");
+    // 再预审永远合法：新Run独立存在，草稿不携带run引用（展示由客户端
+    // 最后一次预审驱动）。
+    const secondRunId = await startPrecheck({
+      flow_id: FIXTURE_FLOW_ID,
+      draft_id: draft.id,
+      sql: "SELECT 1;",
+    });
     expect(secondRunId).not.toBe(firstRunId);
     await new Promise((resolve) => {
       setTimeout(resolve, 1_900);
     });
     const detail = (await (
       await fetch(`https://yearning.test/change-drafts/${draft.id}`)
-    ).json()) as { data: { state: string; review_run_id: string } };
-    expect(detail.data.state).toBe("ready");
-    expect(detail.data.review_run_id).toBe(secondRunId);
+    ).json()) as { data: { state: string; review_run_id: string | null } };
+    expect(detail.data.state).toBe("draft");
+    expect(detail.data.review_run_id).toBeNull();
   });
 
-  it("marks a finished run born outdated when inputs moved on mid-run", async () => {
+  it("rejects submission when the SQL differs from the prechecked text (防审A提B)", async () => {
     const draft = await createDraft();
     await saveSql(draft.id, "SELECT 1;");
-    const runId = await runReview(draft.id);
-    // Still queued (the fixture flips to running at 400ms): save new SQL so
-    // the draft revision moves past the run's frozen draft_revision.
-    await new Promise((resolve) => {
-      setTimeout(resolve, 250);
-    });
-    const edit = await saveSql(draft.id, "SELECT 2;");
-    expect(edit.revision).toBe(3);
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1_600);
-    });
+    const runId = await runToTerminal("SELECT 1;", draft.id);
 
-    // The run still finished ready, but it can no longer endorse the newer
-    // inputs: the draft is born outdated instead of ready.
-    const run = (await (
-      await fetch(`https://yearning.test/review-runs/${runId}`)
-    ).json()) as { data: { state: string; draft_revision: number } };
-    expect(run.data.state).toBe("ready");
-    expect(run.data.draft_revision).toBe(2);
-    const moved = (await (
-      await fetch(`https://yearning.test/change-drafts/${draft.id}`)
-    ).json()) as { data: { state: string; revision: number } };
-    expect(moved.data.state).toBe("outdated");
-    expect(moved.data.revision).toBe(3);
+    const response = await fetch("https://yearning.test/change-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        flow_id: FIXTURE_FLOW_ID,
+        draft_id: draft.id,
+        sql: "DROP TABLE orders;",
+        run_id: runId,
+      }),
+    });
+    const body = (await response.json()) as { err_code: number; meta?: { detail?: string } };
+    expect(body.err_code).toBe(2001);
+    expect(body.meta?.detail).toContain("SQL与预审文本不一致");
   });
 
   it("keeps raw evidence reveals watermarked and copy actions audited", async () => {
     const draft = await createDraft();
-    await saveSql(draft.id, "SELECT 1;");
-    const runId = await runToTerminal(draft.id);
+    const sql = "SELECT 1;";
+    await saveSql(draft.id, sql);
+    const runId = await runToTerminal(sql, draft.id);
 
     const findings = (await (
       await fetch(`https://yearning.test/review-runs/${runId}/findings`)

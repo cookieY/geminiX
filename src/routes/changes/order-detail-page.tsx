@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChangeOrderTimelineEntry } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { OrderStateBadge, StageStateBadge } from "@/features/orders/order-state-badge";
-import { canVoid, withdrawOutcome } from "@/features/orders/order-state";
+import { activeApprovalStepFor, canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import { stageApprovalSteps } from "@/features/orders/approval-steps";
 import { ApprovalDecisionCard, ApprovalStepStateBadge } from "@/features/orders/approval-decision-card";
 import { FrozenReviewCard } from "@/features/orders/frozen-review-card";
@@ -144,6 +144,7 @@ function TimelineCard({ orderId }: { orderId: string }) {
 export default function OrderDetailPage() {
   const { t } = useTranslation();
   const { orderId } = useParams<{ orderId: string }>();
+  const location = useLocation();
   const session = useSession();
   const orderQuery = useChangeOrder(orderId ?? "");
   const order = orderQuery.data ?? null;
@@ -151,6 +152,17 @@ export default function OrderDetailPage() {
   // reviewers/executors can read the order but never see the lifecycle
   // buttons (the backend keeps the authoritative 403).
   const isSubmitter = session.user?.id === order?.submitter_user_id;
+  // owner ruling 2026-10-31（自审自执按钮分流）：同一人既是提交人又是
+  // 当前冻结审批人时，动作集按入口上下文二选一——从审核队列
+  // （/approvals/orders/:id）进入只有通过/拒绝，从我的工单
+  // （/changes/orders/:id）进入只有撤回/作废。URL 携带上下文，刷新与
+  // 直链不丢。单角色用户不受影响：纯提交人两条路都见撤回/作废（本就
+  // 不是审批人，决策卡不渲染），纯审批人两条路都见决策卡。
+  const approvalEntry = location.pathname.startsWith("/approvals/");
+  const isActiveApprover =
+    order !== null && activeApprovalStepFor(order, session.user?.id) !== null;
+  const showSubmitterActions = isSubmitter && !(approvalEntry && isActiveApprover);
+  const showApprovalCard = !(!approvalEntry && isSubmitter && isActiveApprover);
 
   // The shared event feed keeps state-driven surfaces live (withdrawals and
   // peer decisions from another tab, stage progress); the client's resume
@@ -242,7 +254,7 @@ export default function OrderDetailPage() {
         }
         actions={
           <>
-          {isSubmitter && outcome !== null && (
+          {showSubmitterActions && outcome !== null && (
             <PendingButton
               variant="outline"
               pending={withdrawMutation.isPending}
@@ -254,7 +266,7 @@ export default function OrderDetailPage() {
               {t("orders.detail.withdraw")}
             </PendingButton>
           )}
-          {isSubmitter && canVoid(order.state) && (
+          {showSubmitterActions && canVoid(order.state) && (
             <PendingButton
               variant="destructive"
               pending={voidMutation.isPending}
@@ -278,7 +290,9 @@ export default function OrderDetailPage() {
         </Alert>
       )}
 
-      <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
+      {showApprovalCard && (
+        <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
+      )}
       <OrderSqlCard orderId={order.id} />
       {/* §18.57：执行等待期，非冻结执行人视角没有任何解释（§18.47补记5
           同类缺陷）——补一块说明面板，点名冻结执行人。 */}

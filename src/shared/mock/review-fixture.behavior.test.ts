@@ -27,6 +27,18 @@ const scenarioByBehavior: Record<string, MockScenario> = {
   provider_failed: "review-provider-failed",
 };
 
+/** RCP-20261101瞬态预审：POST /review-runs送当前SQL，响应直接给run_id。 */
+async function startPrecheck(flowId: string, draftId: string, sql: string): Promise<string> {
+  const run = (await (
+    await fetch("https://yearning.test/review-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flow_id: flowId, draft_id: draftId, sql }),
+    })
+  ).json()) as { data: { run_id: string } };
+  return run.data.run_id;
+}
+
 async function createAndRunToTerminal(): Promise<{ draftId: string; runId: string }> {
   const create = (await (
     await fetch("https://yearning.test/change-drafts", {
@@ -41,12 +53,7 @@ async function createAndRunToTerminal(): Promise<{ draftId: string; runId: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sql: "SELECT 1;" }),
   });
-  const run = (await (
-    await fetch(`https://yearning.test/change-drafts/${draftId}/review-runs`, {
-      method: "POST",
-    })
-  ).json()) as { data: { id: string; result_ref: string | null } };
-  const runId = run.data.result_ref?.split("/").pop() ?? "";
+  const runId = await startPrecheck(FIXTURE_FLOW_ID, draftId, "SELECT 1;");
   // Fixture timeline: queued → (400ms) → running → (900ms) → terminal.
   await new Promise((resolve) => {
     setTimeout(resolve, 1_600);
@@ -100,57 +107,80 @@ describe("review fixture behavior matrix", () => {
         expect(run.data?.failure_code).toBe("provider_unavailable");
       }
 
-      // The draft mirrors the run's terminal state.
+      // 预审不写草稿（RCP-20261101）：无论run终态如何，草稿行保持draft。
       const draft = (await (
         await fetch(`https://yearning.test/change-drafts/${draftId}`)
       ).json()) as { data: { state: string } };
-      expect(draft.data.state).toBe(run.data?.state);
+      expect(draft.data.state).toBe("draft");
     });
   }
 
-  it("replays outbox events through the mock transport with sequence order", async () => {
+  it("replays outbox events through the mock transport with resume semantics", async () => { // 双段1.6s定时+出排清空——长测例放宽上限
     useMockScenario.getState().setScenario("review-ready");
     const { draftId, runId } = await createAndRunToTerminal();
-    // A second SQL save voids the ready result and emits a second draft
-    // event (review_inputs_changed) — only terminal transitions emit events.
-    await fetch(`https://yearning.test/change-drafts/${draftId}/sql`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sql: "SELECT 2;" }),
+    // 瞬态Run不发领域事件（后端ephemeralFinish明示，RCP-20261101）——
+    // 提交物化后才产生持久域事件change_order.submitted。
+    const first = (await (
+      await fetch("https://yearning.test/change-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: FIXTURE_FLOW_ID, draft_id: draftId, sql: "SELECT 1;", run_id: runId }),
+      })
+    ).json()) as { err_code: number; data: { id: string } | null };
+    if (first.err_code !== 0 || first.data === null) throw new Error(`submission failed: ${JSON.stringify(first)}`);
+    // A second draftless submission emits one more event on another subject.
+    const secondRunId = await startPrecheck(FIXTURE_FLOW_ID, "", "SELECT 2;");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1_600);
     });
+    const second = (await (
+      await fetch("https://yearning.test/change-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flow_id: FIXTURE_FLOW_ID,
+          sql: "SELECT 2;",
+          run_id: secondRunId,
+          metadata: { title: "行为矩阵直提" },
+        }),
+      })
+    ).json()) as { err_code: number; data: { id: string } | null };
+    if (second.err_code !== 0 || second.data === null) throw new Error(`draftless submission failed: ${JSON.stringify(second)}`);
 
     const received: Array<{ subject: string; sequence: number }> = [];
     const transport = createMockEventTransport({});
     for await (const raw of transport) {
       const event = raw as { subject: string; sequence: number };
       received.push({ subject: event.subject, sequence: event.sequence });
-      // One run event + two draft events make the full outbox.
-      if (received.length >= 3) break;
+      // One submitted event per order makes the full sweep stop point.
+      if (received.filter((entry) => entry.subject.startsWith("change-orders/")).length >= 2) break;
     }
-    const runEvents = received.filter((entry) => entry.subject === `review-runs/${runId}`);
-    const draftEvents = received.filter((entry) => entry.subject === `change-drafts/${draftId}`);
-    expect(runEvents.length).toBe(1);
-    expect(draftEvents.length).toBe(2);
-    // Per-subject sequences strictly increase (events README).
-    for (const [index, entry] of draftEvents.entries()) {
-      if (index > 0) {
-        expect(entry.sequence).toBeGreaterThan(draftEvents[index - 1]?.sequence ?? 0);
-      }
-    }
+    const subjects = received.map((entry) => entry.subject);
+    expect(subjects).toContain(`change-orders/${first.data.id}`);
+    expect(subjects).toContain(`change-orders/${second.data.id}`);
     // A fresh transport seeded with a resume cursor re-feeds only later
     // events for that subject — the reconnect semantics the client relies on.
-    const subject = draftEvents[0]?.subject ?? "";
-    const resume = { [subject]: draftEvents[0]?.sequence ?? 1 };
-    const replayTransport = createMockEventTransport(resume);
-    const replay: Array<{ subject: string; sequence: number }> = [];
-    for await (const raw of replayTransport) {
-      const event = raw as { subject: string; sequence: number };
-      if (event.subject === subject) {
-        replay.push(event);
-        break;
-      }
-      if (replay.length > 10) break;
+    const subject = `change-orders/${first.data.id}`;
+    const sequence = received.find((entry) => entry.subject === subject)?.sequence ?? 1;
+    // 瞬态流下每个order主体只有一个事件：游标后可能再无任何事件，
+    // 而transport空轮询时不yield、for-await会停在生成器内部——用
+    // next()与睡眠竞速排水，时间帽后退出。
+    const replayAtCursor = createMockEventTransport({ [subject]: sequence });
+    const cursorIterator = replayAtCursor[Symbol.asyncIterator]();
+    const atCursor: unknown[] = [];
+    const replayDeadline = Date.now() + 400;
+    while (Date.now() < replayDeadline) {
+      const next = await Promise.race([
+        cursorIterator.next(),
+        new Promise<null>((resolve) => { setTimeout(() => { resolve(null); }, 80); }),
+      ]);
+      if (next === null) continue;
+      if (next.done) break;
+      const event = next.value as { subject: string };
+      if (event.subject === subject) atCursor.push(event);
+      if (atCursor.length > 10) break;
     }
-    expect(replay[0]?.sequence).toBeGreaterThan(resume[subject] ?? 0);
-  });
+    // Nothing at or before the resume cursor is re-fed.
+    expect(atCursor).toHaveLength(0);
+  }, 15_000);
 });

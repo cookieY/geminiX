@@ -12,13 +12,12 @@ import {
   listMyFlowDatasourceSchemas,
   listMyFlowDatasourceTables,
   createChangeDraft,
-  getChangeDraft,
   replaceDraftSql,
   revealDraftSql,
   runDraftReview,
-  submitChangeDraft,
   updateChangeDraft,
 } from "@/api/generated/client/change-drafts/change-drafts";
+import { submitChangeDraft } from "@/api/generated/client/change-orders/change-orders";
 import { DateTimePicker } from "@/shared/components/ui/date-time-picker";
 import { useDraftEditorStore, selectDirty } from "@/features/review/draft-editor-store";
 import { isTerminalPhase, presentPhase, type RunPhase } from "@/features/review/run-state";
@@ -44,6 +43,7 @@ import {
   type SqlCompletionCatalog,
 } from "@/features/review/sql-editor-panel";
 import { StagePath } from "@/features/review/stage-path";
+import { FlowTimelineCard } from "@/features/review/flow-timeline-card";
 import { SubmissionDock } from "@/features/review/submission-dock";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import {
@@ -54,6 +54,7 @@ import {
   useReviewRun,
 } from "@/features/review/use-draft-workspace";
 import { describeError } from "@/shared/api/error-display";
+import { BusinessError, TransportError } from "@/shared/api/mutator";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
@@ -96,6 +97,13 @@ function reviewOutputLanguage(language: string): "zh-CN" | "en-US" {
  * /changes/new hosts the create mode (flow + metadata + a SQL placeholder
  * until the draft exists); /changes/drafts/:id binds the same page to an
  * existing draft with the editor live.
+ *
+ * RCP-20261101-EPHEMERAL-PRECHECK：AI 预审是瞬态的——AI预审按钮把当前编辑
+ * 器SQL逐字送到 POST /review-runs，不落草稿、不写SQL、不领养；run id 只存
+ * 在页面客户端状态里（服务端不再写回草稿行），展示与轮询都用最后一次预
+ * 审的 run id。过期（TTL/重启，读取报错）按「预审结果已过期」呈现。保存
+ * 并返回是草稿与SQL的唯一写入方；提交把 {sql, run_id, metadata} 送到
+ * POST /change-orders，由服务端比对送审文本。
  *
  * The audited workspace machinery (draft editor store, explicit review,
  * monotonic phase fold, bulk browser, gate-mirroring dock, submit confirm)
@@ -401,11 +409,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [createDescription, setCreateDescription] = useState("");
   const [createRequestedFor, setCreateRequestedFor] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
-  // Implicit drafts (owner ruling 2026-10-24): the server submission
-  // envelope is created silently on the first acting operation (save SQL /
-  // precheck / submit / save-draft), never as a user-facing prerequisite.
-  // Until adoption the SQL lives in plain local state; after adoption the
-  // page behaves exactly like the draft mode, in place.
+  // Implicit drafts (owner ruling 2026-10-24 + RCP-20261101): the server
+  // submission envelope is created silently by 保存并返回 — now the ONLY
+  // writer of draft + SQL (预审与提交都不再领养、不再写SQL)。Until adoption
+  // the SQL lives in plain local state; after adoption the page behaves
+  // exactly like the draft mode, in place.
   const [localDraftId, setLocalDraftId] = useState<string | null>(null);
   const adoptedDraftIdRef = useRef<string | null>(null);
   // 领养的两个半段（POST建壳 + SQL PUT）是否都已完成：PUT失败的领养
@@ -467,6 +475,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [evidenceFindings, setEvidenceFindings] = useState<ReviewFinding[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  // ---- 瞬态预审（RCP-20261101）----
+  // 最后一次 POST /review-runs 返回的 run id 与当时逐字送审的SQL：全部
+  // 只在页面客户端状态里。staleness 是纯本地比对（编辑器文本 ≠ 送审文
+  // 本），服务端不再把 run id 写回草稿行，页面卸载后结果即不可恢复。
+  const [lastPrecheckRunId, setLastPrecheckRunId] = useState<string | null>(null);
+  // 上次送审文本是渲染相关事实（staleness呈现），用state而非ref——
+  // ref在渲染期读取会被react-hooks/refs正确禁止。
+  const [lastPrecheckSql, setLastPrecheckSql] = useState<string | null>(null);
+  // 轮询读Run已消失（TTL过期/服务重启，404或1002）——呈现「已过期」并清
+  // 空上次Run展示；重新预审后复位。
+
   // tabs-02 pattern (owner ruling 2026-10-24): controlled results tab pair so
   // the content switch runs through TransitionPanel's slide+blur motion —
   // same behaviour as the mine page tabs.
@@ -527,7 +546,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const isBulk =
     (draft?.sql_size_bytes ?? 0) > BULK_MODE_MIN_BYTES ||
     (draft?.statement_count ?? 0) > BULK_MODE_MIN_STATEMENTS ||
-    localSqlText.length > BULK_MODE_MIN_BYTES;
+    localSqlText.length > BULK_MODE_MIN_BYTES ||
+    // RCP-20261101：导入纯本地后，批量形态由本地digest判出（无服务端
+    // 行可供 sql_size_bytes/statement_count 回读）。
+    (importedDigest?.statementCount ?? 0) > BULK_MODE_MIN_STATEMENTS;
   const bulkDigest = isBulk && localSqlText !== "" ? importedDigest : null;
 
   const digestSourceRef = useRef<string | null>(null);
@@ -553,11 +575,25 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     isError: reviewRunError,
     error: reviewRunErrorDetail,
     refetch: refetchReviewRun,
-  } = useReviewRun(draft);
+  } = useReviewRun(lastPrecheckRunId);
   const findingsQuery = useReviewFindings(
-    draft?.review_run_id ?? null,
+    lastPrecheckRunId,
     run !== null && isTerminalPhase(phase),
   );
+  const hasPrecheckResult = lastPrecheckRunId !== null;
+  // RCP-20261101：staleness = 编辑器文本 ≠ 上次送审文本（仅在有预审结果
+  // 时才成立——旧语义里与草稿 revision/dirty 的耦合全部作废）。
+  const sqlChangedSincePrecheck =
+    hasPrecheckResult && lastPrecheckSql !== null && localSqlText !== lastPrecheckSql;
+  // 轮询读Run失败时区分「已过期」（Run消失：HTTP 404 或业务码1002）与真
+  // 故障——前者换过期呈现，后者保持错误展示，永不掩盖真实失败原因。
+  // 纯派生（不写state）：过期期间保留runId轮询引用无副作用——读取端
+  // 已按expired短路，恢复由用户重新预审驱动。
+  const precheckExpired =
+    hasPrecheckResult &&
+    reviewRunError &&
+    ((reviewRunErrorDetail instanceof TransportError && reviewRunErrorDetail.problem.status === 404) ||
+      (reviewRunErrorDetail instanceof BusinessError && reviewRunErrorDetail.err_code === 1002));
 
   if (timedOutState.phase !== phase) {
     setTimedOutState({ phase, timedOut: false });
@@ -599,14 +635,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     }
   }, [draft, store]);
 
-  // Run终态（ready/outdated落定）=服务端已完成version推进；重读草稿把
-  // savedVersion抬到终值，提交确认弹窗与If-Match都用真值。
-  const terminalRunId = isTerminalPhase(phase) ? run?.id ?? null : null;
-  useEffect(() => {
-    if (terminalRunId === null) return;
-    void invalidateAll();
-    // 依赖收敛为终态run id：同run终态只失效一次，run对象轮询刷新不重触发。
-  }, [terminalRunId, invalidateAll]);
+  // 瞬态Run不再推进草稿行version（RCP-20261101），Run终态无需重读草稿。
 
   const showActionError = useCallback((error: unknown, operationId: string) => {
     const display = describeError(error, operationId);
@@ -790,19 +819,20 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     }
   }, [activeDraftId, createMutation, createRequestedFor, createTitle, selectedFlowId, showActionError, store, t]);
 
+  // 批量导入只在本地落SQL（RCP-20261101）：服务端写入只剩 保存并返回；
+  // 创建态未领养时导入文本进 createSql 本地态，领养/草稿态进编辑器store。
   const handleImportConfirm = useCallback((text: string, digest: SqlDigest) => {
     setImportOpen(false);
     setImportedDigest(digest);
     digestSourceRef.current = text;
     setBulkLocate(null);
-    void (async () => {
-      // Bulk import always lands SQL on the server: adopt implicitly first.
-      const draftId = await ensureDraft();
-      if (draftId === null) return;
+    if (mode === "create" && localDraftId === null) {
+      createSqlRef.current = text;
+      setCreateSql(text);
+    } else {
       store.setSql(text);
-      saveMutation.mutate({ draftId, sql: text });
-    })();
-  }, [store, saveMutation, ensureDraft]);
+    }
+  }, [localDraftId, mode, store]);
 
   const revealMutation = useMutation({
     mutationFn: () => revealDraftSql(activeDraftId as string, { purpose: "draft-edit" }),
@@ -821,34 +851,30 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     onError: (error) => { showActionError(error, "revealDraftSql"); },
   });
 
+  // 瞬态AI预审（RCP-20261101）：把当前编辑器SQL逐字送审，不落草稿、不写
+  // SQL、不领养；run id 回到客户端状态，展示与轮询都由它驱动。
   const reviewMutation = useMutation({
-    mutationFn: ({ draftId }: { draftId: string }) =>
-      runDraftReview(draftId, {
-        headers: {
-          ...liveIfMatch(),
-          "Idempotency-Key": idempotencyKey(),
-          "Accept-Language": reviewOutputLanguage(i18n.language),
+    mutationFn: ({ sql }: { sql: string }) =>
+      runDraftReview(
+        {
+          flow_id: (draft?.flow_id ?? selectedFlowId) as string,
+          draft_id: activeDraftId ?? undefined,
+          sql,
         },
-      }),
-    onSuccess: (task, { draftId }) => {
+        {
+          headers: {
+            "Idempotency-Key": idempotencyKey(),
+            "Accept-Language": reviewOutputLanguage(i18n.language),
+          },
+        },
+      ),
+    onSuccess: (started, { sql }) => {
       setActionError(null);
-      void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
-      void queryClient.invalidateQueries({ queryKey: ["review-run"] });
-      // BUG-003：POST与草稿行写入review_run_id之间存在竞态——首次invalidate
-      // 读回的草稿可能仍是review_run_id=null，此后无任何触发器，UI永远停在
-      // "未预审"。result_ref携带Run引用，短轮询草稿直到它带上run id，
-      // 让useReviewRun的1秒轮询接管。
-      const ref = (task as { result_ref?: string } | null)?.result_ref;
-      const runId = typeof ref === "string" ? ref.split("/").pop() : undefined;
-      if (runId !== undefined && runId !== "") {
-        void queryClient.invalidateQueries({ queryKey: ["review-run", runId] });
-        let tries = 0;
-        const timer = setInterval(() => {
-          tries += 1;
-          void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
-          if (tries >= 10) clearInterval(timer);
-        }, 600);
-      }
+      const runId = (started as { run_id?: string } | null)?.run_id;
+      if (typeof runId !== "string" || runId === "") return;
+      setLastPrecheckSql(sql);
+      setLastPrecheckRunId(runId);
+      void queryClient.invalidateQueries({ queryKey: ["review-run", runId] });
     },
     onError: (error) => { showActionError(error, "runDraftReview"); },
   });
@@ -856,24 +882,39 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const submitMutation = useMutation({
     mutationFn: async () => {
       // 保存信息 folded into the submit path (owner ruling 2026-10-24):
-      // metadata edits must land before the order freezes them. Adoption in
-      // the same click already carries the metadata in the create call.
+      // metadata edits must land on the bound draft envelope before the
+      // order freezes them. Draftless create-mode submission carries the
+      // same snapshot in the body instead.
       if (metaBound && activeDraftId !== null) {
         await metaSaveMutation.mutateAsync({
           metadata: visibleMetadataRef.current,
           revision: metadataEditRevisionRef.current,
         });
       }
-      // §18.74：run完成在服务端异步推进行version——提交前强制重读草稿，
-      // If-Match用服务端真值（种子链同款姿势），消除终态竞态。
-      const fresh = (await getChangeDraft(activeDraftId as string)) as unknown as ChangeDraft;
-      store.markVersioned(fresh.version, fresh.state);
-      return submitChangeDraft(activeDraftId as string, {
-        headers: {
-          ...ifMatch(fresh.version),
-          "Idempotency-Key": idempotencyKey(),
+      return submitChangeDraft(
+        {
+          flow_id: (draft?.flow_id ?? selectedFlowId) as string,
+          draft_id: activeDraftId ?? undefined,
+          sql: localSqlText,
+          run_id: lastPrecheckRunId as string,
+          metadata: mode === "create"
+            ? {
+                title: (metaBound ? metaTitle : createTitle).trim(),
+                description: (metaBound ? metaDescription : createDescription) === ""
+                    ? undefined
+                    : (metaBound ? metaDescription : createDescription),
+                requested_scheduled_for:
+                  requestedForToIso(metaBound ? metaRequestedFor : createRequestedFor)
+                  ?? undefined,
+              }
+            : undefined,
         },
-      });
+        {
+          headers: {
+            "Idempotency-Key": idempotencyKey(),
+          },
+        },
+      );
     },
     onSuccess: (order) => {
       const created = order as unknown as { id: string; display_number: string };
@@ -966,13 +1007,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     return merged;
   }, [metadataQueries]);
 
-  // Owner ruling 2026-10-31: the run never issues a separate save of unsaved
-  // editor changes — it reviews the saved draft revision (the editor is just
-  // an editor until 保存并返回; review and submission both read the server
-  // draft, so results stay consistent with what would be submitted). The
-  // envelope adoption stays the first acting operation in create mode;
-  // clicking still disables the button synchronously (reviewStartPending) so
-  // a slow start can never invite a duplicate run.
+  // Owner ruling 2026-10-31 + RCP-20261101：预审绝不捎带保存——AI预审按钮
+  // 把当前编辑器SQL逐字送到瞬态端点评审；创建态仅就近校验流程已选（无草
+  // 稿壳可领养）。点击仍同步置pending（reviewStartPending，owner优先裁
+  // 定），慢启动绝不诱发重复预审。
   const handleRunReview = useCallback(() => {
     if (reviewStartInFlightRef.current) return;
     reviewStartInFlightRef.current = true;
@@ -981,15 +1019,14 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       reviewStartInFlightRef.current = false;
       setReviewStartPending(false);
     };
-    void (async () => {
-      const draftId = await ensureDraft();
-      if (draftId === null) {
-        finish();
-        return;
-      }
-      reviewMutation.mutate({ draftId }, { onSettled: finish });
-    })();
-  }, [ensureDraft, reviewMutation]);
+    if (mode === "create" && selectedFlowId === null && draft?.flow_id == null) {
+      setStepError(t("precheck.wizard.error.needFlow"));
+      finish();
+      return;
+    }
+    setStepError(null);
+    reviewMutation.mutate({ sql: localSqlText }, { onSettled: finish });
+  }, [draft?.flow_id, localSqlText, mode, reviewMutation, selectedFlowId, t]);
 
   // ---- 保存并返回: the single secondary action (owner ruling 2026-10-24,
   // 保存信息 folded away) — persist SQL then metadata, then leave. ----
@@ -998,8 +1035,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     const metadataSnapshot = visibleMetadataRef.current;
     const metadataRevision = metadataEditRevisionRef.current;
     const metadataUnchanged = () => metadataIsCurrent(metadataSnapshot, metadataRevision);
-    if (mode === "create" && activeDraftId === null) {
+    if (mode === "create" && (activeDraftId === null || !adoptionSqlCompleteRef.current)) {
       // The one explicit opt-in to the draft: adopt implicitly, then leave.
+      // 半截领养（POST已建壳、SQL PUT失败）也走这里：ensureDraft先补齐
+      // 用户已发起的保存（§18.90），补齐用的If-Match取领养时刻版本，
+      // 不落成"第二次PUT对着已推进版本"的错位。
       void (async () => {
         const draftId = await ensureDraft();
         if (draftId === null) return;
@@ -1078,8 +1118,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
    * semantic tone the real state earns (green pass / red fail / amber
    * outdated) — idle and in-flight stay neutral. */
   function precheckStatus(): { label: string; tone: "idle" | "busy" | "pass" | "fail" | "stale" } {
-    if (mode === "create" && !adopted) return { label: t("precheck.wizard.precheck.idle"), tone: "idle" };
-    const presented = presentPhase(store.serverState, phase, dirty);
+    if (!hasPrecheckResult || precheckExpired) {
+      return { label: t("precheck.wizard.precheck.idle"), tone: "idle" };
+    }
+    const presented = presentPhase(phase, sqlChangedSincePrecheck, hasPrecheckResult);
     if (presented === "idle") return { label: t("precheck.wizard.precheck.idle"), tone: "idle" };
     if (presented === "queued" || presented === "running")
       return { label: t("precheck.wizard.precheck.running"), tone: "busy" };
@@ -1093,7 +1135,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
   /** Summary values share one source of truth with the form fields. */
   function summaryValues() {
-    const presented = mode === "draft" || adopted ? presentPhase(store.serverState, phase, dirty) : "idle";
+    const presented = presentPhase(phase, sqlChangedSincePrecheck, hasPrecheckResult);
     // F-UX-001：摘要与元数据字段同源——draft模式（重开已存草稿）与
     // create领养态都读meta*（由草稿载入水合）；旧代码按adopted分支，
     // draft模式下摘要读了恒空的createTitle，标题永远显示"未填写"。
@@ -1102,7 +1144,6 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     const datasources = [...new Set((flow?.stages ?? []).map((stage) => stage.datasource_name))];
     return {
       presented,
-      flowName: flow?.name ?? t("precheck.wizard.summary.unselected"),
       title: title === "" ? t("precheck.wizard.summary.empty") : title,
       sql:
         run?.statement_count != null
@@ -1134,19 +1175,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             {t("precheck.wizard.summary.groupInfo")}
           </p>
           <dl className="flex flex-col gap-3">
-            <SummaryRow
-              label={t("precheck.wizard.summary.flow")}
-              value={values.flowName}
-              muted={flow === null}
-            />
-            {flow !== null && (
-              <div className="flex justify-end">
-                <dt className="sr-only">{t("precheck.wizard.summary.flow")}</dt>
-                <dd className="m-0">
-                  <StagePath flow={flow} />
-                </dd>
-              </div>
-            )}
+            {/* 审核流程改由下方独立时间线卡呈现（owner 2026-10-31）。 */}
             <SummaryRow
               label={t("precheck.new.dialog.titleLabel")}
               value={values.title}
@@ -1198,10 +1227,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           </dl>
         </CardContent>
         {/* Action area: one primary focus per page (owner ruling 2026-10-24).
-         * The dock is the single submission authority in both modes — in the
-         * create mode it stays honestly blocked until the implicit adoption
-         * plus a precheck unlock it. The surface lifts one step above the
-         * card body (reference ruling 2026-10-24). */}
+         * The dock is the single submission authority in both modes — it stays
+         * honestly blocked until a passing ephemeral precheck of the exact
+         * editor SQL unlocks it (RCP-20261101). The surface lifts one step
+         * above the card body (reference ruling 2026-10-24). */}
         <div className="bg-secondary/40 flex flex-col gap-2.5 border-t px-3.5 py-3">
           {stepError !== null && (
             <p role="alert" className="text-destructive text-sm" data-testid="wizard-step-error">
@@ -1215,30 +1244,43 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           )}
           <SubmissionDock
             variant="panel"
-            draftState={activeDraftId !== null ? store.serverState : null}
+            draftState={
+              activeDraftId !== null
+                ? store.serverState === "submitted" ? "submitted" : "draft"
+                : null
+            }
             phase={values.presented}
             gate={run?.gate ?? null}
-            dirty={dirty}
+            sqlChangedSincePrecheck={sqlChangedSincePrecheck}
             flowUpdated={flowUpdated}
-            reviewCurrent={run === null || run.draft_revision === draft?.revision}
             submitting={submitMutation.isPending || adoptionPending}
             onSubmit={() => {
-              void (async () => {
-                const draftId = await ensureDraft();
-                if (draftId === null) return;
-                const current = useDraftEditorStore.getState();
-                if (selectDirty(current)) {
-                  // The dialog restates what submission freezes — the SQL the
-                  // user sees must be on the server before it opens.
-                  saveMutation.mutate({ draftId, sql: current.sql }, {
-                    onSuccess: (_saved, variables) => {
-                      if (savedSqlMatchesEditor(variables.sql)) setConfirmSubmit(true);
-                    },
-                  });
+              // RCP-20261101：提交不再落SQL——请求体携带编辑器SQL与预审run
+              // id，由服务端逐字比对；此处只做创建态就近校验（流程/标题/
+              // 期望时间），通过即打开确认弹窗。
+              if (mode === "create") {
+                if (selectedFlowId === null && draft?.flow_id == null) {
+                  setStepError(t("precheck.wizard.error.needFlow"));
                   return;
                 }
-                setConfirmSubmit(true);
-              })();
+                if ((metaBound ? metaTitle : createTitle).trim() === "") {
+                  setStepError(t("precheck.wizard.error.needTitle"));
+                  return;
+                }
+                const requestedFor = metaBound ? metaRequestedFor : createRequestedFor;
+                if (requestedFor !== "") {
+                  if (requestedForToIso(requestedFor) === null) {
+                    setStepError(t("precheck.wizard.requestedScheduleInvalid"));
+                    return;
+                  }
+                  if (new Date(requestedFor).getTime() <= Date.now()) {
+                    setStepError(t("precheck.wizard.requestedSchedulePast"));
+                    return;
+                  }
+                }
+              }
+              setStepError(null);
+              setConfirmSubmit(true);
             }}
             aside={
               /* 保存并返回 is the single secondary action (owner ruling
@@ -1374,13 +1416,15 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   }
 
   function renderSqlSection(): ReactNode {
-    // Pre-adoption the presented phase is honestly idle: nothing has run.
     const draftMode = mode === "draft" || adopted;
-    const phasePresented = draftMode ? presentPhase(store.serverState, phase, dirty) : "idle";
-    const hasPresentedRun =
-      draft?.review_run_id != null || run !== null || phasePresented !== "idle";
+    // RCP-20261101：呈现相位只由瞬态run＋本地staleness决定——未预审即诚实
+    // 显示idle（创建态未领养也能预审）。
+    const phasePresented = presentPhase(phase, sqlChangedSincePrecheck, hasPrecheckResult);
+    const hasPresentedRun = hasPrecheckResult;
     let findingsState: FindingListState;
-    if (!hasPresentedRun) {
+    if (precheckExpired) {
+      findingsState = { status: "expired" };
+    } else if (!hasPresentedRun) {
       findingsState = { status: "idle" };
     } else if (reviewRunError) {
       findingsState = {
@@ -1394,11 +1438,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       findingsState = { status: "waiting" };
     } else if (run === null) {
       findingsState = { status: "loading" };
-    } else if (
-      phasePresented === "outdated" ||
-      flowUpdated ||
-      (draft !== null && run.draft_revision !== draft.revision)
-    ) {
+    } else if (phasePresented === "outdated" || flowUpdated) {
       findingsState = { status: "stale" };
     } else if (!isTerminalPhase(phasePresented)) {
       // A run snapshot that has not produced a terminal result is still
@@ -1531,7 +1571,9 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                       className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-6 text-sm"
                       data-testid="bulk-digest-pending"
                     >
-                      {store.sql === ""
+                      {/* 创建态未领养时导入文本在本地（RCP-20261101），占位
+                          提示按当前编辑器值判断，不再只看store。 */}
+                      {editorValue === ""
                         ? t("precheck.bulk.browser.revealFirst")
                         : t("precheck.bulk.browser.digesting")}
                     </div>
@@ -1657,18 +1699,19 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             {renderSqlSection()}
           </main>
           <aside
-            className="p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
+            className="flex flex-col gap-4 p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
             aria-label={t("precheck.wizard.summaryTitle")}
           >
             {renderSummaryCard()}
+            <FlowTimelineCard flow={flow} />
           </aside>
         </div>
 
+        {/* 批量导入纯本地（RCP-20261101）：确认即落编辑器内容，不再上传。 */}
         <ImportDialog
           open={importOpen}
           onOpenChange={setImportOpen}
           onConfirm={handleImportConfirm}
-          uploading={saveMutation.isPending}
         />
         <EvidenceSheet
           findings={evidenceFindings}

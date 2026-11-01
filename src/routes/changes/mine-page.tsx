@@ -22,7 +22,6 @@ import { EmptyState } from "@/shared/components/status/empty-state";
 import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
@@ -120,7 +119,8 @@ function DraftRow({ draft, onDelete }: { draft: ChangeDraft; onDelete: (draft: C
     >
       <FileStack className="text-muted-foreground size-4 shrink-0" aria-hidden />
       <span className="flex-1 truncate">{draft.title}</span>
-      <Badge variant="outline">{t(`precheck.phase.${draft.state}`, { defaultValue: draft.state })}</Badge>
+      {/* RCP-20261101：草稿列表不再有审核状态列——draft.state 只剩
+          draft|submitted，提交即离开草稿列表，无需徽章。 */}
       <span className="text-muted-foreground hidden text-xs sm:block">
         {formatTimestamp(draft.updated_at)}
       </span>

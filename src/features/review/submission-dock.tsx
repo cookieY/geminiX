@@ -22,13 +22,13 @@ import {
  */
 
 export interface SubmissionDockProps {
-  draftState: "draft" | "reviewing" | "ready" | "blocked" | "partial" | "failed" | "outdated" | "submitted" | null;
+  /** Draft envelope state; only draft|submitted occur (RCP-20261101). */
+  draftState: "draft" | "submitted" | null;
   phase: RunPhase;
   gate: SubmissionGate | null;
-  dirty: boolean;
+  /** Editor text differs from the SQL sent for the last AI precheck. */
+  sqlChangedSincePrecheck: boolean;
   flowUpdated: boolean;
-  /** The run's frozen revision matches the current draft revision. */
-  reviewCurrent: boolean;
   submitting: boolean;
   onSubmit: () => void;
   /** Panel only: a secondary action rendered on the same row as the submit
@@ -48,16 +48,14 @@ export function SubmissionDock(props: SubmissionDockProps) {
     draftState: props.draftState,
     runPhase: props.phase,
     gate: props.gate,
-    dirty: props.dirty,
+    sqlChangedSincePrecheck: props.sqlChangedSincePrecheck,
     flowUpdated: props.flowUpdated,
-    reviewCurrent: props.reviewCurrent,
   });
   const reviewInProgress =
     !props.flowUpdated && (props.phase === "queued" || props.phase === "running");
   const canShowGateResult =
     isTerminalPhase(props.phase) &&
-    props.reviewCurrent &&
-    !props.dirty &&
+    !props.sqlChangedSincePrecheck &&
     !props.flowUpdated;
   const blockers = canShowGateResult ? gateBlockers(props.gate) : [];
   const panel = props.variant === "panel";

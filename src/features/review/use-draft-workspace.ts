@@ -41,11 +41,6 @@ export function useChangeDraft(draftId: string, enabled = true) {
     "io.yearning.v4.change_draft.state_changed",
     () => {
       void queryClient.invalidateQueries({ queryKey: ["change-draft", draftId] });
-      // A state change may void the presented run (outdated/submitted); the
-      // stale run snapshot must not outlive the event.
-      const draft = queryClient.getQueryData<ChangeDraft>(["change-draft", draftId]);
-      const runId = draft?.review_run_id ?? null;
-      void queryClient.invalidateQueries({ queryKey: ["review-run", runId] });
     },
   );
 
@@ -95,8 +90,12 @@ interface ReviewProgress {
   refetch: () => Promise<unknown>;
 }
 
-export function useReviewRun(draft: ChangeDraft | null): ReviewProgress {
-  const runId = draft?.review_run_id ?? null;
+/**
+ * RCP-20261101-EPHEMERAL-PRECHECK：预审Run是瞬态的，run id 只来自最后一次
+ * POST /review-runs 的响应（页面客户端状态），服务端不再把它写到草稿行上；
+ * 页面卸载后 id 即丢失，重开只能重新预审。调用方传入该 id 进行轮询。
+ */
+export function useReviewRun(runId: string | null): ReviewProgress {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["review-run", runId],

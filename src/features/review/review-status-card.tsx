@@ -103,7 +103,11 @@ export function ReviewStatusCard({
         }
       : PHASE_BADGE[phase];
   const Icon = badge.icon;
-  const summaries = run?.stage_results.filter(hasReviewSummary) ?? [];
+  // RCP-20261101瞬态Run：分组完成前的排队态观察可能携带空缺字段——
+  // 运行时实测出现过stage_results:null（类型声明为非空），消费端判空，
+  // 路由级crash不可接受。
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const summaries = run?.stage_results?.filter(hasReviewSummary) ?? [];
 
   return (
     <Card data-testid="review-status">
@@ -159,7 +163,9 @@ export function ReviewStatusCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {run.stage_results.map((stage) => {
+                {/* 同上：运行时防御null（类型未声明可空）。 */}
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
+                {(run.stage_results ?? []).map((stage) => {
                   const stageBadge = stageBadgeOf(stage.state);
                   return (
                     <TableRow key={stage.stage_position}>
