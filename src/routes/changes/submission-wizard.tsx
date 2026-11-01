@@ -539,6 +539,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     return () => { stopReviewEvents(); };
   }, [mode]);
 
+
   // Bulk mode (frontend PRD F5): drafts beyond one max-statement size or a
   // thousand statements never mount the Monaco editor — the virtualized
   // browser takes over so the full SQL is never rendered.
@@ -572,6 +573,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     run,
     phase,
     isPending: reviewRunPending,
+    isFetching: reviewRunFetching,
     isError: reviewRunError,
     error: reviewRunErrorDetail,
     refetch: refetchReviewRun,
@@ -850,6 +852,19 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     },
     onError: (error) => { showActionError(error, "revealDraftSql"); },
   });
+  // Auto-load the saved SQL on draft entry (owner ruling 2026-11-01: the
+  // read-SQL threshold was over-design — display it directly; precheck must
+  // always have the editor text, bulk drafts included).
+  const autoRevealedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (mode !== "draft" || draft === null) return;
+    if (!draft.has_sql) return;
+    const storeState = useDraftEditorStore.getState();
+    if (storeState.draftId !== draft.id || storeState.savedSql !== null) return;
+    if (autoRevealedRef.current === draft.id || revealMutation.isPending) return;
+    autoRevealedRef.current = draft.id;
+    revealMutation.mutate();
+  }, [mode, draft, revealMutation]);
 
   // 瞬态AI预审（RCP-20261101）：把当前编辑器SQL逐字送审，不落草稿、不写
   // SQL、不领养；run id 回到客户端状态，展示与轮询都由它驱动。
@@ -1520,18 +1535,6 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   <FileUp className="size-3.5" aria-hidden />
                   {t("precheck.bulk.import.action")}
                 </Button>
-                {draft?.has_sql && store.savedSql === null && (
-                  <PendingButton
-                    variant="outline"
-                    size="sm"
-                    className="text-sm font-semibold"
-                    pending={revealMutation.isPending}
-                    onClick={() => { revealMutation.mutate(); }}
-                    data-testid="reveal-sql"
-                  >
-                    {t("precheck.workspace.loadSql")}
-                  </PendingButton>
-                )}
                 <PendingButton
                   size="sm"
                   pending={
@@ -1622,6 +1625,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                     run={run}
                     hasRunId={hasPresentedRun}
                     isPending={reviewRunPending}
+                    isFetching={reviewRunFetching}
                     isError={reviewRunError}
                     error={reviewRunErrorDetail}
                     onRetry={() => { void refetchReviewRun(); }}

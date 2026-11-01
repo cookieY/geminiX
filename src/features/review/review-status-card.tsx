@@ -72,6 +72,8 @@ export interface ReviewStatusCardProps {
   run: ReviewRun | null;
   hasRunId: boolean;
   isPending: boolean;
+  /** 后台重取中（有缓存数据也要示loading，不把陈旧计数当静止态）。 */
+  isFetching?: boolean;
   isError: boolean;
   error?: unknown;
   onRetry?: () => void;
@@ -82,6 +84,7 @@ export function ReviewStatusCard({
   run,
   hasRunId,
   isPending,
+  isFetching = false,
   isError,
   error,
   onRetry,
@@ -132,7 +135,7 @@ export function ReviewStatusCard({
             />
           </div>
         )}
-        {hasRunId && !isError && run === null && (
+        {hasRunId && !isError && (run === null || isFetching) && (
           <div data-testid="review-status-loading">
             <LoadingState variant="inline" label={t("precheck.review.loading")} />
           </div>

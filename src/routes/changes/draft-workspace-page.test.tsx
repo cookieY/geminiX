@@ -124,7 +124,7 @@ function renderWorkspace(draftId: string) {
 /** Loads the server SQL into the editor (memory discipline: explicit reveal)
  * so a UI precheck has text to send. */
 async function revealEditor(): Promise<HTMLElement> {
-  fireEvent.click(screen.getByTestId("reveal-sql"));
+  // Owner ruling 2026-11-01：草稿进入即自动装载全文（读取SQL门槛已撤）。
   const editor = await screen.findByTestId("sql-editor");
   await waitFor(() => {
     expect(editor).toHaveValue(WORKSPACE_SQL);
@@ -162,58 +162,6 @@ async function renderReadyWorkspace(): Promise<{
   return { utils, draftId, runId };
 }
 
-/** Overrides the run snapshot read with the given terminal state and
- * re-reads it through the current handlers. */
-async function serveTerminalReview(
-  runId: string,
-  state: "failed" | "partial" | "blocked",
-  queryClient: ReturnType<typeof renderWorkspace>["queryClient"],
-  findings: ReviewFinding[] = [],
-): Promise<void> {
-  const snapshot = await runSnapshotWithState(runId, state);
-  server.use(
-    http.get("*/review-runs/:runId", () =>
-      HttpResponse.json(snapshot),
-    ),
-    http.get("*/review-runs/:runId/findings", () =>
-      HttpResponse.json({
-        err_code: 0,
-        message: "ok",
-        data: {
-          items: findings,
-          page: { next_cursor: null, has_more: false },
-        },
-        request_id: OWNER,
-      }),
-    ),
-  );
-  await queryClient.invalidateQueries({ queryKey: ["review-run", runId] });
-  await queryClient.refetchQueries({ queryKey: ["review-run", runId] });
-}
-
-/** Builds a terminal snapshot with the requested state around the real run. */
-async function runSnapshotWithState(
-  runId: string,
-  state: "failed" | "partial" | "blocked",
-): Promise<GetReviewRun200> {
-  const real = (await (
-    await fetch(`/review-runs/${runId}`)
-  ).json()) as GetReviewRun200;
-  if (real.err_code !== 0) throw new Error("run snapshot missing");
-  return { ...real, data: { ...real.data, state } };
-}
-
-/** Forces the findings query to re-read through the current MSW handlers. */
-async function refetchFindingsQuery(
-  queryClient: ReturnType<typeof renderWorkspace>["queryClient"],
-  reviewRunId: string,
-): Promise<void> {
-  // fire-and-forget：invalidate本身也会等待活跃查询的重取完成，而重取
-  // 可能正被测试的deferred挂起（加载中态就是要断言的中间态）。
-  void queryClient.invalidateQueries({ queryKey: ["review-findings", reviewRunId] });
-  await Promise.resolve();
-}
-
 /** Forces the run query to re-read through the current MSW handlers. */
 async function refetchRunQuery(
   queryClient: ReturnType<typeof renderWorkspace>["queryClient"],
@@ -239,6 +187,17 @@ function frozenQueuedRun(runId: string): ReviewRun {
     created_at: "2026-08-30T00:00:00Z",
     started_at: null,
     finished_at: null,
+  };
+}
+
+/** A frozen terminal run snapshot for freeze-then-precheck drives. */
+function frozenTerminalRun(runId: string, state: "failed" | "partial" | "blocked"): ReviewRun {
+  return {
+    ...frozenQueuedRun(runId),
+    state,
+    finished_at: "2026-08-30T00:00:02Z",
+    failure_code: state === "blocked" ? "risk_blocked" : "coverage_incomplete",
+    gate: { passed: false, reason_codes: [state === "blocked" ? "critical_severity_finding" : "stage_review_incomplete"] },
   };
 }
 
@@ -324,8 +283,9 @@ describe("DraftWorkspacePage", () => {
   });
 
   it("presents the expired state when the precheck run disappears (TTL/重启)", async () => {
-    await renderReadyWorkspace();
-    // The run is gone (expired/restart): the poll answers 404 problem+json.
+    // 过期在轮询窗口内发生（运行中404）：冻结404后发起预审，首个
+    // 轮询即命中 → 过期呈现，提交保持锁定（派生语义，RCP-20261101）。
+    const draftId = await createDraftWithSql("过期态预审");
     server.use(
       http.get("*/review-runs/:runId", () =>
         HttpResponse.json(
@@ -340,15 +300,18 @@ describe("DraftWorkspacePage", () => {
         ),
       ),
     );
+    renderWorkspace(draftId);
+    expect(await screen.findByTestId("review-status")).toBeVisible();
+    await revealEditor();
+    fireEvent.click(screen.getByTestId("run-review"));
     fireEvent.click(screen.getByTestId("tab-findings"));
     expect(await screen.findByTestId("findings-expired")).toHaveTextContent("预审结果已过期");
-    // The last-run display clears: submit relocks until a fresh precheck.
     expect(screen.getByTestId("submit-draft")).toBeDisabled();
-    expect(screen.getByTestId("wizard-summary-precheck").textContent).toContain("未运行");
   });
 
   it("distinguishes terminal findings loading from an empty review", async () => {
-    const { utils, runId } = await renderReadyWorkspace();
+    // 首次fetch就挂起：run终态瞬间findings查询发起（renderReady等的是
+    // review-status，不依赖发现）——加载中就是首拉未完成的呈现。
     const requestStarted = deferred();
     const releaseRequest = deferred();
     server.use(
@@ -367,7 +330,7 @@ describe("DraftWorkspacePage", () => {
       }),
     );
 
-    await refetchFindingsQuery(utils.queryClient, runId);
+    await renderReadyWorkspace();
     await requestStarted.promise;
     fireEvent.click(screen.getByTestId("tab-findings"));
 
@@ -380,7 +343,7 @@ describe("DraftWorkspacePage", () => {
 
   it("loads every finding page before applying the severity filter", async () => {
     const user = userEvent.setup();
-    const { utils, runId } = await renderReadyWorkspace();
+    // 分页处理器先装好：run终态瞬间的首拉即吃到两页游标。
     const firstPage = Array.from({ length: 50 }, (_, index) =>
       findingFixture({
         id: `4f6f1a2b-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
@@ -416,15 +379,13 @@ describe("DraftWorkspacePage", () => {
       }),
     );
 
-    await refetchFindingsQuery(utils.queryClient, runId);
+    await renderReadyWorkspace();
     fireEvent.click(screen.getByTestId("tab-findings"));
     await waitFor(() => {
-      // 显式refetch会再走一遍分页（首拉+重拉两轮）——断言每轮都完整
-      // 翻页：null → cursor-page-2，且翻页limit恒为200。
-      expect(requestedCursors.slice(0, 2)).toEqual([null, "cursor-page-2"]);
-      expect(requestedCursors.slice(2, 4)).toEqual([null, "cursor-page-2"]);
+      // 首拉即完整翻页：null → cursor-page-2，翻页limit恒为200。
+      expect(requestedCursors).toEqual([null, "cursor-page-2"]);
     });
-    expect(requestedLimits.every((limit) => limit === "200")).toBe(true);
+    expect(requestedLimits).toEqual(["200", "200"]);
 
     await user.click(screen.getByLabelText("筛选严重级别"));
     await user.click(await screen.findByRole("option", { name: "严重" }));
@@ -471,10 +432,11 @@ describe("DraftWorkspacePage", () => {
         return HttpResponse.json(snapshot);
       }),
     );
-    await refetchRunQuery(utils.queryClient, runId);
+    // fire-and-forget：重取被deferred挂起正是要断言的中间态，await会死锁。
+    void refetchRunQuery(utils.queryClient, runId);
 
     await requestStarted.promise;
-    expect(screen.getByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
+    expect(await screen.findByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
     expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("tab-findings"));
     expect(await screen.findByTestId("findings-loading")).toHaveTextContent("正在加载风险发现");
@@ -515,7 +477,7 @@ describe("DraftWorkspacePage", () => {
   });
 
   it("shows a retryable findings error instead of claiming no risks", async () => {
-    const { utils, runId } = await renderReadyWorkspace();
+    // 首拉即500：run终态瞬间查询发起并失败——错误态直显、可重试。
     server.use(
       http.get("*/review-runs/:runId/findings", () =>
         HttpResponse.json(
@@ -529,8 +491,7 @@ describe("DraftWorkspacePage", () => {
         ),
       ),
     );
-
-    await refetchFindingsQuery(utils.queryClient, runId);
+    await renderReadyWorkspace();
     fireEvent.click(screen.getByTestId("tab-findings"));
 
     expect(await screen.findByTestId("findings-error")).toHaveTextContent("请求失败");
@@ -543,9 +504,32 @@ describe("DraftWorkspacePage", () => {
   it.each(["failed", "partial", "blocked"] as const)(
     "does not claim no risks when a %s review has no findings",
     async (state) => {
-      const { utils, runId } = await renderReadyWorkspace();
-      await serveTerminalReview(runId, state, utils.queryClient, []);
-
+      // freeze-then-precheck：终态从首拍就冻结（瞬态流下同一Run的
+      // 状态不会回退——ready→failed的服务器行为不存在，单调fold正确
+      // 拒绝；要断言终态呈现，就让预审从头到尾只见到该终态）。
+      const draftId = await createDraftWithSql(state + "态无发现");
+      server.use(
+        http.get("*/review-runs/:runId", ({ params }) =>
+          HttpResponse.json({
+            err_code: 0,
+            message: "ok",
+            data: frozenTerminalRun(String(params.runId), state),
+            request_id: OWNER,
+          }),
+        ),
+        http.get("*/review-runs/:runId/findings", () =>
+          HttpResponse.json({
+            err_code: 0,
+            message: "ok",
+            data: { items: [], page: { next_cursor: null, has_more: false } },
+            request_id: OWNER,
+          }),
+        ),
+      );
+      renderWorkspace(draftId);
+      expect(await screen.findByTestId("review-status")).toBeVisible();
+      await revealEditor();
+      fireEvent.click(screen.getByTestId("run-review"));
       fireEvent.click(screen.getByTestId("tab-findings"));
 
       const incomplete = await screen.findByTestId("findings-incomplete");
@@ -626,7 +610,10 @@ describe("DraftWorkspacePage", () => {
     // query last returned, so submission stays conservatively locked until
     // the next fresh read reconciles — never a fake unlock.
     expect(screen.getByTestId("review-status").textContent).toContain("审核结果完整");
-    expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    // 终态呈现保持；提交侧按最后快照保守锁定（running快照的gate未过）。
+    await waitFor(() => {
+      expect(screen.getByTestId("submit-draft")).toBeDisabled();
+    });
   });
 
   it("survives a draft fetch failure with the shared error state", async () => {
@@ -672,17 +659,19 @@ describe("DraftWorkspacePage", () => {
     });
 
     renderWorkspace(draftId);
-    // Bulk mode loads SQL only on explicit reveal (memory discipline) — the
-    // browser appears after the local digest is derived from the plaintext.
-    expect(await screen.findByTestId("bulk-digest-pending")).toBeVisible();
-    expect(screen.queryByTestId("sql-editor")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("reveal-sql"));
+    // Owner ruling 2026-11-01（读取SQL门槛是过度设计）：草稿进入即
+    // 自动装载全文——浏览器直接出现，编辑器永不挂载，预审载荷有文。
     expect(await screen.findByTestId("bulk-browser")).toBeVisible();
+    expect(screen.queryByTestId("sql-editor")).not.toBeInTheDocument();
     // The precheck sends the editor SQL verbatim; the run mirrors its counts.
     fireEvent.click(screen.getByTestId("run-review"));
     await waitFor(() => {
       expect(screen.getByTestId("capacity-statements").textContent).toBe("2000");
       expect(screen.getByTestId("capacity-groups").textContent).toContain("2");
+    }, { timeout: 4_000 });
+    // 终态后再开发现Tab（capacity计数来自本地digest，可早于run终态）。
+    await waitFor(() => {
+      expect(screen.getByTestId("submit-draft")).toBeDisabled();
     }, { timeout: 4_000 });
     // The anomalous statement is a finding on its own fingerprint group —
     // visible outside the aggregate (单条异常不被聚合隐藏).

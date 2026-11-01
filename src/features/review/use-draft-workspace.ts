@@ -85,6 +85,8 @@ interface ReviewProgress {
   phase: RunPhase;
   hasRunId: boolean;
   isPending: boolean;
+  /** 后台重取中（有缓存也要示loading）。 */
+  isFetching: boolean;
   isError: boolean;
   error: unknown;
   refetch: () => Promise<unknown>;
@@ -163,6 +165,7 @@ export function useReviewRun(runId: string | null): ReviewProgress {
     isPending: query.isPending,
     isError: query.isError,
     error: query.error,
+    isFetching: query.isFetching,
     refetch: query.refetch,
   };
 }
