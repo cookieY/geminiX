@@ -3,9 +3,9 @@ import { statePath } from "./helpers/real-auth";
 
 // FE-F12 real-backend e2e — the approver's queue over real data. One pending
 // order is created through the real API from the submitter's session (draft
-// → SQL → stub review → submit, no decision), so the queue has a
-// deterministic row; the decision then round-trips the CSRF-protected POST
-// through the same-origin proxy.
+// → SQL → ephemeral AI review via POST /review-runs → POST /change-orders,
+// no decision), so the queue has a deterministic row; the decision then
+// round-trips the CSRF-protected POST through the same-origin proxy.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("yearning-locale", "zh-CN");
@@ -33,6 +33,7 @@ async function ensurePendingOrder(page: Page): Promise<{ orderId: string; displa
       });
       return (await response.json()) as Envelope;
     };
+    const reviewSql = "create table if not exists f12_e2e_pending (id bigint primary key);";
     const flowList = (await (await fetch("/api/v4/users/me/flows?flow_type=change_review")).json()) as {
       data?: { items?: Array<{ id: string }> };
     };
@@ -45,28 +46,31 @@ async function ensurePendingOrder(page: Page): Promise<{ orderId: string; displa
     const draftVersion = draft.data?.version as number | undefined;
     if (draftId === undefined) throw new Error(`draft create failed: ${draft.err_code}`);
     await call("PUT", `/api/v4/change-drafts/${draftId}/sql`, {
-      sql: "create table if not exists f12_e2e_pending (id bigint primary key);",
+      sql: reviewSql,
     }, draftVersion);
-    const after = (await (await fetch(`/api/v4/change-drafts/${draftId}`)).json()) as {
-      data?: { version?: number };
-    };
-    const task = await call("POST", `/api/v4/change-drafts/${draftId}/review-runs`, undefined, after.data?.version);
-    const taskId = task.data?.id as string | undefined;
-    if (taskId === undefined) throw new Error(`review task failed: ${task.err_code}`);
-    let terminal = false;
+    // Ephemeral precheck (RCP-20261101): the run carries the editor SQL and
+    // persists nothing; submission (POST /change-orders) requires the same
+    // SQL byte-identical and materializes the run.
+    const started = await call("POST", "/api/v4/review-runs", {
+      flow_id: flowId, draft_id: draftId, sql: reviewSql,
+    });
+    const runId = started.data?.run_id as string | undefined;
+    if (runId === undefined) throw new Error(`review run failed: ${started.err_code}`);
+    let ready = false;
     for (let i = 0; i < 180; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      const view = (await (await fetch(`/api/v4/tasks/${taskId}`)).json()) as {
-        data?: { state?: string };
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const view = (await (await fetch(`/api/v4/review-runs/${runId}`)).json()) as {
+        data?: { state?: string; gate?: { passed?: boolean } | null };
       };
-      if (view.data?.state === "succeeded") { terminal = true; break; }
-      if (view.data?.state === "failed") throw new Error("review task failed");
+      const state = view.data?.state;
+      if (state === undefined || state === "queued" || state === "running") continue;
+      if (state === "ready" && view.data?.gate?.passed === true) ready = true;
+      break;
     }
-    if (!terminal) throw new Error("review task never reached a terminal state");
-    const fresh = (await (await fetch(`/api/v4/change-drafts/${draftId}`)).json()) as {
-      data?: { version?: number };
-    };
-    const submitted = await call("POST", `/api/v4/change-drafts/${draftId}/submission`, undefined, fresh.data?.version);
+    if (!ready) throw new Error("review run did not reach a passing ready state");
+    const submitted = await call("POST", "/api/v4/change-orders", {
+      flow_id: flowId, draft_id: draftId, sql: reviewSql, run_id: runId,
+    });
     return {
       orderId: submitted.data?.id,
       displayNumber: submitted.data?.display_number,

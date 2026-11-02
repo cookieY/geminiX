@@ -321,9 +321,15 @@ describe("knowledge entries", () => {
 describe("ai providers", () => {
   it("list → create → get → replace → connection test → delete", async () => {
     await record("listAiProviders", "admin-face", () => listAiProviders());
+    // Real mode drives a REAL OpenAI-compatible endpoint (the local
+    // deterministic stub retired 2026-11-02): base URL and key come from the
+    // operator's environment.
     const baseUrl = mode === "real"
-      ? process.env.F12_STUB_BASE_URL ?? "https://127.0.0.1:18443"
+      ? process.env.F12_AI_BASE_URL ?? ""
       : "https://f12-mock-stub.invalid/v1";
+    if (mode === "real" && baseUrl === "") {
+      throw new Error("F12_AI_BASE_URL (and F12_AI_API_KEY) are required for the real-mode ai-provider contract face");
+    }
     // Divergence #001 resolved (BE-B13-F12-CONTRACT-ALIGNMENT): the backend
     // now binds api_key as the contract's SecretInput — one shape both modes.
     // selection_priority is globally UNIQUE on the backend — randomize the
@@ -333,7 +339,10 @@ describe("ai providers", () => {
       createAiProvider({
         name: `f12-provider-${suffix}`, provider_kind: "openai_compatible", base_url: baseUrl,
         model_name: "f12-scratch-model", enabled: true, selection_priority: priority,
-        api_key: { value: "f12-scratch-key" },
+        // Real mode stores the operator key: the connection test and the
+        // stored-key catalog probe the STORED key against the real endpoint,
+        // so a scratch literal would flip both rows to auth-failure divergences.
+        api_key: { value: mode === "real" ? process.env.F12_AI_API_KEY ?? "" : "f12-scratch-key" },
       }, { headers: idem() }));
     const provider = asView<IdVersion | undefined>(created.value);
     if (!provider?.id) throw new Error(`ai provider not created: ${created.errCode} ${created.status}`);
@@ -343,13 +352,19 @@ describe("ai providers", () => {
         name: `f12-provider-${suffix}`, provider_kind: "openai_compatible", base_url: baseUrl,
         model_name: "f12-scratch-model", enabled: true, selection_priority: priority,
       }, { headers: ifMatch(provider.version) }));
+    // Case id "scratch-stub" is cited by the frozen FE-F12 evidence
+    // artifacts (tests/frontend-operation-coverage.json et al.) — the stub
+    // itself retired 2026-11-02, the id stays stable for the machine index.
     await record("testAiProviderConnection", "scratch-stub", () =>
       testAiProviderConnection(provider.id, { headers: idem() }),
-      "real probes the local TLS stub; the response body lacks the Task id (divergence #019)");
-    // §18.76-B model catalog suggestions. Plaintext credentials ride the body,
-    // never the URL; the real stack reaches the stub's GET /models.
+      "real probes the configured OpenAI-compatible endpoint");
+    // §18.76-B model catalog suggestions. Plaintext credentials ride the
+    // body, never the URL; real mode reaches the configured endpoint's
+    // GET /models with the operator key.
     await record("listAiProviderModels", "scratch-catalog", () =>
-      listAiProviderModels({ base_url: baseUrl, api_key: "f12-scratch-key" }));
+      listAiProviderModels({ base_url: baseUrl, api_key: mode === "real"
+        ? process.env.F12_AI_API_KEY ?? ""
+        : "f12-scratch-key" }));
     await record("listAiProviderModels", "stored-key-catalog", () =>
       listAiProviderModels({ base_url: baseUrl, provider_id: provider.id }),
       "editing an existing provider reuses the stored key via provider_id");

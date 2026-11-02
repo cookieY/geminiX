@@ -3,6 +3,7 @@ import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync } from "node:fs";
+import type { ClientRequest } from "node:http";
 import path from "node:path";
 
 // Yearning v4 frontend. Production builds must not reach the network:
@@ -36,6 +37,11 @@ const footerLinks = {
 //     builds keep the flag off and get neither the file nor any reference.
 const MSW_WORKER_URL = "/mockServiceWorker.js";
 const MSW_WORKER_SOURCE = path.resolve(__dirname, "src/shared/mock/mockServiceWorker.js");
+
+// FE-F12 real-backend e2e proxy target (VITE_E2E_API_PROXY). Precomputed
+// origin for the SEC-0004 same-origin rewrite below (empty when unset).
+const e2eApiProxyTarget = process.env.VITE_E2E_API_PROXY;
+const e2eApiProxyOrigin = e2eApiProxyTarget ? new URL(e2eApiProxyTarget).origin : "";
 
 function mswWorkerPlugin(): Plugin {
   return {
@@ -92,12 +98,28 @@ export default defineConfig({
   // stack when VITE_E2E_API_PROXY is set (playwright.real.config.ts). The
   // default config — mock e2e, dev, release — never sets the variable and
   // keeps no proxy.
-  preview: process.env.VITE_E2E_API_PROXY
+  //
+  // SEC-0004 / F-ENV-002: the backend's RequireSameOrigin middleware rejects
+  // anonymous auth POSTs whose Origin host != request Host. http-proxy's
+  // changeOrigin rewrites Host to the target but leaves the browser's
+  // preview-origin Origin untouched, so every proxied POST /api/v4/auth/login
+  // came back 403 and the real-backend e2e could not sign in. The proxy is a
+  // same-site hop we operate — not an attacker-supplied header — so rewrite
+  // Origin to the target here; the backend then sees a coherent same-origin
+  // request. Backend posture is unchanged: genuine cross-site browser
+  // requests still carry Sec-Fetch-Site: cross-site and mismatched Origins
+  // and keep getting 403.
+  preview: e2eApiProxyTarget
     ? {
         proxy: {
           "/api": {
-            target: process.env.VITE_E2E_API_PROXY,
+            target: e2eApiProxyTarget,
             changeOrigin: true,
+            configure: (proxy) => {
+              proxy.on("proxyReq", (proxyReq: ClientRequest) => {
+                proxyReq.setHeader("origin", e2eApiProxyOrigin);
+              });
+            },
           },
         },
       }

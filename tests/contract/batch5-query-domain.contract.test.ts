@@ -46,6 +46,18 @@ const ifMatch = (version: number | undefined, idem = false): Record<string, stri
   ...(idem ? { "Idempotency-Key": `f12-contract-${crypto.randomUUID()}` } : {}),
 });
 const idem = (): Record<string, string> => ({ "Idempotency-Key": `f12-contract-${crypto.randomUUID()}` });
+// OBS-009 / RCP-20261021: query-access requested_until is server-timezone
+// wall clock with a Z marker (reanchorSystemTimezone reinterprets the digits
+// by general.system_timezone, default Asia/Shanghai) — a UTC-moment ISO
+// string reanchors 8h into the past and fails 1001. scheduled_for (B10
+// execution schedule) stays a true UTC instant — no reanchor there.
+const wallClockIso = (minutes: number): string => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(Date.now() + minutes * 60_000)).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00Z`;
+};
 const futureIso = (minutes: number): string =>
   new Date(Date.now() + minutes * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
@@ -130,7 +142,7 @@ describe("query access family", () => {
     // requester, so B is created and withdrawn before the primary request.
     const createdB = asView<IdVersion | undefined>(await createQueryAccessRequest({
       flow_id: queryFlowId, datasource_ids: [datasourceId],
-      requested_until: futureIso(120), reason: `f12 batch5 withdrawal ${suffix}`,
+      requested_until: wallClockIso(120), reason: `f12 batch5 withdrawal ${suffix}`,
     }, { headers: idem() }));
     if (!createdB?.id) throw new Error("withdrawal request not created");
     await record("withdrawQueryAccessRequest", "undecided", () =>
@@ -140,7 +152,7 @@ describe("query access family", () => {
     const created = await record("createQueryAccessRequest", "primary", () =>
       createQueryAccessRequest({
         flow_id: queryFlowId, datasource_ids: [datasourceId],
-        requested_until: futureIso(120), reason: `f12 batch5 primary ${suffix}`,
+        requested_until: wallClockIso(120), reason: `f12 batch5 primary ${suffix}`,
       }, { headers: idem() }));
     const requestA = asView<IdVersion | undefined>(created.value);
     if (!requestA?.id) throw new Error(`query request not created: ${created.errCode} ${created.status}`);
@@ -194,7 +206,7 @@ describe("query access family", () => {
     // in the mock world.
     const createdC = asView<IdVersion | undefined>(await createQueryAccessRequest({
       flow_id: queryFlowId, datasource_ids: [datasourceId],
-      requested_until: futureIso(120), reason: `f12 batch5 revocation ${suffix}`,
+      requested_until: wallClockIso(120), reason: `f12 batch5 revocation ${suffix}`,
     }, { headers: idem() }));
     if (!createdC?.id) throw new Error("revocation request not created");
     await loginAs("approver");
@@ -210,6 +222,10 @@ describe("query access family", () => {
     // --- renewal (creates a follow-up request) then relinquish the grant.
     await loginAs("quser");
     await record("createQueryGrantRenewalRequest", "primary", () =>
+      // Renewal is NOT reanchored (HandleRenewQueryGrant parses a raw
+      // RFC3339 instant, unlike the create path) — a UTC instant is the
+      // correct wire form here. Create-vs-renew reanchor inconsistency is a
+      // backend RCP follow-up candidate.
       createQueryGrantRenewalRequest(grantId!, { requested_until: futureIso(300), reason: "f12 batch5 renewal" },
         { headers: idem() }));
     await record("relinquishQueryGrant", "primary", () =>

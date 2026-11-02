@@ -17,8 +17,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function ensureActiveGrant(quserPage: Page): Promise<void> {
-  // 1) quser requests access through the real API.
-  const request = await quserPage.evaluate(async () => {
+  // 1) quser requests access through the real API. The wall-clock value is
+  // computed in Node and passed in — page.evaluate does not close over the
+  // spec module's scope.
+  const until = requestedUntilPlusHours(2);
+  const request = await quserPage.evaluate(async (until: string) => {
     const csrf = document.cookie.split("; ")
       .map((row) => row.split("="))
       .find(([name]) => name === "yearning_csrf");
@@ -44,7 +47,7 @@ async function ensureActiveGrant(quserPage: Page): Promise<void> {
       body: JSON.stringify({
         flow_id: flow.id,
         datasource_ids: [dsId],
-        requested_until: new Date(Date.now() + 2 * 3600_000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        requested_until: until,
         reason: `f12 e2e query entry ${Date.now()}`,
       }),
     });
@@ -53,7 +56,7 @@ async function ensureActiveGrant(quserPage: Page): Promise<void> {
     };
     if (envelope.data?.id === undefined) throw new Error(`request create failed: ${envelope.err_code}`);
     return { requestId: envelope.data.id, version: envelope.data.version ?? 1 };
-  });
+  }, until);
 
   // 2) the approver approves it from their own session.
   const approverContext = await quserPage.context().browser()?.newContext({
@@ -103,3 +106,16 @@ test("quser opens the query entry with the real flows catalog", async ({ page })
   await expect(page.getByTestId("query-needs-access-hint")).toBeHidden();
   await expect(page.getByTestId("query-entry")).toContainText(/在线|查询|流程/);
 });
+
+// OBS-009 / RCP-20261021: requested_until is server-timezone wall clock with
+// a Z marker — the backend reanchors the digits by general.system_timezone.
+// The stack runs the default (Asia/Shanghai), so express (now + hours) in
+// that zone's wall clock; a UTC-moment ISO string reanchors 8h into the past
+// and fails 1001 deterministically.
+function requestedUntilPlusHours(hours: number): string {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(Date.now() + hours * 3600_000)).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00Z`;
+}
