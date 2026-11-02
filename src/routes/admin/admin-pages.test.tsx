@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { openRowActions, openRowActionsAt } from "@/test/row-actions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -1170,6 +1170,72 @@ describe("provider generation parameters & reference pricing (S008 FE, 2026-10-3
     await userEvent.click(within(dialog).getByTestId("rate-submit"));
     await waitFor(() => {
       expect(within(dialog).getByTestId("provider-rate-table")).toBeInTheDocument();
+    });
+  });
+
+  it("blocks invalid generation params per field and sends no write request", async () => {
+    const writes: Request[] = [];
+    server.events.on("request:start", ({ request }) => {
+      if ((request.method === "POST" || request.method === "PUT") && request.url.includes("/admin/ai-providers/")) {
+        writes.push(request);
+      }
+    });
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    // out-of-range max_tokens (256..200000 integer) + non-numeric temperature.
+    fireEvent.change(within(dialog).getByTestId("provider-gen-max-tokens"), { target: { value: "100" } });
+    fireEvent.change(within(dialog).getByTestId("provider-gen-temperature"), { target: { value: "abc" } });
+    await userEvent.click(within(dialog).getByTestId("provider-submit"));
+    // Per-field error text with the contract bounds; no request, dialog stays.
+    expect(within(dialog).getByTestId("provider-gen-max-tokens-error").textContent).toContain("256");
+    expect(within(dialog).getByTestId("provider-gen-temperature-error").textContent).toContain("0 – 2");
+    expect(within(dialog).getByTestId("provider-gen-max-tokens")).toHaveAttribute("aria-invalid", "true");
+    expect(within(dialog).getByTestId("provider-gen-temperature")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByRole("dialog")).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+    server.events.removeAllListeners();
+  });
+
+  it("sends temperature 0 as an explicit zero after per-field validation passes", async () => {
+    // Wrapped in an object: property writes from the MSW handler keep the
+    // declared union type for assertions after waitFor (plain `let` narrows
+    // to null and TS loses the write).
+    const capture: { put: Record<string, unknown> | null } = { put: null };
+    server.use(
+      http.put("*/admin/ai-providers/:providerId", async ({ request }) => {
+        capture.put = (await request.clone().json().catch(() => null)) as Record<string, unknown> | null;
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: ADMIN_FIXTURE_PROVIDER_PRIMARY_ID, name: "captured", provider_kind: "openai_compatible",
+            base_url: "https://captured.example.com", model_name: "glm-4.6", enabled: false,
+            selection_priority: 10, version: 2,
+            created_at: "2026-08-28T08:00:00Z", updated_at: "2026-08-28T08:00:00Z", configuration: {},
+          },
+          request_id: "x",
+        });
+      }),
+    );
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    const temperature = within(dialog).getByTestId("provider-gen-temperature");
+    // Clear the fixture value (0.7) and type an explicit zero: "0" is a legal
+    // temperature and must reach the wire as 0 (never folded to default).
+    fireEvent.change(temperature, { target: { value: "" } });
+    await userEvent.type(temperature, "0");
+    await userEvent.click(within(dialog).getByTestId("provider-submit"));
+    await waitFor(() => {
+      expect(capture.put).not.toBeNull();
+    });
+    // M2 write semantics: touching any param sends the explicit whole object;
+    // the untouched reasoning_effort rides along as an explicit value.
+    expect((capture.put as { configuration?: Record<string, unknown> }).configuration).toEqual({
+      reasoning_effort: "medium",
+      temperature: 0,
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 });

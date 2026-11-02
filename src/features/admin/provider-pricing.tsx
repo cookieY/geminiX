@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Wand2 } from "lucide-react";
 import type {
@@ -21,6 +21,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { TablePagination } from "@/shared/components/ui/table-pagination";
+import { ErrorState } from "@/shared/components/status/status-components";
+import { LoadingState } from "@/shared/components/status/loading-state";
+import { useCursorPage } from "@/shared/lib/cursor-page";
 import {
   Table,
   TableBody,
@@ -50,9 +54,46 @@ function minuteToHM(minute: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Parse a user-typed day-time into a minute-of-day, contract bound to
+ * ≤1440 ("24:00" is the representable full-day end; <input type="time">
+ * can never hold it). Accepts partial typing ("9", "9:", "9:3") as
+ * progressive feedback and returns null for blank/garbled input so the
+ * caller can keep the previous value instead of writing NaN.
+ */
+function parseDayMinute(text: string): number | null {
+  if (text.trim() === "") return null;
+  const match = /^(\d{1,2})(?::(\d{0,2}))?$/.exec(text.trim());
+  if (match === null) return null;
+  const h = Number(match[1]);
+  const m = match[2] === undefined || match[2] === "" ? 0 : Number(match[2]);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return Math.min(h * 60 + m, 1440);
+}
+
 function effectiveText(version: AiProviderRateVersion): string {
   const until = version.effective_until ?? i18next.t("admin.providers.pricing.openEnded");
   return `${version.effective_from.slice(0, 10)} → ${until.slice(0, 10)}`;
+}
+
+type RateVersionStatus = "current" | "future" | "expired";
+
+/** 时钟读取收在函数内（react-compiler纯度规则不追函数边界，仓库先例
+ * evidence-sheet.remainingDays同型）：判定必须用真实当前时间。 */
+function currentNowMs(): number {
+  return Date.now();
+}
+
+/** PRD §6：当前有效与下个生效版本可读。开放版本（wire上effective_until
+ * 缺省或null等价）以上限+∞参与比较；任一future版本中最早from者标记
+ * 下一个生效， Past/future其余版本不带徽标（生效期文本已自说明）。 */
+function versionStatus(version: AiProviderRateVersion, nowMs: number): RateVersionStatus {
+  const from = Date.parse(version.effective_from);
+  const until = version.effective_until == null
+    ? Number.POSITIVE_INFINITY
+    : Date.parse(version.effective_until);
+  if (from <= nowMs && nowMs < until) return "current";
+  return from > nowMs ? "future" : "expired";
 }
 
 const EMPTY_WINDOW = {
@@ -63,6 +104,11 @@ const EMPTY_WINDOW = {
   cached_read_price: "",
   cached_write_price: "",
 };
+
+/** 合同价格口径（OpenAPI AiProviderRateWindow）：非负定点十进制，≤12位
+ * 整数+可选≤6位小数（"0"、"6"、"2.34"均合法）；cached_*可缺省（空串=
+ * 未配置），input/output必填。 */
+const PRICE_PATTERN = /^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$/;
 
 function emptyRateDraft() {
   return {
@@ -76,6 +122,31 @@ function emptyRateDraft() {
 
 type RateDraft = ReturnType<typeof emptyRateDraft>;
 
+/** 价格输入：可访问名称（aria-label，占位符不作为标签）+ 逐字段错误
+ * 定位（PRD §6）。 */
+function PriceInput({ testId, label, value, onChange, error }: {
+  testId: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error: string | null;
+}): ReactElement {
+  return (
+    <div className="flex flex-col gap-1">
+      <Input
+        aria-label={label}
+        placeholder={label}
+        value={value}
+        onChange={(event) => { onChange(event.target.value); }}
+        aria-invalid={error !== null}
+        data-testid={testId}
+        className="font-mono text-xs"
+      />
+      {error !== null && <p className="text-destructive text-xs">{error}</p>}
+    </div>
+  );
+}
+
 export function ProviderPricingPanel({ providerId }: { providerId: string }) {
   const { t } = useTranslation();
   const versionsQuery = useAiProviderRateVersions(providerId, true);
@@ -86,6 +157,36 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
   const [draft, setDraft] = useState<RateDraft>(emptyRateDraft);
   const [showForm, setShowForm] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  // PRD §6「保存错误定位到字段」：后端VALIDATION_FAILED不带字段名，
+  // 字段定位由提交前的客户端校验完成（合同口径镜像）。
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // 模板跨币种冲突说明（显式动作被拒时必须解释原因，不得静默不动）。
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  // 日期感知徽标：当前生效按真实时间判定；未来版本里最早from者=下一个
+  // 生效（列表顺序不保证from升序，不能按位置取第一个future）。
+  const nowMs = currentNowMs();
+  const statuses = versions.map((version) => versionStatus(version, nowMs));
+  let nextIndex = -1;
+  let nextFrom = Number.POSITIVE_INFINITY;
+  statuses.forEach((status, index) => {
+    if (status !== "future") return;
+    const from = Date.parse(versions[index]?.effective_from ?? "");
+    if (from < nextFrom) {
+      nextFrom = from;
+      nextIndex = index;
+    }
+  });
+
+  const updateWindow = (index: number, patch: Partial<RateDraft["windows"][number]>): void => {
+    const current = draft.windows[index];
+    if (current === undefined) return;
+    const windows = [...draft.windows];
+    windows[index] = { ...current, ...patch };
+    setDraft({ ...draft, windows });
+  };
+
+  const priceError = (index: number, field: string): string | null =>
+    fieldErrors[`price-${String(index)}-${field}`] ?? null;
 
   const templateButton = (
     <Button
@@ -100,6 +201,18 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
           ? data.settings
           : null;
         if (settings === null) return;
+        // 币种守卫：模板价随设置币种计价，跨币种导入=贴错币种标签
+        // （PRD §3.3；后端启用端RATE_CURRENCY_MISMATCH）。拒绝导入并说明。
+        if (settings.currency !== draft.currency) {
+          setTemplateNotice(
+            t("admin.providers.pricing.templateCurrencyMismatch", {
+              template: settings.currency,
+              draft: draft.currency,
+            }),
+          );
+          return;
+        }
+        setTemplateNotice(null);
         setDraft((current) => {
           const windows = current.windows.map((w, index) =>
             index === 0
@@ -128,8 +241,34 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
 
   const submit = () => {
     setErrorText(null);
+    setFieldErrors({});
     if (draft.effective_from === "") {
       setErrorText(t("admin.providers.pricing.effectiveFrom"));
+      return;
+    }
+    // 客户端字段校验（镜像合同）：币种由Select约束；时区必填；until不早
+    // 于from；四类价格按PRICE_PATTERN逐字段定位（cached可空）。
+    const errors: Record<string, string> = {};
+    if (draft.timezone.trim() === "") {
+      errors.timezone = t("admin.providers.pricing.timezoneRequired");
+    }
+    if (draft.effective_until !== "" && draft.effective_until < draft.effective_from) {
+      errors.effectiveUntil = t("admin.providers.pricing.untilBeforeFrom");
+    }
+    draft.windows.forEach((w, index) => {
+      for (const field of ["input_price", "output_price"] as const) {
+        if (!PRICE_PATTERN.test(w[field])) {
+          errors[`price-${String(index)}-${field}`] = t("admin.providers.pricing.invalidPrice");
+        }
+      }
+      for (const field of ["cached_read_price", "cached_write_price"] as const) {
+        if (w[field] !== "" && !PRICE_PATTERN.test(w[field])) {
+          errors[`price-${String(index)}-${field}`] = t("admin.providers.pricing.invalidPrice");
+        }
+      }
+    });
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
     const body: CreateAiProviderRateVersionRequest = {
@@ -157,6 +296,7 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
         onSuccess: () => {
           setShowForm(false);
           setDraft(emptyRateDraft());
+          setTemplateNotice(null);
         },
         onError: (error) => {
           setErrorText(describeErrorText(describeError(error, "createAiProviderRateVersion")));
@@ -167,13 +307,24 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
 
   return (
     <div className="flex flex-col gap-4" data-testid="provider-pricing-panel">
-      <Alert className="border-border/60 bg-muted/30">
-        <AlertDescription className="text-muted-foreground text-xs">
-          {t("admin.providers.pricing.declaration")}
-        </AlertDescription>
-      </Alert>
+      {/* 常驻声明是静态说明而非动态告警：不占role=alert，把alert语义留给
+          真正的表单错误与操作反馈（模板币种冲突等）。 */}
+      <div
+        className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-muted-foreground text-xs"
+        data-testid="provider-pricing-declaration"
+      >
+        {t("admin.providers.pricing.declaration")}
+      </div>
 
-      {versionsQuery.isPending ? null : versions.length === 0 ? (
+      {versionsQuery.isPending ? (
+        <LoadingState variant="table" columns={5} />
+      ) : versionsQuery.isError ? (
+        <ErrorState
+          error={versionsQuery.error}
+          operationId="listAiProviderRateVersions"
+          onRetry={() => { void versionsQuery.refetch(); }}
+        />
+      ) : versions.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("admin.providers.pricing.empty")}</p>
       ) : (
         <Table density="compact" data-testid="provider-rate-table">
@@ -187,7 +338,7 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {versions.map((version) => (
+            {versions.map((version, index) => (
               <TableRow key={version.id} data-testid={`provider-rate-row-${version.id}`}>
                 <TableCell className="font-semibold">v{version.version}</TableCell>
                 <TableCell>
@@ -196,9 +347,13 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
                 <TableCell className="font-mono text-xs">{version.timezone}</TableCell>
                 <TableCell className="text-xs">
                   {effectiveText(version)}
-                  {version.effective_until === undefined ? (
+                  {statuses[index] === "current" ? (
                     <Badge variant="outline" className="ml-1.5">
                       {t("admin.providers.pricing.current")}
+                    </Badge>
+                  ) : index === nextIndex ? (
+                    <Badge variant="outline" className="ml-1.5">
+                      {t("admin.providers.pricing.nextEffective")}
                     </Badge>
                   ) : null}
                 </TableCell>
@@ -231,12 +386,17 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
         <div className="flex flex-col gap-3 rounded-lg border p-3" data-testid="provider-rate-form">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <Label>{t("admin.providers.pricing.currency")}</Label>
+              <Label htmlFor="rate-currency">{t("admin.providers.pricing.currency")}</Label>
               <Select
                 value={draft.currency}
-                onValueChange={(value) => { if (value === "CNY" || value === "USD") setDraft({ ...draft, currency: value }); }}
+                onValueChange={(value) => {
+                  if (value !== "CNY" && value !== "USD") return;
+                  // 币种切换使既有模板冲突说明失效。
+                  setTemplateNotice(null);
+                  setDraft({ ...draft, currency: value });
+                }}
               >
-                <SelectTrigger data-testid="rate-currency">
+                <SelectTrigger id="rate-currency" data-testid="rate-currency">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -251,8 +411,12 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
                 id="rate-timezone"
                 value={draft.timezone}
                 onChange={(event) => { setDraft({ ...draft, timezone: event.target.value }); }}
+                aria-invalid={fieldErrors.timezone !== undefined}
                 data-testid="rate-timezone"
               />
+              {fieldErrors.timezone !== undefined && (
+                <p className="text-destructive text-xs">{fieldErrors.timezone}</p>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="rate-from">{t("admin.providers.pricing.effectiveFrom")}</Label>
@@ -271,8 +435,12 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
                 type="date"
                 value={draft.effective_until}
                 onChange={(event) => { setDraft({ ...draft, effective_until: event.target.value }); }}
+                aria-invalid={fieldErrors.effectiveUntil !== undefined}
                 data-testid="rate-until"
               />
+              {fieldErrors.effectiveUntil !== undefined && (
+                <p className="text-destructive text-xs">{fieldErrors.effectiveUntil}</p>
+              )}
             </div>
           </div>
 
@@ -284,6 +452,11 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
             {templateButton}
           </div>
           <p className="text-muted-foreground -mt-2 text-xs">{t("admin.providers.pricing.templateHint")}</p>
+          {templateNotice !== null && (
+            <Alert className="-mt-1" data-testid="rate-template-notice">
+              <AlertDescription>{templateNotice}</AlertDescription>
+            </Alert>
+          )}
 
           {draft.windows.map((window, index) => (
             <div key={index} className="flex flex-col gap-2 rounded-md border p-2.5" data-testid={`rate-window-${String(index)}`}>
@@ -303,15 +476,20 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
                   className="w-24 font-mono text-xs"
                 />
                 <span className="text-muted-foreground text-xs">→</span>
+                {/* end_minute合同上限1440（半天开区间[0,1440)的全天终点）：
+                    type=time装不下"24:00"（浏览器清空为不可读控件），故终点
+                    用文本控件承载数值化解析；起始仍用time控件（0..1439恒可
+                    表示）。 */}
                 <Input
                   aria-label={`${t("admin.providers.pricing.window")} end`}
-                  type="time"
-                  value={window.end_minute === 1440 ? "24:00" : minuteToHM(window.end_minute)}
+                  type="text"
+                  inputMode="numeric"
+                  value={minuteToHM(window.end_minute)}
                   onChange={(event) => {
-                    const [h, m] = event.target.value.split(":").map(Number);
-                    if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) return;
+                    const minute = parseDayMinute(event.target.value);
+                    if (minute === null) return;
                     const windows = [...draft.windows];
-                    windows[index] = { ...window, end_minute: Math.min(h * 60 + m, 1440) };
+                    windows[index] = { ...window, end_minute: minute };
                     setDraft({ ...draft, windows });
                   }}
                   data-testid={`rate-window-end-${String(index)}`}
@@ -334,49 +512,33 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
                 )}
               </div>
               <div className="grid gap-2 sm:grid-cols-4">
-                <Input
-                  placeholder={t("admin.providers.pricing.inputPrice")}
+                <PriceInput
+                  testId={`rate-input-price-${String(index)}`}
+                  label={t("admin.providers.pricing.inputPrice")}
                   value={window.input_price}
-                  onChange={(event) => {
-                    const windows = [...draft.windows];
-                    windows[index] = { ...window, input_price: event.target.value };
-                    setDraft({ ...draft, windows });
-                  }}
-                  data-testid={`rate-input-price-${String(index)}`}
-                  className="font-mono text-xs"
+                  onChange={(value) => { updateWindow(index, { input_price: value }); }}
+                  error={priceError(index, "input_price")}
                 />
-                <Input
-                  placeholder={t("admin.providers.pricing.outputPrice")}
+                <PriceInput
+                  testId={`rate-output-price-${String(index)}`}
+                  label={t("admin.providers.pricing.outputPrice")}
                   value={window.output_price}
-                  onChange={(event) => {
-                    const windows = [...draft.windows];
-                    windows[index] = { ...window, output_price: event.target.value };
-                    setDraft({ ...draft, windows });
-                  }}
-                  data-testid={`rate-output-price-${String(index)}`}
-                  className="font-mono text-xs"
+                  onChange={(value) => { updateWindow(index, { output_price: value }); }}
+                  error={priceError(index, "output_price")}
                 />
-                <Input
-                  placeholder={t("admin.providers.pricing.cachedRead")}
+                <PriceInput
+                  testId={`rate-cached-read-${String(index)}`}
+                  label={t("admin.providers.pricing.cachedRead")}
                   value={window.cached_read_price}
-                  onChange={(event) => {
-                    const windows = [...draft.windows];
-                    windows[index] = { ...window, cached_read_price: event.target.value };
-                    setDraft({ ...draft, windows });
-                  }}
-                  data-testid={`rate-cached-read-${String(index)}`}
-                  className="font-mono text-xs"
+                  onChange={(value) => { updateWindow(index, { cached_read_price: value }); }}
+                  error={priceError(index, "cached_read_price")}
                 />
-                <Input
-                  placeholder={t("admin.providers.pricing.cachedWrite")}
+                <PriceInput
+                  testId={`rate-cached-write-${String(index)}`}
+                  label={t("admin.providers.pricing.cachedWrite")}
                   value={window.cached_write_price}
-                  onChange={(event) => {
-                    const windows = [...draft.windows];
-                    windows[index] = { ...window, cached_write_price: event.target.value };
-                    setDraft({ ...draft, windows });
-                  }}
-                  data-testid={`rate-cached-write-${String(index)}`}
-                  className="font-mono text-xs"
+                  onChange={(value) => { updateWindow(index, { cached_write_price: value }); }}
+                  error={priceError(index, "cached_write_price")}
                 />
               </div>
             </div>
@@ -424,7 +586,7 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => { setShowForm(false); setErrorText(null); }}
+              onClick={() => { setShowForm(false); setErrorText(null); setTemplateNotice(null); }}
             >
               {t("common.cancel")}
             </Button>
@@ -456,26 +618,43 @@ function tokenText(value: number | undefined | null, notReported: string): strin
 export function ProviderUsagePanel({ providerId }: { providerId: string }) {
   const { t } = useTranslation();
   const summaryQuery = useAiUsageSummaryToday(true);
-  const callsQuery = useAiUsageCalls(true);
+  // 明细走合同游标分页（limit≤200，合同上限），provider过滤在整页行上
+  // 完成：has_more是全量流的诚实边界，不做静默截断。
+  const pager = useCursorPage(200);
+  const callsQuery = useAiUsageCalls(true, { limit: pager.pageSize, after: pager.after });
   const notReported = t("admin.providers.pricing.notReported");
+  // reference_amount is already a currency-unit decimal string on the wire
+  // (OpenAPI: "Bounded decimal reference cost in currency units"; backend
+  // formats numeric(24,8) verbatim). Any float round-trip — let alone the
+  // old /1e9 nano misread — loses precision, so the string passes through
+  // untouched and only the empty string means "not computable".
   const summary = (summaryQuery.data ?? []).map((row) => ({
     ...row,
-    amount: row.reference_amount === "" ? null : Number(row.reference_amount) / 1e9,
+    amount: row.reference_amount === "" ? null : row.reference_amount,
   }));
-  const calls = (callsQuery.data ?? []).filter((call) => call.provider_id === providerId);
+  const calls = (callsQuery.data?.items ?? []).filter((call) => call.provider_id === providerId);
+  const callsLoaded = !callsQuery.isPending && !callsQuery.isError;
 
   return (
     <div className="flex flex-col gap-4" data-testid="provider-usage-panel">
-      <Alert className="border-border/60 bg-muted/30">
-        <AlertDescription className="text-muted-foreground text-xs">
-          {t("admin.providers.pricing.usageDeclaration")}
-        </AlertDescription>
-      </Alert>
+      {/* 常驻声明是静态说明而非动态告警：不占role=alert。 */}
+      <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-muted-foreground text-xs">
+        {t("admin.providers.pricing.usageDeclaration")}
+      </div>
 
       <div>
         <p className="text-foreground text-sm font-semibold">{t("admin.providers.pricing.usage")}</p>
         <p className="text-muted-foreground text-xs">{t("admin.providers.pricing.usageSummary")}</p>
-        {summary.length === 0 ? (
+        <p className="text-muted-foreground text-xs">{t("admin.providers.pricing.summaryScope")}</p>
+        {summaryQuery.isPending ? (
+          <LoadingState variant="inline" />
+        ) : summaryQuery.isError ? (
+          <ErrorState
+            error={summaryQuery.error}
+            operationId="listAiUsageSummary"
+            onRetry={() => { void summaryQuery.refetch(); }}
+          />
+        ) : summary.length === 0 ? (
           <p className="text-muted-foreground mt-1 text-xs">{t("admin.providers.pricing.notComputable")}</p>
         ) : (
           <ul className="mt-1.5 flex flex-col gap-1" data-testid="provider-usage-summary">
@@ -484,7 +663,7 @@ export function ProviderUsagePanel({ providerId }: { providerId: string }) {
                 <span className="font-mono font-semibold">{row.currency}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {t("admin.providers.pricing.amount")}: {row.amount === null ? t("admin.providers.pricing.notComputable") : row.amount.toFixed(6)}
+                  · {t("admin.providers.pricing.amount")}: {row.amount === null ? t("admin.providers.pricing.notComputable") : row.amount}
                   {" "}
                   · {t("admin.providers.pricing.basis")}: {row.computable_calls}/{row.calls}
                 </span>
@@ -496,9 +675,18 @@ export function ProviderUsagePanel({ providerId }: { providerId: string }) {
 
       <div>
         <p className="text-foreground text-sm font-semibold">{t("admin.providers.pricing.calls")}</p>
-        {calls.length === 0 ? (
+        {callsQuery.isPending ? (
+          <LoadingState variant="table" columns={8} />
+        ) : callsQuery.isError ? (
+          <ErrorState
+            error={callsQuery.error}
+            operationId="listAiUsageCalls"
+            onRetry={() => { void callsQuery.refetch(); }}
+          />
+        ) : calls.length === 0 ? (
           <p className="text-muted-foreground mt-1 text-xs">{t("admin.providers.pricing.empty")}</p>
         ) : (
+          <>
           <Table density="compact" className="mt-1.5" data-testid="provider-usage-calls">
             <TableHeader>
               <TableRow>
@@ -542,13 +730,29 @@ export function ProviderUsagePanel({ providerId }: { providerId: string }) {
                   <TableCell className="font-mono text-xs">
                     {call.reference_amount == null || call.reference_amount === ""
                       ? t("admin.providers.pricing.notComputable")
-                      : (Number(call.reference_amount) / 1e9).toFixed(8)}
+                      : call.reference_amount}
                   </TableCell>
                   <TableCell className="text-xs">{t(basisLabel(call.calc_basis))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          {callsLoaded && (
+            <TablePagination
+              testIdPrefix="provider-usage-calls"
+              busy={callsQuery.isFetching && callsQuery.isPlaceholderData}
+              page={pager.pageNo}
+              hasMore={callsQuery.data.page.has_more}
+              isFirst={pager.isFirst}
+              onPrev={pager.goPrev}
+              onJumpPage={pager.goToPage}
+              onNext={() => { pager.pushCursor(callsQuery.data.page.next_cursor); }}
+              pageSize={pager.pageSize}
+              onPageSizeChange={pager.setPageSize}
+              rowsOnPage={calls.length}
+            />
+          )}
+          </>
         )}
       </div>
     </div>

@@ -1093,7 +1093,9 @@
         "revert": "Revert change",
         "reverted": "Restored to initial",
         "maxTokensRange": "256 – 200000",
-        "temperatureRange": "0 – 2; 0 is an explicit zero"
+        "temperatureRange": "0 – 2; 0 is an explicit zero",
+        "maxTokensInvalid": "Max output tokens must be an integer between 256 and 200000.",
+        "temperatureInvalid": "Sampling temperature must be a number between 0 and 2 (0 is an explicit zero)."
       },
       "pricing": {
         "empty": "No reference rate version configured yet.",
@@ -1114,15 +1116,18 @@
         "removeWindow": "Remove",
         "applyTemplate": "Apply global reference template",
         "templateHint": "Fills the base window input/output prices from the global settings reference prices (explicit action; never overwrites filled values automatically)",
+        "templateCurrencyMismatch": "The global reference template is priced in {{template}}, which differs from this draft's currency {{draft}}; nothing was imported. Align the currencies and retry.",
         "declaration": "All prices and amounts on this page are reference-cost estimates — never a bill or an actual charge; actual billing is determined by the model provider.",
         "usageDeclaration": "Usage statistics and call details follow the same reference basis: missing fields render as not reported / not computable, never as zero cost.",
         "version": "Version",
         "effective": "Effective",
         "windows": "Windows",
         "current": "Current",
+        "nextEffective": "Next effective",
         "openEnded": "Open-ended",
         "usage": "Usage statistics",
         "usageSummary": "Reference-cost totals per currency (computable calls in range)",
+        "summaryScope": "Usage statistics are platform-wide for today (the contract has no per-provider dimension); the call details below are filtered to this provider.",
         "calls": "Call details",
         "callTime": "Call time",
         "stageTurn": "Stage/turn",
@@ -1144,6 +1149,9 @@
         "rateVersion": "Rate version",
         "created": "Created",
         "createFailed": "Failed to save the rate version",
+        "timezoneRequired": "Billing timezone (IANA name) is required.",
+        "untilBeforeFrom": "Effective-until cannot precede effective-from.",
+        "invalidPrice": "Price must be a non-negative decimal (at most 12 integer and 6 fraction digits), e.g. 2.34.",
         "close": "Close"
       }
     },

@@ -136,6 +136,27 @@ function configurationWrite(form: ProviderFormState): AiProviderWrite["configura
   return configuration;
 }
 
+/**
+ * S008参数字段校验（PRD §6「保存错误定位到字段」；后端
+ * ValidateProviderConfiguration只回笼统1001不带字段名，字段定位镜像合同
+ * 由客户端完成）：留空=服务商默认不校验；max_tokens须为整数256..200000；
+ * temperature须为数值0..2（"0"是显式零，合法）。返回i18n message key。
+ */
+function paramFieldErrors(form: ProviderFormState): { maxTokens: string | null; temperature: string | null } {
+  const parsedMax = form.maxTokens.trim() === "" ? null : Number(form.maxTokens);
+  const parsedTemp = form.temperature.trim() === "" ? null : Number(form.temperature);
+  return {
+    maxTokens:
+      parsedMax === null || (Number.isInteger(parsedMax) && parsedMax >= 256 && parsedMax <= 200000)
+        ? null
+        : "admin.providers.gen.maxTokensInvalid",
+    temperature:
+      parsedTemp === null || (Number.isFinite(parsedTemp) && parsedTemp >= 0 && parsedTemp <= 2)
+        ? null
+        : "admin.providers.gen.temperatureInvalid",
+  };
+}
+
 function providerFormForEdit(provider: AiProvider): ProviderFormState {
   return {
     name: provider.name,
@@ -176,6 +197,11 @@ function ProviderFormDialog({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  // S008参数逐字段错误（提交前校验失败时定位到字段，不发请求）。
+  const [paramErrors, setParamErrors] = useState<{ maxTokens: string | null; temperature: string | null }>({
+    maxTokens: null,
+    temperature: null,
+  });
 
   // §18.76-B：模型目录联想。base_url+api_key齐备（或编辑态复用存储
   // 密钥）即自动拉取；400ms去抖+序号防陈旧回写。目录仅是联想建议，
@@ -229,6 +255,13 @@ function ProviderFormDialog({
     setErrorKey(null);
     setErrorRequestId(null);
     setErrorDetail(null);
+    // 参数字段校验先于mutation：无效值就地定位，不发请求、不触发探针。
+    const params = paramFieldErrors(form);
+    if (params.maxTokens !== null || params.temperature !== null) {
+      setParamErrors(params);
+      return;
+    }
+    setParamErrors({ maxTokens: null, temperature: null });
     const apiKey =
       form.apiKey === ""
         ? undefined
@@ -490,14 +523,20 @@ function ProviderFormDialog({
             <div className="flex flex-col gap-1">
               <Label htmlFor="provider-gen-max-tokens">{t("admin.providers.gen.maxTokens")}</Label>
               <div className="flex items-center gap-2">
+                {/* type=text+inputMode（而非type=number）：数字输入框会把
+                    "abc"等静默吸收成空值，字段校验永远看不到原文；文本框
+                    让无效输入可被定位报错（PRD §6）。 */}
                 <Input
                   id="provider-gen-max-tokens"
-                  type="number"
-                  min={256}
-                  max={200000}
+                  type="text"
+                  inputMode="numeric"
                   value={form.maxTokens}
-                  onChange={(event) => { setForm({ ...form, maxTokens: event.target.value }); }}
+                  onChange={(event) => {
+                    setParamErrors((current) => ({ ...current, maxTokens: null }));
+                    setForm({ ...form, maxTokens: event.target.value });
+                  }}
                   placeholder={t("admin.providers.gen.reasoningEffortDefault")}
+                  aria-invalid={paramErrors.maxTokens !== null}
                   data-testid="provider-gen-max-tokens"
                   className="w-48 font-mono"
                 />
@@ -508,19 +547,26 @@ function ProviderFormDialog({
                   onRevert={(value) => { setForm({ ...form, maxTokens: value }); }}
                 />
               </div>
+              {paramErrors.maxTokens !== null && (
+                <p className="text-destructive text-xs" data-testid="provider-gen-max-tokens-error">
+                  {t(paramErrors.maxTokens)}
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="provider-gen-temperature">{t("admin.providers.gen.temperature")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="provider-gen-temperature"
-                  type="number"
-                  min={0}
-                  max={2}
-                  step={0.1}
+                  type="text"
+                  inputMode="decimal"
                   value={form.temperature}
-                  onChange={(event) => { setForm({ ...form, temperature: event.target.value }); }}
+                  onChange={(event) => {
+                    setParamErrors((current) => ({ ...current, temperature: null }));
+                    setForm({ ...form, temperature: event.target.value });
+                  }}
                   placeholder={t("admin.providers.gen.reasoningEffortDefault")}
+                  aria-invalid={paramErrors.temperature !== null}
                   data-testid="provider-gen-temperature"
                   className="w-48 font-mono"
                 />
@@ -531,6 +577,11 @@ function ProviderFormDialog({
                   onRevert={(value) => { setForm({ ...form, temperature: value }); }}
                 />
               </div>
+              {paramErrors.temperature !== null && (
+                <p className="text-destructive text-xs" data-testid="provider-gen-temperature-error">
+                  {t(paramErrors.temperature)}
+                </p>
+              )}
             </div>
           </div>
           </TabsContent>

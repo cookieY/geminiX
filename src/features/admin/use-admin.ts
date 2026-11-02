@@ -1108,17 +1108,25 @@ export function useCreateAiProviderRateVersion() {
   });
 }
 
-export function useAiUsageCalls(enabled: boolean) {
+/** S008调用明细台账。合同只有run_id/currency过滤+limit(≤200)+after游标，
+ * 没有provider_id维度：分页在服务端生效、provider过滤由调用方在整页
+ * 行上完成（page.has_more=全量流的诚实边界，丢弃page信封会让溢出行
+ * 静默消失）。 */
+export function useAiUsageCalls(enabled: boolean, paging?: { limit?: number; after?: string }) {
   return useQuery({
-    queryKey: ["admin", "ai-usage", "calls"],
+    queryKey: ["admin", "ai-usage", "calls", paging?.after ?? "", paging?.limit ?? 0],
     queryFn: async () => {
       const { listAiUsageCalls } = await import(
         "@/api/generated/client/administration/administration"
       );
-      const response = await listAiUsageCalls();
-      return pageItems<AiCallUsage>(
-        response as unknown as { items?: AiCallUsage[] },
-      );
+      const response = await listAiUsageCalls({
+        limit: paging?.limit,
+        after: paging?.after || undefined,
+      });
+      return response as unknown as {
+        items: AiCallUsage[];
+        page: { has_more: boolean; next_cursor: string | null };
+      };
     },
     enabled,
     placeholderData: keepPreviousData,
@@ -1149,8 +1157,9 @@ export function useNotificationTestTask(taskId: string | null) {
   });
 }
 
-/** S008参考计价日汇总（AI预算页用量环图消费）。reference_amount为纳单位
- * 十进制串；金额换算到主币单位由调用方完成。 */
+/** S008参考计价日汇总（AI预算页用量环图消费）。reference_amount是币种
+ * 主单位的定点十进制串（OpenAPI：bounded decimal in currency units），
+ * 不是纳单位；调用方直接按主单位口径呈现，禁止浮点缩放。 */
 export function useAiUsageSummaryToday(enabled: boolean) {
   return useQuery({
     queryKey: ["admin", "ai-usage", "summary", "today"],

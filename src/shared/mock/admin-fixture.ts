@@ -2247,7 +2247,8 @@ export function siteFixtureHandlers(): HttpHandler[] {
     }),
 
     // S008参考计价汇总读面（2026-10-31三轮：AI预算页用量环图消费）。
-    // 固定一行USD：reference_amount为纳单位十进制串（3.671→"3671000000"）。
+    // 固定一行USD：reference_amount为币种主单位定点十进制串（3.671美元
+    // →"3.67100000"，与调用行的"0.00632100"同口径，禁纳单位缩放）。
     http.get("*/admin/ai-usage/summary", () => {
       const guard = adminGuard();
       if (guard !== null) return guard;
@@ -2255,7 +2256,7 @@ export function siteFixtureHandlers(): HttpHandler[] {
         {
           currency: "USD",
           calls: 3,
-          reference_amount: "3671000000",
+          reference_amount: "3.67100000",
           computable_calls: 3,
           input_tokens_known: 12000,
           input_tokens_cache_known: 8000,

@@ -1093,7 +1093,9 @@
         "revert": "撤销修改",
         "reverted": "已恢复初始值",
         "maxTokensRange": "256 – 200000",
-        "temperatureRange": "0 – 2；0 为显式零"
+        "temperatureRange": "0 – 2；0 为显式零",
+        "maxTokensInvalid": "最大输出 Token 须为 256 – 200000 之间的整数。",
+        "temperatureInvalid": "采样温度须为 0 – 2 之间的数值（0 为显式零）。"
       },
       "pricing": {
         "empty": "尚未配置参考费率版本。",
@@ -1114,15 +1116,18 @@
         "removeWindow": "删除",
         "applyTemplate": "应用全局参考价模板",
         "templateHint": "把全局设置中的输入/输出参考价填入基础时段（显式动作，不自动覆盖已填值）",
+        "templateCurrencyMismatch": "全局参考价模板币种为 {{template}}，与当前草稿币种 {{draft}} 不一致，未导入任何价格；请统一币种后重试。",
         "declaration": "本页所有价格与金额均为参考成本估算，不构成账单或实际扣款依据；实际计费以模型服务商账单为准。",
         "usageDeclaration": "费用统计与调用明细同样为参考口径：缺失字段显示「未返回/未计算」，不代表零成本。",
         "version": "版本",
         "effective": "生效期",
         "windows": "时段数",
         "current": "当前生效",
+        "nextEffective": "下一个生效",
         "openEnded": "开放",
         "usage": "费用统计",
         "usageSummary": "按币种分组的参考费用合计（统计期内可计算调用）",
+        "summaryScope": "费用统计为平台级今日口径（合同无按服务商维度）；调用明细已按当前服务商过滤。",
         "calls": "调用明细",
         "callTime": "调用时间",
         "stageTurn": "阶段/轮次",
@@ -1144,6 +1149,9 @@
         "rateVersion": "费率版本",
         "created": "创建时间",
         "createFailed": "费率保存失败",
+        "timezoneRequired": "请填写计费时区（IANA 名称）。",
+        "untilBeforeFrom": "生效至不能早于生效自。",
+        "invalidPrice": "价格须为非负定点数值（最多 12 位整数、6 位小数），例如 2.34。",
         "close": "关闭"
       }
     },

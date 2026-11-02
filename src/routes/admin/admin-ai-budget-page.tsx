@@ -174,10 +174,12 @@ function AiBudgetPanel({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
   // 今日参考用量（S008汇总）；币种与预算一致才可计，未匹配=0。
+  // reference_amount是币种主单位定点十进制串（不与daily_budget_minor的
+  // minor口径混算：环图按主单位显示，预算侧另行/100换算）。
   const usageQuery = useAiUsageSummaryToday(true);
   const usageRow = usageQuery.data?.find((row) => row.currency === form.currency) ?? null;
   const usedMajor =
-    usageRow !== null && usageRow.reference_amount !== "" ? Number(usageRow.reference_amount) / 1e9 : 0;
+    usageRow !== null && usageRow.reference_amount !== "" ? Number(usageRow.reference_amount) : 0;
 
   const dirty = JSON.stringify(form) !== JSON.stringify(current.settings);
 
