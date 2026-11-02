@@ -399,11 +399,29 @@ function detectCssMotion(file, content) {
   return found;
 }
 
+// (4b) Never enter from scale(0) — it reads as a pop, not a surface.
+// The object-syntax pattern must match an exact zero: `scale: 0.95` is the
+// prescribed entry, and a bare `\b` after the 0 treats the decimal point as
+// a word boundary (0.95/0.35 read as 0). Those false positives fired on
+// compliant code and went unseen only because an earlier CI step failed
+// before this scan ran; the fixtures below pin both shapes.
+function detectScaleEntry(file, content) {
+  void file;
+  const findings = [];
+  content.split("\n").forEach((line, index) => {
+    if (/\bscale-0\b/.test(line) || /\bzoom-in-0\b/.test(line) || /\bscale:\s*0+(?:\.0+)?(?!\.?\d)/.test(line)) {
+      findings.push({ line: index + 1, message: "entry from scale(0): start at 0.95 with opacity 0 instead" });
+    }
+  });
+  return findings;
+}
+
 function detectAll(file, content) {
   return [
     ...detectLayoutTransitions(file, content),
     ...detectEnterExitAsymmetry(file, content),
     ...detectCssMotion(file, content),
+    ...detectScaleEntry(file, content),
   ];
 }
 
@@ -436,6 +454,10 @@ const FIXTURES = [
   { name: "allowed gap width", file: SIDEBAR, code: GAP_LINE, expected: 0 },
   { name: "allowed container width+translate", file: SIDEBAR, code: CONTAINER_LINE, expected: 0 },
   { name: "allowed menu-button size", file: SIDEBAR, code: MENU_LINE, expected: 0 },
+  // (4b) decimals are the prescribed entry — only an exact zero pops.
+  { name: "motion object entry from scale 0.95 (prescribed)", file: "src/a.tsx", code: `initial={{ opacity: 0, scale: 0.95 }}`, expected: 0 },
+  { name: "motion object entry from scale 0", file: "src/a.tsx", code: `initial={{ opacity: 0, scale: 0 }}`, expected: 1 },
+  { name: "motion object entry from scale 0.0", file: "src/a.tsx", code: `initial={{ opacity: 0, scale: 0.0 }}`, expected: 1 },
   {
     name: "allowlisted line with an appended arbitrary transition (fail-closed)",
     file: SIDEBAR,
@@ -557,7 +579,7 @@ if (process.argv.includes("--self-test")) {
     for (const failure of failures) process.stderr.write(`motion scan self-test: ${failure}\n`);
     process.exit(1);
   }
-  console.log(`motion scan self-test ok: ${FIXTURES.length} fixtures (rules 5-6 detectors)`);
+  console.log(`motion scan self-test ok: ${FIXTURES.length} fixtures (layout/asymmetry/css-motion/scale-entry detectors)`);
   process.exit(0);
 }
 
@@ -655,10 +677,6 @@ for (const file of files) {
       }
     }
 
-    // (4b) Never enter from scale(0) — it reads as a pop, not a surface.
-    if (/\bscale-0\b/.test(line) || /\bzoom-in-0\b/.test(line) || /\bscale:\s*0\b/.test(line)) {
-      report(file, lineNumber, "entry from scale(0): start at 0.95 with opacity 0 instead");
-    }
   });
 
   // (1b) The same "name the properties" rule, but across line breaks: a
