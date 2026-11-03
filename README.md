@@ -77,6 +77,15 @@ node scripts/generate-registry-inventory.mjs --check  # 组件来源清单核对
 
 不得在没有满足 Work Package 依赖、任务快照和路径边界检查的情况下开始实现。
 
+## 开发期UI标注（Agentation）
+
+仅`pnpm dev`下右下角出现标注工具栏（RCP-20261103-FE-AGENTATION-DEV-TOOL）：点选元素写批注，复制生成的Markdown交给AI代码代理即可定位代码。
+
+- 只在`import.meta.env.DEV`动态挂载，生产构建不含该包（门禁：`dist`中不得出现`agentation`）。
+- 不配置`endpoint`，不启用MCP同步，也不配置`webhookUrl`，标注不会发往任何服务。
+- **自动采集，不只是手写内容**：点选元素时组件会记录所选文本（最多500字符）、附近文本、元素属性、DOM路径和计算样式，并把这些内容连同批注一起写入浏览器的`localStorage`（键`feedback-annotations-*`，保留7天）。因此"不粘贴SQL"不足够——**在含SQL、Evidence、凭据或生产数据的页面上不要启用或点选标注**，只用mock数据调试。`src/shared/dev/agentation-cleanup.ts`在每次启动时清空`feedback-annotations-*`、`feedback-toolbar-settings`和`agentation-*`键（主题和位置偏好保留），让标注不跨刷新留存。
+- 许可证为PolyForm-Shield-1.0.0，仅限内部开发使用，不得进入发布产物。
+
 ## License
 
 本前端独立仓库使用 [MIT License](./LICENSE)。YearningX整体产品及其他组成部分按各自仓库声明的许可证发布；前端MIT许可不替代YearningX产品界面的AGPL-3.0声明。

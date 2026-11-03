@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { AppProviders } from "@/app/providers/app-providers";
 import { AppRouter } from "@/app/router/app-router";
@@ -16,11 +16,28 @@ async function bootstrap(): Promise<void> {
     const module = await import("@/shared/mock/browser");
     await module.startMockWorker();
   }
+  // Dev-only UI annotation helper (RCP-20261103-FE-AGENTATION-DEV-TOOL).
+  // import.meta.env.DEV is statically false in production builds, so Vite
+  // drops this branch and the package never reaches dist/. No endpoint is
+  // configured: annotations are copied manually, nothing is synced.
+  let devTools: ReactNode = null;
+  if (import.meta.env.DEV) {
+    try {
+      const { clearAgentationStorage } = await import("@/shared/dev/agentation-cleanup");
+      clearAgentationStorage();
+      const { Agentation } = await import("agentation");
+      devTools = <Agentation />;
+    } catch (error) {
+      // A dev-only toolbar must never stop the app from rendering.
+      console.warn("Agentation dev toolbar unavailable", error);
+    }
+  }
   createRoot(rootElement).render(
     <StrictMode>
       <AppProviders>
         <AppRouter />
       </AppProviders>
+      {devTools}
     </StrictMode>,
   );
 }

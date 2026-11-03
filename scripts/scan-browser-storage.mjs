@@ -27,6 +27,10 @@ const SRC = "src";
 // primitive in the table that no longer occurs in the file also fails (keeps
 // the table honest when code moves on).
 const ALLOWED = {
+  // Dev-only Agentation cleanup (RCP-20261103-FE-AGENTATION-DEV-TOOL): deletes
+  // the toolbar's own annotation/settings keys at boot so captured page text
+  // never survives a reload. Loaded only inside import.meta.env.DEV.
+  "shared/dev/agentation-cleanup.ts": ["localStorage"],
   // Theme choice (light/dark) — non-sensitive UI preference.
   "app/providers/theme-provider.tsx": ["localStorage"],
   // Locale choice — non-sensitive UI preference.
