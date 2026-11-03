@@ -20,7 +20,7 @@ export function SettingsNavTabs({ current }: { current: SettingsRouteNamespace }
   const navigate = useNavigate();
   return (
     <Tabs key={current} defaultValue={current} className="max-w-full">
-      <TabsList className="max-w-full overflow-x-auto">
+      <TabsList className="-my-1 max-w-full overflow-x-auto overflow-y-hidden py-1">
         <TabsTrigger value="general" data-testid={"settings-tab-general"} onClick={() => { void navigate("/admin/settings/general"); }}>
           {t("adminSettings.tab.general")}
         </TabsTrigger>

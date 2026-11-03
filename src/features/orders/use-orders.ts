@@ -18,6 +18,7 @@ import {
 } from "@/api/generated/client/change-orders/change-orders";
 import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-event-client";
 import { useSession } from "@/features/auth/session-provider";
+import { randomUUID } from "@/shared/lib/uuid";
 
 /**
  * Server-state hooks for the personal order pages (frontend PRD F6). Events
@@ -229,7 +230,7 @@ function orderActionHeaders(order: ChangeOrder | null | undefined): Record<strin
   // idempotency codes) — If-Match guards the aggregate version.
   return {
     "If-Match": `"${String(order?.version ?? 1)}"`,
-    "Idempotency-Key": `order-action-${crypto.randomUUID()}`,
+    "Idempotency-Key": `order-action-${randomUUID()}`,
   };
 }
 

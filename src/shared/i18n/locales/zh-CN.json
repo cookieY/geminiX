@@ -231,6 +231,19 @@
     "prevMonth": "上个月",
     "nextMonth": "下个月"
   },
+  "editor": {
+    "bold": "加粗",
+    "italic": "斜体",
+    "bulletList": "无序列表",
+    "orderedList": "有序列表",
+    "link": "链接",
+    "code": "行内代码",
+    "undo": "撤销",
+    "redo": "重做",
+    "linkUrl": "链接地址",
+    "linkApply": "应用",
+    "placeholder": "开始输入…"
+  },
   "common": {
     "cancel": "取消",
     "yes": "是",
@@ -359,7 +372,13 @@
       "loadingBadge": "读取中",
       "errorBadge": "读取失败",
       "timeout": "预审超过预期时间仍未完成，可稍后刷新查看；持续卡滞请联系管理员。",
-      "usageLine": "模型 {{model}} · Provider {{provider}} · tokens {{input}}入/{{output}}出"
+      "usage": {
+        "trigger": "{{total}} tokens",
+        "input": "输入",
+        "output": "输出",
+        "provider": "Provider",
+        "inputShare": "输入占比"
+      }
     },
     "progress": {
       "title": "AI 预审进行中",
@@ -491,6 +510,8 @@
         "title": "导入大批量SQL",
         "description": "增量读取本地SQL文件并生成语句摘要；上传前进行32 MiB文件与512 KiB单语句预校验，服务端结果仍为最终判定。",
         "pickHint": "选择 .sql 或 .txt 文件，或粘贴内容到编辑器",
+        "dropTitle": "拖拽 SQL 文件到此处上传",
+        "dropHint": "仅支持 .sql 和 .txt 文件，单文件不超过 32 MiB。",
         "browse": "选择文件",
         "limitsHint": "上限：文件 32 MiB · 单语句 512 KiB · 语句数 100,000",
         "reading": "正在读取并分析 {{name}}… {{percent}}%",
@@ -598,6 +619,11 @@
       "stages": "数据源阶段",
       "stageExecutors": "{{count}} 名候选执行人",
       "facts": "冻结快照",
+      "progressSummary": "{{done}} / {{total}} 个审批步骤已通过",
+      "progressLabel": "审批步骤已通过",
+      "activity": "工单动态",
+      "activityHint": "时间线、评论与冻结快照",
+      "severityDistribution": "风险分布",
       "submittedAt": "提交时间",
       "terminalAt": "终态时间",
       "sqlHash": "SQL Hash",
@@ -1050,6 +1076,13 @@
     "providers": {
       "title": "Provider 管理",
       "description": "主备 Provider 顺序按 selection_priority 升序生效；API Key 永不回显。",
+      "listTitle": "Provider 列表",
+      "listDescription": "查看、测试、编辑或删除 Provider 配置。",
+      "notice": {
+        "keyTitle": "API Key 仅写入、永不回显",
+        "keyBody": "编辑时留空即保留已存密钥；密钥一旦泄露，请立即更换。"
+        ,"orderBody": "优先级数值最小者为主 Provider，其余为备用，按优先级升序依次生效。"
+      },
       "createTitle": "新建 Provider",
       "editTitle": "编辑 Provider",
       "formDescription": "OpenAI Compatible 端点与模型；隐私契约与输出 Schema 指纹由系统自动派生并随配置钉存，无需填写。",
@@ -1064,7 +1097,6 @@
       "apiKey": "API Key",
       "apiKeyKeepPlaceholder": "已配置；留空保持原值，输入即替换",
       "modelCatalogHint": "填写 Base URL 与 API Key 后自动获取模型列表，也可直接手动输入",
-      "modelCatalogLoading": "正在获取模型列表…",
       "modelCatalogFailed": "模型列表获取失败，可直接手动输入",
       "apiKeyConfigured": "API Key：{{state}}",
       "configured": "已配置",

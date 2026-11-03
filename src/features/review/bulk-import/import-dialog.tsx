@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SqlDigest } from "@/features/review/bulk-import/sql-digest";
 import { useBulkImport } from "@/features/review/bulk-import/use-bulk-import";
@@ -35,13 +35,20 @@ export interface ImportDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (text: string, digest: SqlDigest) => void;
   uploading?: boolean;
+  /** File dropped on the page dropzone: read as soon as the dialog opens. */
+  initialFile?: File | null;
 }
 
-export function ImportDialog({ open, onOpenChange, onConfirm, uploading = false }: ImportDialogProps) {
+export function ImportDialog({ open, onOpenChange, onConfirm, uploading = false, initialFile = null }: ImportDialogProps) {
   const { t } = useTranslation();
   const importer = useBulkImport();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const phase = importer.phase;
+  const startImport = importer.start;
+
+  useEffect(() => {
+    if (open && initialFile !== null) void startImport(initialFile);
+  }, [open, initialFile, startImport]);
 
   const close = (next: boolean): void => {
     if (!next) importer.reset();

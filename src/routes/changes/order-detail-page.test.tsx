@@ -148,6 +148,47 @@ describe("OrderDetailPage", () => {
     expect(screen.queryByTestId("void-order")).toBeNull();
   });
 
+  it("keeps the left column's rhythm: a child that rendered nothing takes no gap slot", async () => {
+    const id = seedOrder();
+    renderDetail(id);
+    const column = (await screen.findByTestId("order-sql-review")).parentElement;
+    expect(column).not.toBeNull();
+    // An empty flex item still gets a 30px gap on each side (a 60px hole
+    // between the decision card and the SQL card); it must be hidden.
+    for (const child of Array.from(column?.children ?? [])) {
+      if (child.childNodes.length === 0) expect(child).toHaveClass("empty:hidden");
+    }
+  });
+
+  it("shows one activity tab at a time while the others stay mounted", async () => {
+    const id = seedOrder();
+    renderDetail(id);
+    // Timeline is the default tab: visible; comments and snapshot are mounted but hidden.
+    expect(await screen.findByTestId("order-timeline")).toBeVisible();
+    expect(screen.getByTestId("order-comments")).not.toBeVisible();
+    expect(screen.getByTestId("order-facts")).not.toBeVisible();
+
+    await userEvent.click(screen.getByTestId("order-activity-tab-comments"));
+    await waitFor(() => { expect(screen.getByTestId("order-comments")).toBeVisible(); });
+    expect(screen.getByTestId("order-timeline")).not.toBeVisible();
+    expect(screen.getByTestId("order-facts")).not.toBeVisible();
+
+    await userEvent.click(screen.getByTestId("order-activity-tab-snapshot"));
+    await waitFor(() => { expect(screen.getByTestId("order-facts")).toBeVisible(); });
+    expect(screen.getByTestId("order-comments")).not.toBeVisible();
+  });
+
+  it("keeps the frozen SQL and the frozen review in one card, not two", async () => {
+    const id = seedOrder();
+    renderDetail(id);
+    const merged = await screen.findByTestId("order-sql-review");
+    expect(merged).toContainElement(screen.getByTestId("order-sql-card"));
+    expect(await screen.findByTestId("frozen-review-card")).toBeInTheDocument();
+    expect(merged).toContainElement(screen.getByTestId("frozen-review-card"));
+    // The sections are bare: the only card surface in there is the merged one.
+    expect(merged.querySelectorAll('[data-slot="card"]')).toHaveLength(0);
+  });
+
   it("projects approval decision comments on timeline entries only (BUG-004)", async () => {
     // The backend timeline projection carries approval_decisions.comment as
     // its own field (NEW-FE-01); empty or absent comments must not render a

@@ -18,6 +18,7 @@ import {
 } from "@/api/generated/client/change-orders/change-orders";
 import { useDomainEvent } from "@/shared/events/review-event-client";
 import { isAttemptTerminalState } from "@/features/orders/order-state";
+import { randomUUID } from "@/shared/lib/uuid";
 
 /**
  * Server-state hooks for the execution workspace (frontend PRD F8, W006,
@@ -111,7 +112,7 @@ export function useExecutionStatements(attemptId: string, enabled: boolean, poll
 function orderActionHeaders(order: ChangeOrder | null | undefined): Record<string, string> {
   return {
     "If-Match": `"${String(order?.version ?? 1)}"`,
-    "Idempotency-Key": `execution-${crypto.randomUUID()}`,
+    "Idempotency-Key": `execution-${randomUUID()}`,
   };
 }
 
@@ -150,7 +151,7 @@ export function useCancelExecutionAttempt(
         {
           headers: {
             "If-Match": `"${String(attempt?.version ?? 1)}"`,
-            "Idempotency-Key": `execution-cancel-${crypto.randomUUID()}`,
+            "Idempotency-Key": `execution-cancel-${randomUUID()}`,
           },
         },
       ),
@@ -178,7 +179,7 @@ export function useCreateExecutionVerification(
             // idempotency key makes the verdict retry-safe (execution_verify
             // profile).
             "If-Match": `"${String(attempt?.version ?? 1)}"`,
-            "Idempotency-Key": `execution-verify-${crypto.randomUUID()}`,
+            "Idempotency-Key": `execution-verify-${randomUUID()}`,
           },
         },
       ),

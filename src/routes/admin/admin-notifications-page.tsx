@@ -30,6 +30,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -683,7 +684,7 @@ function ChannelFormDialog({
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="channel-port">{t("adminNotifications.field.port")}</Label>
-                <Input id="channel-port" type="number" min={1} max={65535} value={draft.port} onChange={(event) => { setDraft({ ...draft, port: Number(event.target.value) }); }} data-testid="channel-port" />
+                <NumberInput id="channel-port" min={1} max={65535} value={draft.port} onChange={(event) => { setDraft({ ...draft, port: Number(event.target.value) }); }} data-testid="channel-port" />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="channel-tls">{t("adminNotifications.field.tls")}</Label>

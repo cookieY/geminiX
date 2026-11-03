@@ -57,6 +57,8 @@ export interface FindingListProps {
   onRetry?: () => void;
   /** Whether a quoted snippet currently exists in the editor text. */
   locateInEditor?: (snippet: string) => boolean;
+  /** Sits inside another card: drop this card's own surface and padding. */
+  flat?: boolean;
 }
 
 /** The closed category vocabulary from api/contracts/ai-review-output.schema.json. */
@@ -123,7 +125,7 @@ function buildUnits(findings: ReviewFinding[]): FindingUnit[] {
   return units;
 }
 
-export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateInEditor }: FindingListProps) {
+export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateInEditor, flat = false }: FindingListProps) {
   const { t } = useTranslation();
   const { severity, setSeverity, visible } = useSeverityFilter();
   const findings =
@@ -131,7 +133,7 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
   const visibleFindings = findings === null ? [] : visible(findings);
 
   return (
-    <Card data-testid="finding-list">
+    <Card className={flat ? "gap-3 rounded-none bg-transparent py-0 ring-0 [--card-spacing:0px]" : undefined} data-testid="finding-list">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>{t("precheck.findings.title")}</CardTitle>
         {findings !== null && findings.length > 0 && (

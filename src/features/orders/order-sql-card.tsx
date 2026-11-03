@@ -18,7 +18,7 @@ import { ClipboardCopy, Eye, FileCode2, ShieldAlert } from "lucide-react";
  * storage, no telemetry); copying goes through the audited copy-event API
  * before the clipboard write, mirroring the draft-side reveal contract.
  */
-export function OrderSqlCard({ orderId }: { orderId: string }) {
+export function OrderSqlCard({ orderId, embedded = false }: { orderId: string; embedded?: boolean }) {
   const { t } = useTranslation();
   const reveal = useRevealOrderSql(orderId);
   const copyAudit = useRecordOrderSqlCopy(orderId);
@@ -71,11 +71,8 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
       });
   };
 
-  return (
-    <Card
-      data-testid="order-sql-card"
-      className={revealed === null ? undefined : "gap-0 py-0"}
-    >
+  const body = (
+    <>
       {revealed === null ? (
         <>
           <CardHeader className="pb-3">
@@ -146,6 +143,31 @@ export function OrderSqlCard({ orderId }: { orderId: string }) {
           </div>
         </div>
       )}
+    </>
+  );
+
+  // Embedded in a merged card the section carries no surface of its own: the
+  // revealed viewer stays flush (it is the block), the idle state pads itself.
+  if (embedded) {
+    return (
+      <section
+        data-testid="order-sql-card"
+        className={
+          revealed === null
+            ? "flex flex-col gap-(--card-spacing) py-(--card-spacing) [--card-spacing:--spacing(4)]"
+            : "flex flex-col"
+        }
+      >
+        {body}
+      </section>
+    );
+  }
+  return (
+    <Card
+      data-testid="order-sql-card"
+      className={revealed === null ? undefined : "gap-0 py-0"}
+    >
+      {body}
     </Card>
   );
 }

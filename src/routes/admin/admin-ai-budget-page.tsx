@@ -36,7 +36,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { Label } from "@/shared/components/ui/label";
 import {
   Select,
@@ -245,9 +245,8 @@ function AiBudgetPanel({
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="ai-budget-daily">{t("admin.aiBudget.dailyBudget")}</Label>
-          <Input
+          <NumberInput
             id="ai-budget-daily"
-            type="number"
             min={1}
             value={form.daily_budget_minor}
             onChange={(event) => { setForm({ ...form, daily_budget_minor: Number(event.target.value) }); }}
@@ -257,9 +256,8 @@ function AiBudgetPanel({
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="ai-budget-alert">{t("admin.aiBudget.alertThreshold")}</Label>
-          <Input
+          <NumberInput
             id="ai-budget-alert"
-            type="number"
             min={1}
             max={100}
             value={form.alert_threshold_percent}
@@ -270,9 +268,8 @@ function AiBudgetPanel({
           />
           <div className="flex flex-col gap-2">
             <Label htmlFor="ai-budget-input-price">{t("admin.aiBudget.inputPrice")}</Label>
-            <Input
+            <NumberInput
               id="ai-budget-input-price"
-              type="number"
               min={0}
               value={form.input_price_per_million_minor}
               onChange={(event) => { setForm({ ...form, input_price_per_million_minor: Number(event.target.value) }); }}
@@ -282,9 +279,8 @@ function AiBudgetPanel({
           </div>
           <div className="flex flex-col gap-2">
           <Label htmlFor="ai-budget-output-price">{t("admin.aiBudget.outputPrice")}</Label>
-          <Input
+          <NumberInput
             id="ai-budget-output-price"
-            type="number"
             min={0}
             value={form.output_price_per_million_minor}
             onChange={(event) => { setForm({ ...form, output_price_per_million_minor: Number(event.target.value) }); }}

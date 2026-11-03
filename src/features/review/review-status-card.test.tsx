@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReviewRun, ReviewStageResultState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import i18n from "@/shared/i18n";
@@ -145,25 +146,38 @@ describe("ReviewStatusCard", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("renders the real AI identity and usage line when the run carries usage", () => {
+  it("shows the AI usage as a Context hover card: total on the button, exact figures on hover", async () => {
     renderCard(
       "ready",
       runFixture({
         usage: {
           provider_name: "DeepSeek",
           model_name: "deepseek-chat",
-          input_tokens: 1234,
-          output_tokens: 567,
+          input_tokens: 6896,
+          output_tokens: 1583,
           amount_minor: 9,
           currency: "CNY",
         },
       }),
     );
-    const usage = screen.getByTestId("review-usage").textContent;
-    expect(usage).toContain("deepseek-chat");
-    expect(usage).toContain("DeepSeek");
-    expect(usage).toContain("1234");
-    expect(usage).toContain("567");
+    // The trigger carries only the abbreviated total.
+    const trigger = screen.getByTestId("review-usage");
+    expect(trigger).toHaveTextContent("8.5k tokens");
+    expect(screen.queryByTestId("review-usage-card")).not.toBeInTheDocument();
+
+    await userEvent.hover(trigger);
+    const card = await screen.findByTestId("review-usage-card");
+    expect(card).toHaveTextContent("deepseek-chat");
+    expect(screen.getByTestId("review-usage-provider")).toHaveTextContent("DeepSeek");
+    // Exact (not abbreviated) figures, with their share of the total.
+    expect(screen.getByTestId("review-usage-input")).toHaveTextContent(/6,896.*81%/);
+    expect(screen.getByTestId("review-usage-output")).toHaveTextContent(/1,583.*19%/);
+    expect(screen.getByRole("progressbar", { name: "输入占比" })).toHaveAttribute("aria-valuenow", "81");
+  });
+
+  it("shows no usage control while the run has no usage yet", () => {
+    renderCard("ready", runFixture({ usage: null }));
+    expect(screen.queryByTestId("review-usage")).not.toBeInTheDocument();
   });
 
   it("falls back to pending copy for an unrecognized stage state", () => {

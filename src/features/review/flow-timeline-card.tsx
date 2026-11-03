@@ -30,14 +30,14 @@ export function FlowTimelineCard({ flow }: { flow: Flow | null }) {
   const stages = flow?.stages ?? [];
   const reduced = useReducedMotion();
   const timeline = (
-    <Card className="gap-0 py-0" data-testid="wizard-flow-timeline">
-      <CardHeader className="border-b py-4">
-        <CardTitle className="truncate">
+    <Card className="[--card-spacing:--spacing(4)]" data-testid="wizard-flow-timeline">
+      <CardHeader>
+        <CardTitle className="truncate text-base font-semibold">
           {flow?.name ?? t("precheck.wizard.timeline.unselected")}
         </CardTitle>
         <CardDescription>{t("precheck.new.flowCardDescription")}</CardDescription>
       </CardHeader>
-      <CardContent className="py-4">
+      <CardContent>
         {stages.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             {t("precheck.wizard.timeline.unselected")}

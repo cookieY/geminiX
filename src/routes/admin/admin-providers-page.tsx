@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Pencil, PlugZap, Plus, Trash2, Undo2 } from "lucide-react";
+import { Bot, Cpu, KeyRound, ListOrdered, Pencil, PlugZap, Plus, ShieldAlert, Trash2, Undo2 } from "lucide-react";
 import type {
   AiProvider,
   AiProviderWrite,
@@ -27,7 +27,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
-import { Card, CardContent } from "@/shared/components/ui/card";
+import { Card } from "@/shared/components/ui/card";
+import { cn } from "@/shared/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +38,9 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { PasswordInput } from "@/shared/components/ui/password-input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsStack, TabsTrigger } from "@/shared/components/ui/tabs";
 import { ProviderPricingPanel, ProviderUsagePanel } from "@/features/admin/provider-pricing";
 import {
   Select,
@@ -48,17 +50,9 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/components/ui/table";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
-import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
+import { PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 
 /**
@@ -342,7 +336,7 @@ function ProviderFormDialog({
             （费率+费用统计同组，PRD界面-01/02）。创建态无provider id，
             计价/费用组以提示占位。 */}
         <Tabs defaultValue="connection">
-          <TabsList className="max-w-full overflow-x-auto">
+          <TabsList className="-my-1 max-w-full overflow-x-auto overflow-y-hidden py-1">
             <TabsTrigger value="connection" data-testid="provider-tab-connection">
               {t("admin.providers.tabs.connection")}
             </TabsTrigger>
@@ -354,7 +348,8 @@ function ProviderFormDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="connection">
+          <TabsStack>
+          <TabsContent value="connection" stacked>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor="provider-name">{t("admin.providers.name")}</Label>
@@ -462,22 +457,20 @@ function ProviderFormDialog({
               ) : null}
             </div>
             <p className="text-muted-foreground text-xs">{t("admin.providers.modelCatalogHint")}</p>
-            {catalogView === "loading" ? (
-              <p className="text-muted-foreground text-xs" data-testid="provider-model-catalog-loading">
-                {t("admin.providers.modelCatalogLoading")}
-              </p>
-            ) : null}
-            {catalogView === "failed" ? (
-              <p className="text-muted-foreground text-xs" data-testid="provider-model-catalog-failed">
-                {t("admin.providers.modelCatalogFailed")}
-              </p>
-            ) : null}
+            {/* 状态行预留固定一行高度：失败提示出现或消失不改变布局（加载中不再显示提示语，owner 2026-11-03），
+                打开弹窗不再因这一行的进出而抖动（owner 2026-11-03）。 */}
+            <div className="min-h-4">
+              {catalogView === "failed" ? (
+                <p className="text-muted-foreground text-xs" data-testid="provider-model-catalog-failed">
+                  {t("admin.providers.modelCatalogFailed")}
+                </p>
+              ) : null}
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="provider-priority">{t("admin.providers.priority")}</Label>
-            <Input
+            <NumberInput
               id="provider-priority"
-              type="number"
               min={1}
               max={100}
               value={form.selectionPriority}
@@ -502,7 +495,7 @@ function ProviderFormDialog({
           </div>
           </TabsContent>
 
-          <TabsContent value="generation">
+          <TabsContent value="generation" stacked>
           <div className="flex flex-col gap-4" data-testid="provider-generation-panel">
             <p className="text-muted-foreground text-xs">{t("admin.providers.gen.hint")}</p>
             <div className="flex flex-col gap-1">
@@ -536,13 +529,10 @@ function ProviderFormDialog({
             <div className="flex flex-col gap-1">
               <Label htmlFor="provider-gen-max-tokens">{t("admin.providers.gen.maxTokens")}</Label>
               <div className="flex items-center gap-2">
-                {/* type=text+inputMode（而非type=number）：数字输入框会把
-                    "abc"等静默吸收成空值，字段校验永远看不到原文；文本框
-                    让无效输入可被定位报错（PRD §6）。 */}
-                <Input
+                <NumberInput
                   id="provider-gen-max-tokens"
-                  type="text"
-                  inputMode="numeric"
+                  min={256}
+                  max={200000}
                   value={form.maxTokens}
                   onChange={(event) => {
                     setParamErrors((current) => ({ ...current, maxTokens: null }));
@@ -551,7 +541,8 @@ function ProviderFormDialog({
                   placeholder={t("admin.providers.gen.reasoningEffortDefault")}
                   aria-invalid={paramErrors.maxTokens !== null}
                   data-testid="provider-gen-max-tokens"
-                  className="w-48 font-mono"
+                  className="font-mono"
+                  wrapperClassName="w-60 shrink-0"
                 />
                 <span className="text-muted-foreground text-xs">{t("admin.providers.gen.maxTokensRange")}</span>
                 <ParamRevertButton
@@ -569,10 +560,11 @@ function ProviderFormDialog({
             <div className="flex flex-col gap-1">
               <Label htmlFor="provider-gen-temperature">{t("admin.providers.gen.temperature")}</Label>
               <div className="flex items-center gap-2">
-                <Input
+                <NumberInput
                   id="provider-gen-temperature"
-                  type="text"
-                  inputMode="decimal"
+                  min={0}
+                  max={2}
+                  step={0.1}
                   value={form.temperature}
                   onChange={(event) => {
                     setParamErrors((current) => ({ ...current, temperature: null }));
@@ -581,7 +573,8 @@ function ProviderFormDialog({
                   placeholder={t("admin.providers.gen.reasoningEffortDefault")}
                   aria-invalid={paramErrors.temperature !== null}
                   data-testid="provider-gen-temperature"
-                  className="w-48 font-mono"
+                  className="font-mono"
+                  wrapperClassName="w-60 shrink-0"
                 />
                 <span className="text-muted-foreground text-xs">{t("admin.providers.gen.temperatureRange")}</span>
                 <ParamRevertButton
@@ -599,18 +592,24 @@ function ProviderFormDialog({
           </div>
           </TabsContent>
 
-          <TabsContent value="pricing">
+          {/* 计价/用量面板内容长且表格宽：绝对定位脱离网格尺寸计算，高度由
+              连接/生成参数两个面板决定，自身在固定高度内滚动，切换tab不再
+              拉伸弹窗（owner 2026-11-03）。 */}
+          <TabsContent value="pricing" stacked className="relative">
             {editing === null ? (
               <p className="text-muted-foreground text-sm" data-testid="provider-pricing-create-hint">
                 {t("admin.providers.pricing.empty")}
               </p>
             ) : (
-              <div className="flex flex-col gap-5">
-                <ProviderPricingPanel providerId={editing.id} />
-                <ProviderUsagePanel providerId={editing.id} />
+              <div className="absolute inset-0 overflow-auto">
+                <div className="flex flex-col gap-5">
+                  <ProviderPricingPanel providerId={editing.id} />
+                  <ProviderUsagePanel providerId={editing.id} />
+                </div>
               </div>
             )}
           </TabsContent>
+          </TabsStack>
         </Tabs>
 
         {errorKey !== null ? (
@@ -669,7 +668,7 @@ function ParamRevertButton({
   );
 }
 
-function ProviderRow({
+function ProviderCard({
   provider,
   ordinal,
   onEdit,
@@ -691,40 +690,22 @@ function ProviderRow({
   const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
 
   return (
-    <TableRow data-testid={`provider-row-${provider.id}`} data-row-key={provider.id}>
-      <TableCell>
-        <div className="flex items-center gap-1.5">
-          <Badge variant={ordinal === 0 ? "default" : "outline"} data-testid={`provider-role-${provider.id}`}>
-            {ordinal === 0 ? t("admin.providers.primary") : t("admin.providers.backup")}
-          </Badge>
-          <span className="font-semibold text-foreground">{provider.name}</span>
+    <div
+      data-testid={`provider-row-${provider.id}`}
+      data-row-key={provider.id}
+      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-4"
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-lg",
+            provider.enabled ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Cpu className="size-4" aria-hidden />
         </div>
-      </TableCell>
-      <TableCell className="font-mono text-xs">{provider.provider_kind}</TableCell>
-      <TableCell className="max-w-48 truncate font-mono">{provider.base_url}</TableCell>
-      <TableCell className="font-mono">{provider.model_name}</TableCell>
-      <TableCell className="font-mono tabular-nums">{provider.selection_priority}</TableCell>
-      <TableCell>
-        <StatusBadge
-          tone={provider.enabled ? "emerald" : "stone"}
-          data-testid={`provider-enabled-${provider.id}`}
-        >
-          {provider.enabled ? t("admin.providers.enabled") : t("admin.providers.disabled")}
-        </StatusBadge>
-      </TableCell>
-      <TableCell>
-        <StatusBadge
-          tone={provider.api_key_configured ? "emerald" : "red"}
-          data-testid={`provider-apikey-${provider.id}`}
-        >
-          <KeyRound className="mr-1 size-3" />
-          {provider.api_key_configured
-            ? t("admin.providers.configured")
-            : t("admin.providers.notConfigured")}
-        </StatusBadge>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex flex-col items-end gap-1">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground" title={provider.name}>{provider.name}</span>
+        <div className="shrink-0">
           <TableRowActions testId={`provider-actions-${provider.id}`}>
             <DropdownMenuItem
               disabled={testMutation.isPending}
@@ -757,32 +738,60 @@ function ProviderRow({
               <Trash2 /> {t("common.delete")}
             </DropdownMenuItem>
           </TableRowActions>
-          {testMutation.isPending ? (
-            <p className="text-muted-foreground text-xs" data-testid={`provider-test-running-${provider.id}`}>
-              {t("admin.datasources.testRunning")}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant={ordinal === 0 ? "default" : "outline"} className="h-5 px-2" data-testid={`provider-role-${provider.id}`}>
+          {ordinal === 0 ? t("admin.providers.primary") : t("admin.providers.backup")}
+        </Badge>
+        <StatusBadge
+          tone={provider.enabled ? "emerald" : "stone"}
+          data-testid={`provider-enabled-${provider.id}`}
+        >
+          {provider.enabled ? t("admin.providers.enabled") : t("admin.providers.disabled")}
+        </StatusBadge>
+        <StatusBadge
+          tone={provider.api_key_configured ? "emerald" : "red"}
+          data-testid={`provider-apikey-${provider.id}`}
+        >
+          <KeyRound className="mr-1 size-3" />
+          {provider.api_key_configured
+            ? t("admin.providers.configured")
+            : t("admin.providers.notConfigured")}
+        </StatusBadge>
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5 font-mono text-xs">
+        <span className="truncate text-foreground/90" title={provider.model_name}>{provider.model_name}</span>
+        <span className="truncate text-muted-foreground" title={provider.base_url}>{provider.base_url}</span>
+        <span className="flex min-w-0 items-baseline justify-between gap-2 text-muted-foreground">
+          <span className="truncate" title={provider.provider_kind}>{provider.provider_kind}</span>
+          <span className="shrink-0 tabular-nums">{t("admin.providers.priority")} {provider.selection_priority}</span>
+        </span>
+      </div>
+      {testMutation.isPending ? (
+        <p className="text-muted-foreground text-xs" data-testid={`provider-test-running-${provider.id}`}>
+          {t("admin.datasources.testRunning")}
+        </p>
+      ) : null}
+      {testOk && !testMutation.isPending ? (
+        <p className="text-xs text-[var(--risk-safe)]" data-testid={`provider-test-ok-${provider.id}`}>
+          {t("admin.providers.testOk")}
+        </p>
+      ) : null}
+      {errorKey !== null ? (
+        <div>
+          <p className="text-xs text-destructive">{t(errorKey)}</p>
+          {errorDetail !== null ? (
+            <p className="break-all font-mono text-xs text-destructive" data-testid={`provider-test-error-detail-${provider.id}`}>
+              {errorDetail}
             </p>
           ) : null}
-          {testOk && !testMutation.isPending ? (
-            <p className="text-xs text-[var(--risk-safe)]" data-testid={`provider-test-ok-${provider.id}`}>
-              {t("admin.providers.testOk")}
-            </p>
-          ) : null}
-          {errorKey !== null ? (
-            <div className="text-right">
-              <p className="text-xs text-destructive">{t(errorKey)}</p>
-              {errorDetail !== null ? (
-                <p className="break-all font-mono text-xs text-destructive" data-testid={`provider-test-error-detail-${provider.id}`}>
-                  {errorDetail}
-                </p>
-              ) : null}
-              {errorRequestId !== null ? (
-                <p className="text-muted-foreground text-xs">request_id: {errorRequestId}</p>
-              ) : null}
-            </div>
+          {errorRequestId !== null ? (
+            <p className="text-muted-foreground text-xs">request_id: {errorRequestId}</p>
           ) : null}
         </div>
-      </TableCell>
-    </TableRow>
+      ) : null}
+    </div>
   );
 }
 
@@ -863,18 +872,22 @@ export default function AdminProvidersPage() {
   const keyword = search.trim();
   const providers = query.data?.items ?? [];
   // §18.73：搜索在服务端收窄，行集合变化时用 FLIP 把整行位移补间掉。
-  const providersBodyRef = useFlipReorder<HTMLTableSectionElement>(
+  const providersBodyRef = useFlipReorder<HTMLDivElement>(
     JSON.stringify(providers.map((provider) => provider.id)),
   );
   const [deleting, setDeleting] = useState<AiProvider | null>(null);
 
   return (
     <PageLayout>
-      <PageHeader
-        title={t("admin.providers.title")}
-        description={t("admin.providers.description")}
-        icon={KeyRound}
-        actions={
+      <Card data-testid="admin-providers-panel" className="gap-0 py-0">
+        <header className="flex min-w-0 flex-wrap items-center gap-3 border-b border-border p-5">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-foreground">
+            <Bot className="size-5" aria-hidden />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h1 className="text-[22px] leading-tight font-semibold tracking-tight [overflow-wrap:anywhere]">{t("admin.providers.title")}</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">{t("admin.providers.description")}</p>
+          </div>
           <Button
             onClick={() => {
               setEditing(null);
@@ -884,12 +897,26 @@ export default function AdminProvidersPage() {
           >
             <Plus /> {t("admin.providers.createTitle")}
           </Button>
-        }
-      />
-      <Card>
-        <ListToolbar
-          busy={query.isFetching && !query.isPending}
-          search={
+        </header>
+        <div className="grid grid-cols-1 gap-3 border-b border-border p-5 md:grid-cols-2">
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-[13px] text-destructive">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium">{t("admin.providers.notice.keyTitle")}</p>
+              <p className="leading-relaxed">{t("admin.providers.notice.keyBody")}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 rounded-xl border border-border p-3.5 text-[13px] text-muted-foreground">
+            <ListOrdered className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p className="leading-relaxed">{t("admin.providers.notice.orderBody")}</p>
+          </div>
+        </div>
+        <section className="flex flex-col gap-4 p-5">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <h2 className="text-base font-semibold tracking-tight">{t("admin.providers.listTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("admin.providers.listDescription")}</p>
+            </div>
             <TableSearchInput
               value={search}
               onChange={(value) => {
@@ -898,11 +925,9 @@ export default function AdminProvidersPage() {
               }}
               testId="admin-providers-search"
             />
-          }
-        />
-        <CardContent className="px-0!">
+          </div>
           {query.isPending ? (
-            <LoadingState variant="table" columns={8} />
+            <LoadingState variant="panel" />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listAiProviders" onRetry={() => void query.refetch()} />
           ) : providers.length === 0 && keyword !== "" ? (
@@ -917,51 +942,44 @@ export default function AdminProvidersPage() {
               description={t("admin.providers.emptyDescription")}
             />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("admin.providers.name")}</TableHead>
-                  <TableHead>{t("admin.providers.kind")}</TableHead>
-                  <TableHead>{t("admin.providers.baseUrl")}</TableHead>
-                  <TableHead>{t("admin.providers.model")}</TableHead>
-                  <TableHead>{t("admin.providers.priority")}</TableHead>
-                  <TableHead>{t("admin.providers.enabled")}</TableHead>
-                  <TableHead>{t("admin.providers.apiKey")}</TableHead>
-                  <TableHead className="text-right">{t("common.actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody ref={providersBodyRef} stale={query.isFetching && query.isPlaceholderData}>
-                {providers.map((provider, index) => (
-                  <ProviderRow
-                    key={provider.id}
-                    provider={provider}
-                    ordinal={index}
-                    onEdit={() => {
-                      setEditing(provider);
-                      setDialogOpen(true);
-                    }}
-                    onAskDelete={() => { setDeleting(provider); }}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <div
+              ref={providersBodyRef}
+              aria-busy={query.isFetching && query.isPlaceholderData}
+              className={cn(
+                "grid grid-cols-1 gap-3 transition-opacity duration-150 ease-out sm:grid-cols-2 lg:grid-cols-4",
+                query.isFetching && query.isPlaceholderData && "opacity-60",
+              )}
+            >
+              {providers.map((provider, index) => (
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  ordinal={index}
+                  onEdit={() => {
+                    setEditing(provider);
+                    setDialogOpen(true);
+                  }}
+                  onAskDelete={() => { setDeleting(provider); }}
+                />
+              ))}
+            </div>
           )}
-          {providersLoaded ? (
-            <TablePagination
-              busy={query.isFetching && query.isPlaceholderData}
-              page={pager.pageNo}
-              hasMore={query.data.page.has_more}
-              isFirst={pager.isFirst}
-              onPrev={pager.goPrev}
-              onJumpPage={pager.goToPage}
-              onNext={() => { pager.pushCursor(query.data.page.next_cursor); }}
-              pageSize={pager.pageSize}
-              onPageSizeChange={pager.setPageSize}
-              rowsOnPage={query.data.items.length}
-              testIdPrefix="providers"
-            />
-          ) : null}
-        </CardContent>
+        </section>
+        {providersLoaded ? (
+          <TablePagination
+            busy={query.isFetching && query.isPlaceholderData}
+            page={pager.pageNo}
+            hasMore={query.data.page.has_more}
+            isFirst={pager.isFirst}
+            onPrev={pager.goPrev}
+            onJumpPage={pager.goToPage}
+            onNext={() => { pager.pushCursor(query.data.page.next_cursor); }}
+            pageSize={pager.pageSize}
+            onPageSizeChange={pager.setPageSize}
+            rowsOnPage={query.data.items.length}
+            testIdPrefix="providers"
+          />
+        ) : null}
       </Card>
       {deleting !== null ? (
         <ProviderDeleteDialog

@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import type { ChangeOrderTimelineEntry } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { OrderStateBadge, StageStateBadge } from "@/features/orders/order-state-badge";
 import { activeApprovalStepFor, canVoid, withdrawOutcome } from "@/features/orders/order-state";
 import { stageApprovalSteps } from "@/features/orders/approval-steps";
 import { ApprovalDecisionCard, ApprovalStepStateBadge } from "@/features/orders/approval-decision-card";
+import { ApprovalProgress } from "@/features/orders/approval-progress";
 import { FrozenReviewCard } from "@/features/orders/frozen-review-card";
-import { OrderCommentsCard } from "@/features/orders/order-comments-card";
+import { OrderActivityCard, formatTimestamp } from "@/features/orders/order-activity-card";
 import { OrderSqlCard } from "@/features/orders/order-sql-card";
 import { ExecutionWorkspaceCard } from "@/features/orders/execution-card";
 import {
   useChangeOrder,
-  useChangeOrderTimeline,
   useVoidOrder,
   useWithdrawOrder,
 } from "@/features/orders/use-orders";
@@ -21,7 +20,6 @@ import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
-import { EmptyState } from "@/shared/components/status/empty-state";
 import { PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
@@ -37,8 +35,10 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
+import { Separator } from "@/shared/components/ui/separator";
+import { cn } from "@/shared/lib/utils";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { Ban, CircleAlert, Clock, FileCode2, History, ShieldCheck, Undo2, User, Wrench } from "lucide-react";
+import { Ban, CircleAlert, Clock, FileCode2, Layers, Undo2 } from "lucide-react";
 
 /**
  * Order detail (route /changes/orders/:id; migration contract §2 keeps the
@@ -54,92 +54,6 @@ import { Ban, CircleAlert, Clock, FileCode2, History, ShieldCheck, Undo2, User, 
  * related user, and an invalid notice explains the W008 actor-deletion
  * state. Opening or operating this page never creates a Review Run (R003).
  */
-
-function formatTimestamp(value: string | null | undefined): string {
-  return value === null || value === undefined ? "—" : value.replace("T", " ").replace("Z", " UTC");
-}
-
-const STATE_LABEL_ROOTS = ["orders.state", "orders.stageState"] as const;
-
-/** Timeline entry states mix order and stage enums; resolve the localized
- * label from either dictionary and fall back to the raw value. */
-function useTimelineStateLabel(): (state: string | null | undefined) => string {
-  const { t, i18n } = useTranslation();
-  return (state): string => {
-    if (state === null || state === undefined) return "";
-    for (const root of STATE_LABEL_ROOTS) {
-      const key = `${root}.${state}`;
-      if (i18n.exists(key)) return t(key);
-    }
-    return state;
-  };
-}
-
-function ActorIcon({ kind }: { kind: ChangeOrderTimelineEntry["actor_kind"] }) {
-  if (kind === "user") return <User className="size-3.5" aria-hidden />;
-  if (kind === "system") return <ShieldCheck className="size-3.5" aria-hidden />;
-  return <Wrench className="size-3.5" aria-hidden />;
-}
-
-function TimelineCard({ orderId }: { orderId: string }) {
-  const { t } = useTranslation();
-  const stateLabel = useTimelineStateLabel();
-  const timelineQuery = useChangeOrderTimeline(orderId, true);
-
-  const entries = timelineQuery.data ?? [];
-  return (
-    <Card data-testid="order-timeline">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <History aria-hidden />
-          {t("orders.detail.timeline")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {timelineQuery.isPending ? (
-          <LoadingState variant="table" columns={2} />
-        ) : timelineQuery.isError ? (
-          <ErrorState
-            error={timelineQuery.error}
-            operationId="listChangeOrderTimeline"
-            onRetry={() => void timelineQuery.refetch()}
-          />
-        ) : entries.length === 0 ? (
-          <EmptyState title={t("orders.detail.timelineEmpty")} />
-        ) : (
-          <ol className="flex flex-col gap-3" data-testid="order-timeline-list">
-            {entries.map((entry) => (
-              <li key={entry.id} className="flex items-start gap-3 text-sm">
-                <span className="text-muted-foreground mt-0.5">
-                  <ActorIcon kind={entry.actor_kind} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p>{entry.summary}</p>
-                  {entry.comment != null && entry.comment !== "" && (
-                    <p className="text-foreground/80 whitespace-pre-wrap break-words text-xs" data-testid="order-timeline-comment">
-                      {entry.comment}
-                    </p>
-                  )}
-                  <p className="text-muted-foreground text-xs">
-                    {formatTimestamp(entry.occurred_at)}
-                    {entry.stage_position !== null && (
-                      <> · {t("orders.detail.timelineStage", { position: entry.stage_position })}</>
-                    )}
-                    {entry.state !== null && (
-                      <Badge variant="outline" className="ml-2 align-middle">
-                        {stateLabel(entry.state)}
-                      </Badge>
-                    )}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function OrderDetailPage() {
   const { t } = useTranslation();
@@ -242,7 +156,7 @@ export default function OrderDetailPage() {
   const pending = withdrawMutation.isPending || voidMutation.isPending;
 
   return (
-    <PageLayout data-testid="order-detail-page">
+    <PageLayout data-testid="order-detail-page" className="gap-[30px]">
       <PageHeader
         icon={FileCode2}
         title={<span className="font-mono">{order.display_number}</span>}
@@ -290,128 +204,133 @@ export default function OrderDetailPage() {
         </Alert>
       )}
 
-      {showApprovalCard && (
-        <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
-      )}
-      <OrderSqlCard orderId={order.id} />
-      {/* §18.57：执行等待期，非冻结执行人视角没有任何解释（§18.47补记5
-          同类缺陷）——补一块说明面板，点名冻结执行人。 */}
-      {order.state === "stage_execution_pending" &&
-        (() => {
-          const pendingStage = order.stages.find((stage) => stage.state === "execution_pending");
-          const isExecutor =
-            pendingStage !== undefined &&
-            session.user !== null &&
-            pendingStage.execution_actors.some((actor) => actor.id === session.user?.id);
-          if (isExecutor || pendingStage === undefined) return null;
-          const names = pendingStage.execution_actors.map((actor) => actor.display_name).join("、");
-          return (
-            <Card data-testid="execution-wait-note">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Clock aria-hidden />
-                  {t("orders.execution.waitTitle")}
-                </CardTitle>
-                <CardDescription>{t("orders.execution.waitNote", { names })}</CardDescription>
-              </CardHeader>
-            </Card>
-          );
-        })()}
-      <ExecutionWorkspaceCard
-        order={order}
-        attemptId={attemptId}
-        onAttemptCreated={setAttemptId}
-        onRecover={() => void orderQuery.refetch()}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card data-testid="order-stages">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <FileCode2 aria-hidden />
-              {t("orders.detail.stages")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {order.stages.map((stage) => {
-              const steps = stageApprovalSteps(stage);
+      {/* Two-column layout shared with the submission page (8/4, 30px):
+       * the left column is what needs doing or reading in depth — decision,
+       * execution, SQL, frozen review, comments; the right column is the
+       * at-a-glance state — approval progress, frozen snapshot, timeline. */}
+      <div
+        className={cn(
+          "grid grid-cols-12 items-start gap-[30px]",
+          "[&_[data-slot=card]]:[--card-spacing:--spacing(4)]",
+          "[&_[data-slot=card-title]]:text-base [&_[data-slot=card-title]]:font-semibold",
+          // Several feature cards add `pb-3` under their header on top of the
+          // card gap; one rhythm for all: title → content is the card gap (16px).
+          "[&_[data-slot=card-header]]:pb-0",
+        )}
+      >
+        <div className="col-span-12 flex min-w-0 flex-col gap-[30px] lg:col-span-8">
+          {showApprovalCard && (
+            <ApprovalDecisionCard order={order} onRecover={() => void orderQuery.refetch()} />
+          )}
+          {/* §18.57：执行等待期，非冻结执行人视角没有任何解释（§18.47补记5
+              同类缺陷）——补一块说明面板，点名冻结执行人。 */}
+          {order.state === "stage_execution_pending" &&
+            (() => {
+              const pendingStage = order.stages.find((stage) => stage.state === "execution_pending");
+              const isExecutor =
+                pendingStage !== undefined &&
+                session.user !== null &&
+                pendingStage.execution_actors.some((actor) => actor.id === session.user?.id);
+              if (isExecutor || pendingStage === undefined) return null;
+              const names = pendingStage.execution_actors.map((actor) => actor.display_name).join("、");
               return (
-                <div key={stage.id} className="rounded-md border p-3" data-testid={`order-stage-${String(stage.position)}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="flex items-center gap-2 text-sm font-medium">
-                      <Badge variant="outline">{t("precheck.stagePath.stage", { position: stage.position })}</Badge>
-                      <span className="font-mono text-xs">{stage.datasource_name}</span>
-                    </p>
-                    <StageStateBadge state={stage.state} />
-                  </div>
-                  {steps.length > 0 && (
-                    <ol className="mt-2 flex flex-col gap-2" data-testid={`stage-steps-${String(stage.position)}`}>
-                      {steps.map((step) => (
-                        <li key={step.id} className="flex flex-wrap items-center gap-2 text-xs" data-testid={`stage-step-${String(step.position)}`}>
-                          <ApprovalStepStateBadge state={step.state} />
-                          <span className="text-muted-foreground">
-                            {t("orders.detail.stepTitle", { position: step.position })}
-                          </span>
-                          <span>
-                            {step.actors.map((actor) => actor.displayName).join("、")}
-                          </span>
-                          {step.decidedAt !== null && (
-                            <span className="text-muted-foreground">
-                              {t("orders.detail.stepDecidedAt", { time: formatTimestamp(step.decidedAt) })}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    {t("orders.detail.stageExecutors", { count: stage.execution_actors.length })}
-                  </p>
-                </div>
+                <Card data-testid="execution-wait-note">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock aria-hidden />
+                      {t("orders.execution.waitTitle")}
+                    </CardTitle>
+                    <CardDescription>{t("orders.execution.waitNote", { names })}</CardDescription>
+                  </CardHeader>
+                </Card>
               );
-            })}
-          </CardContent>
-        </Card>
+            })()}
+          <ExecutionWorkspaceCard
+            order={order}
+            attemptId={attemptId}
+            onAttemptCreated={setAttemptId}
+            onRecover={() => void orderQuery.refetch()}
+          />
+          {/* One card, two sections: the frozen SQL and the review frozen with it. */}
+          <Card className="gap-0 py-0" data-testid="order-sql-review">
+            <OrderSqlCard orderId={order.id} embedded />
+            <Separator />
+            <FrozenReviewCard orderId={order.id} embedded />
+          </Card>
+        </div>
 
-        <Card data-testid="order-facts">
-          <CardHeader className="pb-3">
-            <CardTitle>{t("orders.detail.facts")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            <p className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("orders.detail.submittedAt")}</span>
-              <span>{formatTimestamp(order.submitted_at)}</span>
-            </p>
-            {order.requested_scheduled_for != null && (
-              <p className="flex justify-between gap-3" data-testid="order-requested-schedule">
-                <span className="text-muted-foreground">{t("orders.detail.requestedSchedule")}</span>
-                <span>{formatTimestamp(order.requested_scheduled_for)}</span>
-              </p>
-            )}
-            <p className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("orders.detail.terminalAt")}</span>
-              <span>{formatTimestamp(order.terminal_at)}</span>
-            </p>
-            <p className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("orders.detail.sqlHash")}</span>
-              <span className="font-mono text-xs">{order.sql_hash}</span>
-            </p>
-            <p className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("orders.detail.snapshotHash")}</span>
-              <span className="font-mono text-xs">{order.snapshot_hash}</span>
-            </p>
-            <p className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("orders.detail.manuallyVerified")}</span>
-              <span>{order.manually_verified ? t("common.yes") : t("common.no")}</span>
-            </p>
-            <p className="text-muted-foreground text-xs">{t("orders.detail.frozenNote")}</p>
-          </CardContent>
-        </Card>
+        <aside className="col-span-12 flex min-w-0 flex-col gap-[30px] lg:col-span-4">
+          <Card data-testid="order-stages">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Layers aria-hidden />
+                {t("orders.detail.stages")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <ApprovalProgress stages={order.stages} />
+              <ol className="flex flex-col">
+                {order.stages.map((stage, index) => {
+                  const steps = stageApprovalSteps(stage);
+                  const last = index === order.stages.length - 1;
+                  return (
+                    <li key={stage.id} className="flex gap-3" data-testid={`order-stage-${String(stage.position)}`}>
+                      {/* Node column: numbered ring + connector to the next stage. */}
+                      <div className="flex flex-col items-center">
+                        <span
+                          className="bg-muted/40 flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold"
+                          aria-hidden
+                        >
+                          {stage.position}
+                        </span>
+                        {!last && <span className="bg-border my-1 w-px flex-1" aria-hidden />}
+                      </div>
+                      <div className={cn("flex min-w-0 flex-1 flex-col gap-2", !last && "pb-5")}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                            <Badge variant="outline">{t("precheck.stagePath.stage", { position: stage.position })}</Badge>
+                            <span className="truncate font-mono text-xs">{stage.datasource_name}</span>
+                          </p>
+                          <StageStateBadge state={stage.state} />
+                        </div>
+                        {steps.length > 0 && (
+                          <ol className="flex flex-col gap-2" data-testid={`stage-steps-${String(stage.position)}`}>
+                            {steps.map((step) => (
+                              <li
+                                key={step.id}
+                                className="bg-muted/30 flex flex-col gap-1 rounded-lg px-3 py-2 text-xs"
+                                data-testid={`stage-step-${String(step.position)}`}
+                              >
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <ApprovalStepStateBadge state={step.state} />
+                                  <span className="text-muted-foreground">
+                                    {t("orders.detail.stepTitle", { position: step.position })}
+                                  </span>
+                                </span>
+                                <span>{step.actors.map((actor) => actor.displayName).join("、")}</span>
+                                {step.decidedAt !== null && (
+                                  <span className="text-muted-foreground">
+                                    {t("orders.detail.stepDecidedAt", { time: formatTimestamp(step.decidedAt) })}
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                        <p className="text-muted-foreground text-xs">
+                          {t("orders.detail.stageExecutors", { count: stage.execution_actors.length })}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </CardContent>
+          </Card>
+
+          <OrderActivityCard order={order} />
+        </aside>
       </div>
-
-      <FrozenReviewCard orderId={order.id} />
-      <OrderCommentsCard orderId={order.id} />
-      <TimelineCard orderId={order.id} />
 
       <Dialog open={dialog !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent data-testid="order-action-dialog">

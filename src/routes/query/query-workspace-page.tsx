@@ -546,7 +546,7 @@ export default function QueryWorkspacePage() {
                 </div>
               ) : (
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
-                  <TabsList className="w-full overflow-x-auto">
+                  <TabsList className="-my-1 w-full overflow-x-auto overflow-y-hidden py-1">
                     {tabs.map((tab, index) => (
                       <TabsTrigger key={tab.executionId} value={tab.executionId} className="text-xs">
                         {t("query.result.tabTitle", { index: tabs.length - index })}

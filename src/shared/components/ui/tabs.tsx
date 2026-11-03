@@ -1,6 +1,7 @@
 "use client"
 
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
+import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/shared/lib/utils"
@@ -81,14 +82,49 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   )
 }
 
-function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+// Stacked panels: every panel stays mounted in one grid cell, so the
+// container is as tall as the tallest panel and switching tabs never resizes
+// the surface (a dialog no longer jumps between tabs). Inactive panels are
+// kept laid out but invisible/inert (visibility:hidden drops them from the
+// tab order and the accessibility tree); the active one fades and rises in
+// under a light blur. Opacity/transform/filter only — no layout properties.
+function TabsStack({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <TabsPrimitive.Panel
-      data-slot="tabs-content"
-      className={cn("flex-1 text-xs/relaxed outline-none", className)}
+    <div
+      data-slot="tabs-stack"
+      className={cn("grid grid-cols-[minmax(0,1fr)] *:col-start-1 *:row-start-1 *:min-w-0", className)}
       {...props}
     />
   )
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+function TabsContent({
+  className,
+  stacked = false,
+  ...props
+}: TabsPrimitive.Panel.Props & { stacked?: boolean }) {
+  return (
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      keepMounted={stacked || props.keepMounted}
+      // Base UI marks inactive panels with the `hidden` attribute, and
+      // Tailwind preflight turns that into display:none!important in the
+      // base layer — which beats any utilities-layer override. Stacked
+      // panels must stay laid out, so suppress the attribute; visibility is
+      // driven by data-hidden (+ inert from Base UI) instead. Only stacked
+      // panels pass `hidden` at all: handing Base UI an explicit
+      // `hidden={undefined}` overrides its own inactive-panel attribute, so a
+      // plain keepMounted panel stayed visible next to the active one.
+      {...(stacked ? { hidden: false } : {})}
+      className={cn(
+        "flex-1 text-xs/relaxed outline-none",
+        stacked &&
+          "transition-[opacity,transform,filter,visibility] duration-200 ease-out data-hidden:pointer-events-none data-hidden:translate-y-1 data-hidden:opacity-0 data-hidden:blur-[4px] data-hidden:invisible motion-reduce:transition-none",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, TabsStack, tabsListVariants }

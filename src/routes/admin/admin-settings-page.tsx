@@ -23,6 +23,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import {
@@ -361,9 +362,8 @@ function QueryFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Draf
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-query-timeout">{t("adminSettings.query.timeout")}</Label>
-        <Input
+        <NumberInput
           id="settings-query-timeout"
-          type="number"
           min={1}
           max={300000}
           value={draft.default_timeout_ms}
@@ -374,9 +374,8 @@ function QueryFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Draf
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-query-duration">{t("adminSettings.query.maxDuration")}</Label>
-        <Input
+        <NumberInput
           id="settings-query-duration"
-          type="number"
           min={1}
           max={525600}
           value={draft.maximum_approved_access_duration_minutes}
@@ -582,7 +581,7 @@ function OscNumberField({ label, value, onChange, testId }: {
   return (
     <div className="flex flex-col gap-1">
       <Label htmlFor={testId} className="text-xs">{label}</Label>
-      <Input id={testId} type="number" value={value} onChange={(event) => { onChange(event.target.value); }} className="h-8 text-xs" data-testid={testId} />
+      <NumberInput id={testId} value={value} onChange={(event) => { onChange(event.target.value); }} className="h-8 text-xs" data-testid={testId} />
     </div>
   );
 }

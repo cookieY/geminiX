@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
@@ -574,7 +575,7 @@ function ProviderFormDialog({
               <TextField label={t("adminIdp.field.host")} value={ldapDraft.host} onChange={(value) => { setLdapDraft({ ...ldapDraft, host: value }); }} testId="idp-ldap-host" />
               <div className="flex flex-col gap-2">
                 <Label htmlFor="idp-ldap-port">{t("adminIdp.field.port")}</Label>
-                <Input id="idp-ldap-port" type="number" min={1} max={65535} value={ldapDraft.port} onChange={(event) => { setLdapDraft({ ...ldapDraft, port: Number(event.target.value) }); }} data-testid="idp-ldap-port" />
+                <NumberInput id="idp-ldap-port" min={1} max={65535} value={ldapDraft.port} onChange={(event) => { setLdapDraft({ ...ldapDraft, port: Number(event.target.value) }); }} data-testid="idp-ldap-port" />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="idp-ldap-transport">{t("adminIdp.field.transport")}</Label>

@@ -231,6 +231,19 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month"
   },
+  "editor": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "bulletList": "Bullet list",
+    "orderedList": "Numbered list",
+    "link": "Link",
+    "code": "Inline code",
+    "undo": "Undo",
+    "redo": "Redo",
+    "linkUrl": "Link URL",
+    "linkApply": "Apply",
+    "placeholder": "Start typing…"
+  },
   "common": {
     "cancel": "Cancel",
     "yes": "Yes",
@@ -359,7 +372,13 @@
       "loadingBadge": "Loading",
       "errorBadge": "Load failed",
       "timeout": "The precheck has not finished within the expected window. Refresh later; contact an administrator if it stays stuck.",
-      "usageLine": "Model {{model}} · Provider {{provider}} · {{input}} in/{{output}} out tokens"
+      "usage": {
+        "trigger": "{{total}} tokens",
+        "input": "Input",
+        "output": "Output",
+        "provider": "Provider",
+        "inputShare": "Input share"
+      }
     },
     "progress": {
       "title": "AI precheck in progress",
@@ -491,6 +510,8 @@
         "title": "Import bulk SQL",
         "description": "Reads a local SQL file incrementally and builds a statement digest; the 32 MiB file and 512 KiB per-statement limits are pre-checked locally — the server result remains the final judgement.",
         "pickHint": "Pick a .sql or .txt file, or paste content into the editor",
+        "dropTitle": "Drop SQL file here to upload",
+        "dropHint": "Only .sql and .txt files are accepted, up to 32 MiB.",
         "browse": "Choose file",
         "limitsHint": "Limits: file 32 MiB · statement 512 KiB · 100,000 statements",
         "reading": "Reading and analysing {{name}}… {{percent}}%",
@@ -598,6 +619,11 @@
       "stages": "Datasource stages",
       "stageExecutors": "{{count}} candidate executors",
       "facts": "Frozen snapshot",
+      "progressSummary": "{{done}} of {{total}} approval steps approved",
+      "progressLabel": "Approval steps approved",
+      "activity": "Order activity",
+      "activityHint": "Timeline, comments and the frozen snapshot",
+      "severityDistribution": "Risk distribution",
       "submittedAt": "Submitted at",
       "terminalAt": "Terminal at",
       "sqlHash": "SQL hash",
@@ -1050,6 +1076,13 @@
     "providers": {
       "title": "Provider management",
       "description": "Primary/backup order follows selection_priority ascending; API keys are never echoed.",
+      "listTitle": "Providers",
+      "listDescription": "View, test, edit or delete provider configurations.",
+      "notice": {
+        "keyTitle": "API keys are write-only",
+        "keyBody": "Leave the key empty when editing to keep the stored one; rotate immediately if a key is exposed."
+        ,"orderBody": "The lowest priority value is the primary provider; the rest are backups, taking effect in ascending priority order."
+      },
       "createTitle": "New provider",
       "editTitle": "Edit provider",
       "formDescription": "OpenAI Compatible endpoints and models; the privacy-contract and output-schema fingerprints are derived automatically by the platform — nothing to fill in.",
@@ -1064,7 +1097,6 @@
       "apiKey": "API key",
       "apiKeyKeepPlaceholder": "Configured; leave empty to keep, type to replace",
       "modelCatalogHint": "The model list is fetched automatically once Base URL and API Key are filled; manual entry still works",
-      "modelCatalogLoading": "Fetching model list…",
       "modelCatalogFailed": "Failed to fetch the model list; manual entry still works",
       "apiKeyConfigured": "API key: {{state}}",
       "configured": "Configured",

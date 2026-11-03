@@ -24,6 +24,7 @@ import { isTerminalPhase, presentPhase, type RunPhase } from "@/features/review/
 import { CapacityBanner } from "@/features/review/bulk-browser/capacity-banner";
 import { StatementBrowser } from "@/features/review/bulk-browser/statement-browser";
 import { ImportDialog } from "@/features/review/bulk-import/import-dialog";
+import { SqlFileDropzone } from "@/features/review/bulk-import/sql-file-dropzone";
 import {
   digestSqlText,
   type SqlDigest,
@@ -67,7 +68,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
-import { Textarea } from "@/shared/components/ui/textarea";
+import { MarkdownEditor } from "@/shared/components/markdown-editor";
 import {
   Dialog,
   DialogContent,
@@ -78,10 +79,9 @@ import {
 } from "@/shared/components/ui/dialog";
 import {
   CircleAlert,
-  FileCode2,
-  FileUp,
   Play,
 } from "lucide-react";
+import { randomUUID } from "@/shared/lib/uuid";
 
 function reviewOutputLanguage(language: string): "zh-CN" | "en-US" {
   return language.toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
@@ -151,7 +151,7 @@ function sameDraftMetadata(
 
 
 function idempotencyKey(): string {
-  return `draft-${crypto.randomUUID()}`;
+  return `draft-${randomUUID()}`;
 }
 
 // §18.74：草稿所有变更端点（sql/元数据/审核/提交）的If-Match都比对
@@ -193,9 +193,9 @@ function MetaFields({
 }: MetaFieldsProps) {
   const { t } = useTranslation();
   return (
-    <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+    <div className="grid gap-y-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="draft-title-input" className="text-sm font-semibold">{t("precheck.new.dialog.titleLabel")}</Label>
+        <Label htmlFor="draft-title-input" className="mb-1">{t("precheck.new.dialog.titleLabel")}<span className="text-destructive" aria-hidden>*</span></Label>
         <Input
           id="draft-title-input"
           value={title}
@@ -203,7 +203,7 @@ function MetaFields({
           maxLength={256}
           placeholder={t("precheck.wizard.titlePlaceholder")}
           aria-invalid={titleError != null}
-          className="h-10 text-sm md:text-sm"
+          className="rounded-lg text-sm md:text-sm"
           data-testid="draft-title-input"
         />
         {titleError != null && (
@@ -230,15 +230,15 @@ function MetaFields({
           <p className="text-destructive text-xs" data-testid="wizard-requested-for-error">{requestedForError}</p>
         )}
       </div>
-      <div className="flex flex-col gap-1.5 sm:col-span-2">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="draft-description-input" className="text-sm font-semibold">{t("precheck.new.dialog.descriptionLabel")}</Label>
-        <Textarea
+        <MarkdownEditor
           id="draft-description-input"
           value={description}
-          onChange={(event) => { onDescriptionChange(event.target.value); }}
-          rows={4}
+          onChange={onDescriptionChange}
           maxLength={4096}
-          className="text-sm md:text-sm"
+          placeholder={t("editor.placeholder")}
+          ariaLabel={t("precheck.new.dialog.descriptionLabel")}
           data-testid="draft-description-input"
         />
       </div>
@@ -355,16 +355,18 @@ function FormSection({
   last?: boolean;
 }) {
   return (
-    <section className={last ? "px-6 py-5 lg:px-8" : "border-b px-6 py-5 lg:px-8"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-          <p className="text-muted-foreground mt-1 text-[13px]">{hint}</p>
-        </div>
-        {action}
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
+    <Card className="[--card-spacing:--spacing(4)]" data-last={last ? "true" : undefined}>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-3">
+          <h5 className="text-base font-semibold">{title}</h5>
+          {action}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {children}
+        <small className="text-muted-foreground mt-2 block text-xs">{hint}</small>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -472,6 +474,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [bulkLocate, setBulkLocate] = useState<{ ordinal: number; nonce: number } | null>(null);
   const [importedDigest, setImportedDigest] = useState<SqlDigest | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [evidenceFindings, setEvidenceFindings] = useState<ReviewFinding[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
@@ -1191,12 +1194,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   function renderSummaryCard(): ReactNode {
     const values = summaryValues();
     return (
-      <Card className="gap-0 overflow-hidden py-0" data-testid="wizard-summary">
-        <CardHeader className="border-b py-4">
-          <CardTitle>{t("precheck.wizard.summaryTitle")}</CardTitle>
-          <p className="text-muted-foreground text-[13px] leading-relaxed">{t("precheck.wizard.summaryHint")}</p>
+      <Card className="[--card-spacing:--spacing(4)]" data-testid="wizard-summary">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">{t("precheck.wizard.summaryTitle")}</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2.5 py-3.5">
+        <CardContent className="flex flex-col gap-2.5">
           <p className="text-muted-foreground text-xs font-medium tracking-wide">
             {t("precheck.wizard.summary.groupInfo")}
           </p>
@@ -1251,13 +1253,14 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               }
             />
           </dl>
+          <small className="text-muted-foreground text-xs">{t("precheck.wizard.summaryHint")}</small>
         </CardContent>
         {/* Action area: one primary focus per page (owner ruling 2026-10-24).
          * The dock is the single submission authority in both modes — it stays
          * honestly blocked until a passing ephemeral precheck of the exact
          * editor SQL unlocks it (RCP-20261101). The surface lifts one step
          * above the card body (reference ruling 2026-10-24). */}
-        <div className="bg-secondary/40 flex flex-col gap-2.5 border-t px-3.5 py-3">
+        <div className="flex flex-col gap-2.5 px-4">
           {stepError !== null && (
             <p role="alert" className="text-destructive text-sm" data-testid="wizard-step-error">
               {stepError}
@@ -1494,7 +1497,44 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         };
 
     return (
-      <FormSection title={t("precheck.wizard.title.sql")} hint={t("precheck.wizard.description.sql")} last>
+      <FormSection
+        title={t("precheck.wizard.title.sql")}
+        hint={t("precheck.wizard.description.sql")}
+        action={
+          <div className="flex items-center gap-2">
+            {dirty && (
+              <span className="text-muted-foreground text-xs font-normal">
+                {t("precheck.workspace.unsaved")}
+              </span>
+            )}
+            <PendingButton
+              size="sm"
+              pending={
+                reviewStartPending ||
+                reviewMutation.isPending ||
+                createMutation.isPending ||
+                adoptionPending
+              }
+              onClick={handleRunReview}
+              disabled={
+                (saveMutation.isPending && dirty) ||
+                adoptionPending ||
+                createMutation.isPending ||
+                phasePresented === "queued" ||
+                phasePresented === "running" ||
+                store.serverState === "submitted" ||
+                flowUpdated
+              }
+              className="text-sm font-semibold"
+              data-testid="run-review"
+            >
+              <Play aria-hidden />
+              {t("precheck.workspace.runReview")}
+            </PendingButton>
+          </div>
+        }
+        last
+      >
         <div className="flex flex-col gap-3">
           {(timedOutState.timedOut && (phasePresented === "queued" || phasePresented === "running")) && (
             <div
@@ -1523,56 +1563,8 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
           {/* Bulk mode needs a definite card height: with the auto-height
            * card the virtualized list would grow with its content and the
            * virtualizer would treat every row as visible. */}
-          <Card className={isBulk ? "flex h-[70vh] flex-col gap-0 overflow-hidden pt-0" : "flex flex-col gap-0 overflow-hidden pt-0"}>
-            <CardHeader className="bg-muted/30 flex flex-row flex-wrap items-center justify-between gap-2 border-b py-3">
-              <CardTitle className="flex items-center gap-2">
-                <FileCode2 aria-hidden />
-                {t("precheck.workspace.sqlCard")}
-                {dirty && (
-                  <span className="text-muted-foreground text-xs">
-                    {t("precheck.workspace.unsaved")}
-                  </span>
-                )}
-              </CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-sm font-semibold"
-                  disabled={adoptionPending}
-                  onClick={() => { setImportOpen(true); }}
-                  data-testid="open-bulk-import"
-                >
-                  <FileUp className="size-3.5" aria-hidden />
-                  {t("precheck.bulk.import.action")}
-                </Button>
-                <PendingButton
-                  size="sm"
-                  pending={
-                    reviewStartPending ||
-                    reviewMutation.isPending ||
-                    createMutation.isPending ||
-                    adoptionPending
-                  }
-                  onClick={handleRunReview}
-                  disabled={
-                    (saveMutation.isPending && dirty) ||
-                    adoptionPending ||
-                    createMutation.isPending ||
-                    phasePresented === "queued" ||
-                    phasePresented === "running" ||
-                    store.serverState === "submitted" ||
-                    flowUpdated
-                  }
-                  className="text-sm font-semibold"
-                  data-testid="run-review"
-                >
-                  <Play aria-hidden />
-                  {t("precheck.workspace.runReview")}
-                </PendingButton>
-              </div>
-            </CardHeader>
-            <CardContent className="flex min-h-0 flex-1 flex-col gap-2 py-4">
+          <div className={isBulk ? "flex h-[70vh] flex-col gap-3" : "flex flex-col gap-3"}>
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden rounded-lg border">
               {isBulk ? (
                 <>
                   <CapacityBanner
@@ -1608,12 +1600,12 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   loadValue={loadValue}
                   onLocate={locate}
                   completionCatalog={completionCatalog}
-                  className="h-[380px] min-h-[280px] rounded-none border-0"
+                  className="h-[260px] min-h-[200px] rounded-none border-0"
                   data-testid="sql-editor"
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold">{t("precheck.wizard.resultsCard")}</h3>
@@ -1632,6 +1624,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               >
                 <div>
                   <ReviewStatusCard
+                    flat
                     phase={phasePresented}
                     run={run}
                     hasRunId={hasPresentedRun}
@@ -1644,6 +1637,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 </div>
                 <div>
                   <FindingList
+                  flat
                   state={findingsState}
                   onOpenEvidence={(groupFindings) => { setEvidenceFindings(groupFindings); }}
                   onRetry={() => {
@@ -1707,16 +1701,21 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
          * carries the draft status. */}
 
         {/* Left: one continuous form. Right: sticky live summary. */}
-        <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_380px]">
-          <main className="min-w-0 lg:border-r" aria-label={t("precheck.wizard.pageTitle")}>
+        <div className="grid grid-cols-12 items-start gap-[30px]">
+          <main className="col-span-12 flex min-w-0 flex-col gap-[30px] lg:col-span-8" aria-label={t("precheck.wizard.pageTitle")}>
             {renderFlowSection()}
             {renderMetaSection()}
             {renderSqlSection()}
           </main>
           <aside
-            className="flex flex-col gap-4 p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
+            className="col-span-12 flex flex-col gap-[30px] lg:col-span-4 lg:sticky lg:top-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
             aria-label={t("precheck.wizard.summaryTitle")}
           >
+            <SqlFileDropzone
+              disabled={adoptionPending}
+              onOpen={() => { setDroppedFile(null); setImportOpen(true); }}
+              onDropFile={(file) => { setDroppedFile(file); setImportOpen(true); }}
+            />
             {renderSummaryCard()}
             <FlowTimelineCard flow={flow} />
           </aside>
@@ -1725,7 +1724,11 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         {/* 批量导入纯本地（RCP-20261101）：确认即落编辑器内容，不再上传。 */}
         <ImportDialog
           open={importOpen}
-          onOpenChange={setImportOpen}
+          initialFile={droppedFile}
+          onOpenChange={(open) => {
+            setImportOpen(open);
+            if (!open) setDroppedFile(null);
+          }}
           onConfirm={handleImportConfirm}
         />
         <EvidenceSheet

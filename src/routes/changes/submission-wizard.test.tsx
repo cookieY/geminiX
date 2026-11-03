@@ -24,6 +24,19 @@ import DraftWorkspacePage from "./draft-workspace-page";
  * SQL locally; submission posts /change-orders with {sql, run_id, metadata}.
  */
 
+// jsdom cannot drive ProseMirror's contenteditable; the editor has its own
+// unit test, so the wizard test swaps in a textarea with the same contract.
+vi.mock("@/shared/components/markdown-editor", () => ({
+  MarkdownEditor: ({ value, onChange, id, "data-testid": testId }: {
+    value: string;
+    onChange: (value: string) => void;
+    id?: string;
+    "data-testid"?: string;
+  }) => (
+    <textarea id={id} data-testid={testId} value={value} onChange={(event) => { onChange(event.target.value); }} />
+  ),
+}));
+
 vi.mock("@/features/review/sql-editor-panel", () => ({
   SqlEditorPanel: ({
     value,

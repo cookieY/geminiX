@@ -1,3 +1,4 @@
+import { ReviewUsageContext } from "@/features/review/review-usage-context";
 import { StatusBadge } from "@/shared/components/status/status-badge";
 import type { StatusTone } from "@/shared/lib/status-tone";
 import { useTranslation } from "react-i18next";
@@ -77,6 +78,8 @@ export interface ReviewStatusCardProps {
   isError: boolean;
   error?: unknown;
   onRetry?: () => void;
+  /** Sits inside another card: drop this card's own surface and padding. */
+  flat?: boolean;
 }
 
 export function ReviewStatusCard({
@@ -88,6 +91,7 @@ export function ReviewStatusCard({
   isError,
   error,
   onRetry,
+  flat = false,
 }: ReviewStatusCardProps) {
   const { t } = useTranslation();
   const badge = isError
@@ -113,7 +117,7 @@ export function ReviewStatusCard({
   const summaries = run?.stage_results?.filter(hasReviewSummary) ?? [];
 
   return (
-    <Card data-testid="review-status">
+    <Card className={flat ? "gap-3 rounded-none bg-transparent py-0 ring-0 [--card-spacing:0px]" : undefined} data-testid="review-status">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Icon className={`size-4 ${badge.spin ? "animate-spin" : ""}`} aria-hidden />
@@ -146,16 +150,7 @@ export function ReviewStatusCard({
               {t("precheck.review.statements", { count: run.statement_count })} ·{" "}
               {t("precheck.review.fingerprints", { count: run.fingerprint_group_count })}
             </div>
-            {run.usage != null && (
-              <p className="text-muted-foreground text-xs" data-testid="review-usage">
-                {t("precheck.review.usageLine", {
-                  model: run.usage.model_name,
-                  provider: run.usage.provider_name,
-                  input: run.usage.input_tokens,
-                  output: run.usage.output_tokens,
-                })}
-              </p>
-            )}
+            {run.usage != null && <ReviewUsageContext usage={run.usage} />}
             <Table>
               <TableHeader>
                 <TableRow>

@@ -4,6 +4,8 @@ import type { ReviewFinding } from "@/api/generated/client/yearningV4HTTPAPI.sch
 import { useOrderReviewFindings } from "@/features/orders/use-approvals";
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
 import { FindingList } from "@/features/review/finding-list";
+import { ReviewAllClear } from "@/features/review/review-all-clear";
+import { SeverityDistribution } from "@/features/review/severity-distribution";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -19,14 +21,14 @@ import { FileSearch } from "lucide-react";
  * controlled re-review request surface needs a backend endpoint the frozen
  * OpenAPI does not carry, so none is invented.
  */
-export function FrozenReviewCard({ orderId }: { orderId: string }) {
+export function FrozenReviewCard({ orderId, embedded = false }: { orderId: string; embedded?: boolean }) {
   const { t } = useTranslation();
   const findingsQuery = useOrderReviewFindings(orderId, true);
   const [evidenceFindings, setEvidenceFindings] = useState<ReviewFinding[]>([]);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
 
-  return (
-    <Card data-testid="frozen-review-card">
+  const body = (
+    <>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <FileSearch className="size-4" aria-hidden />
@@ -47,17 +49,39 @@ export function FrozenReviewCard({ orderId }: { orderId: string }) {
             <p className="text-muted-foreground mb-3 text-xs">
               {t("orders.detail.frozenReviewNote")}
             </p>
-            <FindingList
-              state={{ status: "ready", findings: findingsQuery.data }}
-              onOpenEvidence={(groupFindings) => {
-                setEvidenceFindings(groupFindings);
-                setEvidenceOpen(true);
-              }}
-            />
+            {findingsQuery.data.length === 0 ? (
+              <ReviewAllClear />
+            ) : (
+              <>
+                <div className="mb-5">
+                  <SeverityDistribution findings={findingsQuery.data} />
+                </div>
+                <FindingList
+                  flat
+                  state={{ status: "ready", findings: findingsQuery.data }}
+                  onOpenEvidence={(groupFindings) => {
+                    setEvidenceFindings(groupFindings);
+                    setEvidenceOpen(true);
+                  }}
+                />
+              </>
+            )}
           </>
         )}
       </CardContent>
       <EvidenceSheet findings={evidenceFindings} open={evidenceOpen} onOpenChange={setEvidenceOpen} />
-    </Card>
+    </>
   );
+
+  if (embedded) {
+    return (
+      <section
+        data-testid="frozen-review-card"
+        className="flex flex-col gap-(--card-spacing) py-(--card-spacing) [--card-spacing:--spacing(4)]"
+      >
+        {body}
+      </section>
+    );
+  }
+  return <Card data-testid="frozen-review-card">{body}</Card>;
 }

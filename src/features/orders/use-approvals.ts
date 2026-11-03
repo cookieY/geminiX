@@ -18,6 +18,7 @@ import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-eve
 import { useSession } from "@/features/auth/session-provider";
 import { stageApprovalSteps } from "@/features/orders/approval-steps";
 import { fetchAllCursorPages, type CursorPage } from "@/shared/lib/fetch-all-cursor-pages";
+import { randomUUID } from "@/shared/lib/uuid";
 
 /**
  * Server-state hooks for the approval workspace (frontend PRD F7). The
@@ -104,7 +105,7 @@ export function useApprovalDecision(order: ChangeOrder | null) {
           // decision retry-safe (order_decision profile).
           headers: {
             "If-Match": `"${String(order?.version ?? 1)}"`,
-            "Idempotency-Key": `order-decision-${crypto.randomUUID()}`,
+            "Idempotency-Key": `order-decision-${randomUUID()}`,
           },
         },
       ),
@@ -148,7 +149,7 @@ export function useCreateOrderComment(orderId: string) {
       createChangeOrderComment(
         orderId,
         { content },
-        { headers: { "Idempotency-Key": `order-comment-${crypto.randomUUID()}` } },
+        { headers: { "Idempotency-Key": `order-comment-${randomUUID()}` } },
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["change-order-comments", orderId] });

@@ -1182,9 +1182,12 @@ describe("provider generation parameters & reference pricing (S008 FE, 2026-10-3
     });
     const dialog = await openEditDialog();
     await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
-    // out-of-range max_tokens (256..200000 integer) + non-numeric temperature.
+    // out-of-range max_tokens (256..200000 integer) + out-of-range temperature (0..2).
+    // NumberInput renders <input type="number">, so non-numeric text is normalised
+    // to an empty value by the browser (= omitted field) and never reaches field
+    // validation; out-of-range numbers are the invalid input this gate can assert.
     fireEvent.change(within(dialog).getByTestId("provider-gen-max-tokens"), { target: { value: "100" } });
-    fireEvent.change(within(dialog).getByTestId("provider-gen-temperature"), { target: { value: "abc" } });
+    fireEvent.change(within(dialog).getByTestId("provider-gen-temperature"), { target: { value: "3" } });
     await userEvent.click(within(dialog).getByTestId("provider-submit"));
     // Per-field error text with the contract bounds; no request, dialog stays.
     expect(within(dialog).getByTestId("provider-gen-max-tokens-error").textContent).toContain("256");

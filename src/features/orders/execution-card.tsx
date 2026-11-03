@@ -952,7 +952,9 @@ export function ExecutionWorkspaceCard({ order, attemptId, onAttemptCreated, onR
   onRecover: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    // Every child returns null for most order states; an empty wrapper would
+    // still be a flex item of the page column and add a second 30px gap.
+    <div className="flex flex-col gap-[30px] empty:hidden">
       <ExecutionActionCard order={order} onAttemptCreated={onAttemptCreated} />
       <ScheduledCard order={order} />
       {attemptId !== null && (

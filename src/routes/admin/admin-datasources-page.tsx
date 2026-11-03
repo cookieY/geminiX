@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { NumberInput } from "@/shared/components/ui/number-input";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -682,9 +683,8 @@ function DatasourceFormDialog({
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="ds-port">{t("admin.datasources.port")}</Label>
-              <Input
+              <NumberInput
                 id="ds-port"
-                type="number"
                 min={1}
                 max={65535}
                 value={form.port}
