@@ -23,6 +23,10 @@ export interface ErrorDisplay {
    * envelope's meta.detail — e.g. the probe target's HTTP status and error
    * body excerpt. Empty when the backend sent none. */
   detail: string | null;
+  /** Field-level VALIDATION_FAILED reasons from the error envelope's
+   * meta.fields (RCP-20261102-S008): request field name (snake_case) →
+   * constraint messages. Empty object when the backend sent none. */
+  fields: Record<string, string[]>;
 }
 
 const GENERIC_BUSINESS_KEY = "errors.generic.business";
@@ -33,6 +37,22 @@ const SAFE_GENERIC_KEY = "errors.generic.safe";
 function detailOf(error: BusinessError): string | null {
   const raw = error.meta?.["detail"];
   return typeof raw === "string" && raw !== "" ? raw : null;
+}
+
+/** RCP-20261102-S008: field-level VALIDATION_FAILED reasons travel in
+ * meta.fields (field name → string[]). Non-conforming shapes are dropped
+ * key-by-key — the envelope never renders untyped data. */
+export function fieldsOf(error: BusinessError): Record<string, string[]> {
+  const raw = error.meta?.["fields"];
+  if (typeof raw !== "object" || raw === null) return {};
+  const out: Record<string, string[]> = {};
+  for (const [field, messages] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof field !== "string" || field === "") continue;
+    if (!Array.isArray(messages)) continue;
+    const strings = messages.filter((m): m is string => typeof m === "string" && m !== "");
+    if (strings.length > 0) out[field] = strings;
+  }
+  return out;
 }
 
 function operationAllowedErrCodes(operationId: string): Set<number> | null {
@@ -49,7 +69,10 @@ export function describeBusinessError(error: BusinessError, operationId: string)
   const declared = allowed !== null && allowed.has(error.err_code);
   if (!declared) {
     // Undeclared err_code: safe generic message + request_id, no telemetry.
-    return { messageKey: SAFE_GENERIC_KEY, requestId: error.requestId, contractViolation: true, detail: null };
+    return {
+      messageKey: SAFE_GENERIC_KEY, requestId: error.requestId,
+      contractViolation: true, detail: null, fields: {},
+    };
   }
   const entry = error.catalogEntry;
   return {
@@ -57,6 +80,7 @@ export function describeBusinessError(error: BusinessError, operationId: string)
     requestId: error.requestId,
     contractViolation: false,
     detail: detailOf(error),
+    fields: fieldsOf(error),
   };
 }
 
@@ -83,13 +107,13 @@ export function describeTransportError(error: TransportError): ErrorDisplay {
     default:
       messageKey = "errors.transport.server";
   }
-  return { messageKey, requestId, contractViolation: false, detail: null };
+  return { messageKey, requestId, contractViolation: false, detail: null, fields: {} };
 }
 
 export function describeError(error: unknown, operationId: string): ErrorDisplay {
   if (error instanceof BusinessError) return describeBusinessError(error, operationId);
   if (error instanceof TransportError) return describeTransportError(error);
-  return { messageKey: SAFE_GENERIC_KEY, requestId: null, contractViolation: false, detail: null };
+  return { messageKey: SAFE_GENERIC_KEY, requestId: null, contractViolation: false, detail: null, fields: {} };
 }
 
 /** Used by tests and callers that need the catalog name without rendering it. */

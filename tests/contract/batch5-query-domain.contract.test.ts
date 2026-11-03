@@ -222,11 +222,12 @@ describe("query access family", () => {
     // --- renewal (creates a follow-up request) then relinquish the grant.
     await loginAs("quser");
     await record("createQueryGrantRenewalRequest", "primary", () =>
-      // Renewal is NOT reanchored (HandleRenewQueryGrant parses a raw
-      // RFC3339 instant, unlike the create path) — a UTC instant is the
-      // correct wire form here. Create-vs-renew reanchor inconsistency is a
-      // backend RCP follow-up candidate.
-      createQueryGrantRenewalRequest(grantId!, { requested_until: futureIso(300), reason: "f12 batch5 renewal" },
+      // Renewal reanchors exactly like the create path since 2026-11-02
+      // (RCP-20261021 OBS-009 parity, closing review F8): requested_until
+      // is server-timezone wall clock with a Z marker — same wire form as
+      // create. A raw UTC instant would reanchor 8h into the past and fail
+      // the future check.
+      createQueryGrantRenewalRequest(grantId!, { requested_until: wallClockIso(300), reason: "f12 batch5 renewal" },
         { headers: idem() }));
     await record("relinquishQueryGrant", "primary", () =>
       relinquishQueryGrant(grantId!, { reason: "f12 batch5 relinquish" }, { headers: ifMatch(1, true) }));

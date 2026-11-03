@@ -1196,6 +1196,43 @@ describe("provider generation parameters & reference pricing (S008 FE, 2026-10-3
     server.events.removeAllListeners();
   });
 
+  it("places server meta.fields genparams rejections next to the fields (RCP-20261102)", async () => {
+    // Client-valid edit (genparams untouched/empty = omit): only the server
+    // rejects, with field-level placement via meta.fields.
+    server.use(
+      http.put("*/admin/ai-providers/:providerId", () =>
+        HttpResponse.json({
+          err_code: 1001,
+          message: "VALIDATION_FAILED",
+          data: null,
+          request_id: "req-gen-1",
+          retryable: false,
+          meta: {
+            detail: "max_tokens must be an integer between 256 and 200000",
+            fields: {
+              max_tokens: ["must be an integer between 256 and 200000"],
+              temperature: ["must be a number between 0 and 2"],
+            },
+          },
+        }),
+      ),
+    );
+    const dialog = await openEditDialog();
+    await userEvent.click(within(dialog).getByTestId("provider-tab-generation"));
+    await userEvent.click(within(dialog).getByTestId("provider-submit"));
+    // Dialog stays open; each named genparams field shows its server message
+    // inline with aria-invalid — the raw server sentence, not a missing i18n key.
+    await waitFor(() => {
+      expect(within(dialog).getByTestId("provider-gen-max-tokens")).toHaveAttribute("aria-invalid", "true");
+    });
+    expect(within(dialog).getByTestId("provider-gen-max-tokens-error").textContent)
+      .toContain("must be an integer between 256 and 200000");
+    expect(within(dialog).getByTestId("provider-gen-temperature")).toHaveAttribute("aria-invalid", "true");
+    expect(within(dialog).getByTestId("provider-gen-temperature-error").textContent)
+      .toContain("must be a number between 0 and 2");
+    expect(screen.queryByRole("dialog")).toBeInTheDocument();
+  });
+
   it("sends temperature 0 as an explicit zero after per-field validation passes", async () => {
     // Wrapped in an object: property writes from the MSW handler keep the
     // declared union type for assertions after waitFor (plain `let` narrows

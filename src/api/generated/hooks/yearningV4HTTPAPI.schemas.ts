@@ -2742,6 +2742,7 @@ export interface CreateQueryAccessRequest {
   flow_id: Uuid;
   /** @minItems 1 */
   datasource_ids: Uuid[];
+  /** Requested validity bound as wall-clock time (OBS-009 / RCP-20261021): the date-time digits are reinterpreted in the server's general.system_timezone (default Asia/Shanghai), not taken as a UTC instant. Send the wall clock with a Z marker, minute granularity. */
   requested_until: Timestamp;
   /**
      * @minLength 1
@@ -2751,6 +2752,7 @@ export interface CreateQueryAccessRequest {
 }
 
 export interface CreateQueryGrantRenewalRequest {
+  /** Requested validity bound as wall-clock time, identical to CreateQueryAccessRequest.requested_until (OBS-009 / RCP-20261021): the digits are reinterpreted in the server's general.system_timezone, not taken as a UTC instant. The renewal path reanchors exactly like the create path. */
   requested_until: Timestamp;
   /**
      * @minLength 1
@@ -3326,7 +3328,20 @@ export interface TaskSuccess {
   request_id: Uuid;
 }
 
-export type BusinessErrorResponseMeta = { [key: string]: unknown };
+/**
+ * Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.
+ */
+export type BusinessErrorResponseMetaFields = {[key: string]: string[]};
+
+/**
+ * Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).
+ */
+export type BusinessErrorResponseMeta = {
+  detail?: string;
+  /** Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field. */
+  fields?: BusinessErrorResponseMetaFields;
+  [key: string]: unknown;
+ };
 
 export interface BusinessErrorResponse {
   err_code: BusinessErrorCode;
@@ -3335,6 +3350,7 @@ export interface BusinessErrorResponse {
   data: null;
   request_id: Uuid;
   retryable: boolean;
+  /** Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema). */
   meta?: BusinessErrorResponseMeta;
 }
 
@@ -4085,6 +4101,10 @@ export type CreateAiProviderRateVersion200 = {
 } | BusinessErrorResponse;
 
 export type ListAiUsageCallsParams = {
+/**
+ * Filter per-HTTP-call usage rows by AI provider (RCP-20261102-S008: provider-scoped ledger without client-side page filtering).
+ */
+provider_id?: Uuid;
 /**
  * Filter per-HTTP-call usage rows by review run.
  */

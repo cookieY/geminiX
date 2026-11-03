@@ -1108,20 +1108,24 @@ export function useCreateAiProviderRateVersion() {
   });
 }
 
-/** S008调用明细台账。合同只有run_id/currency过滤+limit(≤200)+after游标，
- * 没有provider_id维度：分页在服务端生效、provider过滤由调用方在整页
- * 行上完成（page.has_more=全量流的诚实边界，丢弃page信封会让溢出行
- * 静默消失）。 */
-export function useAiUsageCalls(enabled: boolean, paging?: { limit?: number; after?: string }) {
+/** S008调用明细台账。合同过滤参数run_id/currency+provider_id
+ * （RCP-20261102-S008）+limit(≤200)+after游标：分页与provider过滤都在
+ * 服务端生效（page.has_more=该过滤流的诚实边界，丢弃page信封会让溢出
+ * 行静默消失）。 */
+export function useAiUsageCalls(
+  enabled: boolean,
+  filter?: { providerId?: string; limit?: number; after?: string },
+) {
   return useQuery({
-    queryKey: ["admin", "ai-usage", "calls", paging?.after ?? "", paging?.limit ?? 0],
+    queryKey: ["admin", "ai-usage", "calls", filter?.providerId ?? "", filter?.after ?? "", filter?.limit ?? 0],
     queryFn: async () => {
       const { listAiUsageCalls } = await import(
         "@/api/generated/client/administration/administration"
       );
       const response = await listAiUsageCalls({
-        limit: paging?.limit,
-        after: paging?.after || undefined,
+        provider_id: filter?.providerId || undefined,
+        limit: filter?.limit,
+        after: filter?.after || undefined,
       });
       return response as unknown as {
         items: AiCallUsage[];

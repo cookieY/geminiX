@@ -32,7 +32,10 @@ export const LoginResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -47,7 +50,10 @@ export const LogoutResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -89,7 +95,10 @@ export const RegisterResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -112,7 +121,10 @@ export const ListAuthenticationProvidersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -138,7 +150,10 @@ export const LoginWithLdapResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -187,7 +202,10 @@ export const GetCurrentUserResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -218,7 +236,10 @@ export const ChangeMyPasswordResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -264,7 +285,10 @@ export const ListUsersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -307,7 +331,10 @@ export const CreateUserResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -354,7 +381,10 @@ export const UpdateUserResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -380,7 +410,10 @@ export const DeleteUserResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -423,7 +456,10 @@ export const GetUserDeletionImpactResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -514,7 +550,10 @@ export const ListFlowsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -635,7 +674,10 @@ export const CreateFlowResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -711,7 +753,10 @@ export const GetFlowResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -843,7 +888,10 @@ export const ReplaceFlowResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -869,7 +917,10 @@ export const DeleteFlowResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -899,7 +950,10 @@ export const ListFlowMaskingRulesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -938,7 +992,10 @@ export const ReplaceFlowMaskingRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1039,7 +1096,10 @@ export const ListLegacyMigrationRunsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1128,7 +1188,10 @@ export const GetLegacyMigrationRunResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1233,7 +1296,10 @@ export const ConfirmLegacyMigrationCandidateResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1340,7 +1406,10 @@ export const ApproveLegacyMigrationRunResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1461,7 +1530,10 @@ export const ListIdentityProvidersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1672,7 +1744,10 @@ export const CreateIdentityProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1781,7 +1856,10 @@ export const GetIdentityProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -1999,7 +2077,10 @@ export const ReplaceIdentityProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2025,7 +2106,10 @@ export const DeleteIdentityProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2076,7 +2160,10 @@ export const TestIdentityProviderConnectionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2133,7 +2220,10 @@ export const ListDatasourcesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2222,7 +2312,10 @@ export const CreateDatasourceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2264,7 +2357,10 @@ export const GetDatasourceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2364,7 +2460,10 @@ export const ReplaceDatasourceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2390,7 +2489,10 @@ export const DeleteDatasourceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2442,7 +2544,10 @@ export const TestDatasourceConnectionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2467,7 +2572,10 @@ export const GetDatasourceCapabilitiesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2516,7 +2624,10 @@ export const ListPermissionGroupsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2557,7 +2668,10 @@ export const CreatePermissionGroupResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2591,7 +2705,10 @@ export const GetPermissionGroupResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2643,7 +2760,10 @@ export const ReplacePermissionGroupResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2669,7 +2789,10 @@ export const DeletePermissionGroupResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2721,7 +2844,10 @@ export const ListRuleSetsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2767,7 +2893,10 @@ export const CreateRuleSetResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2804,7 +2933,10 @@ export const GetRuleSetResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2861,7 +2993,10 @@ export const ReplaceRuleSetResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2887,7 +3022,10 @@ export const DeleteRuleSetResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -2960,7 +3098,10 @@ export const ListPromptToolsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3045,7 +3186,10 @@ export const CreatePromptToolResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3103,7 +3247,10 @@ export const GetPromptToolResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3199,7 +3346,10 @@ export const ReplacePromptToolResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3225,7 +3375,10 @@ export const DeletePromptToolResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3294,7 +3447,10 @@ export const ListKnowledgeEntriesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3374,7 +3530,10 @@ export const CreateKnowledgeEntryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3428,7 +3587,10 @@ export const GetKnowledgeEntryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3519,7 +3681,10 @@ export const ReplaceKnowledgeEntryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3545,7 +3710,10 @@ export const DeleteKnowledgeEntryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3572,7 +3740,10 @@ export const EvaluateKnowledgeEntryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3631,7 +3802,10 @@ export const ListAiProvidersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3708,7 +3882,10 @@ export const CreateAiProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3754,7 +3931,10 @@ export const GetAiProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3840,7 +4020,10 @@ export const ReplaceAiProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3866,7 +4049,10 @@ export const DeleteAiProviderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3887,7 +4073,10 @@ export const TestAiProviderConnectionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3913,7 +4102,10 @@ export const ListAiProviderModelsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -3962,7 +4154,10 @@ export const ListAiProviderRateVersionsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4039,7 +4234,10 @@ export const CreateAiProviderRateVersionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4050,6 +4248,7 @@ export const listAiUsageCallsQueryLimitMax = 200;
 
 
 export const ListAiUsageCallsQueryParams = zod.object({
+  "provider_id": zod.uuid().optional().describe('Filter per-HTTP-call usage rows by AI provider (RCP-20261102-S008: provider-scoped ledger without client-side page filtering).'),
   "run_id": zod.uuid().optional().describe('Filter per-HTTP-call usage rows by review run.'),
   "currency": zod.string().regex(listAiUsageCallsQueryCurrencyRegExp).optional().describe('Filter by three-letter currency code (CNY or USD).'),
   "limit": zod.int().min(1).max(listAiUsageCallsQueryLimitMax).default(listAiUsageCallsQueryLimitDefault),
@@ -4106,7 +4305,10 @@ export const ListAiUsageCallsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4138,7 +4340,10 @@ export const ListAiUsageSummaryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4251,7 +4456,10 @@ export const GetSettingsNamespaceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4464,7 +4672,10 @@ export const ReplaceSettingsNamespaceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4600,7 +4811,10 @@ export const AssessSettingsImpactResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4631,7 +4845,10 @@ export const GetSettingsSchemaResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4680,7 +4897,10 @@ export const ListSettingsRevisionsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4744,7 +4964,10 @@ export const ListNotificationChannelsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4825,7 +5048,10 @@ export const CreateNotificationChannelResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4875,7 +5101,10 @@ export const GetNotificationChannelResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4965,7 +5194,10 @@ export const ReplaceNotificationChannelResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -4991,7 +5223,10 @@ export const DeleteNotificationChannelResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5022,7 +5257,10 @@ export const CreateNotificationTestDeliveryResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5069,7 +5307,10 @@ export const ListNotificationRulesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5111,7 +5352,10 @@ export const CreateNotificationRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5152,7 +5396,10 @@ export const PreviewNotificationRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5185,7 +5432,10 @@ export const GetNotificationRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5238,7 +5488,10 @@ export const ReplaceNotificationRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5264,7 +5517,10 @@ export const DeleteNotificationRuleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5318,7 +5574,10 @@ export const ListNotificationDeliveriesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5378,7 +5637,10 @@ export const ListAuditEventsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5462,7 +5724,10 @@ export const ListCurrentUserFlowsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5486,7 +5751,10 @@ export const ListMyFlowDatasourceSchemasResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5520,7 +5788,10 @@ export const ListMyFlowDatasourceTablesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5568,7 +5839,10 @@ export const ListMyFlowDatasourceColumnsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5627,7 +5901,10 @@ export const ListChangeDraftsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5681,7 +5958,10 @@ export const CreateChangeDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5726,7 +6006,10 @@ export const GetChangeDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5791,7 +6074,10 @@ export const UpdateChangeDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5817,7 +6103,10 @@ export const DeleteChangeDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5877,7 +6166,10 @@ export const ReplaceDraftSqlResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5909,7 +6201,10 @@ export const RevealDraftSqlResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -5954,7 +6249,10 @@ export const RunDraftReviewResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6032,7 +6330,10 @@ export const GetReviewRunResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6086,7 +6387,10 @@ export const ListReviewRunFindingsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6182,7 +6486,10 @@ export const SubmitChangeDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6274,7 +6581,10 @@ export const ListChangeOrdersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6343,7 +6653,10 @@ export const GetChangeOrderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6375,7 +6688,10 @@ export const RevealOrderSqlResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6398,7 +6714,10 @@ export const RecordOrderSqlCopyResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6452,7 +6771,10 @@ export const ListOrderReviewFindingsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6482,7 +6804,10 @@ export const ListReviewFindingEvidenceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6517,7 +6842,10 @@ export const RevealRawReviewEvidenceResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6557,7 +6885,10 @@ export const RevealIdentifierMappingResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6580,7 +6911,10 @@ export const RecordRawReviewEvidenceCopyResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6647,7 +6981,10 @@ export const CopyChangeOrderToDraftResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6691,7 +7028,10 @@ export const ListChangeOrderCommentsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6735,7 +7075,10 @@ export const CreateChangeOrderCommentResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6786,7 +7129,10 @@ export const ListChangeOrderTimelineResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6876,7 +7222,10 @@ export const DecideChangeOrderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6958,7 +7307,10 @@ export const CreateExecutionAttemptResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -6998,7 +7350,10 @@ export const CreateExecutionScheduleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7037,7 +7392,10 @@ export const CancelExecutionScheduleResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7086,7 +7444,10 @@ export const GetExecutionAttemptResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7136,7 +7497,10 @@ export const ListExecutionAttemptStatementsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7205,7 +7569,10 @@ export const CancelExecutionAttemptResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7302,7 +7669,10 @@ export const CreateExecutionVerificationResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7391,7 +7761,10 @@ export const WithdrawChangeOrderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7480,7 +7853,10 @@ export const VoidChangeOrderResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7530,7 +7906,10 @@ export const ListQueryAccessRequestsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7552,7 +7931,7 @@ export const createQueryAccessRequestBodyReasonMax = 4096;
 export const CreateQueryAccessRequestBody = zod.object({
   "flow_id": zod.uuid(),
   "datasource_ids": zod.array(zod.uuid()).min(1),
-  "requested_until": zod.iso.datetime({"offset":true}),
+  "requested_until": zod.iso.datetime({"offset":true}).describe('Requested validity bound as wall-clock time (OBS-009 \/ RCP-20261021): the date-time digits are reinterpreted in the server\'s general.system_timezone (default Asia\/Shanghai), not taken as a UTC instant. Send the wall clock with a Z marker, minute granularity.'),
   "reason": zod.string().min(1).max(createQueryAccessRequestBodyReasonMax)
 })
 
@@ -7583,7 +7962,10 @@ export const CreateQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7618,7 +8000,10 @@ export const GetQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7674,7 +8059,10 @@ export const DecideQueryAccessResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7729,7 +8117,10 @@ export const WithdrawQueryAccessRequestResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7776,7 +8167,10 @@ export const ListQueryGrantsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7809,7 +8203,10 @@ export const GetQueryGrantResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7862,7 +8259,10 @@ export const RevokeQueryGrantResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7915,7 +8315,10 @@ export const RelinquishQueryGrantResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -7938,7 +8341,7 @@ export const createQueryGrantRenewalRequestBodyReasonMax = 4096;
 
 
 export const CreateQueryGrantRenewalRequestBody = zod.object({
-  "requested_until": zod.iso.datetime({"offset":true}),
+  "requested_until": zod.iso.datetime({"offset":true}).describe('Requested validity bound as wall-clock time, identical to CreateQueryAccessRequest.requested_until (OBS-009 \/ RCP-20261021): the digits are reinterpreted in the server\'s general.system_timezone, not taken as a UTC instant. The renewal path reanchors exactly like the create path.'),
   "reason": zod.string().min(1).max(createQueryGrantRenewalRequestBodyReasonMax)
 })
 
@@ -7969,7 +8372,10 @@ export const CreateQueryGrantRenewalRequestResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8040,7 +8446,10 @@ export const ListQueryOrdersResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8086,7 +8495,10 @@ export const ListQuerySessionsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8123,7 +8535,10 @@ export const CreateQuerySessionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8155,7 +8570,10 @@ export const GetQuerySessionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8205,7 +8623,10 @@ export const CloseQuerySessionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8232,7 +8653,10 @@ export const ListQuerySessionSchemasResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8266,7 +8690,10 @@ export const ListQuerySessionTablesResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8314,7 +8741,10 @@ export const ListQuerySessionColumnsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8368,7 +8798,10 @@ export const ExecuteSelectResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8413,7 +8846,10 @@ export const FetchQueryResultPageResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8453,7 +8889,10 @@ export const GetMyDashboardResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8479,7 +8918,10 @@ export const GetLatestReleaseResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8613,7 +9055,10 @@ export const GetOperationsDashboardResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8641,7 +9086,10 @@ export const GetSystemHealthDashboardResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8680,7 +9128,10 @@ export const GetCurrentAnnouncementResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8731,7 +9182,10 @@ export const ListAnnouncementRevisionsResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8775,7 +9229,10 @@ export const CreateAnnouncementRevisionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8825,7 +9282,10 @@ export const PublishAnnouncementRevisionResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 
@@ -8873,7 +9333,10 @@ export const GetTaskResponse = zod.union([zod.object({
   "data": zod.null(),
   "request_id": zod.uuid(),
   "retryable": zod.boolean(),
-  "meta": zod.record(zod.string(), zod.unknown()).optional()
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
 })])
 
 

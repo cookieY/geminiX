@@ -157,8 +157,9 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
   const [draft, setDraft] = useState<RateDraft>(emptyRateDraft);
   const [showForm, setShowForm] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
-  // PRD §6「保存错误定位到字段」：后端VALIDATION_FAILED不带字段名，
-  // 字段定位由提交前的客户端校验完成（合同口径镜像）。
+  // PRD §6「保存错误定位到字段」：客户端镜像校验先行（可本地判定的
+  // 不发请求）；服务端VALIDATION_FAILED也带字段名（RCP-20261102-S008
+  // meta.fields），onError时并入本状态定位到槽位。
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // 模板跨币种冲突说明（显式动作被拒时必须解释原因，不得静默不动）。
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
@@ -299,7 +300,38 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
           setTemplateNotice(null);
         },
         onError: (error) => {
-          setErrorText(describeErrorText(describeError(error, "createAiProviderRateVersion")));
+          // RCP-20261102-S008：服务端VALIDATION_FAILED带字段定位
+          // （meta.fields）。有内联槽位的字段（timezone/effective_until/
+          // 各价格）映射到槽位；无槽位的（currency/windows/effective_from）
+          // 保留表单级说明。客户端镜像校验仍是第一道（可本地判定的不
+          // 发请求），服务端字段覆盖残留场景。
+          const server = describeError(error, "createAiProviderRateVersion").fields;
+          const firstOf = (messages: string[] | undefined): string | undefined =>
+            messages !== undefined && messages.length > 0 ? messages[0] : undefined;
+          const merged: Record<string, string> = {};
+          const timezoneMessage = firstOf(server.timezone);
+          if (timezoneMessage !== undefined) {
+            merged.timezone = timezoneMessage;
+          }
+          const untilMessage = firstOf(server.effective_until);
+          if (untilMessage !== undefined) {
+            merged.effectiveUntil = untilMessage;
+          }
+          draft.windows.forEach((w, index) => {
+            for (const field of ["input_price", "output_price", "cached_read_price", "cached_write_price"] as const) {
+              const message = firstOf(server[field]);
+              if (message === undefined) continue;
+              if (field.startsWith("cached") && w[field] === "") continue;
+              merged[`price-${String(index)}-${field}`] = message;
+            }
+          });
+          if (Object.keys(merged).length > 0) setFieldErrors(merged);
+          const mapped = new Set(["timezone", "effective_until", "input_price", "output_price",
+            "cached_read_price", "cached_write_price"]);
+          const unmapped = Object.keys(server).filter((field) => !mapped.has(field));
+          if (Object.keys(merged).length === 0 || unmapped.length > 0) {
+            setErrorText(describeErrorText(describeError(error, "createAiProviderRateVersion")));
+          }
         },
       },
     );
@@ -618,10 +650,13 @@ function tokenText(value: number | undefined | null, notReported: string): strin
 export function ProviderUsagePanel({ providerId }: { providerId: string }) {
   const { t } = useTranslation();
   const summaryQuery = useAiUsageSummaryToday(true);
-  // 明细走合同游标分页（limit≤200，合同上限），provider过滤在整页行上
-  // 完成：has_more是全量流的诚实边界，不做静默截断。
+  // 明细走合同游标分页（limit≤200，合同上限）；provider过滤由服务端
+  // 执行（RCP-20261102-S008新增provider_id参数）——has_more是本
+  // provider流的诚实边界，不再有整页客户端过滤的有损读取。
   const pager = useCursorPage(200);
-  const callsQuery = useAiUsageCalls(true, { limit: pager.pageSize, after: pager.after });
+  const callsQuery = useAiUsageCalls(true, {
+    providerId, limit: pager.pageSize, after: pager.after,
+  });
   const notReported = t("admin.providers.pricing.notReported");
   // reference_amount is already a currency-unit decimal string on the wire
   // (OpenAPI: "Bounded decimal reference cost in currency units"; backend
@@ -632,7 +667,7 @@ export function ProviderUsagePanel({ providerId }: { providerId: string }) {
     ...row,
     amount: row.reference_amount === "" ? null : row.reference_amount,
   }));
-  const calls = (callsQuery.data?.items ?? []).filter((call) => call.provider_id === providerId);
+  const calls = callsQuery.data?.items ?? [];
   const callsLoaded = !callsQuery.isPending && !callsQuery.isError;
 
   return (

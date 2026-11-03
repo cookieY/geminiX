@@ -256,9 +256,14 @@ function ProviderFormDialog({
     setErrorRequestId(null);
     setErrorDetail(null);
     // 参数字段校验先于mutation：无效值就地定位，不发请求、不触发探针。
+    // paramErrors存已解析文本（RCP-20261102-S008后服务端1001也带字段
+    // 定位meta.fields，英文约束句与本地化文案同槽直存直显）。
     const params = paramFieldErrors(form);
     if (params.maxTokens !== null || params.temperature !== null) {
-      setParamErrors(params);
+      setParamErrors({
+        maxTokens: params.maxTokens !== null ? t(params.maxTokens) : null,
+        temperature: params.temperature !== null ? t(params.temperature) : null,
+      });
       return;
     }
     setParamErrors({ maxTokens: null, temperature: null });
@@ -288,6 +293,10 @@ function ProviderFormDialog({
           setErrorKey(display.messageKey);
           setErrorRequestId(display.requestId);
           setErrorDetail(display.detail);
+          setParamErrors({
+            maxTokens: display.fields.max_tokens?.[0] ?? null,
+            temperature: display.fields.temperature?.[0] ?? null,
+          });
         },
       });
     } else {
@@ -310,6 +319,10 @@ function ProviderFormDialog({
             setErrorKey(display.messageKey);
             setErrorRequestId(display.requestId);
             setErrorDetail(display.detail);
+            setParamErrors({
+              maxTokens: display.fields.max_tokens?.[0] ?? null,
+              temperature: display.fields.temperature?.[0] ?? null,
+            });
           },
         },
       );
@@ -549,7 +562,7 @@ function ProviderFormDialog({
               </div>
               {paramErrors.maxTokens !== null && (
                 <p className="text-destructive text-xs" data-testid="provider-gen-max-tokens-error">
-                  {t(paramErrors.maxTokens)}
+                  {paramErrors.maxTokens}
                 </p>
               )}
             </div>
@@ -579,7 +592,7 @@ function ProviderFormDialog({
               </div>
               {paramErrors.temperature !== null && (
                 <p className="text-destructive text-xs" data-testid="provider-gen-temperature-error">
-                  {t(paramErrors.temperature)}
+                  {paramErrors.temperature}
                 </p>
               )}
             </div>

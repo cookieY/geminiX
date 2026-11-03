@@ -384,6 +384,47 @@ describe("ProviderPricingPanel", () => {
     expect(alert.textContent).toContain("稍后重试");
     expect(screen.getByTestId("provider-rate-form")).toBeInTheDocument();
   });
+
+  it("places server meta.fields rejections next to the offending fields (RCP-20261102)", async () => {
+    server.use(
+      http.post("*/admin/ai-providers/:providerId/rate-versions", () =>
+        HttpResponse.json({
+          err_code: 1001,
+          message: "VALIDATION_FAILED",
+          data: null,
+          request_id: "req-88",
+          retryable: false,
+          meta: {
+            detail: "timezone must be a valid IANA name",
+            fields: {
+              timezone: ["must be a valid IANA name"],
+              input_price: ["price must be a decimal with at most 6 fraction digits"],
+            },
+          },
+        }),
+      ),
+    );
+    renderPanel(<ProviderPricingPanel providerId={ADMIN_FIXTURE_PROVIDER_PRIMARY_ID} />);
+    await openRateForm();
+    // Client-valid values (the server is the only one that rejects here).
+    fireEvent.change(screen.getByTestId("rate-from"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByTestId("rate-input-price-0"), { target: { value: "2.34" } });
+    fireEvent.change(screen.getByTestId("rate-output-price-0"), { target: { value: "5.67" } });
+    await userEvent.click(screen.getByTestId("rate-submit"));
+    // The form stays open and each named field shows its server message with
+    // aria-invalid — not a form-level generic alone.
+    expect(screen.getByTestId("provider-rate-form")).toBeInTheDocument();
+    const formText = await waitFor(() => {
+      const tz = screen.getByTestId("rate-timezone");
+      expect(tz).toHaveAttribute("aria-invalid", "true");
+      return screen.getByTestId("provider-rate-form").textContent;
+    });
+    expect(formText).toContain("must be a valid IANA name");
+    const price = screen.getByTestId("rate-input-price-0");
+    expect(price).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByTestId("provider-rate-form").textContent)
+      .toContain("price must be a decimal with at most 6 fraction digits");
+  });
 });
 
 describe("ProviderUsagePanel", () => {
@@ -637,23 +678,31 @@ describe("S008 regression: reference template respects currency", () => {
 });
 
 describe("S008 regression additions: pagination, field errors, a11y, error states", () => {
-  it("pages the calls stream server-side and filters to the provider across pages", async () => {
+  it("pages the calls stream server-side with the provider_id filter", async () => {
+    const callsQueries: string[] = [];
     server.use(
       http.get("*/admin/ai-usage/summary", () =>
         HttpResponse.json({ err_code: 0, message: "ok", data: [], request_id: "x" }),
       ),
       http.get("*/admin/ai-usage/calls", ({ request }) => {
-        const after = new URL(request.url).searchParams.get("after");
+        const url = new URL(request.url);
+        // RCP-20261102-S008：provider过滤在服务端执行——请求必须携带
+        // provider_id，跨provider行由“服务端”丢弃（镜像真实后端）。
+        callsQueries.push(url.searchParams.get("provider_id") ?? "");
+        const providerFilter = url.searchParams.get("provider_id");
+        const serverFilters = (rows: ReturnType<typeof usageCallRow>[]): ReturnType<typeof usageCallRow>[] =>
+          providerFilter === null ? rows : rows.filter((row) => String(row.provider_id) === providerFilter);
+        const after = url.searchParams.get("after");
         const pageBody = after !== null && after !== ""
           ? {
-              items: [usageCallRow("0b1e2f3a-0000-4000-8000-00000000e012", "0.03")],
+              items: serverFilters([usageCallRow("0b1e2f3a-0000-4000-8000-00000000e012", "0.03")]),
               page: { next_cursor: null, has_more: false },
             }
           : {
-              items: [
+              items: serverFilters([
                 usageCallRow("0b1e2f3a-0000-4000-8000-00000000e010", "0.01"),
                 { ...usageCallRow("0b1e2f3a-0000-4000-8000-00000000e011", "0.02"), provider_id: "provider-other" },
-              ],
+              ]),
               page: { next_cursor: "cursor-page-2", has_more: true },
             };
         return HttpResponse.json({ err_code: 0, message: "ok", request_id: "x", data: pageBody });
@@ -661,9 +710,10 @@ describe("S008 regression additions: pagination, field errors, a11y, error state
     );
     renderPanel(<ProviderUsagePanel providerId={ADMIN_FIXTURE_PROVIDER_PRIMARY_ID} />);
     const calls = await screen.findByTestId("provider-usage-calls");
-    // Page 1: provider filter keeps only this provider's row; the other
-    // provider's row is dropped client-side (the contract has no provider
-    // filter parameter).
+    // The panel asks the server for this provider's stream; the foreign
+    // row in the fixture page is the server's responsibility now — the
+    // panel renders what the server returned for THIS provider.
+    expect(callsQueries[0]).toBe(ADMIN_FIXTURE_PROVIDER_PRIMARY_ID);
     expect(within(calls).getByTestId("provider-usage-row-0b1e2f3a-0000-4000-8000-00000000e010")).toBeInTheDocument();
     expect(within(calls).queryByTestId("provider-usage-row-0b1e2f3a-0000-4000-8000-00000000e011")).not.toBeInTheDocument();
     // has_more=true keeps the honest next affordance even with one visible row.
@@ -673,6 +723,8 @@ describe("S008 regression additions: pagination, field errors, a11y, error state
     });
     // Stream exhausted: the next affordance disables (never fabricated rows).
     expect(screen.getByTestId("provider-usage-calls-next")).toBeDisabled();
+    // Every page request carries the provider filter (cursor pages too).
+    expect(callsQueries.every((value) => value === ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe(true);
   });
 
   it("blocks invalid prices, until<from and blank timezone with per-field errors and no request", async () => {

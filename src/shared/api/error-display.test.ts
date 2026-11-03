@@ -159,3 +159,68 @@ describe("provider detail passthrough (§18.75-A)", () => {
     expect(weird.detail).toBeNull();
   });
 });
+
+// RCP-20261102-S008追加：VALIDATION_FAILED的字段级拒因经meta.fields透传；
+// 非 conforming形状逐键丢弃，信封永不渲染未类型化数据；契约违规路径
+// （undeclared err_code）不暴露fields。
+describe("validation fields passthrough (RCP-20261102-S008)", () => {
+  it("surfaces meta.fields on a declared 1001", () => {
+    const display = describeBusinessError(
+      new BusinessError({
+        err_code: 1001,
+        message: "VALIDATION_FAILED",
+        request_id: "r",
+        retryable: false,
+        meta: {
+          detail: "timezone must be a valid IANA name",
+          fields: { timezone: ["must be a valid IANA name"], input_price: ["must be a decimal"] },
+        },
+      }),
+      "createAiProviderRateVersion",
+    );
+    expect(display.fields).toEqual({
+      timezone: ["must be a valid IANA name"],
+      input_price: ["must be a decimal"],
+    });
+  });
+
+  it("drops non-conforming field entries key-by-key", () => {
+    const display = describeBusinessError(
+      new BusinessError({
+        err_code: 1001,
+        message: "VALIDATION_FAILED",
+        request_id: "r",
+        retryable: false,
+        meta: {
+          fields: {
+            timezone: "must be a valid IANA name", // string, not array — dropped
+            input_price: ["ok", 42, ""], // non-string/empty entries dropped, valid one kept
+            cached_read_price: [], // empty array — key dropped
+            "": ["empty key"], // empty key — dropped
+          },
+        },
+      }),
+      "createAiProviderRateVersion",
+    );
+    expect(display.fields).toEqual({ input_price: ["ok"] });
+  });
+
+  it("stays an empty fields map without meta and hides fields on contract violations", () => {
+    const plain = describeBusinessError(
+      new BusinessError({ err_code: 1001, message: "x", request_id: "r", retryable: false }),
+      "createAiProviderRateVersion",
+    );
+    expect(plain.fields).toEqual({});
+    // 1001 on an operation that never declares it: safe generic path only
+    // (getCurrentUser declares no_business_error — existing precedent above).
+    const undeclared = describeBusinessError(
+      new BusinessError({
+        err_code: 1001, message: "x", request_id: "r", retryable: false,
+        meta: { fields: { any: ["never shown"] } },
+      }),
+      "getCurrentUser",
+    );
+    expect(undeclared.contractViolation).toBe(true);
+    expect(undeclared.fields).toEqual({});
+  });
+});

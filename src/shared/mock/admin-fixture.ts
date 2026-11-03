@@ -2182,9 +2182,25 @@ export function siteFixtureHandlers(): HttpHandler[] {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-      if (body === null || typeof body.currency !== "string" || typeof body.timezone !== "string"
-        || !Array.isArray(body.windows) || body.windows.length === 0) {
-        return businessError(1001, "rate version body invalid");
+      // RCP-20261102-S008 parity：逐字段1001带meta.fields字段定位。
+      if (body === null) return businessError(1001, "rate version body invalid");
+      if (typeof body.currency !== "string" || (body.currency !== "CNY" && body.currency !== "USD")) {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "currency must be CNY or USD",
+          fields: { currency: ["must be CNY or USD"] },
+        });
+      }
+      if (typeof body.timezone !== "string" || body.timezone === "") {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "timezone must be a valid IANA name",
+          fields: { timezone: ["must be a valid IANA name"] },
+        });
+      }
+      if (!Array.isArray(body.windows) || body.windows.length === 0) {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "windows must contain 1..24 entries",
+          fields: { windows: ["must contain 1..24 entries"] },
+        });
       }
       const pid = String(new URL(request.url).pathname.split("/")[5]);
       const provider = world.providers.get(pid);
@@ -2210,11 +2226,13 @@ export function siteFixtureHandlers(): HttpHandler[] {
       return HttpResponse.json(successEnvelope(row));
     }),
 
-    // S008调用明细（FE包2026-10-31）：逐HTTP调用台账读面。
+    // S008调用明细（FE包2026-10-31）：逐HTTP调用台账读面。provider_id
+    // 过滤由服务端执行（RCP-20261102-S008镜像）；两行fixture都属于主
+    // Provider，别家provider_id过滤得到空页——与真实后端一致。
     http.get("*/admin/ai-usage/calls", ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
-      void request;
+      const providerFilter = new URL(request.url).searchParams.get("provider_id");
       const rows = [
         {
           id: "0b1e2f3a-0000-4000-8000-00000000d001",
@@ -2243,7 +2261,13 @@ export function siteFixtureHandlers(): HttpHandler[] {
           calc_basis: "not_computable",
         },
       ];
-      return HttpResponse.json(successEnvelope({ items: rows, page: { next_cursor: null, has_more: false } }));
+      const filtered = providerFilter === null
+        ? rows
+        : rows.filter((row) => row.provider_id === providerFilter);
+      return HttpResponse.json(successEnvelope({
+        items: filtered,
+        page: { next_cursor: null, has_more: false },
+      }));
     }),
 
     // S008参考计价汇总读面（2026-10-31三轮：AI预算页用量环图消费）。
@@ -2455,6 +2479,46 @@ function businessError(errCode: number, message: string, meta?: Record<string, u
     retryable: false,
     ...(meta === undefined ? {} : { meta }),
   });
+}
+
+/** RCP-20261102-S008 parity：configuration受控键校验镜像后端
+ * ValidateProviderConfiguration（1001带meta.detail+meta.fields字段定位；
+ * structured_output_mode只由探针协商写入，用户输入按未知键拒绝§18.76-A）。 */
+function providerConfigurationError(configuration: unknown): HttpResponse<DefaultBodyType> | null {
+  if (configuration === undefined || configuration === null) return null;
+  if (typeof configuration !== "object" || Array.isArray(configuration)) {
+    return businessError(1001, "VALIDATION_FAILED", { detail: "configuration must be an object" });
+  }
+  for (const [key, value] of Object.entries(configuration as Record<string, unknown>)) {
+    if (key === "max_tokens") {
+      if (typeof value !== "number" || !Number.isInteger(value) || value < 256 || value > 200000) {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "max_tokens must be an integer between 256 and 200000",
+          fields: { max_tokens: ["must be an integer between 256 and 200000"] },
+        });
+      }
+    } else if (key === "temperature") {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 2) {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "temperature must be a number between 0 and 2",
+          fields: { temperature: ["must be a number between 0 and 2"] },
+        });
+      }
+    } else if (key === "reasoning_effort") {
+      if (value !== "low" && value !== "medium" && value !== "high") {
+        return businessError(1001, "VALIDATION_FAILED", {
+          detail: "reasoning_effort must be one of low, medium, high",
+          fields: { reasoning_effort: ["must be one of low, medium, high"] },
+        });
+      }
+    } else {
+      return businessError(1001, "VALIDATION_FAILED", {
+        detail: `unknown configuration key "${key}" (allowed: max_tokens, temperature, reasoning_effort)`,
+        fields: { [key]: ["unknown configuration key (allowed: max_tokens, temperature, reasoning_effort)"] },
+      });
+    }
+  }
+  return null;
 }
 
 function problem(status: number, title: string, detail: string): HttpResponse<DefaultBodyType> {
@@ -3006,6 +3070,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (apiKey === undefined || typeof apiKey.value !== "string" || apiKey.value === "") {
         return businessError(1001, "api_key is required on create");
       }
+      // RCP-20261102-S008 parity：genparams越界/未知键→1001带字段定位。
+      const configError = providerConfigurationError(body.configuration);
+      if (configError !== null) return configError;
       const ts = now();
       const provider: FixtureProvider = {
         id: uuid(),
@@ -3039,6 +3106,9 @@ export function adminFixtureHandlers(): HttpHandler[] {
       if (versionMismatch(request, provider.version)) return businessError(1004, "version mismatch");
       const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
       if (body === null) return businessError(1001, "body is required");
+      // RCP-20261102-S008 parity：genparams越界/未知键→1001带字段定位。
+      const configError = providerConfigurationError(body.configuration);
+      if (configError !== null) return configError;
       // §18.75 parity：改名/改优先级撞其他Provider的唯一值→1005；
       // F-UX-002 parity：冲突轴进meta.detail。
       if (typeof body.name === "string" && body.name !== "" &&
