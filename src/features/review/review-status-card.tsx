@@ -73,7 +73,8 @@ export interface ReviewStatusCardProps {
   run: ReviewRun | null;
   hasRunId: boolean;
   isPending: boolean;
-  /** 后台重取中（有缓存数据也要示loading，不把陈旧计数当静止态）。 */
+  /** 后台重取中：有缓存数据时内容保持挂载，仅以 aria-busy 与自旋相位章
+   * 表达取数状态，不插入 loading 块（owner 2026-11-04 预审零抖动）。 */
   isFetching?: boolean;
   isError: boolean;
   error?: unknown;

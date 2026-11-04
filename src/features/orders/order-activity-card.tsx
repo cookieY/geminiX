@@ -225,7 +225,8 @@ function avatarInitial(name: string): string {
  * Shift+Enter 换行、IME 组词中不触发），替换旧的 Textarea + 按钮行。
  *
  * 第二轮 feedback（同日）对齐官方 demo 截图：列表与评论框合并为同一个
- * 固定高度（h-140）圆角面板，评论框贴在面板底部；空态改为居中 Empty
+ * 固定高度（380px，2026-11-04 由 h-140 改为固定像素并统一三个页签）圆角面板，
+ * 评论框贴在面板底部；空态改为居中 Empty
  * （图标块 + 标题 + 描述），发送键为圆形实心 icon。
  * 第三轮 feedback（同日）：头像改用全站统一 Avatar 组件（初字母回退）；
  * 每条消息入场带 fade+slide 动效；试过的"+"插入菜单按 owner 要求移除。 */

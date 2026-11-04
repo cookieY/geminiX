@@ -420,9 +420,19 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   // 结果到来时单向长高一次，永不上下跳。
   const RESULTS_BASE_MIN_H = 280;
   const resultsAreaRef = useRef<HTMLDivElement | null>(null);
+  // 路由草稿切换（/changes/drafts/A → /changes/drafts/B）复用同一个路由
+  // 元素与 DOM 节点：A 撑出的下限不清掉会以空白残留在 B 上。只在路由草稿
+  // 变化时重置重测；create 模式的就地领养（localDraftId 出现）不重置，否则
+  // 领养瞬间区域反而会缩回，违背零抖动目标。
+  const resultViewKey = mode === "draft" ? draftId ?? null : null;
+  const lastResultViewKeyRef = useRef<string | null>(resultViewKey);
   useLayoutEffect(() => {
     const el = resultsAreaRef.current;
     if (el === null) return;
+    if (lastResultViewKeyRef.current !== resultViewKey) {
+      lastResultViewKeyRef.current = resultViewKey;
+      el.style.minHeight = "";
+    }
     const height = Math.round(el.getBoundingClientRect().height);
     if (height > RESULTS_BASE_MIN_H) {
       el.style.minHeight = `${String(height)}px`;

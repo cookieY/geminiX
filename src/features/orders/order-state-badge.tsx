@@ -30,7 +30,10 @@ import {
  * 图标置于着色圆（/15 底）内，章体沿用族色 12% 底 + 30% 描边（STATUS_TONE_CLASS），
  * 图标随章文字走族色。tone 与图标一一对应，沿用块的图标语义：
  *   CircleCheck 完成 · Clock 排期 · Info 已提交 · Loader2 执行中（旋转）
- *   BellRing 待审批/文书 · TriangleAlert 等待执行/结果不明 · OctagonAlert 失败恶果
+ *   BellRing 待审批/文书 · Hourglass 等待执行 · TriangleAlert 结果不明 ·
+ *   OctagonAlert 失败恶果
+ * 2026-11-04 起 waiting 族（含"等待执行"）统一 Hourglass，TriangleAlert 仅
+ * 保留给 partial/结果不明。
  * 早于它的两条裁定（2026-10-31 三族动效章、2026-11-04 审批队列扁平章）均由本
  * 版本替代；审批队列仍消费同一组件，全仓工单状态只有这一处定义。
  */

@@ -56,7 +56,7 @@ export function canVoid(state: ChangeOrderState | null | undefined): boolean {
 }
 
 /** One hue per outcome family (owner ruling 2026-10-23: "不同状态有不同的颜色…
- * 颜色要符合状态结果含义"). Ten hue tokens instead of five generic ones, so a
+ * 颜色要符合状态结果含义"). Eleven hue tokens instead of five generic ones, so a
  * reviewer can tell "waiting for approval" (violet) from "waiting for
  * execution" (waiting) from "scheduled" (teal) at a glance, while every tone
  * still maps to a real semantic group:
