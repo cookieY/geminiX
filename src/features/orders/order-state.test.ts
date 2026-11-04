@@ -204,7 +204,9 @@ describe("activeApprovalStepFor", () => {
     const otherStage = approvalOrder([
       approvalStep("st-1", 1, "active", [FIXTURE_OWNER_ID]),
     ]);
-    otherStage.stages[0].state = "pending";
+    const otherStageView = otherStage.stages[0];
+    if (otherStageView === undefined) throw new Error("seed stage missing");
+    otherStageView.state = "pending";
     expect(activeApprovalStepFor(otherStage, FIXTURE_OWNER_ID)).toBeNull();
   });
 });
