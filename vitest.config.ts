@@ -20,6 +20,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    // Shared CI runners execute the jsdom suites several times slower than a
+    // dev laptop; the default 5s timeout produced chronic flake on the
+    // char-by-char typing and double-precheck flows. 20s bounds a genuine
+    // hang without relaxing any assertion.
+    testTimeout: 20_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],

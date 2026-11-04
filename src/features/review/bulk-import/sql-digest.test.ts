@@ -224,4 +224,46 @@ describe("sql-digest", () => {
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it("charges UTF-8 bytes for surrogate-pair code points exactly once", () => {
+    // Same UTF-16 length, different byte widths: 😀 is one code point as a
+    // surrogate pair (4 UTF-8 bytes), "ab" is two code points (2 bytes).
+    // The difference isolates surrogate-pair accounting from the terminator
+    // policy (bytes/chars cover statement text without the `;`).
+    const emoji = digestSqlText("INSERT INTO t VALUES ('😀');");
+    const ascii = digestSqlText("INSERT INTO t VALUES ('ab');");
+    expect(emoji.statements[0]?.bytes).toBe((ascii.statements[0]?.bytes ?? 0) + 2);
+    expect(emoji.statements[0]?.chars).toBe(ascii.statements[0]?.chars);
+    // And the emoji counts as four bytes, not eight (no double charge).
+    expect(emoji.statements[0]?.bytes).toBe(
+      new TextEncoder().encode("INSERT INTO t VALUES ('😀')").length,
+    );
+  });
+
+  it("keeps an escaped quote inside a single-quoted string structural-free", () => {
+    // MySQL backslash escape: the '; inside the literal must not split.
+    const digest = digestSqlText(
+      "INSERT INTO t VALUES ('it\\'s; fine');\nINSERT INTO t VALUES (2);\n",
+    );
+    expect(digest.statementCount).toBe(2);
+    expect(digest.statements[1]?.kind).toBe("INSERT");
+  });
+
+  it("flags the replacement character as a decode error", () => {
+    expect(digestSqlText("SELECT '�';").decodeError).toBe(true);
+    expect(digestSqlText("SELECT 'ok';").decodeError).toBe(false);
+  });
+
+  it("ends a line comment on a carriage return", () => {
+    const digest = digestSqlText("-- note\rSELECT 1;\rSELECT 2;\n");
+    expect(digest.statementCount).toBe(2);
+  });
+
+  it("caps the displayed table list while keeping the true table count", () => {
+    const parts: string[] = [];
+    for (let i = 0; i < 205; i += 1) parts.push(`INSERT INTO tbl_${String(i)} VALUES (1);`);
+    const digest = digestSqlText(parts.join("\n"));
+    expect(digest.tableCount).toBe(205);
+    expect(digest.tables.length).toBe(200);
+  });
 });

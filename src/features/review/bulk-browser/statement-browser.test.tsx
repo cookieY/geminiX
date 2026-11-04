@@ -183,4 +183,29 @@ describe("StatementBrowser", () => {
     expect(text).not.toContain("processed");
     expect(text).not.toContain("2026-08-25");
   });
+
+  it("shows the empty state for a draft without statements", () => {
+    const empty = digestSqlText("");
+    render(
+      <StatementBrowser sql="" digest={empty} serverGroupCount={null} />,
+    );
+    expect(screen.queryAllByTestId("bulk-statement-row")).toHaveLength(0);
+    expect(screen.queryByTestId("bulk-jump-anomaly")).not.toBeInTheDocument();
+    // The report download stays available even for an empty draft.
+    expect(screen.getByTestId("bulk-report-download")).toBeInTheDocument();
+  });
+
+  it("formats statement sizes across the byte, KiB and MiB bands", () => {
+    const sql =
+      `INSERT INTO tiny VALUES (1);\n` +
+      `INSERT INTO kilo VALUES ('${"k".repeat(1600)}');\n` +
+      `INSERT INTO mega VALUES ('${"m".repeat(1_200_000)}');\n`;
+    render(<StatementBrowser sql={sql} digest={digestSqlText(sql)} serverGroupCount={null} />);
+    fireEvent.click(screen.getByTestId("bulk-statements-tab"));
+    const rows = screen.getAllByTestId("bulk-statement-row");
+    const texts = rows.map((row) => row.textContent);
+    expect(texts.some((text) => /\d+ B/.test(text))).toBe(true);
+    expect(texts.some((text) => /\d+\.\d KiB/.test(text))).toBe(true);
+    expect(texts.some((text) => /\d+\.\d MiB/.test(text))).toBe(true);
+  });
 });
