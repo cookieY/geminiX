@@ -44,6 +44,10 @@ const ALLOWED = {
   "shared/mock/auth-scenario-store.ts": ["localStorage"],
   "shared/mock/identity-store.ts": ["localStorage"],
   "shared/mock/settings-bridge.ts": ["localStorage"],
+  // Client half of the node mock transport (owner 2026-11-04): one-way boot
+  // sync of the same dev-only dimension selectors (identity/super/scenario/
+  // auth behavior) from the dev-server endpoint into this tab's stores.
+  "shared/mock/client-dimensions.ts": ["localStorage"],
   // Dev-browser super-session switch (owner 2026-11-03): reads the
   // yearning-mock-super opt-in/out flag; never stores SQL, evidence or tokens.
   "shared/dev/mock-super.ts": ["localStorage"],
