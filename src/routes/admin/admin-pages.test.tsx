@@ -873,7 +873,9 @@ describe("gate: TLS材料永不回显且tls_verified可见", () => {
     );
     expect(screen.queryByTestId("ds-tls-pair-error")).not.toBeInTheDocument();
     expect(screen.getByTestId("ds-submit")).toBeEnabled();
-  });
+    // 慢环境（CI/容器 + coverage）下大量逐字符 userEvent.type 会越过 5s
+    // 默认超时（2026-11-04 CI 复现），显式放宽。
+  }, 20_000);
 });
 
 describe("gate: Eval门禁措辞与就地渲染", () => {
@@ -915,7 +917,8 @@ describe("gate: §18.76-B 模型目录联想", () => {
     expect(screen.getByTestId("provider-model")).toHaveValue("mock-chat-pro");
     // 真机修正：选中后面板收起（不残留）。
     expect(screen.queryByTestId("provider-model-options")).not.toBeInTheDocument();
-  });
+    // 同上：慢环境下逐字符输入 + 目录请求叠加越过默认超时。
+  }, 20_000);
 
   it("keeps manual entry and shows the failure hint when the catalog fetch is rejected", async () => {
     renderPage(<AdminProvidersPage />);
@@ -1174,10 +1177,21 @@ describe("provider generation parameters & reference pricing (S008 FE, 2026-10-3
   });
 
   it("blocks invalid generation params per field and sends no write request", async () => {
-    const writes: Request[] = [];
+    // 只统计 provider 资源的写请求（任意 /admin/ai-providers 路径上的
+    // POST/PUT/PATCH/DELETE——含嵌套子资源，如 /rate-versions）。唯一的
+    // 例外是模型目录 POST /models：它是查询型联想，不是写；编辑对话框
+    // 打开时的目录请求在慢环境（CI/容器）会竞态落进监听窗口
+    // （2026-11-04 复现），把它算作"提交了表单"是误报。记录 method+url
+    // 而非 Request 对象，失败时能直接看出是哪条写请求混入。
+    const writes: string[] = [];
     server.events.on("request:start", ({ request }) => {
-      if ((request.method === "POST" || request.method === "PUT") && request.url.includes("/admin/ai-providers/")) {
-        writes.push(request);
+      const { pathname } = new URL(request.url);
+      const isProviderPath = /\/admin\/ai-providers(\/|$)/.test(pathname);
+      const isWriteMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+      const isModelCatalogLookup =
+        request.method === "POST" && /\/admin\/ai-providers\/models\/?$/.test(pathname);
+      if (isProviderPath && isWriteMethod && !isModelCatalogLookup) {
+        writes.push(`${request.method} ${request.url}`);
       }
     });
     const dialog = await openEditDialog();

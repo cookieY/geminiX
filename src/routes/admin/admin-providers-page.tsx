@@ -27,6 +27,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
+import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -53,7 +54,6 @@ import {
 import { Label } from "@/shared/components/ui/label";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
 import { TableRowActions } from "@/shared/components/table-row-actions";
-import { PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 
 /**
@@ -886,15 +886,15 @@ export default function AdminProvidersPage() {
 
   return (
     <PageLayout>
-      <Card data-testid="admin-providers-panel" className="gap-0 py-0">
-        <header className="flex min-w-0 flex-wrap items-center gap-3 border-b border-border p-5">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-foreground">
-            <Bot className="size-5" aria-hidden />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h1 className="text-[22px] leading-tight font-semibold tracking-tight [overflow-wrap:anywhere]">{t("admin.providers.title")}</h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">{t("admin.providers.description")}</p>
-          </div>
+      {/* 2026-11-04 回归共享视觉语言：22e79fd 的 Card 内自定义页头丢了
+          data-slot="page-header"（24px h1）与 ListToolbar slot，
+          visual-consistency 门禁在 CI 抓获；恢复 PageHeader 外壳，
+          通知区与 Provider 卡片网格保持不变。 */}
+      <PageHeader
+        title={t("admin.providers.title")}
+        description={t("admin.providers.description")}
+        icon={Bot}
+        actions={
           <Button
             onClick={() => {
               setEditing(null);
@@ -904,7 +904,9 @@ export default function AdminProvidersPage() {
           >
             <Plus /> {t("admin.providers.createTitle")}
           </Button>
-        </header>
+        }
+      />
+      <Card data-testid="admin-providers-panel" className="gap-0 py-0">
         <div className="grid grid-cols-1 gap-3 border-b border-border p-5 md:grid-cols-2">
           <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-[13px] text-destructive">
             <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -919,20 +921,24 @@ export default function AdminProvidersPage() {
           </div>
         </div>
         <section className="flex flex-col gap-4 p-5">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <ListToolbar
+            busy={query.isFetching && query.isPlaceholderData}
+            search={
+              <TableSearchInput
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  pager.reset();
+                }}
+                testId="admin-providers-search"
+              />
+            }
+          >
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <h2 className="text-base font-semibold tracking-tight">{t("admin.providers.listTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("admin.providers.listDescription")}</p>
             </div>
-            <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
-              }}
-              testId="admin-providers-search"
-            />
-          </div>
+          </ListToolbar>
           {query.isPending ? (
             <LoadingState variant="panel" />
           ) : query.isError ? (

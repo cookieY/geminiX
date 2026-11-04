@@ -604,7 +604,9 @@ describe("DraftWorkspacePage", () => {
     // A fresh precheck restores the result through the same UI path.
     await precheckToReady();
     expect(screen.getByTestId("submit-draft")).toBeEnabled();
-  });
+    // 两次完整预审流（含轮询推进）在慢环境（CI/容器 + coverage）会越过 5s
+    // 默认超时（2026-11-04 CI 复现），显式放宽。
+  }, 20_000);
 
   it("a stale HTTP snapshot never walks the phase backwards (乱序事件不回退状态)", async () => {
     const { utils, runId } = await renderReadyWorkspace();

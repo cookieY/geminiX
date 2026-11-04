@@ -236,8 +236,11 @@
      #F59145 is oklch(0.749 0.15 54) — at that lightness chip text only
      reaches ~2.3:1 on the card, so it is deepened to the family floor the
      other tones use (same AA-adjustment precedent as --comment-own
-     #008aff → #0070e0), keeping the requested hue 54 and chroma 0.15. */
-  --tone-waiting: oklch(0.54 0.15 54);
+     #008aff → #0070e0), keeping the requested hue 54 and chroma 0.15.
+     2026-11-04 二次加深 0.54→0.51：axe 实测章文本落在 12% 章底混合色
+     (#f5eae0) 上只有 4.49:1（对纯 card 是 5.32:1，但章底混色更暗），
+     差 0.01 过不了 WCAG AA；0.51 后对章底 ~4.85:1、对 card ~5.5:1。 */
+  --tone-waiting: oklch(0.51 0.15 54);
   --tone-rose: oklch(0.52 0.16 15);
   --tone-red: oklch(0.46 0.245 27.325);
   --tone-stone: oklch(0.44 0.01 260);

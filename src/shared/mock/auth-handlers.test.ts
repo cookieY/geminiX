@@ -201,4 +201,84 @@ describe("authMockHandlers", () => {
     });
     expect(response.status).toBe(401);
   });
+
+  // NOTE (review L5, 2026-11-04): these register cases exercise the MOCK's
+  // success face. The real serve stack disables open registration with 403
+  // — a recorded Mock/Real divergence (FE-F12 divergence list, see the
+  // comment on the register handler). They pin mock behavior for UI flows,
+  // not backend contract conformance.
+  it("registers an open account with the contract's zero-permission face", async () => {
+    const response = await post("https://yearning.test/api/v4/auth/register", {
+      username: "newcomer",
+      display_name: "新同事",
+      email: "newcomer@yearning.io",
+      password: "new-fixture-pw-12",
+    });
+    const body = (await response.json()) as {
+      err_code: number;
+      data: { username: string; display_name: string; email: string | null; is_builtin_admin: boolean };
+    };
+    expect(body.err_code).toBe(0);
+    expect(body.data.username).toBe("newcomer");
+    expect(body.data.display_name).toBe("新同事");
+    expect(body.data.email).toBe("newcomer@yearning.io");
+    expect(body.data.is_builtin_admin).toBe(false);
+  });
+
+  it("stores a null email when the optional field is not a string", async () => {
+    const response = await post("https://yearning.test/api/v4/auth/register", {
+      username: "newcomer",
+      display_name: "新同事",
+      email: 42,
+      password: "new-fixture-pw-12",
+    });
+    const body = (await response.json()) as { data: { email: string | null } };
+    expect(body.data.email).toBeNull();
+  });
+
+  it("rejects each malformed registration body with 1001", async () => {
+    const cases: unknown[] = [
+      { display_name: "x", password: "new-fixture-pw-12" },
+      { username: 7, display_name: "x", password: "new-fixture-pw-12" },
+      { username: "", display_name: "x", password: "new-fixture-pw-12" },
+      { username: "newcomer", display_name: "", password: "new-fixture-pw-12" },
+      { username: "newcomer", display_name: "x", password: "short" },
+    ];
+    for (const payload of cases) {
+      const response = await post("https://yearning.test/api/v4/auth/register", payload);
+      const body = (await response.json()) as { err_code: number };
+      expect(body.err_code).toBe(1001);
+    }
+    // A non-JSON body is the same validation face.
+    const unparseable = await fetch("https://yearning.test/api/v4/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: "not json",
+    });
+    expect(((await unparseable.json()) as { err_code: number }).err_code).toBe(1001);
+  });
+
+  it("redirects the registered OIDC provider and 401s unknown keys on start", async () => {
+    const start = await fetch("https://yearning.test/api/v4/auth/oidc/corp-oidc/start", {
+      redirect: "manual",
+    });
+    expect(start.status).toBe(302);
+    expect(start.headers.get("location")).toBe("/mock/oidc/corp-oidc/start");
+
+    const unknown = await fetch("https://yearning.test/api/v4/auth/oidc/other-idp/start");
+    expect(unknown.status).toBe(401);
+    const problem = (await unknown.json()) as { title: string; status: number };
+    expect(problem.title).toBe("Unauthorized");
+    expect(problem.status).toBe(401);
+  });
+
+  it("finishes the OIDC callback with a session cookie and 401s unknown keys", async () => {
+    const finish = await fetch("https://yearning.test/api/v4/auth/oidc/corp-oidc/callback");
+    const body = (await finish.json()) as { err_code: number };
+    expect(body.err_code).toBe(0);
+    expect(finish.headers.getSetCookie().join("; ")).toContain("yearning_session=");
+
+    const unknown = await fetch("https://yearning.test/api/v4/auth/oidc/other-idp/callback");
+    expect(unknown.status).toBe(401);
+  });
 });

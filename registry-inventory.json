@@ -67,7 +67,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/dialog.tsx",
-          "sha256": "82f111c3a25529c447767c59dd7e3852c735e0db83ac039452dfdd6dfc67e4d5"
+          "sha256": "f819c75c673b7b0c34a4290e70aa8964851f99a39221d274d75da2b808a6b122"
         }
       ]
     },
@@ -254,7 +254,7 @@
       "files": [
         {
           "path": "src/shared/components/ui/tabs.tsx",
-          "sha256": "5db7b4ec1c224bb15316a4ed20927775e650fc443e8db0c76afb320d3d885ffe"
+          "sha256": "f19ab592c991b64ef980b7200c3d03d22e227b4e7f33c1b12ab87e1a415612f0"
         }
       ]
     },

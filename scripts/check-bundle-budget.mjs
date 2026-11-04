@@ -17,10 +17,13 @@ import path from "node:path";
 const DIST = "dist";
 const EVIDENCE = "tests/performance/bundle-budget.json";
 // Owner ruling 2026-11-02: the ephemeral-precheck batch moved the first
-// screen to 302.1 KiB gzip; the initial-JS budget is raised 300 → 500 KiB
-// (CSS keeps its FE-F11 measurement-derived cap).
+// screen to 302.1 KiB gzip; the initial-JS budget is raised 300 → 500 KiB.
+// Owner ruling 2026-11-04: the in-flight UI rounds (order activity card,
+// chat comments, review surfaces, waiting tone, dev toolbar) pushed the
+// first-screen CSS to a measured 25.8 KiB; the initial-CSS budget is
+// raised 24 → 35 KiB.
 const BUDGET_JS_KIB = 500;
-const BUDGET_CSS_KIB = 24;
+const BUDGET_CSS_KIB = 35;
 
 function fail(message) {
   console.error(`[check-bundle-budget] FAIL: ${message}`);
