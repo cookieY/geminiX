@@ -5,7 +5,6 @@ import { useOrderReviewFindings } from "@/features/orders/use-approvals";
 import { EvidenceSheet } from "@/features/review/evidence-sheet";
 import { FindingList } from "@/features/review/finding-list";
 import { ReviewAllClear } from "@/features/review/review-all-clear";
-import { SeverityDistribution } from "@/features/review/severity-distribution";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -52,19 +51,13 @@ export function FrozenReviewCard({ orderId, embedded = false }: { orderId: strin
             {findingsQuery.data.length === 0 ? (
               <ReviewAllClear />
             ) : (
-              <>
-                <div className="mb-5">
-                  <SeverityDistribution findings={findingsQuery.data} />
-                </div>
-                <FindingList
-                  flat
-                  state={{ status: "ready", findings: findingsQuery.data }}
-                  onOpenEvidence={(groupFindings) => {
-                    setEvidenceFindings(groupFindings);
-                    setEvidenceOpen(true);
-                  }}
-                />
-              </>
+              <FindingList
+                state={{ status: "ready", findings: findingsQuery.data }}
+                onOpenEvidence={(groupFindings) => {
+                  setEvidenceFindings(groupFindings);
+                  setEvidenceOpen(true);
+                }}
+              />
             )}
           </>
         )}

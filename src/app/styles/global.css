@@ -111,6 +111,8 @@
   --color-tone-violet: var(--tone-violet);
   --color-tone-amber: var(--tone-amber);
   --color-tone-orange: var(--tone-orange);
+  /* Waiting tone (owner page feedback 2026-11-04: 等待的都 #F59145). */
+  --color-tone-waiting: var(--tone-waiting);
   --color-tone-rose: var(--tone-rose);
   --color-tone-red: var(--tone-red);
   --color-tone-stone: var(--tone-stone);
@@ -230,6 +232,12 @@
   --tone-violet: oklch(0.5 0.17 300);
   --tone-amber: oklch(0.52 0.12 75);
   --tone-orange: oklch(0.53 0.15 50);
+  /* Waiting tone (owner page feedback 2026-11-04: 等待的都用 #F59145).
+     #F59145 is oklch(0.749 0.15 54) — at that lightness chip text only
+     reaches ~2.3:1 on the card, so it is deepened to the family floor the
+     other tones use (same AA-adjustment precedent as --comment-own
+     #008aff → #0070e0), keeping the requested hue 54 and chroma 0.15. */
+  --tone-waiting: oklch(0.54 0.15 54);
   --tone-rose: oklch(0.52 0.16 15);
   --tone-red: oklch(0.46 0.245 27.325);
   --tone-stone: oklch(0.44 0.01 260);
@@ -316,6 +324,9 @@
   --tone-violet: oklch(0.76 0.14 300);
   --tone-amber: oklch(0.82 0.14 80);
   --tone-orange: oklch(0.78 0.14 50);
+  /* Waiting tone, dark surface (see :root — #F59145 hue 54, chroma 0.15,
+     lifted to the dark-theme luminance floor). */
+  --tone-waiting: oklch(0.8 0.15 54);
   --tone-rose: oklch(0.75 0.15 15);
   --tone-red: oklch(0.704 0.191 22.216);
   --tone-stone: oklch(0.72 0.01 260);

@@ -447,7 +447,11 @@ describe("DraftWorkspacePage", () => {
     void refetchRunQuery(utils.queryClient, runId);
 
     await requestStarted.promise;
-    expect(await screen.findByTestId("review-status-loading")).toHaveTextContent("正在读取审核状态");
+    // owner 2026-11-04（预审零抖动）：后台重取不再插入 loading 块——轮询
+    // 期间 isFetching 翻转曾让结果区反复上下跳。缓存内容原地保留，loading
+    // 只在真无数据（run===null）时出现；不变量仍是绝不退回「尚未运行预审」。
+    expect(screen.getByTestId("review-counts")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-status-loading")).not.toBeInTheDocument();
     expect(screen.queryByText(/尚未运行预审/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("tab-findings"));
     // 后台重取的是run查询（有缓存数据，isPending=false）——findings查询

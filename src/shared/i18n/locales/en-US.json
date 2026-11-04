@@ -624,7 +624,6 @@
       "progressAria": "{{done}} of {{total}} nodes complete, current state: {{state}}",
       "activity": "Order activity",
       "activityHint": "Timeline, comments and the frozen snapshot",
-      "severityDistribution": "Risk distribution",
       "submittedAt": "Submitted at",
       "terminalAt": "Terminal at",
       "sqlHash": "SQL hash",
@@ -1083,8 +1082,8 @@
       "listDescription": "View, test, edit or delete provider configurations.",
       "notice": {
         "keyTitle": "API keys are write-only",
-        "keyBody": "Leave the key empty when editing to keep the stored one; rotate immediately if a key is exposed."
-        ,"orderBody": "The lowest priority value is the primary provider; the rest are backups, taking effect in ascending priority order."
+        "keyBody": "Leave the key empty when editing to keep the stored one; rotate immediately if a key is exposed.",
+        "orderBody": "The lowest priority value is the primary provider; the rest are backups, taking effect in ascending priority order."
       },
       "createTitle": "New provider",
       "editTitle": "Edit provider",

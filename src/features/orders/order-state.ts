@@ -58,11 +58,13 @@ export function canVoid(state: ChangeOrderState | null | undefined): boolean {
 /** One hue per outcome family (owner ruling 2026-10-23: "不同状态有不同的颜色…
  * 颜色要符合状态结果含义"). Ten hue tokens instead of five generic ones, so a
  * reviewer can tell "waiting for approval" (violet) from "waiting for
- * execution" (amber) from "scheduled" (teal) at a glance, while every tone
+ * execution" (waiting) from "scheduled" (teal) at a glance, while every tone
  * still maps to a real semantic group:
  *   emerald  finished well        teal    queued for a fixed slot
  *   sky      handed in            indigo  actively running
- *   violet   decision pending     amber   execution pending
+ *   violet   decision pending     waiting nothing started yet (#F59145,
+ *                                 owner page feedback 2026-11-04: 等待的都
+ *                                 这个颜色 — 待轮到/等待/等待执行)
  *   orange   outcome uncertain    rose    effects happened, ended badly
  *   red      hard failure         stone   paperwork that closed quietly
  * Each tone is declared per theme in global.css (light holds deeper inks on
@@ -76,6 +78,7 @@ export type OrderStateTone =
   | "violet"
   | "amber"
   | "orange"
+  | "waiting"
   | "rose"
   | "red"
   | "stone";
@@ -93,7 +96,7 @@ export function orderStateTone(state: ChangeOrderState): OrderStateTone {
     case "stage_approval_active":
       return "violet";
     case "stage_execution_pending":
-      return "amber";
+      return "waiting";
     case "result_unknown":
     case "missed_schedule":
     case "blocked_datasource_unavailable":
@@ -126,6 +129,7 @@ export const ORDER_STATE_TONE_DOT: Record<OrderStateTone, string> = {
   violet: "bg-tone-violet",
   amber: "bg-tone-amber",
   orange: "bg-tone-orange",
+  waiting: "bg-tone-waiting",
   rose: "bg-tone-rose",
   red: "bg-tone-red",
   stone: "bg-muted-foreground/60",
@@ -144,13 +148,14 @@ export function stageStateTone(state: StageState): OrderStateTone {
     case "partial_cancelled":
       return "rose";
     case "pending":
+      return "waiting";
     case "skipped":
     case "cancelled":
       return "stone";
     case "approval_active":
       return "violet";
     case "execution_pending":
-      return "amber";
+      return "waiting";
     case "scheduled":
       return "teal";
     case "running":
@@ -234,7 +239,9 @@ export function myApprovalStepFor(
 }
 
 /** Badge tone per approval-step state (order_approval_steps vocabulary,
- * including the W008 invalid state when frozen actors were removed). */
+ * including the W008 invalid state when frozen actors were removed).
+ * owner page feedback 2026-11-04：等待（待轮到）不再用灰色，统一 #F59145 的
+ * waiting 族色。 */
 export function approvalStepTone(state: string): OrderStateTone {
   switch (state) {
     case "approved":
@@ -245,6 +252,8 @@ export function approvalStepTone(state: string): OrderStateTone {
       return "orange";
     case "active":
       return "violet";
+    case "pending":
+      return "waiting";
     default:
       return "stone";
   }

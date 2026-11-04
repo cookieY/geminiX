@@ -624,7 +624,6 @@
       "progressAria": "已完成 {{done}} / {{total}} 个节点，当前状态：{{state}}",
       "activity": "工单动态",
       "activityHint": "时间线、评论与冻结快照",
-      "severityDistribution": "风险分布",
       "submittedAt": "提交时间",
       "terminalAt": "终态时间",
       "sqlHash": "SQL Hash",
@@ -1083,8 +1082,8 @@
       "listDescription": "查看、测试、编辑或删除 Provider 配置。",
       "notice": {
         "keyTitle": "API Key 仅写入、永不回显",
-        "keyBody": "编辑时留空即保留已存密钥；密钥一旦泄露，请立即更换。"
-        ,"orderBody": "优先级数值最小者为主 Provider，其余为备用，按优先级升序依次生效。"
+        "keyBody": "编辑时留空即保留已存密钥；密钥一旦泄露，请立即更换。",
+        "orderBody": "优先级数值最小者为主 Provider，其余为备用，按优先级升序依次生效。"
       },
       "createTitle": "新建 Provider",
       "editTitle": "编辑 Provider",

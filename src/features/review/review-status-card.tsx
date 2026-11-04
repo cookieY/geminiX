@@ -128,7 +128,7 @@ export function ReviewStatusCard({
         </CardTitle>
         <CardDescription>{t("precheck.review.description")}</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-col gap-3" aria-busy={isFetching || undefined}>
         {!hasRunId && <EmptyState title={t("precheck.review.noRun")} />}
         {hasRunId && isError && (
           <div data-testid="review-status-error">
@@ -139,11 +139,16 @@ export function ReviewStatusCard({
             />
           </div>
         )}
-        {hasRunId && !isError && (run === null || isFetching) && (
+        {hasRunId && !isError && run === null && (
           <div data-testid="review-status-loading">
             <LoadingState variant="inline" label={t("precheck.review.loading")} />
           </div>
         )}
+        {/* owner 2026-11-04（预审过程零抖动）：后台重取不再插入/移除 loading
+            块——轮询期间每次 refetch 的 isFetching 翻转曾让内容反复上下跳
+            （页面接近视口高度时还会连带滚动条出现/消失）。有缓存数据时表格
+            保持挂载，取数状态只通过 aria-busy 与相位章（运行中自旋）表达，
+            不改变任何布局高度。 */}
         {hasRunId && !isError && run !== null && (
           <>
             <div className="text-sm" data-testid="review-counts">

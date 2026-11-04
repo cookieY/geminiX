@@ -51,11 +51,15 @@ function incomplete(findings: ReviewFinding[] = FINDINGS) {
 }
 
 describe("FindingList", () => {
-  it("renders structured findings with severity, category and stage", () => {
+  it("renders structured findings with severity, category and stage, and the numeric distribution under the title bar", () => {
     render(<FindingList state={ready()} onOpenEvidence={() => {}} />);
     expect(screen.getAllByTestId("finding-item")).toHaveLength(2);
-    expect(screen.getByText("严重")).toBeInTheDocument();
+    // 严重 appears twice: the distribution row's label and the finding badge.
+    expect(screen.getAllByText("严重")).toHaveLength(2);
     expect(screen.getAllByText("阶段 1").length).toBe(2);
+    // Distribution row sits inside the list, all five severities with counts.
+    expect(screen.getByTestId("severity-count-critical")).toHaveTextContent("1");
+    expect(screen.getByTestId("severity-count-info")).toHaveTextContent("0");
   });
 
   it("filters by severity through the select", async () => {

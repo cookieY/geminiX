@@ -32,6 +32,7 @@ const BUSINESS_TEXT_TOKENS = [
   "tone-violet",
   "tone-amber",
   "tone-orange",
+  "tone-waiting",
   "tone-rose",
   "tone-red",
   "tone-stone",

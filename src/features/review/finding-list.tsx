@@ -3,7 +3,6 @@ import type { ReviewFinding } from "@/api/generated/client/yearningV4HTTPAPI.sch
 import { Badge } from "@/shared/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -18,12 +17,19 @@ import { ErrorState } from "@/shared/components/status/status-components";
 import { CircleAlert, Crosshair, FileSearch, Lightbulb, Link2, TriangleAlert } from "lucide-react";
 import { useSeverityFilter } from "./use-draft-workspace";
 import { FindingText } from "./finding-text";
+import { SeverityDistribution } from "./severity-distribution";
 
 /**
  * Structured finding list (migration contract §4 item 5): severity filter,
  * stage/group context, suggestion, evidence and SQL locating. Only the
  * contract fields render — model reasoning is not part of the API surface
  * and never appears in the UI (PRD F4: 不展示思维链).
+ *
+ * owner page feedback 2026-11-04（卡片层级）：这里不再自带 Card 面——两个
+ * 调用方（冻结审核结果、提交向导预审）都已嵌在外层卡片里，列表本体就是
+ * 一个标题行（风险发现 + 级别下拉）加发现条目，少一层卡皮。
+ * 同日第三轮：风险分布数值行（无标题）直接挂在标题行下方，冻结审核
+ * 结果与提交向导两处随列表同源呈现。
  */
 
 const SEVERITY_BADGE: Record<ReviewFinding["severity"], { key: string; className: string }> = {
@@ -57,8 +63,6 @@ export interface FindingListProps {
   onRetry?: () => void;
   /** Whether a quoted snippet currently exists in the editor text. */
   locateInEditor?: (snippet: string) => boolean;
-  /** Sits inside another card: drop this card's own surface and padding. */
-  flat?: boolean;
 }
 
 /** The closed category vocabulary from api/contracts/ai-review-output.schema.json. */
@@ -125,7 +129,7 @@ function buildUnits(findings: ReviewFinding[]): FindingUnit[] {
   return units;
 }
 
-export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateInEditor, flat = false }: FindingListProps) {
+export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateInEditor }: FindingListProps) {
   const { t } = useTranslation();
   const { severity, setSeverity, visible } = useSeverityFilter();
   const findings =
@@ -133,9 +137,9 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
   const visibleFindings = findings === null ? [] : visible(findings);
 
   return (
-    <Card className={flat ? "gap-3 rounded-none bg-transparent py-0 ring-0 [--card-spacing:0px]" : undefined} data-testid="finding-list">
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <CardTitle>{t("precheck.findings.title")}</CardTitle>
+    <section className="flex flex-col gap-3" data-testid="finding-list">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold">{t("precheck.findings.title")}</h4>
         {findings !== null && findings.length > 0 && (
           <Select
             value={severity}
@@ -164,8 +168,9 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
             </SelectContent>
           </Select>
         )}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      </div>
+      {findings !== null && findings.length > 0 && <SeverityDistribution findings={findings} />}
+      <div className="flex flex-col gap-3">
         {state.status === "idle" && (
           <EmptyState
             title={t("precheck.findings.idleTitle")}
@@ -374,8 +379,8 @@ export function FindingList({ state, onOpenEvidence, onLocate, onRetry, locateIn
               );
             })
           : null}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 

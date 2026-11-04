@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -38,6 +38,7 @@ import {
   FindingList,
   type FindingListState,
 } from "@/features/review/finding-list";
+import { ReviewAllClear } from "@/features/review/review-all-clear";
 import { ReviewStatusCard } from "@/features/review/review-status-card";
 import {
   SqlEditorPanel,
@@ -409,6 +410,24 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const { draftId } = useParams<{ draftId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // ---- 结果区零抖动（owner 2026-11-04「完全不抖动」）----
+  // 检测结果区的高度下限在页面生命周期内单调递增：终态内容一旦把区域
+  // 撑高过基础下限（280px，2026-11-03 裁定），重跑预审回到 queued/loading
+  // 时区域不再缩回去。直接改 DOM（React 不写 min-height，不会与渲染冲突），
+  // 不引入额外渲染。空→加载→运行 各态本就 ≤ 280，配合 ReviewStatusCard
+  // 不再因后台重取插入 loading 块，整个预审生命周期里该区域只会在终态
+  // 结果到来时单向长高一次，永不上下跳。
+  const RESULTS_BASE_MIN_H = 280;
+  const resultsAreaRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = resultsAreaRef.current;
+    if (el === null) return;
+    const height = Math.round(el.getBoundingClientRect().height);
+    if (height > RESULTS_BASE_MIN_H) {
+      el.style.minHeight = `${String(height)}px`;
+    }
+  });
 
   // ---- create-mode state ----
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
@@ -1614,8 +1633,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
 
           {/* min-h（owner 2026-11-03反馈：点击AI预审后整个页面抖动）：预审结果
               区在 空→加载中→运行中 之间高度在~230-280px间跳动，固定最小高度后
-              这些状态切换不再推挤页面；终态结果表仍可继续向下生长。 */}
-          <div className="flex min-h-[280px] flex-col gap-3">
+              这些状态切换不再推挤页面；终态结果表仍可继续向下生长。
+              owner 2026-11-04（完全不抖动）：下限单调递增（见组件头注释），
+              重跑预审时区域不回缩。 */}
+          <div ref={resultsAreaRef} className="flex min-h-[280px] flex-col gap-3">
             <h3 className="text-sm font-semibold">{t("precheck.wizard.resultsCard")}</h3>
             <Tabs
               value={resultsTab}
@@ -1644,8 +1665,13 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   />
                 </div>
                 <div>
-                  <FindingList
-                  flat
+                  {/* owner page feedback 2026-11-04：终态结果与工单详情的
+                      「冻结审核结果」样式一模一样 —— 同一发现列表（内含
+                      标题行下方的风险分布数值行）；全通过时用 ReviewAllClear。 */}
+                  {findingsState.status === "ready" && findingsState.findings.length === 0 ? (
+                    <ReviewAllClear />
+                  ) : (
+                    <FindingList
                   state={findingsState}
                   onOpenEvidence={(groupFindings) => { setEvidenceFindings(groupFindings); }}
                   onRetry={() => {
@@ -1688,6 +1714,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                     return store.sql.includes(snippet);
                   }}
                 />
+                  )}
                 </div>
               </TransitionPanel>
             </Tabs>

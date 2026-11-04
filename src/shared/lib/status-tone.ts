@@ -7,6 +7,7 @@ export type StatusTone =
   | "violet"
   | "amber"
   | "orange"
+  | "waiting"
   | "rose"
   | "red"
   | "stone";
@@ -19,6 +20,7 @@ export const STATUS_TONE_CLASS: Record<StatusTone, string> = {
   violet: "border-tone-violet/30 bg-tone-violet/12 text-tone-violet",
   amber: "border-tone-amber/30 bg-tone-amber/12 text-tone-amber",
   orange: "border-tone-orange/30 bg-tone-orange/12 text-tone-orange",
+  waiting: "border-tone-waiting/30 bg-tone-waiting/12 text-tone-waiting",
   rose: "border-tone-rose/30 bg-tone-rose/12 text-tone-rose",
   red: "border-tone-red/30 bg-tone-red/12 text-tone-red",
   stone: "border-border bg-muted text-muted-foreground",

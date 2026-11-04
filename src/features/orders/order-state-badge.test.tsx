@@ -15,6 +15,7 @@ const TONE_CIRCLE: Record<OrderStateTone, string> = {
   violet: "bg-tone-violet/15",
   amber: "bg-tone-amber/15",
   orange: "bg-tone-orange/15",
+  waiting: "bg-tone-waiting/15",
   rose: "bg-tone-rose/15",
   red: "bg-tone-red/15",
   stone: "bg-foreground/10",
@@ -57,11 +58,11 @@ describe("OrderStateBadge (sonner-08 tone chip)", () => {
 });
 
 describe("StageStateBadge keeps the same sonner-08 baseline", () => {
-  it("renders the stage-state tone chip", () => {
+  it("renders the stage-state tone chip (waiting states carry the #F59145 waiting tone)", () => {
     const { container } = render(<StageStateBadge state="execution_pending" />);
     const badge = container.querySelector('[data-slot="badge"]');
-    expect(badge?.className).toContain(ORDER_STATE_TONE_CLASS.amber);
-    expect(badge?.querySelector("span[aria-hidden='true']")?.className).toContain(TONE_CIRCLE.amber);
+    expect(badge?.className).toContain(ORDER_STATE_TONE_CLASS.waiting);
+    expect(badge?.querySelector("span[aria-hidden='true']")?.className).toContain(TONE_CIRCLE.waiting);
     expect(screen.getByText("等待执行")).toBeInTheDocument();
   });
 });

@@ -37,6 +37,7 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/shared/components/ui/message-scroller";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
@@ -64,6 +65,12 @@ import {
  * rows of an icon tile + muted label over a bold value, with a badge on the
  * right. All three panels stay mounted — a half-written comment survives a
  * tab switch and every query is warm before its tab is opened.
+ *
+ * owner page feedback 2026-11-04（固定 380px）：三个 tab 的内容统一固定
+ * 高度 380px —— 时间线与冻结快照用 ScrollArea（viewportClassName 落
+ * h-[380px]，见 scroll-area.tsx 的说明）内容不足也占满、超出内部滚动；
+ * 评论区同为固定 380px 面板（message-scroller 保留官方套件自身的滚动，
+ * 见其文件头注释）。
  */
 
 export function formatTimestamp(value: string | null | undefined): string {
@@ -256,7 +263,7 @@ function CommentsPanel({ orderId }: { orderId: string }) {
   return (
     <div data-testid="order-comments">
       <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
-        <div className="bg-card flex h-140 flex-col overflow-hidden rounded-xl border border-border">
+        <div className="bg-card flex h-[380px] flex-col overflow-hidden rounded-xl border border-border">
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
               <MessageScrollerContent
@@ -458,13 +465,17 @@ export function OrderActivityCard({ order }: { order: ChangeOrder }) {
             ))}
           </TabsList>
           <TabsContent value="timeline" keepMounted className="text-sm">
-            <TimelinePanel orderId={order.id} />
+            <ScrollArea viewportClassName="h-[380px]" data-testid="order-timeline-scroll">
+              <TimelinePanel orderId={order.id} />
+            </ScrollArea>
           </TabsContent>
           <TabsContent value="comments" keepMounted className="text-sm">
             <CommentsPanel orderId={order.id} />
           </TabsContent>
           <TabsContent value="snapshot" keepMounted className="text-sm">
-            <SnapshotPanel order={order} />
+            <ScrollArea viewportClassName="h-[380px]" data-testid="order-facts-scroll">
+              <SnapshotPanel order={order} />
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
