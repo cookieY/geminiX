@@ -7,7 +7,9 @@ import {
   MOCK_IDENTITY_IDS,
   currentIdentity,
   currentIdentityId,
+  holdsActorSlot,
   identityUsernameOf,
+  mockSuperMode,
 } from "@/shared/mock/identity-store";
 import { adminFixtureTask } from "@/shared/mock/admin-fixture";
 import { queryFlowsCatalogPage } from "@/shared/mock/query-fixture";
@@ -962,18 +964,22 @@ const PENDING_DEMO_FIRST_ID = "7e6f1a2b-0000-4000-8000-a00000000001";
 function seedPendingApprovalOrders(): void {
   if (import.meta.env.MODE === "test") return;
   if (world.orders.has(PENDING_DEMO_FIRST_ID)) return;
+  // Owner 2026-11-03（大批量连测）：扩到8条，覆盖更多数据源与步数形态。
   const specs: Array<{ suffix: string; title: string; datasource: string; steps: number }> = [
     { suffix: "01", title: "订单表新增归档状态字段", datasource: "staging-mysql", steps: 2 },
     { suffix: "02", title: "清理失效账号并回收配额", datasource: "report-pg", steps: 1 },
     { suffix: "03", title: "会员表补充索引与分区维护", datasource: "prod-mysql", steps: 1 },
+    { suffix: "04", title: "账单表拆分历史冷数据", datasource: "archive-mysql", steps: 2 },
+    { suffix: "05", title: "风控规则表新增灰度开关", datasource: "risk-pg", steps: 1 },
+    { suffix: "06", title: "消息队列表扩容与索引重建", datasource: "mq-mysql", steps: 3 },
+    { suffix: "07", title: "日志表按月分区滚动调整", datasource: "log-pg", steps: 1 },
+    { suffix: "08", title: "商品库存表字段精简", datasource: "inventory-mysql", steps: 2 },
   ];
   specs.forEach((spec, index) => {
     const id = `${PENDING_DEMO_FIRST_ID.slice(0, -2)}${spec.suffix}`;
-    // Older than the oldest gallery row (anchor - (40+i) days) — deterministic
-    // under the screenshot clock pin and invisible to baselines' page 1.
-    const submittedAt = new Date(
-      Date.parse("2026-09-01T08:00:00Z") - (GALLERY_TOTAL + index) * 86_400_000,
-    )
+    // Owner 2026-11-03（大批量连测）：browser-only种子直接锚定在gallery之后的
+    // 新时刻（vitest被MODE门控排除，基线不感知），审核队列首页即见这8条。
+    const submittedAt = new Date(Date.parse("2026-09-02T01:00:00Z") + index * 3600 * 1000)
       .toISOString()
       .slice(0, 19)
       .concat("Z");
@@ -1069,6 +1075,86 @@ function seedPendingExecutionOrder(): void {
   recordOrderEvent(order, "approval.decided", "user", MOCK_IDENTITY_IDS.reviewer, "审批通过，等待执行", 1, "stage_execution_pending");
 }
 
+// ---- Bulk-statement demos (owner 2026-11-03: 大批量数据下的表现) -----------
+//
+// Browser-only压测工单：每张冻结SQL携带500条语句，已过审批、等待执行。
+// 打开详情即见500行SQL原文（sql-file-viewer / reveal）；executor点「开始
+// 执行」后，begin按工单SQL真实条数生成500条语句的attempt（见
+// sqlStatementCount），语句浏览器、游标分页与轮询都在真实链路上承压。
+const BULK_DEMO_FIRST_ID = "b0000000-0000-4000-8000-00000000b001";
+
+function bulkSqlText(seed: number): string {
+  const lines: string[] = [];
+  const tables = ["orders", "order_items", "customers", "payments", "coupons", "inventory", "refunds", "settlements"];
+  for (let index = 1; index <= 500; index += 1) {
+    const bucket = (index + seed) % 8;
+    const table = tables[bucket] ?? "orders";
+    if (bucket % 3 === 0) {
+      lines.push(`UPDATE ${table} SET updated_at = NOW() WHERE id = ${String(index * seed)}`);
+    } else if (bucket % 3 === 1) {
+      lines.push(`UPDATE ${table} SET status = ${String(index % 4)} WHERE region_id = ${String(index % 32)}`);
+    } else {
+      lines.push(`DELETE FROM ${table} WHERE id = ${String(index * seed + 1)} AND created_at < '2025-01-01'`);
+    }
+  }
+  return lines.join(";\n").concat(";");
+}
+
+function seedBulkStatementOrders(): void {
+  if (import.meta.env.MODE === "test") return;
+  if (world.orders.has(BULK_DEMO_FIRST_ID)) return;
+  // 同上（browser-only）：锚定在gallery之后、待审批demo之前，我的工单首页可见。
+  const submittedAt = new Date(Date.parse("2026-09-01T20:00:00Z"))
+    .toISOString().slice(0, 19).concat("Z");
+  const specs = [
+    { suffix: "01", title: "压测·跨8表批量数据修正（500条）", datasource: "prod-mysql" },
+    { suffix: "02", title: "压测·历史订单清理脚本（500条）", datasource: "archive-mysql" },
+    { suffix: "03", title: "压测·结算批处理回填（500条）", datasource: "report-pg" },
+  ] as const;
+  specs.forEach((spec, index) => {
+    const id = `${BULK_DEMO_FIRST_ID.slice(0, -2)}${spec.suffix}`;
+    const order: FixtureOrder = {
+      id,
+      display_number: `YR-20260901-0005${String(index + 1).padStart(2, "0")}`,
+      submitter_user_id: FIXTURE_OWNER_ID,
+      requested_scheduled_for: null,
+      title: spec.title,
+      state: "stage_execution_pending",
+      current_stage_position: 1,
+      stages: [
+        {
+          id: `${id}-s1`,
+          position: 1,
+          datasource_name: spec.datasource,
+          state: "execution_pending",
+          approval_steps: [
+            {
+              id: `${id}-a1`,
+              position: 1,
+              state: "approved",
+              decided_at: submittedAt,
+              actors: [fixtureActor(MOCK_IDENTITY_IDS.reviewer)],
+            },
+          ],
+          execution_actors: [fixtureUser(MOCK_IDENTITY_IDS.executor)],
+        },
+      ],
+      has_sql: true,
+      sql_hash: `hash-bulk-${spec.suffix}`,
+      snapshot_hash: `snap-bulk-${spec.suffix}`,
+      manually_verified: false,
+      version: 3,
+      submitted_at: submittedAt,
+      terminal_at: null,
+      review_run_id: null,
+      sql_text: bulkSqlText(index + 1),
+    };
+    world.orders.set(order.id, order);
+    recordOrderEvent(order, "change_order.submitted", "user", order.submitter_user_id, "工单提交，审核快照已冻结", 1, "submitted");
+    recordOrderEvent(order, "approval.decided", "user", MOCK_IDENTITY_IDS.reviewer, "审批通过，等待执行", 1, "stage_execution_pending");
+  });
+}
+
 // ---- Execution domain (FE-F8) ---------------------------------------------
 //
 // The mock mirrors the backend execution application (B10): begin is only
@@ -1091,6 +1177,9 @@ const CANCEL_RESOLUTION_MS = 600;
 function executionBehavior(): {
   kind: FixtureExecutionAttempt["execution_kind"];
   outcome: FixtureExecutionAttempt["outcome"];
+  /** 0 = derive from the order's frozen SQL (default scenario; see
+   * sqlStatementCount). Explicit scenarios keep their fixed counts so the
+   * scenario test suite stays deterministic. */
   statementCount: number;
 } {
   switch (readStoredScenario()) {
@@ -1101,8 +1190,20 @@ function executionBehavior(): {
     case "execution-ghost":
       return { kind: "gh_ost", outcome: "ghost", statementCount: 1 };
     default:
-      return { kind: "dml", outcome: "succeeded", statementCount: 2 };
+      return { kind: "dml", outcome: "succeeded", statementCount: 0 };
   }
+}
+
+/** Statement count of the order's frozen SQL (semicolon-separated, blank
+ * lines ignored). Owner 2026-11-03（大批量连测）：默认场景下 begin 生成的
+ * attempt 语句数跟随工单SQL的真实条数（如500条压测工单），显式场景维度的
+ * 固定条数不受影响。 */
+function sqlStatementCount(sqlText: string, fallback: number): number {
+  const count = sqlText
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part !== "").length;
+  return count > 0 ? count : fallback;
 }
 
 /** Terminal attempt states (backend domain.AttemptState.Terminal): a
@@ -1731,7 +1832,10 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           successEnvelope(pageOf(queryFlowsCatalogPage(behavior !== "expired").items as unknown[], null, null)),
         );
       }
-      if (flowType !== "change_review" || behavior !== "admin") {
+      // Super mode (owner 2026-11-03): the dev-browser session also carries
+      // the change flow without the admin behavior — the failure faces of the
+      // behavior dimension keep their semantics.
+      if (flowType !== "change_review" || !(behavior === "admin" || (mockSuperMode() && behavior !== "expired"))) {
         return HttpResponse.json(successEnvelope(pageOf([], null, null)));
       }
       // The default e2e flow first, then the 20-flow owner test catalog
@@ -1859,7 +1963,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const limit = Number(url.searchParams.get("limit") ?? "50");
       const after = url.searchParams.get("after");
       const drafts = [...world.drafts.values()]
-        .filter((draft) => draft.owner_user_id === currentIdentityId())
+        .filter((draft) => holdsActorSlot(draft.owner_user_id))
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(successEnvelope(pageOf(drafts.map(draftPublic), limit, after)));
     }),
@@ -1975,7 +2079,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
     http.post("*/change-drafts/:draftId/sql-reveals", ({ params }) => {
       const draft = world.drafts.get(String(params.draftId));
       if (draft === undefined) return businessError(1002, "draft not found");
-      if (draft.owner_user_id !== currentIdentityId()) {
+      if (!holdsActorSlot(draft.owner_user_id)) {
         return HttpResponse.json(
           {
             type: "about:blank",
@@ -2259,12 +2363,13 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       seedOrderGallery();
       seedPendingApprovalOrders();
       seedPendingExecutionOrder();
+      seedBulkStatementOrders();
       const relatedTo = (order: FixtureOrder): boolean =>
-        order.submitter_user_id === currentIdentityId() ||
+        holdsActorSlot(order.submitter_user_id) ||
         order.stages.some(
           (stage) =>
-            stage.approval_steps.some((step) => step.actors.some((actor) => actor.id === currentIdentityId())) ||
-            stage.execution_actors.some((actor) => actor.id === currentIdentityId()),
+            stage.approval_steps.some((step) => step.actors.some((actor) => holdsActorSlot(actor.id))) ||
+            stage.execution_actors.some((actor) => holdsActorSlot(actor.id)),
         );
       const orders = [...world.orders.values()]
         .filter(relatedTo)
@@ -2301,6 +2406,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       seedOrderGallery();
       seedPendingApprovalOrders();
       seedPendingExecutionOrder();
+      seedBulkStatementOrders();
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
       return HttpResponse.json(successEnvelope(orderPublic(order)));
@@ -2315,7 +2421,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (order === undefined) return businessError(1002, "order not found");
       // W008: only the submitter may withdraw — anyone else learns nothing
       // (backend lifecycleOnce maps the mismatch to not-found).
-      if (currentIdentityId() !== order.submitter_user_id) {
+      if (!holdsActorSlot(order.submitter_user_id)) {
         return businessError(1002, "order not found");
       }
       if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
@@ -2358,7 +2464,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const order = world.orders.get(String(params.orderId));
       if (order === undefined) return businessError(1002, "order not found");
       // W008: only the submitter may void (same not-found mirror as withdrawal).
-      if (currentIdentityId() !== order.submitter_user_id) {
+      if (!holdsActorSlot(order.submitter_user_id)) {
         return businessError(1002, "order not found");
       }
       if (request.headers.get("If-Match") !== `"${String(order.version)}"`) {
@@ -2463,7 +2569,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined || step === undefined) {
         return businessError(1010, "no active approval step");
       }
-      if (!step.actors.some((actor) => actor.id === currentIdentityId())) {
+      if (!step.actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen reviewer of this step");
       }
       if (step.decided_at !== null) {
@@ -2685,7 +2791,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined) {
         return businessError(1010, `execution is not legal from state ${order.state}`);
       }
-      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+      if (!stage.execution_actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       const facts = [...world.attempts.values()].filter(
@@ -2753,7 +2859,12 @@ export function reviewFixtureHandlers(): HttpHandler[] {
             : null,
         version: 1,
         created_at: now(),
-        statements: makeStatements(behavior.statementCount, behavior.kind === "dml" ? "dml" : "ddl"),
+        statements: makeStatements(
+          behavior.statementCount > 0
+            ? behavior.statementCount
+            : sqlStatementCount(order.sql_text, 2),
+          behavior.kind === "dml" ? "dml" : "ddl",
+        ),
         outcome: behavior.outcome,
       };
       world.attempts.set(attempt.id, attempt);
@@ -2797,7 +2908,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       const order = world.orders.get(attempt.order_id);
       const stage = order?.stages.find((candidate) => candidate.id === attempt.stage_id);
       if (order === undefined || stage === undefined) return businessError(1002, "order not found");
-      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+      if (!stage.execution_actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (isAttemptTerminal(attempt.state)) {
@@ -2859,7 +2970,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
           return businessError(1001, "evidence content must be 1..16384 characters");
         }
       }
-      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+      if (!stage.execution_actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (attempt.state !== "result_unknown") {
@@ -2972,7 +3083,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       if (stage === undefined) {
         return businessError(1010, `scheduling is not legal from state ${order.state}`);
       }
-      if (!stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+      if (!stage.execution_actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (order.state !== "stage_execution_pending" || stage.state !== "execution_pending") {
@@ -3045,7 +3156,7 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       }
       const stage = order.stages.find((candidate) => candidate.state === "scheduled");
       if (stage !== undefined &&
-          !stage.execution_actors.some((actor) => actor.id === currentIdentityId())) {
+          !stage.execution_actors.some((actor) => holdsActorSlot(actor.id))) {
         return businessError(3001, "current user is not a frozen executor of this stage");
       }
       if (stage === undefined) {

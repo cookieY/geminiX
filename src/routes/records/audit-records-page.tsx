@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { useState } from "react";
@@ -208,7 +209,11 @@ export default function AuditRecordsPage() {
       )}
 
       <Sheet open={detail !== null} onOpenChange={(open) => { if (!open) setDetail(null); }}>
-        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto" data-testid="records-detail">
+        {/* 滚动条统一（owner 2026-11-03）：详情Sheet与metadata片段滚动都用
+            ScrollArea覆盖式thumb（原overflow为原生条）。 */}
+        <SheetContent className="w-[480px] sm:max-w-[480px]" data-testid="records-detail">
+          <ScrollArea className="min-h-0 flex-1">
+            <div>
           {detail !== null && (
             <>
               <SheetHeader>
@@ -226,13 +231,17 @@ export default function AuditRecordsPage() {
                     server-side (audit PRD §5). */}
                 <div className="flex flex-col gap-1">
                   <span className="text-muted-foreground text-xs">{t("records.detail.metadata")}</span>
-                  <pre className="bg-muted/50 overflow-x-auto rounded-md p-2 text-xs">
-                    {JSON.stringify(detail.metadata ?? {}, null, 2)}
-                  </pre>
+                  <ScrollArea className="bg-muted/50 rounded-md">
+                    <pre className="p-2 text-xs whitespace-pre">
+                      {JSON.stringify(detail.metadata ?? {}, null, 2)}
+                    </pre>
+                  </ScrollArea>
                 </div>
               </div>
             </>
           )}
+            </div>
+          </ScrollArea>
         </SheetContent>
       </Sheet>
     </PageLayout>

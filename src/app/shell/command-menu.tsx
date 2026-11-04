@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useSession } from "@/features/auth/session-provider";
 import { sessionRoleFromCurrentUser } from "@/shared/session/session";
 import { cn } from "@/shared/lib/utils";
@@ -153,13 +154,16 @@ function CommandMenuBody({ onClose }: { onClose: () => void }) {
           ? t("shell.command.suggestions")
           : t("shell.command.results", { count: results.length })}
       </p>
-      <ul
-        ref={listRef}
-        id="command-menu-list"
-        role="listbox"
-        aria-label={t("shell.command.title")}
-        className="max-h-[min(26rem,55vh)] overflow-y-auto pb-1"
-      >
+      {/* 滚动条统一（owner 2026-11-03）：命令列表滚动改为ScrollArea覆盖式
+          thumb；高度帽在viewport上（见scroll-area.tsx注释）。 */}
+      <ScrollArea viewportClassName="max-h-[min(26rem,55vh)]">
+        <ul
+          ref={listRef}
+          id="command-menu-list"
+          role="listbox"
+          aria-label={t("shell.command.title")}
+          className="pb-1"
+        >
         {results.length === 0 && (
           <li className="text-muted-foreground px-2 py-6 text-center text-sm">
             {t("shell.command.empty")}
@@ -196,6 +200,7 @@ function CommandMenuBody({ onClose }: { onClose: () => void }) {
           );
         })}
       </ul>
+      </ScrollArea>
     </>
   );
 }

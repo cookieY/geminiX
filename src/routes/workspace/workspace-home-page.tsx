@@ -37,6 +37,7 @@ import { CountUp } from "@/shared/components/count-up";
 import { Badge } from "@/shared/components/ui/badge";
 import { buttonVariants } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   Empty,
   EmptyDescription,
@@ -453,13 +454,15 @@ function AnnouncementPanel({
               {t("home.announcement.empty")}
             </div>
           ) : (
-            <div
-              className={cn("min-h-0 flex-1 overflow-y-auto pr-1", ANNOUNCEMENT_PROSE)}
-              data-testid="home-announcement-body"
-              // Server-sanitized HTML (sanitizer_policy_version recorded on the
-              // revision); the client renders, it does not re-sanitize.
-              dangerouslySetInnerHTML={{ __html: publication.revision.sanitized_html }}
-            />
+            <ScrollArea className="min-h-0 flex-1">
+              <div
+                className={cn("pr-1", ANNOUNCEMENT_PROSE)}
+                data-testid="home-announcement-body"
+                // Server-sanitized HTML (sanitizer_policy_version recorded on the
+                // revision); the client renders, it does not re-sanitize.
+                dangerouslySetInnerHTML={{ __html: publication.revision.sanitized_html }}
+              />
+            </ScrollArea>
           )}
         </div>
 

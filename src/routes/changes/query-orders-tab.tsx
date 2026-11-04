@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 
@@ -187,7 +188,10 @@ export function QueryOrdersTab() {
       </CardContent>
 
       <Sheet open={detail !== null} onOpenChange={(open) => { if (!open) setDetail(null); }}>
-        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto" data-testid="orders-query-detail">
+        {/* 滚动条统一（owner 2026-11-03）：详情Sheet滚动用ScrollArea覆盖式thumb。 */}
+        <SheetContent className="w-[480px] sm:max-w-[480px]" data-testid="orders-query-detail">
+          <ScrollArea className="min-h-0 flex-1">
+            <div>
           {detail !== null && (
             <>
               <SheetHeader>
@@ -248,6 +252,8 @@ export function QueryOrdersTab() {
               </div>
             </>
           )}
+            </div>
+          </ScrollArea>
         </SheetContent>
       </Sheet>
     </Card>

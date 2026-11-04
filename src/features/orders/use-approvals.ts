@@ -16,6 +16,7 @@ import {
 } from "@/api/generated/client/change-orders/change-orders";
 import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-event-client";
 import { useSession } from "@/features/auth/session-provider";
+import { holdsSessionSlot } from "@/shared/dev/mock-super";
 import { stageApprovalSteps } from "@/features/orders/approval-steps";
 import { fetchAllCursorPages, type CursorPage } from "@/shared/lib/fetch-all-cursor-pages";
 import { randomUUID } from "@/shared/lib/uuid";
@@ -59,7 +60,7 @@ export function useApprovalQueue(enabled: boolean) {
       if (me === undefined) return [];
       return page.items.filter((order) =>
         order.stages.some((stage) =>
-          stageApprovalSteps(stage).some((step) => step.actors.some((actor) => actor.id === me)),
+          stageApprovalSteps(stage).some((step) => step.actors.some((actor) => holdsSessionSlot(actor.id, me))),
         ),
       );
     },

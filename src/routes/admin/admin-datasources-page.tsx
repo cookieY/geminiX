@@ -588,7 +588,7 @@ function DatasourceFormDialog({
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {editing === null ? t("admin.datasources.createTitle") : t("admin.datasources.editTitle")}

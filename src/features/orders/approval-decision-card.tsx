@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { approvalStepTone, activeApprovalStepFor, ORDER_STATE_TONE_CLASS } from "@/features/orders/order-state";
+import { approvalStepTone, activeApprovalStepFor } from "@/features/orders/order-state";
+import { StateToneChip } from "@/features/orders/order-state-badge";
 import { useApprovalDecision } from "@/features/orders/use-approvals";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
@@ -11,7 +12,6 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/shared/components/ui/alert";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
@@ -186,9 +186,11 @@ export function ApprovalDecisionCard({
  * differentiate step states visually (approved/rejected/invalid/active). */
 export function ApprovalStepStateBadge({ state }: { state: string }) {
   const { t } = useTranslation();
+  // owner 2026-11-04（Sonner 08 落地）：步骤状态章与工单状态同一 tone 视觉。
   return (
-    <Badge variant="outline" className={`${ORDER_STATE_TONE_CLASS[approvalStepTone(state)]} text-xs`}>
-      {t(`approvals.stepState.${state}`, { defaultValue: state })}
-    </Badge>
+    <StateToneChip
+      tone={approvalStepTone(state)}
+      label={t(`approvals.stepState.${state}`, { defaultValue: state })}
+    />
   );
 }

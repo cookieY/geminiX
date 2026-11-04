@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent } from "@/shared/components/ui/sheet";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import { BookOpenText, Pencil, Puzzle, Plus, Trash2, Play, Lock, Search } from "lucide-react";
@@ -333,7 +334,11 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   layout tweens the survivors' reflow. Durations sit inside the
                   motion discipline (<=500ms, named curves) and only
                   opacity/transform move. */}
-              <div className="flex flex-col gap-3 overflow-y-auto">
+              {/* 滚动条统一（owner 2026-11-03）：条目列表用ScrollArea覆盖式
+                thumb。卡片行高由内容决定（min-h-[600px]），列表通常随卡撑高、
+                由页面滚动，与改造前行为一致。 */}
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="flex flex-col gap-3">
               <AnimatePresence initial={false} mode="popLayout">
                 {loading ? (
                   <motion.div
@@ -474,7 +479,8 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   ))
                 )}
               </AnimatePresence>
-              </div>
+                </div>
+              </ScrollArea>
             </div>
             <div className="flex flex-1 flex-col">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -608,8 +614,12 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
               </div>
             </div>
           </div>
+          {/* 滚动条统一（owner 2026-11-03）：备注Sheet滚动用ScrollArea覆盖式thumb；
+              gap-4/p-6移入内容层，面板自身不再滚（原overflow-y-auto为原生条）。 */}
           <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-            <SheetContent side="left" className="w-80 gap-4 overflow-y-auto p-6" data-testid="knowledge-notes-sheet">
+            <SheetContent side="left" className="w-80 p-0" data-testid="knowledge-notes-sheet">
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="flex flex-col gap-4 p-6">
               <InputGroup>
                 <InputGroupAddon>
                   <Search aria-hidden />
@@ -641,6 +651,8 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   </div>
                 ))}
               </div>
+                </div>
+              </ScrollArea>
             </SheetContent>
           </Sheet>
         </Card>
@@ -1031,7 +1043,7 @@ function ReviewInputDialog({
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {editing === null

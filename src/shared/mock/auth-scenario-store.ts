@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getServerDimensions } from "@/shared/mock/server-dimensions";
 
 /**
  * Authentication mock behaviors, layered next to the demo scenario dimension
@@ -23,10 +24,18 @@ export const MOCK_AUTH_BEHAVIORS: MockAuthBehavior[] = [
   "expired",
 ];
 
-const STORAGE_KEY = "yearning-mock-auth";
+export const AUTH_BEHAVIOR_STORAGE_KEY = "yearning-mock-auth";
 
 export function readStoredAuthBehavior(): MockAuthBehavior {
-  const value = localStorage.getItem(STORAGE_KEY);
+  // Node transport (vite dev middleware, 2026-11-04): shared server dims.
+  // Guard on `window` — Node ≥22 ships a global localStorage.
+  if (typeof window === "undefined") {
+    const server = getServerDimensions().authBehavior;
+    return MOCK_AUTH_BEHAVIORS.includes(server as MockAuthBehavior)
+      ? (server as MockAuthBehavior)
+      : "default";
+  }
+  const value = localStorage.getItem(AUTH_BEHAVIOR_STORAGE_KEY);
   return MOCK_AUTH_BEHAVIORS.includes(value as MockAuthBehavior)
     ? (value as MockAuthBehavior)
     : "default";
@@ -37,7 +46,7 @@ export const useMockAuthBehavior = create<{ behavior: MockAuthBehavior }>(() => 
 }));
 
 export function setMockAuthBehavior(behavior: MockAuthBehavior): void {
-  localStorage.setItem(STORAGE_KEY, behavior);
+  localStorage.setItem(AUTH_BEHAVIOR_STORAGE_KEY, behavior);
   useMockAuthBehavior.setState({ behavior });
   window.dispatchEvent(new CustomEvent("yearning:mock-auth"));
 }

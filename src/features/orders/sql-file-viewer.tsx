@@ -6,6 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/shared/components/ui/collapsible";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 /**
  * Frozen-SQL file viewer — shadcn-dashboard collapsible-08 "Expandable
@@ -103,11 +104,21 @@ export function SqlFileViewer({
           {t("orders.sql.lineCount", { count: lines.length })}
         </span>
       </div>
-      <div className="relative overflow-x-auto py-2 font-mono text-xs">
-        {renderLines(preview, 0)}
-        {rest.length > 0 && (
-          <CollapsibleContent>{renderLines(rest, PREVIEW_LINES)}</CollapsibleContent>
-        )}
+      {/* 滚动条统一（owner 2026-11-03）：SQL文件横向滚动用ScrollArea覆盖式
+          thumb。渐隐遮罩必须钉在容器边缘，不随内容横滚，因此放在ScrollArea
+          之外的relative层。
+          owner 2026-11-04：全部展开也不允许无限拉高编辑器 —— 视口高度上限
+          500px（暂定），超出部分在编辑器内部滚动；max-h按scroll-area.tsx
+          注释放viewport上才可靠夹紧。 */}
+      <div className="relative font-mono text-xs">
+        <ScrollArea className="py-2" viewportClassName="max-h-[500px]">
+          <div className="w-max">
+            {renderLines(preview, 0)}
+            {rest.length > 0 && (
+              <CollapsibleContent>{renderLines(rest, PREVIEW_LINES)}</CollapsibleContent>
+            )}
+          </div>
+        </ScrollArea>
         {!open && rest.length > 0 && (
           <div
             aria-hidden="true"

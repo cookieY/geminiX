@@ -1,4 +1,5 @@
 import { STATUS_TONE_CLASS } from "@/shared/lib/status-tone";
+import { holdsSessionSlot } from "@/shared/dev/mock-super";
 import type {
   ChangeOrder,
   ChangeOrderState,
@@ -184,7 +185,7 @@ export function activeApprovalStepFor(
     if (stage.state !== "approval_active") continue;
     for (const step of stageApprovalSteps(stage)) {
       if (step.state !== "active") continue;
-      if (step.actors.some((actor) => actor.id === userId)) {
+      if (step.actors.some((actor) => holdsSessionSlot(actor.id, userId))) {
         return {
           stageId: stage.id,
           stagePosition: stage.position,
@@ -215,7 +216,7 @@ export function myApprovalStepFor(
   let fallback: MyApprovalStep | null = null;
   for (const stage of order.stages) {
     for (const step of stageApprovalSteps(stage)) {
-      if (!step.actors.some((actor) => actor.id === userId)) continue;
+      if (!step.actors.some((actor) => holdsSessionSlot(actor.id, userId))) continue;
       const found: MyApprovalStep = {
         stageId: stage.id,
         stagePosition: stage.position,
@@ -261,7 +262,7 @@ export function frozenExecutorStageFor(
   if (order.state !== "stage_execution_pending") return null;
   const stage = order.stages.find((candidate) => candidate.state === "execution_pending");
   if (stage === undefined) return null;
-  return stage.execution_actors.some((actor) => actor.id === userId) ? stage : null;
+  return stage.execution_actors.some((actor) => holdsSessionSlot(actor.id, userId)) ? stage : null;
 }
 
 /** The stage holding the live execution schedule while the order is
@@ -280,7 +281,7 @@ export function scheduledStageFor(
     (candidate) => candidate.state === "scheduled" || candidate.state === "execution_pending",
   );
   if (stage === undefined) return null;
-  return stage.execution_actors.some((actor) => actor.id === userId) ? stage : null;
+  return stage.execution_actors.some((actor) => holdsSessionSlot(actor.id, userId)) ? stage : null;
 }
 
 /** Terminal execution-attempt states (backend domain.AttemptState.Terminal) —

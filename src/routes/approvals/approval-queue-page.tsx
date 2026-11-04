@@ -3,14 +3,14 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useApprovalQueue } from "@/features/orders/use-approvals";
-import { myApprovalStepFor, ORDER_STATE_TONE_CLASS, orderStateTone } from "@/features/orders/order-state";
+import { myApprovalStepFor } from "@/features/orders/order-state";
+import { OrderStateBadge } from "@/features/orders/order-state-badge";
 import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
 import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
@@ -44,13 +44,9 @@ function formatTimestamp(value: string): string {
 }
 
 function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | undefined }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const mine = myApprovalStepFor(order, userId);
-  const orderStateLabel = (state: string): string => {
-    const key = `orders.state.${state}`;
-    return i18n.exists(key) ? t(key) : state;
-  };
   // §18.60：已审批=我的冻结步骤带上我自己的决定（通过/拒绝）；
   // 待轮到/审批中/被跳过/失效都还不是"我审过"。
   const iHaveReviewed = mine !== null && (mine.stepState === "approved" || mine.stepState === "rejected");
@@ -70,13 +66,12 @@ function QueueRow({ order, userId }: { order: ChangeOrder; userId: string | unde
         {mine === null ? "—" : mine.datasourceName}
       </TableCell>
       <TableCell>
-        <Badge
-          variant="outline"
-          className={`text-xs ${ORDER_STATE_TONE_CLASS[orderStateTone(order.state)]}`}
+        {/* owner 2026-11-04：状态章统一 —— 队列本身就是基准风格，改用
+            OrderStateBadge 让全部工单表面只有这一处定义。 */}
+        <OrderStateBadge
+          state={order.state}
           data-testid={`approval-row-state-${order.id}`}
-        >
-          {orderStateLabel(order.state)}
-        </Badge>
+        />
       </TableCell>
       <TableCell>
         {order.submitter_display_name ?? order.submitter_username ?? "—"}

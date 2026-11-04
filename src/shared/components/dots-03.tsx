@@ -94,7 +94,7 @@ export function Dot({ className, followCursor = false, size = BASE_SIZE, "aria-l
         animate={bodyAnimation}
         transition={bodyTransition}
         aria-hidden="true"
-        className="size-full origin-center fill-teal-400 stroke-teal-400"
+        className="size-full origin-center fill-tone-teal stroke-tone-teal"
       >
         <circle cx="50" cy="50" r="32" />
         <circle cx="80.0" cy="50.0" r="11" />
@@ -122,7 +122,7 @@ export function Dot({ className, followCursor = false, size = BASE_SIZE, "aria-l
           <svg
             viewBox="0 0 10 10"
             aria-hidden="true"
-            className="size-3 fill-none stroke-gray-950"
+            className="size-3 fill-none stroke-foreground"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -132,7 +132,7 @@ export function Dot({ className, followCursor = false, size = BASE_SIZE, "aria-l
           <svg
             viewBox="0 0 10 10"
             aria-hidden="true"
-            className="size-3 fill-none stroke-gray-950"
+            className="size-3 fill-none stroke-foreground"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"

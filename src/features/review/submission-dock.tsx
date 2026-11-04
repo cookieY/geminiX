@@ -69,18 +69,8 @@ export function SubmissionDock(props: SubmissionDockProps) {
           <AlertDescription>{t("precheck.flowUpdated.description")}</AlertDescription>
         </Alert>
       )}
-      {reviewInProgress && (
-        <Alert
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          data-testid="review-in-progress"
-        >
-          <Spinner aria-hidden />
-          <AlertTitle>{t("precheck.progress.title")}</AlertTitle>
-          <AlertDescription>{t("precheck.progress.description")}</AlertDescription>
-        </Alert>
-      )}
+      {/* 审核进行中不再用独立Alert（owner 2026-11-03反馈：插入/移除会让
+          摘要卡每次预审±64px跳动）。进度并入常驻的readiness行，高度恒定。 */}
       {!props.flowUpdated && blockers.length > 0 && (
         <Alert variant="destructive" data-testid="gate-blockers">
           <ShieldAlert className="size-4" aria-hidden />
@@ -97,15 +87,33 @@ export function SubmissionDock(props: SubmissionDockProps) {
     </>
   );
 
+  /** The always-present readiness line doubles as the live progress slot, so
+   * the dock keeps a constant height while a precheck runs (see statusAlerts). */
+  const readinessText = reviewInProgress ? null
+    : decision.submitEnabled
+      ? t("precheck.submit.ready")
+      : decision.reasonKey !== null
+        ? t(decision.reasonKey)
+        : t("precheck.blocked.gate");
+
   const inner = (
     <>
       {statusAlerts}
       <p className="text-muted-foreground text-sm" data-testid="submission-readiness">
-        {decision.submitEnabled
-          ? t("precheck.submit.ready")
-          : decision.reasonKey !== null
-            ? t(decision.reasonKey)
-            : t("precheck.blocked.gate")}
+        {reviewInProgress ? (
+          <span
+            className="inline-flex items-center gap-2"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-testid="review-in-progress"
+          >
+            <Spinner className="size-4" aria-hidden />
+            {t("precheck.progress.title")}
+          </span>
+        ) : (
+          readinessText
+        )}
       </p>
       {panel ? (
         /* Interactive hover submit (shadcn button-19 block, verbatim owner
@@ -179,11 +187,20 @@ export function SubmissionDock(props: SubmissionDockProps) {
         {statusAlerts}
         <div className="flex items-center gap-3">
           <p className="text-muted-foreground flex-1 text-sm" data-testid="submission-readiness">
-            {decision.submitEnabled
-              ? t("precheck.submit.ready")
-              : decision.reasonKey !== null
-                ? t(decision.reasonKey)
-                : t("precheck.blocked.gate")}
+            {reviewInProgress ? (
+              <span
+                className="inline-flex items-center gap-2"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                data-testid="review-in-progress"
+              >
+                <Spinner className="size-4" aria-hidden />
+                {t("precheck.progress.title")}
+              </span>
+            ) : (
+              readinessText
+            )}
           </p>
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <Button

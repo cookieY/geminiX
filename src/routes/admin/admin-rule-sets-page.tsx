@@ -199,7 +199,7 @@ function RuleSetFormDialog({
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
       {/* §18.80：宽度自适应——全屏下 xl 过窄看不全组合信息，升到
           3xl/4xl 两档。 */}
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl lg:max-w-4xl">
+      <DialogContent className="sm:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {editing === null ? t("admin.ruleSets.createTitle") : t("admin.ruleSets.editTitle")}

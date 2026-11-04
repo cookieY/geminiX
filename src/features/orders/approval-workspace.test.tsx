@@ -483,6 +483,8 @@ describe("frozen review and comments on the order detail page", () => {
     await waitFor(() => {
       expect(screen.getByTestId("order-comment-item").textContent).toContain("请补充回滚说明");
     });
+    // Own comment: right-aligned chat row (owner page feedback 2026-11-04).
+    expect(screen.getByTestId("order-comment-item")).toHaveAttribute("data-align", "end");
 
     server.use(
       http.post("*/change-orders/:orderId/comments", () =>
@@ -500,5 +502,26 @@ describe("frozen review and comments on the order detail page", () => {
     const error = await screen.findByTestId("order-comment-error");
     expect(error.textContent).toContain("当前状态不允许该操作。");
     expect(error.textContent).toContain(REQUEST_ID);
+  });
+
+  it("sends on Enter and keeps Shift+Enter as a plain line break", async () => {
+    const user = userEvent.setup();
+    seedFixtureOrder(approvalOrder());
+    renderDetail("ad6f1a2b-0000-4000-8000-00000000f701");
+    await screen.findByTestId("order-comments");
+
+    // Enter submits the draft instead of inserting a newline (composer ruling
+    // 2026-11-04); the composer resets once the mutation settles.
+    await user.type(screen.getByTestId("order-comment-input"), "Enter 直接发送{enter}");
+    await waitFor(() => {
+      expect(screen.getByTestId("order-comment-item").textContent).toContain("Enter 直接发送");
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId<HTMLTextAreaElement>("order-comment-input").value).toBe("");
+    });
+
+    // Shift+Enter keeps editing — a wrong submit would have cleared the draft.
+    await user.type(screen.getByTestId("order-comment-input"), "第二{shift>}{enter}{/shift}行");
+    expect(screen.getByTestId<HTMLTextAreaElement>("order-comment-input").value).toBe("第二\n行");
   });
 });

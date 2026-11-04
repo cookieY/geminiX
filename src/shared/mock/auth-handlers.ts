@@ -1,7 +1,7 @@
 import { HttpResponse, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
-import { currentIdentity } from "@/shared/mock/identity-store";
+import { currentIdentity, mockSuperMode } from "@/shared/mock/identity-store";
 
 /**
  * Hand-written MSW handlers for the authentication endpoints, layered on the
@@ -263,7 +263,11 @@ export function authMockHandlers(): HttpHandler[] {
       if (behavior === "expired" || !hasSession(cookies)) {
         return unauthenticated();
       }
-      return userEnvelope(behavior === "admin");
+      // Super mode (owner 2026-11-03): the dev-browser session carries the
+      // admin capability on the default face too, without flipping the
+      // auth-behavior dimension (the expired face already returned above).
+      const isAdmin = behavior === "admin" || mockSuperMode();
+      return userEnvelope(isAdmin);
     }),
 
     // NOTE: GET /users/me/flows is owned by the stateful review fixture

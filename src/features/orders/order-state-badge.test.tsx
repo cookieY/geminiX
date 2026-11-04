@@ -1,61 +1,67 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import "@/shared/i18n";
 import type { ChangeOrderState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
-import { OrderStateBadge } from "./order-state-badge";
+import { ORDER_STATE_TONE_CLASS, orderStateTone, type OrderStateTone } from "./order-state";
+import { OrderStateBadge, StageStateBadge } from "./order-state-badge";
 
-/**
- * badge-07/08/09 三族动效分支（owner 2026-10-31；二轮裁定：辉光取消、
- * 动效保留）。jsdom 全局把 prefers-reduced-motion 钉为开启（setup.ts），
- * 组件在测试面默认走静态扁平章——这里 stub matchMedia 关闭
- * reduced-motion，验证真实浏览器走的动效分支：族色描边与图标色、
- * 逐字入场 span、辉光层已移除；中性族保持扁平。静态扁平路径（jsdom
- * 默认 reduced=true）由全仓既有工单断言隐式覆盖（motion按window缓存
- * matchMedia 结果，两类用例不能同文件共存）。
- */
-function stubMotionAllowed(): void {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    })),
-  );
-}
+/** owner 2026-11-04（Sonner 08 落地）：状态章 = sonner-08 tone 视觉 ——
+ * 图标置于着色圆（各 tone 的 /15 底）内 + 族色 12% 底/30% 描边章体。 */
+const TONE_CIRCLE: Record<OrderStateTone, string> = {
+  emerald: "bg-tone-emerald/15",
+  teal: "bg-tone-teal/15",
+  sky: "bg-tone-sky/15",
+  indigo: "bg-tone-indigo/15",
+  violet: "bg-tone-violet/15",
+  amber: "bg-tone-amber/15",
+  orange: "bg-tone-orange/15",
+  rose: "bg-tone-rose/15",
+  red: "bg-tone-red/15",
+  stone: "bg-foreground/10",
+};
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("OrderStateBadge animated families (badge-07/08/09, glow removed)", () => {
-  it.each([
-    ["completed", "border-teal-400", "text-teal-400"],
-    ["stage_approval_active", "border-amber-300", "text-amber-300"],
-    ["failed", "border-red-500", "text-red-500"],
-  ])("%s keeps family tint, icon colour and letter stagger without glow", (state, border, icon) => {
-    stubMotionAllowed();
-    const { container } = render(<OrderStateBadge state={state as ChangeOrderState} />);
+describe("OrderStateBadge (sonner-08 tone chip)", () => {
+  it("renders the label in a tone capsule with the icon in a tinted circle", () => {
+    const state = "stage_approval_active" as ChangeOrderState;
+    const { container } = render(<OrderStateBadge state={state} />);
     const badge = container.querySelector('[data-slot="badge"]');
     expect(badge).not.toBeNull();
-    // 二轮裁定：辉光层（radial-gradient/blur/backdrop）全部移除。
-    expect(badge?.className ?? "").not.toContain("backdrop-blur");
-    expect(badge?.querySelectorAll("[style*='radial-gradient']")).toHaveLength(0);
-    // 族色描边与图标色保留。
-    expect(badge?.className).toContain(border);
-    expect(badge?.querySelector(`.${icon}`)).not.toBeNull();
-    // 逐字入场：标签被拆成多个 motion span。
-    expect(badge?.querySelectorAll("span").length).toBeGreaterThan(3);
+    expect(badge?.className).toContain("rounded-full");
+    expect(badge?.className).toContain(ORDER_STATE_TONE_CLASS[orderStateTone(state)]);
+    expect(screen.getByText("阶段审批中")).toBeInTheDocument();
+    // Sonner-08 grammar: one icon circle (aria-hidden) carrying the tone tint,
+    // one icon inside, label as the only other content.
+    expect(badge?.querySelectorAll("span")).toHaveLength(1);
+    const circle = badge?.querySelector("span[aria-hidden='true']");
+    expect(circle?.className).toContain(TONE_CIRCLE.violet);
+    expect(circle?.querySelector("svg")).not.toBeNull();
   });
 
-  it("neutral paperwork states stay flat", () => {
-    stubMotionAllowed();
-    const { container } = render(<OrderStateBadge state="withdrawn" />);
+  it.each([
+    ["completed", "emerald"],
+    ["running", "indigo"],
+    ["failed", "red"],
+    ["withdrawn", "stone"],
+  ] as const)("maps %s onto its %s tone with the circle tint", (state, tone) => {
+    const { container } = render(<OrderStateBadge state={state} />);
     const badge = container.querySelector('[data-slot="badge"]');
-    expect(badge?.className ?? "").not.toContain("backdrop-blur");
+    expect(badge?.className).toContain(ORDER_STATE_TONE_CLASS[tone]);
+    expect(badge?.querySelector("span[aria-hidden='true']")?.className).toContain(TONE_CIRCLE[tone]);
+    expect(badge?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("forwards extra props (data-testid) for table call sites", () => {
+    render(<OrderStateBadge state="submitted" data-testid="row-state" />);
+    expect(screen.getByTestId("row-state")).toHaveTextContent("已提交");
+  });
+});
+
+describe("StageStateBadge keeps the same sonner-08 baseline", () => {
+  it("renders the stage-state tone chip", () => {
+    const { container } = render(<StageStateBadge state="execution_pending" />);
+    const badge = container.querySelector('[data-slot="badge"]');
+    expect(badge?.className).toContain(ORDER_STATE_TONE_CLASS.amber);
+    expect(badge?.querySelector("span[aria-hidden='true']")?.className).toContain(TONE_CIRCLE.amber);
+    expect(screen.getByText("等待执行")).toBeInTheDocument();
   });
 });

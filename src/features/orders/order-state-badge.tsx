@@ -1,12 +1,22 @@
-import { motion, useReducedMotion, type Variants } from "motion/react";
-import { CheckCircle, Loader, XCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  BellRing,
+  CircleCheck,
+  Clock,
+  Info,
+  Loader2,
+  OctagonAlert,
+  TriangleAlert,
+} from "lucide-react";
 import type { ChangeOrderState, StageState } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/shared/components/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import {
   ORDER_STATE_TONE_CLASS,
   orderStateTone,
   stageStateTone,
+  type OrderStateTone,
 } from "./order-state";
 
 /**
@@ -14,139 +24,99 @@ import {
  * the state string itself stays the single source of truth (workorder PRD §4
  * 聚合状态仅用于列表展示).
  *
- * owner ruling 2026-10-31（badge-07/08/09 三块落地，二轮裁定）：三族动效
- * 徽章保留——成功（teal描边+对勾弹入）、进行中（amber描边+旋转加载）、
- * 失败（red描边+叉号弹入），逐字上浮入场且 state 变化时整章重播；辉光层
- * （三层radial-gradient+blur+backdrop）按裁定取消，只留族色描边与图标
- * 色。静默文书态（withdrawn/cancelled/voided）保持扁平中性章。
- * reduced-motion（含jsdom测试面）渲染静态扁平章，文本断言不受motion
- * 初始opacity影响。
+ * owner ruling 2026-11-04（Sonner 08 落地）：工单状态章采用 shadcn-dashboard
+ * sonner-08 块的 tone 视觉（src/shared/components/shadcn-dashboard/sonner/）——
+ * 图标置于着色圆（/15 底）内，章体沿用族色 12% 底 + 30% 描边（STATUS_TONE_CLASS），
+ * 图标随章文字走族色。tone 与图标一一对应，沿用块的图标语义：
+ *   CircleCheck 完成 · Clock 排期 · Info 已提交 · Loader2 执行中（旋转）
+ *   BellRing 待审批/文书 · TriangleAlert 等待执行/结果不明 · OctagonAlert 失败恶果
+ * 早于它的两条裁定（2026-10-31 三族动效章、2026-11-04 审批队列扁平章）均由本
+ * 版本替代；审批队列仍消费同一组件，全仓工单状态只有这一处定义。
  */
 
-const LETTER_VARIANTS: Variants = {
-  hidden: { y: -14, opacity: 0 },
-  visible: (i: number) => ({
-    y: 0,
-    opacity: 1,
-    transition: { delay: i * 0.038, duration: 0.35, ease: [0.215, 0.61, 0.355, 1] },
-  }),
+/** Sonner-08 tone grammar: one icon per order tone (see ruling above). */
+const TONE_ICON: Record<OrderStateTone, LucideIcon> = {
+  emerald: CircleCheck,
+  teal: Clock,
+  sky: Info,
+  indigo: Loader2,
+  violet: BellRing,
+  amber: TriangleAlert,
+  orange: TriangleAlert,
+  rose: OctagonAlert,
+  red: OctagonAlert,
+  stone: BellRing,
 };
 
-const MotionBadge = motion.create(Badge);
+/** Tinted circle behind the icon (the block's `badge` layer, /15 tint). */
+const TONE_ICON_CIRCLE: Record<OrderStateTone, string> = {
+  emerald: "bg-tone-emerald/15",
+  teal: "bg-tone-teal/15",
+  sky: "bg-tone-sky/15",
+  indigo: "bg-tone-indigo/15",
+  violet: "bg-tone-violet/15",
+  amber: "bg-tone-amber/15",
+  orange: "bg-tone-orange/15",
+  rose: "bg-tone-rose/15",
+  red: "bg-tone-red/15",
+  stone: "bg-foreground/10",
+};
 
-type OrderStateFamily = "success" | "pending" | "failed" | "neutral";
-
-export function orderStateFamily(state: ChangeOrderState): OrderStateFamily {
-  switch (state) {
-    case "completed":
-      return "success";
-    case "rejected":
-    case "failed":
-    case "invalid":
-    case "partial_failed":
-    case "partial_cancelled":
-    case "withdrawn_after_partial_execution":
-    case "result_unknown":
-    case "missed_schedule":
-    case "blocked_datasource_unavailable":
-      return "failed";
-    case "withdrawn":
-    case "cancelled":
-    case "voided":
-      return "neutral";
-    default:
-      // submitted / stage_approval_active / stage_execution_pending /
-      // scheduled / running —— 一切在途。
-      return "pending";
-  }
+/** The sonner-08 tone chip shared by every order-surface state badge. */
+export function StateToneChip({
+  tone,
+  label,
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof Badge>, "children"> & {
+  tone: OrderStateTone;
+  label: string;
+}) {
+  const Icon = TONE_ICON[tone];
+  return (
+    <Badge
+      variant="outline"
+      className={cn(ORDER_STATE_TONE_CLASS[tone], className)}
+      {...props}
+    >
+      <span
+        className={cn(
+          "flex size-4 shrink-0 items-center justify-center rounded-full",
+          TONE_ICON_CIRCLE[tone],
+        )}
+        aria-hidden="true"
+      >
+        <Icon
+          className={cn(
+            "size-2.5",
+            tone === "indigo" && "animate-spin motion-reduce:animate-none",
+          )}
+        />
+      </span>
+      {label}
+    </Badge>
+  );
 }
 
-/** 三族描边与图标色（badge-07/08/09 色值；辉光层已按二轮裁定移除）。 */
-const FAMILY_STYLE: Record<Exclude<OrderStateFamily, "neutral">, {
-  border: string;
-  iconClassName: string;
-}> = {
-  success: {
-    border: "border-teal-400/25",
-    iconClassName: "text-teal-400",
-  },
-  pending: {
-    border: "border-amber-300/25",
-    iconClassName: "text-amber-300",
-  },
-  failed: {
-    border: "border-red-500/25",
-    iconClassName: "text-red-500",
-  },
-};
-
-export function OrderStateBadge({ state }: { state: ChangeOrderState }) {
+export function OrderStateBadge({
+  state,
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof Badge>, "children"> & {
+  state: ChangeOrderState;
+}) {
   const { t } = useTranslation();
-  const label = t(`orders.state.${state}`);
-  const family = orderStateFamily(state);
-  const reduced = useReducedMotion();
-
-  if (family === "neutral" || reduced) {
-    return (
-      <Badge variant="outline" className={ORDER_STATE_TONE_CLASS[orderStateTone(state)]}>
-        {label}
-      </Badge>
-    );
-  }
-
-  const style = FAMILY_STYLE[family];
-  const Icon = family === "success" ? CheckCircle : family === "failed" ? XCircle : Loader;
-
   return (
-    <MotionBadge
-      variant="outline"
-      className={`rounded-full gap-2 px-3 py-2 text-foreground text-sm font-medium leading-none ${style.border}`}
-    >
-      {family === "pending" ? (
-        <motion.span
-          aria-hidden
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-          className={`flex h-4 w-4 shrink-0 items-center justify-center ${style.iconClassName}`}
-        >
-          <Icon size={16} strokeWidth={2.5} />
-        </motion.span>
-      ) : (
-        <motion.span
-          aria-hidden
-          initial={{ scale: 0.35, opacity: 0, rotate: -25 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ duration: 0.32, ease: [0.175, 0.885, 0.32, 1.275] }}
-          className="flex h-4 w-4 shrink-0 items-center justify-center"
-        >
-          <Icon size={16} strokeWidth={2} className={style.iconClassName} />
-        </motion.span>
-      )}
-      {/* key=label：state 变化即重挂载，逐字入场随之重播——之前只在
-          首挂载播一次，状态切换时看起来「动效没了」。 */}
-      <span key={label} className="inline-flex overflow-hidden leading-none">
-        {label.split("").map((char, index) => (
-          <motion.span
-            key={index}
-            custom={index}
-            variants={LETTER_VARIANTS}
-            initial="hidden"
-            animate="visible"
-            className="inline-block whitespace-pre leading-normal"
-          >
-            {char}
-          </motion.span>
-        ))}
-      </span>
-    </MotionBadge>
+    <StateToneChip
+      tone={orderStateTone(state)}
+      label={t(`orders.state.${state}`)}
+      className={className}
+      {...props}
+    />
   );
 }
 
 export function StageStateBadge({ state }: { state: StageState }) {
   const { t } = useTranslation();
-  return (
-    <Badge variant="outline" className={ORDER_STATE_TONE_CLASS[stageStateTone(state)]}>
-      {t(`orders.stageState.${state}`)}
-    </Badge>
-  );
+  return <StateToneChip tone={stageStateTone(state)} label={t(`orders.stageState.${state}`)} />;
 }

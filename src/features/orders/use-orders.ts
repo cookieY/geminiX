@@ -18,6 +18,7 @@ import {
 } from "@/api/generated/client/change-orders/change-orders";
 import { getReviewEventClient, useDomainEvent } from "@/shared/events/review-event-client";
 import { useSession } from "@/features/auth/session-provider";
+import { holdsSessionSlot } from "@/shared/dev/mock-super";
 import { randomUUID } from "@/shared/lib/uuid";
 
 /**
@@ -130,7 +131,9 @@ export function useMyChangeOrders(
       }
       const page = await readPage(paging?.after);
       return {
-        items: page.items.filter((order) => order.submitter_user_id === me),
+        // 我的工单 submitter-scope（§5.2）：演示super会话同时持有全部身份槽
+        //（shared/dev/mock-super），此时展示全部关系内工单便于连测。
+        items: page.items.filter((order) => holdsSessionSlot(order.submitter_user_id, me)),
         page: page.page,
       };
     },

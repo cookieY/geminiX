@@ -44,6 +44,9 @@ const ALLOWED = {
   "shared/mock/auth-scenario-store.ts": ["localStorage"],
   "shared/mock/identity-store.ts": ["localStorage"],
   "shared/mock/settings-bridge.ts": ["localStorage"],
+  // Dev-browser super-session switch (owner 2026-11-03): reads the
+  // yearning-mock-super opt-in/out flag; never stores SQL, evidence or tokens.
+  "shared/dev/mock-super.ts": ["localStorage"],
 };
 
 const STORAGE_PATTERNS = [

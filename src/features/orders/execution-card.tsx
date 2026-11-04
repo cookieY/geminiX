@@ -62,6 +62,7 @@ import {
   TableRow,
 } from "@/shared/components/ui/table";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { holdsSessionSlot } from "@/shared/dev/mock-super";
 import {
   CalendarClock,
   CircleAlert,
@@ -530,7 +531,7 @@ function VerificationCard({ order, attempt, onRecover }: {
   // terminalizes the order and closes the path — backend answers 1010 after).
   if (order.state !== "result_unknown" || attempt.state !== "result_unknown") return null;
   const stageOfAttempt = order.stages.find((candidate) => candidate.id === attempt.stage_id) ?? null;
-  const isExecutor = stageOfAttempt?.execution_actors.some((actor) => actor.id === session.user?.id) ?? false;
+  const isExecutor = stageOfAttempt?.execution_actors.some((actor) => holdsSessionSlot(actor.id, session.user?.id)) ?? false;
 
   if (!isExecutor || stageOfAttempt === null) {
     return (
@@ -719,7 +720,7 @@ function ExecutionAttemptCard({ order, attemptId, onRecover }: {
   const attempt: ExecutionAttempt = attemptQuery.data;
   const live = !ATTEMPT_TERMINAL_STATES.has(attempt.state);
   const stageOfAttempt = order.stages.find((candidate) => candidate.id === attempt.stage_id) ?? null;
-  const isExecutor = stageOfAttempt?.execution_actors.some((actor) => actor.id === session.user?.id) ?? false;
+  const isExecutor = stageOfAttempt?.execution_actors.some((actor) => holdsSessionSlot(actor.id, session.user?.id)) ?? false;
 
   const submitCancel = (): void => {
     cancel.mutate(cancelReason.trim(), {

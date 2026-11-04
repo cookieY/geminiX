@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ClipboardCopy } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 /**
  * Finding rich text (owner ruling 2026-10-30, readability pass):
@@ -92,12 +93,16 @@ function FindingCodeBlock({ code }: { code: string }) {
   return (
     <span className="my-1 block">
       <span className="bg-muted flex items-start justify-between gap-2 rounded-md p-2 pr-1">
-        <code
-          className="block overflow-x-auto font-mono text-xs whitespace-pre [overflow-wrap:anywhere]"
-          data-testid="finding-block-code"
-        >
-          {code}
-        </code>
+        {/* 滚动条统一（owner 2026-11-03）：SQL片段横向滚动用ScrollArea覆盖式
+            thumb（原overflow-x-auto为原生条）。whitespace-pre保持不换行。 */}
+        <ScrollArea className="min-w-0 flex-1">
+          <code
+            className="block font-mono text-xs whitespace-pre"
+            data-testid="finding-block-code"
+          >
+            {code}
+          </code>
+        </ScrollArea>
         <Button
           variant="ghost"
           size="icon-sm"

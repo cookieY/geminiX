@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/shared/components/ui/sheet";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { ClipboardCopy, Eye, ShieldAlert } from "lucide-react";
 import { describeError } from "@/shared/api/error-display";
 
@@ -146,7 +147,11 @@ export function EvidenceSheet({ findings, open, onOpenChange }: EvidenceSheetPro
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg" data-testid="evidence-sheet">
+      {/* 滚动条统一（owner 2026-11-03）：Sheet面板与JSON片段滚动都用
+          ScrollArea覆盖式thumb（原overflow为原生条）。 */}
+      <SheetContent className="sm:max-w-lg" data-testid="evidence-sheet">
+        <ScrollArea className="min-h-0 flex-1">
+          <div>
         <SheetHeader>
           <SheetTitle>{t("precheck.evidence.title")}</SheetTitle>
           <SheetDescription>{t("precheck.evidence.description")}</SheetDescription>
@@ -193,9 +198,11 @@ export function EvidenceSheet({ findings, open, onOpenChange }: EvidenceSheetPro
                         {t(`precheck.evidence.fact.${entry.fact_status}`)}
                       </span>
                     </header>
-                    <pre className="bg-muted mt-2 overflow-x-auto rounded-md p-2 text-xs">
-                      {JSON.stringify(entry.normalized_fact, null, 2)}
-                    </pre>
+                    <ScrollArea className="bg-muted mt-2 rounded-md">
+                      <pre className="p-2 text-xs whitespace-pre">
+                        {JSON.stringify(entry.normalized_fact, null, 2)}
+                      </pre>
+                    </ScrollArea>
                     {entry.has_raw_payload && expiresAt != null && (
                       <footer className="mt-2 space-y-2">
                         <p className="text-muted-foreground text-xs">
@@ -220,9 +227,11 @@ export function EvidenceSheet({ findings, open, onOpenChange }: EvidenceSheetPro
                               <ShieldAlert className="size-3.5" aria-hidden />
                               {revealedRaw.watermark}
                             </p>
-                            <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
-                              {revealedRaw.text}
-                            </pre>
+                            <ScrollArea className="bg-muted rounded-md">
+                              <pre className="p-2 text-xs whitespace-pre">
+                                {revealedRaw.text}
+                              </pre>
+                            </ScrollArea>
                             <Button
                               variant="outline"
                               size="sm"
@@ -244,6 +253,8 @@ export function EvidenceSheet({ findings, open, onOpenChange }: EvidenceSheetPro
             </div>
           ))}
         </div>
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

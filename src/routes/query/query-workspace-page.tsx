@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Label } from "@/shared/components/ui/label";
 import { Progress } from "@/shared/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -432,7 +433,9 @@ export default function QueryWorkspacePage() {
                 </div>
               </TabsContent>
               <TabsContent value="history" className="mt-0">
-                <div className="h-[calc(100vh-18rem)] overflow-y-auto">
+                {/* 滚动条统一（owner 2026-11-03）：历史列表用ScrollArea覆盖式thumb。 */}
+                <ScrollArea className="h-[calc(100vh-18rem)]">
+                  <div>
                   {history.length === 0 && (
                     <p className="text-muted-foreground p-3 text-xs">{t("query.workspace.historyEmpty")}</p>
                   )}
@@ -451,7 +454,8 @@ export default function QueryWorkspacePage() {
                       <span className={entry.failed ? "text-destructive" : ""}>{entry.sql}</span>
                     </button>
                   ))}
-                </div>
+                  </div>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </CardHeader>
@@ -603,7 +607,10 @@ export default function QueryWorkspacePage() {
             </DialogTitle>
             <DialogDescription>{t("query.structure.description")}</DialogDescription>
           </DialogHeader>
-          <div className="max-h-96 overflow-y-auto" data-testid="query-table-structure">
+          {/* 滚动条统一（owner 2026-11-03）：结构表滚动用ScrollArea覆盖式
+              thumb；高度帽在viewport上（见scroll-area.tsx注释）。 */}
+          <ScrollArea data-testid="query-table-structure" viewportClassName="max-h-96">
+            <div>
             {structureQuery.isPending && <LoadingState variant="table" columns={8} />}
             {structureQuery.error !== null && <p className="text-destructive p-2 text-xs">{t("query.tree.loadFailed")}</p>}
             {structureQuery.data !== undefined && (
@@ -647,7 +654,8 @@ export default function QueryWorkspacePage() {
                 </TableBody>
               </Table>
             )}
-          </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

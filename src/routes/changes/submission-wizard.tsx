@@ -67,6 +67,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
 import { MarkdownEditor } from "@/shared/components/markdown-editor";
 import {
@@ -291,6 +292,8 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
           testId="wizard-flow-search"
         />
       </div>
+      {/* 高度帽在viewport上（max-h挂root会在auto链里失效，见
+          scroll-area.tsx注释）。 */}
       {visible.length === 0 ? (
         <div className="rounded-lg border border-dashed">
           <EmptyState
@@ -300,7 +303,8 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
           />
         </div>
       ) : (
-        <div className="grid max-h-[380px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+        <ScrollArea className="max-h-[380px]" viewportClassName="max-h-[380px]">
+          <div className="grid gap-3 pb-px sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((flow) => {
             const selected = flow.id === selectedFlowId;
             return (
@@ -333,7 +337,8 @@ function FlowPicker({ flows, selectedFlowId, onSelect }: FlowPickerProps) {
               </button>
             );
           })}
-        </div>
+          </div>
+        </ScrollArea>
       )}
     </div>
   );
@@ -1607,7 +1612,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          {/* min-h（owner 2026-11-03反馈：点击AI预审后整个页面抖动）：预审结果
+              区在 空→加载中→运行中 之间高度在~230-280px间跳动，固定最小高度后
+              这些状态切换不再推挤页面；终态结果表仍可继续向下生长。 */}
+          <div className="flex min-h-[280px] flex-col gap-3">
             <h3 className="text-sm font-semibold">{t("precheck.wizard.resultsCard")}</h3>
             <Tabs
               value={resultsTab}
@@ -1708,16 +1716,26 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             {renderSqlSection()}
           </main>
           <aside
-            className="col-span-12 flex flex-col gap-[30px] lg:col-span-4 lg:sticky lg:top-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
+            // 滚动条统一（owner 2026-11-03：所有的滚动条用ScrollArea组件）：
+            // sticky列改用覆盖式thumb。高度帽放在viewport上（auto链里root的
+            // max-h无法夹紧viewport，见scroll-area.tsx注释）。
+            className="col-span-12 flex flex-col lg:col-span-4 lg:sticky lg:top-0"
             aria-label={t("precheck.wizard.summaryTitle")}
           >
-            <SqlFileDropzone
-              disabled={adoptionPending}
-              onOpen={() => { setDroppedFile(null); setImportOpen(true); }}
-              onDropFile={(file) => { setDroppedFile(file); setImportOpen(true); }}
-            />
-            {renderSummaryCard()}
-            <FlowTimelineCard flow={flow} />
+            <ScrollArea
+              className="min-h-0 flex-1"
+              viewportClassName="lg:max-h-[calc(100vh-3rem)]"
+            >
+              <div className="flex flex-col gap-[30px]">
+                <SqlFileDropzone
+                  disabled={adoptionPending}
+                  onOpen={() => { setDroppedFile(null); setImportOpen(true); }}
+                  onDropFile={(file) => { setDroppedFile(file); setImportOpen(true); }}
+                />
+                {renderSummaryCard()}
+                <FlowTimelineCard flow={flow} />
+              </div>
+            </ScrollArea>
           </aside>
         </div>
 

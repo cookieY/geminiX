@@ -159,3 +159,6 @@ pnpm-lock.yaml
 tests/performance/
 tests/e2e-real/.auth/
 tests/contract/.reports/
+
+# Playwright MCP browser-session artifacts (snapshots, console logs)
+.playwright-mcp/

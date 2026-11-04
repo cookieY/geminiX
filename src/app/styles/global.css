@@ -114,6 +114,7 @@
   --color-tone-rose: var(--tone-rose);
   --color-tone-red: var(--tone-red);
   --color-tone-stone: var(--tone-stone);
+  --color-comment-own: var(--comment-own);
   --color-chart-brand: var(--chart-brand);
   --color-chart-brand-soft: var(--chart-brand-soft);
   --color-chart-sky: var(--chart-sky);
@@ -232,6 +233,11 @@
   --tone-rose: oklch(0.52 0.16 15);
   --tone-red: oklch(0.46 0.245 27.325);
   --tone-stone: oklch(0.44 0.01 260);
+  /* Own-message chat bubble (owner page feedback 2026-11-04): #008aff
+     requested for the author's own comments, then deepened to #0070e0 the
+     same day (owner ruling) so white bubble text meets WCAG 2.1 AA (4.78:1,
+     was 3.5:1); kept identical in both themes. */
+  --comment-own: #0070e0;
   /* Brand-adjacent chart accents for the preview dashboard (owner request
      2026-10-23): a violet on the wordmark's hue, its lighter magenta
      neighbour, and a cool sky for secondary series. Decoration only, so no
@@ -313,6 +319,8 @@
   --tone-rose: oklch(0.75 0.15 15);
   --tone-red: oklch(0.704 0.191 22.216);
   --tone-stone: oklch(0.72 0.01 260);
+  /* Own-message chat bubble: see :root — same AA blue in the dark theme. */
+  --comment-own: #0070e0;
   --chart-series-1: var(--chart-1);
   --chart-series-2: var(--chart-2);
   --chart-series-3: var(--chart-3);

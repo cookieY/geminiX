@@ -13,8 +13,22 @@ async function bootstrap(): Promise<void> {
   // (code-generation-policy.json mock_layer): a request that escapes to the
   // real server would be judged anonymous and flip the app to /login.
   if (import.meta.env.VITE_ENABLE_MOCK === "true") {
-    const module = await import("@/shared/mock/browser");
-    await module.startMockWorker();
+    // 方案一 (owner 2026-11-04): on the vite dev server the mock world runs
+    // in-process (msw/node middleware) and every tab shares it. The browser
+    // worker stays for preview/e2e builds and VITE_MOCK_TRANSPORT=worker.
+    const nodeTransport =
+      import.meta.env.DEV && import.meta.env.VITE_MOCK_TRANSPORT !== "worker";
+    if (nodeTransport) {
+      const client = await import("@/shared/mock/client-dimensions");
+      // Remove any previously registered worker so it cannot answer first,
+      // then pull the shared dimensions so this tab's client-side gating
+      // matches the server world.
+      await client.unregisterMockWorker();
+      await client.syncDimensionsFromServer();
+    } else {
+      const module = await import("@/shared/mock/browser");
+      await module.startMockWorker();
+    }
   }
   // Dev-only UI annotation helper (RCP-20261103-FE-AGENTATION-DEV-TOOL).
   // import.meta.env.DEV is statically false in production builds, so Vite

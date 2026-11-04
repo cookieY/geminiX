@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { holdsSessionSlot } from "@/shared/dev/mock-super";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +66,7 @@ export default function OrderDetailPage() {
   // Work-order PRD §5: only the submitter may withdraw or void — frozen
   // reviewers/executors can read the order but never see the lifecycle
   // buttons (the backend keeps the authoritative 403).
-  const isSubmitter = session.user?.id === order?.submitter_user_id;
+  const isSubmitter = holdsSessionSlot(order?.submitter_user_id ?? "", session.user?.id) && order !== null;
   // owner ruling 2026-10-31（自审自执按钮分流）：同一人既是提交人又是
   // 当前冻结审批人时，动作集按入口上下文二选一——从审核队列
   // （/approvals/orders/:id）进入只有通过/拒绝，从我的工单
@@ -230,7 +231,7 @@ export default function OrderDetailPage() {
               const isExecutor =
                 pendingStage !== undefined &&
                 session.user !== null &&
-                pendingStage.execution_actors.some((actor) => actor.id === session.user?.id);
+                pendingStage.execution_actors.some((actor) => holdsSessionSlot(actor.id, session.user?.id));
               if (isExecutor || pendingStage === undefined) return null;
               const names = pendingStage.execution_actors.map((actor) => actor.display_name).join("、");
               return (
@@ -259,7 +260,7 @@ export default function OrderDetailPage() {
           </Card>
         </div>
 
-        <aside className="col-span-12 flex min-w-0 flex-col gap-[30px] lg:col-span-4">
+        <aside className="col-span-12 flex min-w-0 flex-col gap-[30px] lg:max-w-[460px] lg:col-span-4">
           <Card data-testid="order-stages">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -268,7 +269,7 @@ export default function OrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
-              <ApprovalProgress stages={order.stages} />
+              <ApprovalProgress order={order} />
               <ol className="flex flex-col">
                 {order.stages.map((stage, index) => {
                   const steps = stageApprovalSteps(stage);

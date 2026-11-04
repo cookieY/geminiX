@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getServerDimensions } from "@/shared/mock/server-dimensions";
 
 /**
  * Mock scenario switch shared by vitest (node MSW server) and Playwright
@@ -58,17 +59,23 @@ interface MockScenarioStore {
   setScenario: (scenario: MockScenario) => void;
 }
 
-const STORAGE_KEY = "yearning-mock-scenario";
+export const SCENARIO_STORAGE_KEY = "yearning-mock-scenario";
 
 export function readStoredScenario(): MockScenario {
-  const value = localStorage.getItem(STORAGE_KEY);
+  // Node transport (vite dev middleware, 2026-11-04): shared server dims.
+  // Guard on `window` — Node ≥22 ships a global localStorage.
+  if (typeof window === "undefined") {
+    const server = getServerDimensions().scenario;
+    return MOCK_SCENARIOS.includes(server as MockScenario) ? (server as MockScenario) : "ready";
+  }
+  const value = localStorage.getItem(SCENARIO_STORAGE_KEY);
   return MOCK_SCENARIOS.includes(value as MockScenario) ? (value as MockScenario) : "ready";
 }
 
 export const useMockScenario = create<MockScenarioStore>((set) => ({
   scenario: "ready",
   setScenario: (scenario) => {
-    localStorage.setItem(STORAGE_KEY, scenario);
+    localStorage.setItem(SCENARIO_STORAGE_KEY, scenario);
     set({ scenario });
     window.dispatchEvent(new CustomEvent("yearning:mock-scenario"));
   },

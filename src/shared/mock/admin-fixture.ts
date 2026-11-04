@@ -4,6 +4,7 @@ import type {
   NotificationRule, ExecutionWindow } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
+import { mockSuperMode } from "@/shared/mock/identity-store";
 
 /** Test-only latency knob for e2e feedback assertions; 0 in every other run. */
 declare global {
@@ -887,6 +888,84 @@ function seededSettingsFor(ns: string): SettingsValue {
       updated_at: catalogTs,
     });
   }
+  seedVolumeFixtures();
+}
+
+// ---- Volume rows (owner 2026-11-03: 大批量数据下的表现) --------------------
+//
+// Browser-only synthetic volume: fill the users table to 50 and add 12 more
+// datasources so the admin tables, search and pagination run against bulk
+// data. vitest keeps the deterministic minimal world (MODE=test guard), and
+// the rows are seeded LAST so insertion-order paging keeps every baseline
+// row on page 1 in the dev browser too.
+function seedVolumeFixtures(): void {
+  if (import.meta.env.MODE === "test") return;
+  const base = now();
+  const surnames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴"];
+  const given = ["伟", "芳", "娜", "敏", "静", "磊", "军", "洋", "勇", "艳", "杰", "涛"];
+  let serial = 1;
+  while (world.users.size < 50) {
+    const index = serial;
+    const id = `a0000000-0000-4000-8000-0000000${String(1000 + index).padStart(4, "0")}`;
+    if (!world.users.has(id)) {
+      const created = new Date(Date.parse(base) + index * 3600 * 1000)
+        .toISOString().replace(/\.\d{3}Z$/, "Z");
+      world.users.set(id, {
+        id,
+        username: `qa-dba-${String(index).padStart(2, "0")}`,
+        display_name: `${surnames[index % surnames.length] ?? ""}${given[(index * 3) % given.length] ?? ""}`,
+        email: index % 2 === 0 ? `qa-dba-${String(index).padStart(2, "0")}@yearning.test` : null,
+        is_builtin_admin: false,
+        version: 1,
+        created_at: created,
+        updated_at: created,
+        activeOrderCount: index % 9 === 0 ? (index % 5) + 1 : 0,
+        templateReferenceCount: index % 11 === 0 ? 1 : 0,
+      });
+    }
+    serial += 1;
+  }
+  const volumeDatasources = [
+    { name: "dev-orders-mysql", engine: "mysql" }, { name: "dev-users-mysql", engine: "mysql" },
+    { name: "uat-orders-mysql", engine: "mysql" }, { name: "uat-risk-pg", engine: "postgresql" },
+    { name: "perf-orders-mysql", engine: "mysql" }, { name: "perf-analytics-pg", engine: "postgresql" },
+    { name: "archive-orders-mysql", engine: "mysql" }, { name: "archive-logs-pg", engine: "postgresql" },
+    { name: "bi-dw-pg", engine: "postgresql" }, { name: "bi-mart-pg", engine: "postgresql" },
+    { name: "mq-messages-mysql", engine: "mysql" }, { name: "inventory-mysql", engine: "mysql" },
+  ] as const;
+  volumeDatasources.forEach((entry, index) => {
+    const id = `a0000000-0000-4000-8000-0000000${String(2000 + index).padStart(4, "0")}`;
+    if (world.datasources.has(id)) return;
+    const created = new Date(Date.parse(base) + (50 + index) * 3600 * 1000)
+      .toISOString().replace(/\.\d{3}Z$/, "Z");
+    world.datasources.set(id, {
+      id,
+      name: entry.name,
+      engine: entry.engine,
+      compatibility_mode: entry.engine,
+      deployment_kind: index % 4 === 3 ? "cloud" : "native",
+      host: `10.2.${String(index % 16)}.${String(20 + index)}`,
+      port: entry.engine === "postgresql" ? 5432 : 3306,
+      database_name: null,
+      enabled: index % 6 !== 5,
+      test_purpose: index % 3 === 2 ? "query" : "review",
+      credential_status:
+        index % 3 === 2 ? { query: true } : { review: true, query: true, execution: index % 2 === 0 },
+      referenced_by_flow_count: 0,
+      version: 1,
+      created_at: created,
+      updated_at: created,
+      credentials:
+        index % 3 === 2
+          ? { query: { username: "query_ro", password: `volpw-${String(index).padStart(2, "0")}` } }
+          : {
+              review: { username: "review_ro", password: `volpw-${String(index).padStart(2, "0")}` },
+              query: { username: "query_ro", password: `volpw-${String(index).padStart(2, "0")}` },
+            },
+      tls: null,
+      capabilities: null,
+    });
+  });
 }
 
 // ===========================================================================
@@ -2565,7 +2644,9 @@ function adminGuard(): HttpResponse<DefaultBodyType> | null {
   const behavior = readStoredAuthBehavior();
   const hasSession = behavior !== "expired";
   if (!hasSession) return problem(401, "authentication required", "no active session");
-  if (behavior !== "admin") {
+  // Super mode (owner 2026-11-03): the dev-browser session passes the admin
+  // guard without the admin behavior dimension.
+  if (behavior !== "admin" && !mockSuperMode()) {
     return problem(403, "permission denied", "admin capability required");
   }
   return null;

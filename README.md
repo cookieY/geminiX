@@ -77,6 +77,16 @@ node scripts/generate-registry-inventory.mjs --check  # 组件来源清单核对
 
 不得在没有满足 Work Package 依赖、任务快照和路径边界检查的情况下开始实现。
 
+## Mock超级会话（dev默认）
+
+`VITE_ENABLE_MOCK=true pnpm dev` 下，dev浏览器默认开启**超级会话**（owner 2026-11-03）：一个账号（henry）同时持有全部冻结审批/执行身份槽、admin能力与查询世界，无需在 `yearning-mock-auth` / `yearning-mock-identity` 之间切换。单一开关在 `src/shared/dev/mock-super.ts`：
+
+- `localStorage.yearning-mock-super = "0"` 恢复严格三身份分离（§18.44），`"1"` 强制开启；
+- vitest（`MODE=test`）与生产/preview 构建永远关闭，契约测试与截图基线不受影响；
+- `expired`/`invalid_credentials`/`admin_locked` 等失败面语义不受影响。
+
+压测种子同样只在 dev 浏览器出现：8条待审批工单（审核队列首页）、3张500条SQL的待执行工单、50个用户与41个数据源。
+
 ## 开发期UI标注（Agentation）
 
 仅`pnpm dev`下右下角出现标注工具栏（RCP-20261103-FE-AGENTATION-DEV-TOOL）：点选元素写批注，复制生成的Markdown交给AI代码代理即可定位代码。

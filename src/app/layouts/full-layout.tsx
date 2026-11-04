@@ -2,6 +2,7 @@ import type * as React from "react";
 import { Outlet, useLocation, useOutlet } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { SidebarInset, SidebarProvider } from "@/shared/components/ui/sidebar";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { YearningSidebar } from "@/app/shell/yearning-sidebar";
 import { AppHeader } from "@/app/shell/app-header";
 import { AppFooter } from "@/app/shell/app-footer";
@@ -34,8 +35,11 @@ export function FullLayout() {
             a definite-height scroll container, so min-h-full resolves exactly
             and every page can stretch its content to the footer — the old
             min-h-[calc(100vh-140px)] approximation left dead space on tall
-            windows and floated the footer up on short ones. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+            windows and floated the footer up on short ones.
+            Scrollbar (owner feedback 2026-11-03: 右侧不要露出原生滚动条 →
+            所有的滚动条统一用ScrollArea组件): the shell column scrolls
+            inside a ScrollArea overlay thumb instead of a native bar. */}
+        <ScrollArea className="min-h-0 flex-1 p-4">
           {/* One measure for the whole shell (owner report 2026-10-23: the
               banner used to be wider than every row below it on wide screens).
               The header card uses the same 1536px measure, so both edges line
@@ -53,7 +57,7 @@ export function FullLayout() {
             </RouteTransition>
             <AppFooter />
           </div>
-        </div>
+        </ScrollArea>
       </SidebarInset>
     </SidebarProvider>
   );

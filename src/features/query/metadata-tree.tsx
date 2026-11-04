@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Database, EyeOff, Table2 } from "lucide-reac
 import type { QuerySession } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   useSessionColumns,
   useSessionSchemas,
@@ -45,7 +46,9 @@ export function MetadataTree({ session, activeDatasourceId, onTableSelected, onI
         placeholder={t("query.tree.searchPlaceholder")}
         data-testid="query-tree-filter"
       />
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      {/* 滚动条统一（owner 2026-11-03）：树滚动用ScrollArea覆盖式thumb。 */}
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="pr-1">
         {schemasQuery.isPending && <LoadingState variant="inline" />}
         {schemasQuery.error !== null && (
           <p className="text-destructive px-2 py-4 text-xs">{t("query.tree.loadFailed")}</p>
@@ -79,7 +82,8 @@ export function MetadataTree({ session, activeDatasourceId, onTableSelected, onI
               onInspectTable={onInspectTable}
             />
           ))}
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }

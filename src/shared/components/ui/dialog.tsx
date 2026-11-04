@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/components/ui/button"
+import { ScrollArea } from "@/shared/components/ui/scroll-area"
 import { XIcon } from "lucide-react"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -53,12 +54,26 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-xs/relaxed text-popover-foreground ring-1 ring-foreground/10 duration-150 ease-out outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:duration-[180ms] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-[120ms]",
+          /* 滚动条统一（owner 2026-11-03）：面板改为flex列并内嵌ScrollArea，
+             内容超高时用覆盖式thumb滚动，不再由调用点传overflow-y-auto露原
+             生条。高度帽放在viewport上而不是面板/root上：auto高度链里的
+             height:100%会退化为auto（见scroll-area.tsx注释），只有viewport
+             自身的max-h能可靠夹紧。gap-4随内容移入内层。
+             owner 2026-11-04：所有dialog高度上限500px——面板与viewport
+             （500px减去上下p-4）双层夹紧；内容超出的在面板内滚动。
+             内层pr-3给覆盖式thumb留出10px+的右侧间隙，滚动条不再压在
+             表单控件上（owner 2026-11-04：滚动条不要重叠表单）。 */
+          "fixed top-1/2 left-1/2 z-50 flex max-h-[500px] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg bg-popover p-4 text-xs/relaxed text-popover-foreground ring-1 ring-foreground/10 duration-150 ease-out outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:duration-[180ms] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-[120ms]",
           className
         )}
         {...props}
       >
-        {children}
+        <ScrollArea
+          className="min-h-0 flex-1"
+          viewportClassName="max-h-[calc(500px-2rem)]"
+        >
+          <div className="flex flex-col gap-4 pr-3">{children}</div>
+        </ScrollArea>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

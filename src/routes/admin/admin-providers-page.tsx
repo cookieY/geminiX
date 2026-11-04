@@ -37,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Input } from "@/shared/components/ui/input";
 import { NumberInput } from "@/shared/components/ui/number-input";
 import { PasswordInput } from "@/shared/components/ui/password-input";
@@ -325,7 +326,7 @@ function ProviderFormDialog({
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {editing === null ? t("admin.providers.createTitle") : t("admin.providers.editTitle")}
@@ -434,10 +435,13 @@ function ProviderFormDialog({
                 data-testid="provider-model"
               />
               {suggestOpen && catalogItems.length > 0 ? (
-                <div
-                  className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover"
+                /* 滚动条统一（owner 2026-11-03）：模型建议下拉用ScrollArea覆盖式thumb。 */
+                <ScrollArea
+                  className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover"
+                  viewportClassName="max-h-48"
                   data-testid="provider-model-options"
                 >
+                  <div>
                   {catalogItems.map((model) => (
                     <button
                       key={model}
@@ -453,7 +457,8 @@ function ProviderFormDialog({
                       {model}
                     </button>
                   ))}
-                </div>
+                  </div>
+                </ScrollArea>
               ) : null}
             </div>
             <p className="text-muted-foreground text-xs">{t("admin.providers.modelCatalogHint")}</p>
@@ -596,17 +601,19 @@ function ProviderFormDialog({
               连接/生成参数两个面板决定，自身在固定高度内滚动，切换tab不再
               拉伸弹窗（owner 2026-11-03）。 */}
           <TabsContent value="pricing" stacked className="relative">
+            {/* 滚动条统一（owner 2026-11-03）：定价/用量面板滚动用
+                ScrollArea覆盖式thumb（原先为原生overflow-auto）。 */}
             {editing === null ? (
               <p className="text-muted-foreground text-sm" data-testid="provider-pricing-create-hint">
                 {t("admin.providers.pricing.empty")}
               </p>
             ) : (
-              <div className="absolute inset-0 overflow-auto">
+              <ScrollArea className="absolute inset-0">
                 <div className="flex flex-col gap-5">
                   <ProviderPricingPanel providerId={editing.id} />
                   <ProviderUsagePanel providerId={editing.id} />
                 </div>
-              </div>
+              </ScrollArea>
             )}
           </TabsContent>
           </TabsStack>
@@ -699,7 +706,7 @@ function ProviderCard({
         <div
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-lg",
-            provider.enabled ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground",
+            provider.enabled ? "bg-tone-emerald/10 text-tone-emerald" : "bg-muted text-muted-foreground",
           )}
         >
           <Cpu className="size-4" aria-hidden />

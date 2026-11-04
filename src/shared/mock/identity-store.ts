@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { holdsSessionSlot, mockSuperSession } from "@/shared/dev/mock-super";
+import { getServerDimensions } from "@/shared/mock/server-dimensions";
 
 /**
  * Mock identity dimension (owner ruling 2026-10-13 on issue #1/§18.44): the
@@ -30,10 +32,18 @@ export const MOCK_IDENTITY_IDS = {
   executor: MOCK_IDENTITIES["executor-a"].id,
 } as const;
 
-const STORAGE_KEY = "yearning-mock-identity";
+export const IDENTITY_STORAGE_KEY = "yearning-mock-identity";
 
 export function readStoredIdentity(): MockIdentity {
-  const value = localStorage.getItem(STORAGE_KEY);
+  // Node transport (vite dev middleware, 2026-11-04): no window — the
+  // shared dimensions live in the dev server process. Guard on `window`,
+  // not `localStorage`: Node ≥22 ships a global localStorage, so the
+  // typeof-localStorage probe is false-negative there.
+  if (typeof window === "undefined") {
+    const server = getServerDimensions().identity;
+    return server === "reviewer-a" || server === "executor-a" ? server : "henry";
+  }
+  const value = localStorage.getItem(IDENTITY_STORAGE_KEY);
   return value === "reviewer-a" || value === "executor-a" ? value : "henry";
 }
 
@@ -59,7 +69,30 @@ export const useMockIdentity = create<{ identity: MockIdentity }>(() => ({
 }));
 
 export function setMockIdentity(identity: MockIdentity): void {
-  localStorage.setItem(STORAGE_KEY, identity);
+  localStorage.setItem(IDENTITY_STORAGE_KEY, identity);
   useMockIdentity.setState({ identity });
   window.dispatchEvent(new CustomEvent("yearning:mock-identity"));
+}
+
+/**
+ * Mock super mode (owner ruling 2026-11-03: mock账号给我全部权限，不想切换
+ * 账号来测试): the dev-browser session is treated as holding every actor slot
+ * and every admin capability, so one account can submit, review, execute and
+ * open the admin area without flipping the identity/auth-behavior dimensions.
+ * The flag and default live in shared/dev/mock-super.ts (single source of
+ * truth shared with the app's client-side actor checks); the failure faces of
+ * the auth-behavior dimension (expired / invalid_credentials / admin_locked)
+ * keep their semantics even in super mode.
+ */
+export function mockSuperMode(): boolean {
+  return mockSuperSession();
+}
+
+/**
+ * Actor-slot check used by every fixture guard: does the current session user
+ * hold this frozen actor/owner slot? Super mode answers yes for all of them;
+ * otherwise the exact identity match applies (§18.44 three-identity split).
+ */
+export function holdsActorSlot(userId: string): boolean {
+  return holdsSessionSlot(userId, currentIdentityId());
 }

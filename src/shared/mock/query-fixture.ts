@@ -1,7 +1,7 @@
 import { HttpResponse, http } from "msw";
 import type { DefaultBodyType, HttpHandler } from "msw";
 import { readStoredAuthBehavior } from "@/shared/mock/auth-scenario-store";
-import { MOCK_IDENTITY_IDS, currentIdentityId } from "@/shared/mock/identity-store";
+import { MOCK_IDENTITY_IDS, currentIdentityId, mockSuperMode } from "@/shared/mock/identity-store";
 import { settingsBridge } from "@/shared/mock/settings-bridge";
 import { readStoredScenario } from "@/shared/mock/scenario-store";
 
@@ -240,8 +240,11 @@ function pageOf<T>(items: T[], limit: number | null, after: string | null) {
 
 /** The builtin admin identity gains no query read face: when the mock
  * session runs the admin behavior the query actor owns nothing and relates
- * to nothing (authorization-policy admin_is_not_business_override). */
+ * to nothing (authorization-policy admin_is_not_business_override). Super
+ * mode (owner 2026-11-03) suspends that split in the dev browser: the
+ * session keeps the henry query world alongside the admin capability. */
 function queryActorUserId(): string {
+  if (mockSuperMode()) return currentIdentityId();
   return readStoredAuthBehavior() === "admin" ? "__builtin_admin__" : currentIdentityId();
 }
 

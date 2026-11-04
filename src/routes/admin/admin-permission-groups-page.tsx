@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import {
   useCreatePermissionGroup,
@@ -446,7 +447,7 @@ function GroupFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editing === null ? t("adminGroups.createTitle") : t("adminGroups.editTitle", { name: editing.name })}</DialogTitle>
           <DialogDescription>{t("adminGroups.formDescription")}</DialogDescription>
@@ -493,7 +494,10 @@ function GroupFormDialog({
                 {String(selectedVisibleMembers)}/{String(visibleMemberIds.length)}
               </span>
             </label>
-            <div className="max-h-48 overflow-y-auto rounded-md border p-2">
+            {/* 滚动条统一（owner 2026-11-03）：成员/流程选择列表用ScrollArea
+                覆盖式thumb；高度帽在viewport上（见scroll-area.tsx注释）。 */}
+            <ScrollArea className="rounded-md border p-2" viewportClassName="max-h-48">
+              <div>
               {visibleUsers.length === 0 && (
                 <p className="text-muted-foreground p-2 text-xs">{t("table.emptySearch")}</p>
               )}
@@ -508,7 +512,8 @@ function GroupFormDialog({
                   <span className="text-muted-foreground font-mono text-xs">{user.username}</span>
                 </label>
               ))}
-            </div>
+              </div>
+            </ScrollArea>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -534,7 +539,8 @@ function GroupFormDialog({
                 {String(selectedVisibleFlows)}/{String(visibleFlowIds.length)}
               </span>
             </label>
-            <div className="max-h-48 overflow-y-auto rounded-md border p-2">
+            <ScrollArea className="rounded-md border p-2" viewportClassName="max-h-48">
+              <div>
               {visibleFlows.length === 0 && (
                 <p className="text-muted-foreground p-2 text-xs">
                   {flowKeyword !== "" ? t("table.emptySearch") : t("adminGroups.noFlows")}
@@ -553,7 +559,8 @@ function GroupFormDialog({
                   </Badge>
                 </label>
               ))}
-            </div>
+              </div>
+            </ScrollArea>
           </div>
 
           {errorText !== null && (

@@ -3,22 +3,52 @@ import { useTranslation } from "react-i18next";
 import type { ChangeOrder, ChangeOrderTimelineEntry } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useCreateOrderComment, useOrderComments } from "@/features/orders/use-approvals";
 import { useChangeOrderTimeline } from "@/features/orders/use-orders";
+import { useSession } from "@/features/auth/session-provider";
 import { describeError } from "@/shared/api/error-display";
-import { PendingButton } from "@/shared/components/pending-button";
 import { EmptyState } from "@/shared/components/status/empty-state";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/shared/components/ui/empty";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/shared/components/ui/input-group";
+import {
+  Message,
+  MessageContent,
+  MessageHeader,
+} from "@/shared/components/ui/message";
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "@/shared/components/ui/message-scroller";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import {
+  ArrowDown,
+  ArrowUp,
   CalendarCheck,
   CalendarClock,
   Fingerprint,
   Flag,
   Hash,
+  MessageCircleDashed,
   ShieldCheck,
   User,
   UserCheck,
@@ -163,17 +193,47 @@ function TimelinePanel({ orderId }: { orderId: string }) {
   );
 }
 
+/** First grapheme of a display name for the message avatar tile.
+ * Intl.Segmenter keeps surrogate pairs and combining marks (CJK extension
+ * characters, emoji) intact where spread/split would cut UTF-16 units. */
+function avatarInitial(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed === "") return "?";
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  const first = segmenter.segment(trimmed)[Symbol.iterator]().next().value;
+  return (first?.segment ?? "?").toUpperCase();
+}
+
 /** Order comments (S004 permanent retention). Append-only: no edit or delete
  * affordance exists anywhere on the contract surface. Errors render inline
- * through the operation's own error profile — never a fake success. */
+ * through the operation's own error profile — never a fake success.
+ *
+ * owner ruling 2026-11-04：评论区改用官方 message / message-scroller 组件 ——
+ * 每条评论是一个 message（头像 + 署名行 + 气泡），列表在 message-scroller
+ * 里限高（max-h-80）内部滚动、自动跟随最新评论，上翻时出现「回到最新」；
+ * 空态同样用 message 组件渲染成一条静默气泡，不再是大块 EmptyState。
+ *
+ * 评论框同日按 owner page feedback 对齐官方 composer 形态：InputGroup +
+ * InputGroupTextarea，block-end addon 右下角是 icon 发送键（Enter 发送、
+ * Shift+Enter 换行、IME 组词中不触发），替换旧的 Textarea + 按钮行。
+ *
+ * 第二轮 feedback（同日）对齐官方 demo 截图：列表与评论框合并为同一个
+ * 固定高度（h-140）圆角面板，评论框贴在面板底部；空态改为居中 Empty
+ * （图标块 + 标题 + 描述），发送键为圆形实心 icon。
+ * 第三轮 feedback（同日）：头像改用全站统一 Avatar 组件（初字母回退）；
+ * 每条消息入场带 fade+slide 动效；试过的"+"插入菜单按 owner 要求移除。 */
 function CommentsPanel({ orderId }: { orderId: string }) {
   const { t } = useTranslation();
+  const session = useSession();
   const commentsQuery = useOrderComments(orderId, true);
   const createComment = useCreateOrderComment(orderId);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const submit = (): void => {
+    // Enter-to-send reaches this path even when the button is disabled, so the
+    // guard lives here and covers both entry points.
+    if (content.trim() === "" || createComment.isPending) return;
     createComment.mutate(content, {
       onSuccess: () => {
         setContent("");
@@ -188,58 +248,142 @@ function CommentsPanel({ orderId }: { orderId: string }) {
     });
   };
 
+  const comments = commentsQuery.data ?? [];
+  // The read model is newest-first (comments application cursor read); the
+  // message flow reads oldest → newest.
+  const ordered = [...comments].reverse();
+
   return (
-    <div className="flex flex-col gap-4" data-testid="order-comments">
-      <div className="flex flex-col gap-2">
-        <Textarea
-          value={content}
-          onChange={(event) => { setContent(event.target.value); }}
-          rows={2}
-          maxLength={4096}
-          placeholder={t("orders.detail.commentPlaceholder")}
-          data-testid="order-comment-input"
-        />
-        <div className="flex items-center gap-3">
-          <PendingButton
-            size="sm"
-            onClick={submit}
-            pending={createComment.isPending}
-            disabled={content.trim() === ""}
-            data-testid="order-comment-submit"
+    <div data-testid="order-comments">
+      <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+        <div className="bg-card flex h-140 flex-col overflow-hidden rounded-xl border border-border">
+          <MessageScroller className="min-h-0 flex-1">
+            <MessageScrollerViewport>
+              <MessageScrollerContent
+                className={cn(
+                  "gap-4 px-(--card-spacing) pt-(--card-spacing) pb-1",
+                  comments.length === 0 && "justify-center",
+                )}
+                data-testid="order-comments-list"
+              >
+                {commentsQuery.isPending ? (
+                  <LoadingState variant="inline" />
+                ) : commentsQuery.isError ? (
+                  <ErrorState
+                    error={commentsQuery.error}
+                    operationId="listChangeOrderComments"
+                    onRetry={() => void commentsQuery.refetch()}
+                  />
+                ) : comments.length === 0 ? (
+                  <Empty data-testid="order-comments-empty">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <MessageCircleDashed aria-hidden />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("orders.detail.commentsEmpty")}</EmptyTitle>
+                      <EmptyDescription>{t("orders.detail.commentsEmptyHint")}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  ordered.map((comment) => {
+                    // Chat layout (owner page feedback 2026-11-04): other
+                    // people's comments sit left in the neutral bubble, the
+                    // author's own sit right in the --comment-own blue.
+                    const own = comment.author_user_id === session.user?.id;
+                    return (
+                      <MessageScrollerItem
+                        key={comment.id}
+                        messageId={comment.id}
+                        className="[content-visibility:visible]"
+                      >
+                        <Message
+                          align={own ? "end" : "start"}
+                          data-testid="order-comment-item"
+                          className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out"
+                        >
+                          <Avatar className="self-start">
+                            <AvatarFallback className="text-xs font-medium">
+                              {avatarInitial(comment.author_display_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <MessageContent>
+                            <MessageHeader className="gap-2 px-0">
+                              <span className="font-medium text-foreground">
+                                {comment.author_display_name}
+                              </span>
+                              <span className="text-muted-foreground/70">
+                                {formatTimestamp(comment.occurred_at)}
+                              </span>
+                            </MessageHeader>
+                            <p
+                              className={cn(
+                                "w-fit max-w-full rounded-lg px-3 py-2 text-xs break-words whitespace-pre-wrap",
+                                own ? "self-end bg-comment-own text-white" : "self-start bg-muted",
+                              )}
+                            >
+                              {comment.content}
+                            </p>
+                          </MessageContent>
+                        </Message>
+                      </MessageScrollerItem>
+                    );
+                  })
+                )}
+              </MessageScrollerContent>
+            </MessageScrollerViewport>
+            <MessageScrollerButton direction="end">
+              <ArrowDown className="size-4" aria-hidden="true" />
+              <span className="sr-only">{t("orders.detail.commentsScrollEnd")}</span>
+            </MessageScrollerButton>
+          </MessageScroller>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+            className="flex flex-col gap-2 p-(--card-spacing) pt-0"
           >
-            {t("orders.detail.commentSubmit")}
-          </PendingButton>
-          {error !== null && (
-            <p role="alert" className="text-destructive text-xs" data-testid="order-comment-error">
-              {error}
-            </p>
-          )}
+            <InputGroup>
+              <InputGroupTextarea
+                value={content}
+                onChange={(event) => { setContent(event.target.value); }}
+                onKeyDown={(event) => {
+                  // Chat-style: Enter sends, Shift+Enter breaks a line; a pending
+                  // IME composition must not fire the submit.
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    submit();
+                  }
+                }}
+                maxLength={4096}
+                placeholder={t("orders.detail.commentPlaceholder")}
+                aria-label={t("orders.detail.commentPlaceholder")}
+                className="min-h-14 max-h-40 overflow-y-auto"
+                data-testid="order-comment-input"
+              />
+              <InputGroupAddon align="block-end" className="pt-1">
+                <InputGroupButton
+                  type="submit"
+                  variant="default"
+                  size="icon-sm"
+                  disabled={content.trim() === "" || createComment.isPending}
+                  aria-busy={createComment.isPending || undefined}
+                  className="ml-auto rounded-full"
+                  data-testid="order-comment-submit"
+                >
+                  {createComment.isPending ? <Spinner aria-hidden /> : <ArrowUp aria-hidden />}
+                  <span className="sr-only">{t("orders.detail.commentSubmit")}</span>
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            {error !== null && (
+              <p role="alert" className="text-destructive text-xs" data-testid="order-comment-error">
+                {error}
+              </p>
+            )}
+          </form>
         </div>
-      </div>
-      {commentsQuery.isPending ? (
-        <LoadingState variant="inline" />
-      ) : commentsQuery.isError ? (
-        <ErrorState
-          error={commentsQuery.error}
-          operationId="listChangeOrderComments"
-          onRetry={() => void commentsQuery.refetch()}
-        />
-      ) : commentsQuery.data.length === 0 ? (
-        <EmptyState title={t("orders.detail.commentsEmpty")} testId="order-comments-empty" />
-      ) : (
-        <ol className="flex flex-col gap-4" data-testid="order-comments-list">
-          {commentsQuery.data.map((comment) => (
-            <ActivityRow
-              key={comment.id}
-              icon={<User aria-hidden />}
-              label={`${comment.author_display_name} · ${formatTimestamp(comment.occurred_at)}`}
-              value={comment.content}
-              strong={false}
-              data-testid="order-comment-item"
-            />
-          ))}
-        </ol>
-      )}
+      </MessageScrollerProvider>
     </div>
   );
 }
