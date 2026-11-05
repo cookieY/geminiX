@@ -300,8 +300,17 @@ test("sidebar collapse transitions its own gap width", async ({ page }) => {
 
 test("popover entry plays its own enter keyframes", async ({ page }) => {
   test.setTimeout(60_000);
-  await page.goto("/changes/mine");
-  const trigger = page.getByTestId("filter-submitted-from");
+  // The /changes/mine date pickers are gone (owner feedback 2026-11-05: the
+  // global search bar's date values come from an inline calendar). The
+  // renewal dialog carries the shared DatePicker popover now, inside the
+  // query-session world that seeds the fixture grant.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("yearning-mock-scenario", "query-session");
+  });
+  await page.goto("/query/sessions/qs-fixture-active");
+  await expect(page.getByTestId("query-workspace")).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId("query-grant-renew").click();
+  const trigger = page.getByTestId("query-renew-until");
   await expect(trigger).toBeVisible({ timeout: 15_000 });
 
   const content = page.locator("[data-slot='popover-content']").first();

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
@@ -182,6 +182,35 @@ describe("ApprovalQueuePage", () => {
     expect(await screen.findByTestId("approval-queue-search-empty")).toBeVisible();
     fireEvent.change(screen.getByTestId("approval-queue-search"), { target: { value: "" } });
     expect(screen.getByTestId("approval-queue-table").textContent).toContain("YR-20260830-000081");
+  });
+
+  it("filters the queue by submitted date through the shadcn calendar (owner 2026-11-05)", async () => {
+    const user = userEvent.setup();
+    const now = new Date();
+    const ym = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    seedFixtureOrder(queueOrder({ submitted_at: `${ym}-15T12:00:00Z` }));
+    seedFixtureOrder(
+      queueOrder({
+        id: "bq6f1a2b-0000-4000-8000-00000000f802",
+        display_number: "YR-20260830-000082",
+        submitted_at: `${ym}-20T12:00:00Z`,
+      }),
+    );
+    renderQueue();
+    await screen.findByTestId("approval-queue-table");
+    expect(screen.getAllByTestId("approval-queue-row")).toHaveLength(2);
+
+    await user.click(screen.getByTestId("approval-queue-search"));
+    await user.click(screen.getByRole("option", { name: "提交时间" }));
+    const dialog = screen.getByRole("dialog", { name: "提交时间 — 选择日期" });
+    expect(dialog.querySelector('[data-slot="calendar"]')).not.toBeNull();
+    const dayLabel = new RegExp(`^${String(now.getFullYear())}年${String(now.getMonth() + 1)}月15日`);
+    await user.click(within(dialog).getByRole("button", { name: dayLabel }));
+
+    expect(screen.getByText(`提交时间: ${ym}-15`)).toBeVisible();
+    expect(screen.getAllByTestId("approval-queue-row")).toHaveLength(1);
+    expect(screen.getByTestId("approval-queue-table").textContent).toContain("YR-20260830-000081");
+    expect(screen.getByTestId("approval-queue-table").textContent).not.toContain("YR-20260830-000082");
   });
 
   it("navigates a queue row to the order detail", async () => {

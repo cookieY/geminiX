@@ -1546,12 +1546,16 @@ export function siteFixtureHandlers(): HttpHandler[] {
 
   return [
     // ------------------------------------------------------------- users --
+    // §18.73契约镜像：q只匹配username/display_name/email；kind为
+    // RCP-20261105分列过滤（builtin_admin/local_user），彼此AND。
     http.get("*/admin/users", ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
       const q = searchOf(url);
+      const kind = url.searchParams.get("kind");
       const items = [...world.users.values()]
+        .filter((user) => kind === null || (kind === "builtin_admin") === user.is_builtin_admin)
         .filter((user) => matchesQ([user.username, user.display_name, user.email], q))
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(
@@ -1653,11 +1657,19 @@ export function siteFixtureHandlers(): HttpHandler[] {
     }),
 
     // -------------------------------------------------- permission groups --
+    // §18.73契约镜像：q只匹配组名；enabled/member_user_id/flow_id为
+    // RCP-20261105分列过滤，彼此AND。
     http.get("*/admin/permission-groups", ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
+      const enabled = url.searchParams.get("enabled");
+      const memberUserId = url.searchParams.get("member_user_id");
+      const flowId = url.searchParams.get("flow_id");
       const items = [...world.groups.values()]
+        .filter((group) => enabled === null || (enabled === "true") === group.enabled)
+        .filter((group) => memberUserId === null || group.member_user_ids.includes(memberUserId))
+        .filter((group) => flowId === null || group.granted_flow_ids.includes(flowId))
         .filter((group) => matchesQ([group.name], searchOf(url)))
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return HttpResponse.json(
@@ -2954,13 +2966,34 @@ function validateReviewInputDefinition(definition: unknown): string | null {
 export function adminFixtureHandlers(): HttpHandler[] {
   return [
     // ---- datasources -------------------------------------------------
+    // §18.73契约镜像：q只匹配name/host；engine/compatibility_mode/
+    // credential_mode/referenced为RCP-20261105分列过滤，彼此AND。
     http.get("*/admin/datasources", async ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
+      const engine = url.searchParams.get("engine");
+      const compatibilityMode = url.searchParams.get("compatibility_mode");
+      const credentialMode = url.searchParams.get("credential_mode");
+      const referenced = url.searchParams.get("referenced");
       const items = [...world.datasources.values()]
+        .filter((ds) => engine === null || ds.engine === engine)
+        .filter((ds) => compatibilityMode === null || ds.compatibility_mode === compatibilityMode)
+        .filter((ds) => {
+          if (credentialMode === null) return true;
+          const readWrite = ds.credentials.execution !== undefined;
+          return (credentialMode === "read_write") === readWrite;
+        })
+        .filter((ds) => {
+          if (referenced === null) return true;
+          const isReferenced = [...world.flows.values()].some((flow) =>
+            flow.stages?.some((stage) => stage.datasource_id === ds.id) === true ||
+            flow.query_capabilities?.some((cap) => cap.datasource_id === ds.id) === true,
+          );
+          return (referenced === "true") === isReferenced;
+        })
         .filter((ds) => matchesQ([ds.name, ds.host], searchOf(url)))
         .map(datasourceView);
       await sleep(mockLatencyMs());
@@ -3741,13 +3774,19 @@ export function adminFixtureHandlers(): HttpHandler[] {
     }),
 
     // ---- flows (read-only reverse-reference source for rule sets) -----
+    // §18.73契约镜像：q只匹配流程名；flow_type/enabled为
+    // RCP-20261105分列过滤，彼此AND。
     http.get("*/admin/flows", ({ request }) => {
       const guard = adminGuard();
       if (guard !== null) return guard;
       const url = new URL(request.url);
       const limit = url.searchParams.get("limit");
       const after = url.searchParams.get("after");
+      const flowType = url.searchParams.get("flow_type");
+      const enabled = url.searchParams.get("enabled");
       const items = [...world.flows.values()]
+        .filter((flow) => flowType === null || flow.flow_type === flowType)
+        .filter((flow) => enabled === null || (enabled === "true") === flow.enabled)
         .filter((flow) => matchesQ([flow.name], searchOf(url)))
         .sort((a, b) => a.created_at.localeCompare(b.created_at))
         .map(flowViewOf);

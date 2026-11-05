@@ -1,5 +1,5 @@
 import i18next from "@/shared/i18n";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Pencil, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
@@ -12,7 +12,12 @@ import { EmptyState } from "@/shared/components/status/empty-state";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { TableSearchInput } from "@/shared/components/table-search-input";
+import {
+  GlobalSearchBar,
+  filterBySearchTerms,
+  type SearchAccessor,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -63,18 +68,83 @@ export default function AdminUsersPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const [search, setSearch] = useState("");
-  const usersQuery = useUsers(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
+  const [terms, setTerms] = useState<SearchTerm[]>([]);
+  const [live, setLive] = useState<SearchTerm | null>(null);
+  const effectiveTerms = useMemo(
+    () => (live === null ? terms : [...terms, live]),
+    [live, terms],
+  );
+  // §18.73 + owner feedback 2026-11-05: free-text or server-indexed column
+  // terms drive the server `q` parameter. The 类型 chip is a typed server
+  // filter (RCP-20261105-ADMIN-LIST-FIELD-FILTERS), so cross-page narrowing
+  // happens server-side; `filterBySearchTerms` only narrows further.
+  const serverQ = useMemo(
+    () =>
+      [...effectiveTerms]
+        .reverse()
+        .find(
+          (term) =>
+            term.field === null ||
+            term.field === "username" ||
+            term.field === "displayName" ||
+            term.field === "email",
+        )
+        ?.text.trim() ?? "",
+    [effectiveTerms],
+  );
+  const kindParam = useMemo<"builtin_admin" | "local_user" | undefined>(() => {
+    const KIND_VALUES = { [t("adminUsers.builtinAdmin")]: "builtin_admin", [t("adminUsers.localUser")]: "local_user" } as const;
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "kind" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : KIND_VALUES[term.text as keyof typeof KIND_VALUES];
+  }, [effectiveTerms, t]);
+  const usersQuery = useUsers(isAdmin, {
+    limit: pager.pageSize,
+    after: pager.after,
+    q: serverQ || undefined,
+    kind: kindParam,
+  });
   // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
   const usersLoaded = !usersQuery.isPending && !usersQuery.isError;
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  // §18.73：搜索走服务端q（用户名/显示名/邮箱子串）；keyword仅用于
-  // 空态文案区分。
-  const keyword = search.trim();
-  const users = usersQuery.data?.items ?? [];
-  // 服务端搜索：同一行可能留在屏幕上但换位置。
+  const searchAccessors = useMemo<SearchAccessor<User>[]>(
+    () => [
+      {
+        key: "username",
+        label: t("adminUsers.column.username"),
+        value: (user) => user.username,
+      },
+      {
+        key: "displayName",
+        label: t("adminUsers.column.displayName"),
+        value: (user) => user.display_name ?? "",
+      },
+      {
+        key: "email",
+        label: t("adminUsers.column.email"),
+        value: (user) => user.email ?? "",
+      },
+      {
+        key: "kind",
+        label: t("adminUsers.column.kind"),
+        value: (user) =>
+          user.is_builtin_admin ? t("adminUsers.builtinAdmin") : t("adminUsers.localUser"),
+        options: [
+          { label: t("adminUsers.builtinAdmin") },
+          { label: t("adminUsers.localUser") },
+        ],
+      },
+    ],
+    [t],
+  );
+  const hasSearchFilter = effectiveTerms.some((term) => term.text.trim() !== "");
+  const users = filterBySearchTerms(
+    usersQuery.data?.items ?? [],
+    effectiveTerms,
+    searchAccessors,
+  );
+  // 服务端/客户端搜索：同一行可能留在屏幕上但换位置。
   const usersBodyRef = useFlipReorder<HTMLTableSectionElement>(
     JSON.stringify(users.map((user) => user.id)),
   );
@@ -85,28 +155,37 @@ export default function AdminUsersPage() {
         title={t("adminUsers.title")}
         description={t("adminUsers.description")}
         icon={UserRound}
-        actions={
-          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-users-create">
-            <Plus />
-            {t("adminUsers.create")}
-          </Button>
-        }
       />
 
-      <Card>
+      <Card className="overflow-visible">
         <ListToolbar
           busy={usersQuery.isFetching && !usersQuery.isPending}
-          search={
-            <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
-              }}
-              testId="admin-users-search"
-            />
+          fill
+          actions={
+            <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-users-create">
+              <Plus />
+              {t("adminUsers.create")}
+            </Button>
           }
-        />
+        >
+          {/* Owner feedback 2026-11-05: ECS-style multi-field search box on
+              the left, create action on the right inside the toolbar. */}
+          <GlobalSearchBar
+            fields={searchAccessors}
+            terms={terms}
+            onTermsChange={(next) => {
+              setTerms(next);
+              pager.reset();
+            }}
+            onLiveChange={(next) => {
+              setLive(next);
+              pager.reset();
+            }}
+            placeholder={t("adminUsers.searchPlaceholder")}
+            testId="admin-users-search"
+            className="w-full min-w-0 flex-1"
+          />
+        </ListToolbar>
         <CardContent className="px-0!">
           {usersQuery.isPending ? (
             <LoadingState variant="table" columns={5} />
@@ -116,8 +195,8 @@ export default function AdminUsersPage() {
             <>
               {users.length === 0 ? (
                 <EmptyState
-                  title={keyword !== "" ? t("table.emptySearch") : t("adminUsers.empty")}
-                  filtered={keyword !== ""}
+                  title={hasSearchFilter ? t("table.emptySearch") : t("adminUsers.empty")}
+                  filtered={hasSearchFilter}
                   testId="admin-users-empty"
                 />
               ) : (

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/components/ui/button";
 import { UserAvatar } from "@/shared/components/user-avatar";
@@ -29,6 +29,20 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelId = useId();
 
+  // 首开卡顿 (owner feedback 2026-11-04)：第一次点击原来要同时付「下载
+  // chunk + 挂载抽屉 + 打开动画」三笔成本。抽屉在首次交互前预下载
+  // (idle 时机、悬停/聚焦立即)，点击只剩打开动画——sheet 挂载本身保持
+  // 惰性（requested 之前不渲染），发布包不提前加载。
+  useEffect(() => {
+    const preload = (): void => { void import("./user-menu-sheet"); };
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(preload, { timeout: 2000 });
+      return () => { window.cancelIdleCallback(handle); };
+    }
+    const timer = window.setTimeout(preload, 600);
+    return () => { window.clearTimeout(timer); };
+  }, []);
+
   return (
     <>
       <Button
@@ -42,6 +56,8 @@ export function UserMenu({ user: userOverride }: { user?: SessionUser }) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         data-testid="user-menu-trigger"
+        onPointerEnter={() => { setRequested(true); }}
+        onFocus={() => { setRequested(true); }}
         onClick={() => {
           setRequested(true);
           setOpen(true);

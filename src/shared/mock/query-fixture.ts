@@ -707,6 +707,179 @@ function seedDefaultQueryDemo(): void {
       created_at: request.createdAt,
     });
   }
+
+  // ---- 查询工单 demo set (owner request 2026-11-04): one row per lifecycle
+  // state so the 查询工单 tab shows the full vocabulary in the default world —
+  // approved→active grant, rejected, withdrawn, a revoked grant with its
+  // frozen reason, an expired grant, and session records (查询记录 rows come
+  // from sessions when no request/grant exists for them). Browser worlds
+  // only; vitest pins exact scenario shapes via MODE === "test".
+  const mysqlCap = (canExport: boolean): FixtureGrantCapability => ({
+    datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+    datasource_name_snapshot: "analytics-mysql",
+    can_query: true,
+    can_export: canExport,
+  });
+  const pgCap = (canExport: boolean): FixtureGrantCapability => ({
+    datasource_id: QUERY_FIXTURE_DS_PG_ID,
+    datasource_name_snapshot: "analytics-pg",
+    can_query: true,
+    can_export: canExport,
+  });
+
+  world.grants.set("qgrant-demo-active", {
+    id: "qgrant-demo-active",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "active",
+    revoked_reason: null,
+    expires_at: "2026-12-01T00:00:00Z",
+    capabilities: [mysqlCap(true), pgCap(false)],
+    version: 1,
+    created_at: "2026-09-05T02:10:00Z",
+  });
+  world.grants.set("qgrant-demo-revoked", {
+    id: "qgrant-demo-revoked",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "revoked",
+    revoked_reason: "安全审计：临时排查权限统一收回",
+    expires_at: null,
+    capabilities: [mysqlCap(true)],
+    version: 2,
+    created_at: "2026-08-20T06:30:00Z",
+  });
+  world.grants.set("qgrant-demo-expired", {
+    id: "qgrant-demo-expired",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "expired",
+    revoked_reason: null,
+    expires_at: "2026-09-10T00:00:00Z",
+    capabilities: [pgCap(false)],
+    version: 1,
+    created_at: "2026-08-25T09:00:00Z",
+  });
+
+  world.accessRequests.set("qar-demo-approved", {
+    id: "qar-demo-approved",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "grant_active",
+    datasource_ids: [QUERY_FIXTURE_DS_MYSQL_ID, QUERY_FIXTURE_DS_PG_ID],
+    grant_id: "qgrant-demo-active",
+    reason: "周度经营分析，需要两库长期只读权限",
+    requested_until: "2026-12-01T00:00:00Z",
+    steps: [
+      {
+        position: 1,
+        actors: [MOCK_IDENTITY_IDS.reviewer],
+        state: "approved",
+        decided_at: "2026-09-05T02:10:00Z",
+      },
+    ],
+    version: 2,
+    created_at: "2026-09-05T01:55:00Z",
+  });
+  world.accessRequests.set("qar-demo-rejected", {
+    id: "qar-demo-rejected",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "access_rejected",
+    datasource_ids: [QUERY_FIXTURE_DS_MYSQL_ID],
+    grant_id: null,
+    reason: "一次性导出全量订单表",
+    requested_until: "2026-08-25T00:00:00Z",
+    steps: [
+      {
+        position: 1,
+        actors: [MOCK_IDENTITY_IDS.reviewer],
+        state: "rejected",
+        decided_at: "2026-08-18T08:20:00Z",
+      },
+    ],
+    version: 2,
+    created_at: "2026-08-18T03:40:00Z",
+  });
+  world.accessRequests.set("qar-demo-withdrawn", {
+    id: "qar-demo-withdrawn",
+    requester_user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    state: "withdrawn",
+    datasource_ids: [QUERY_FIXTURE_DS_PG_ID],
+    grant_id: null,
+    reason: "报表口径已由 BI 平台覆盖，主动撤回",
+    requested_until: "2026-08-20T00:00:00Z",
+    steps: [
+      {
+        position: 1,
+        actors: [MOCK_IDENTITY_IDS.reviewer],
+        state: "pending",
+        decided_at: null,
+      },
+    ],
+    version: 1,
+    created_at: "2026-08-10T05:15:00Z",
+  });
+
+  world.sessions.set("qsess-demo-active", {
+    id: "qsess-demo-active",
+    user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    grant_id: "qgrant-demo-active",
+    state: "active",
+    capabilities: [
+      {
+        datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+        datasource_name: "analytics-mysql",
+        state: "active",
+        can_query: true,
+        can_export: true,
+      },
+      {
+        datasource_id: QUERY_FIXTURE_DS_PG_ID,
+        datasource_name: "analytics-pg",
+        state: "active",
+        can_query: true,
+        can_export: false,
+      },
+    ],
+    created_at: "2026-11-04T06:40:00Z",
+  });
+  world.sessions.set("qsess-demo-closed", {
+    id: "qsess-demo-closed",
+    user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    grant_id: "qgrant-demo-active",
+    state: "closed",
+    capabilities: [
+      {
+        datasource_id: QUERY_FIXTURE_DS_MYSQL_ID,
+        datasource_name: "analytics-mysql",
+        state: "active",
+        can_query: true,
+        can_export: true,
+      },
+    ],
+    created_at: "2026-09-06T08:05:00Z",
+  });
+  world.sessions.set("qsess-demo-expired", {
+    id: "qsess-demo-expired",
+    user_id: MOCK_IDENTITY_IDS.submitter,
+    flow_id: QUERY_FIXTURE_FLOW_ID,
+    grant_id: "qgrant-demo-expired",
+    state: "expired",
+    capabilities: [
+      {
+        datasource_id: QUERY_FIXTURE_DS_PG_ID,
+        datasource_name: "analytics-pg",
+        state: "active",
+        can_query: true,
+        can_export: false,
+      },
+    ],
+    created_at: "2026-08-26T07:20:00Z",
+  });
 }
 
 export function resetQueryFixture(): void {

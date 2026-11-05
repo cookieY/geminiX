@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChangeOrder } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useApprovalQueue } from "@/features/orders/use-approvals";
-import { myApprovalStepFor } from "@/features/orders/order-state";
+import { myApprovalStepFor, ORDER_STATES } from "@/features/orders/order-state";
 import { OrderStateBadge } from "@/features/orders/order-state-badge";
 import { useSession } from "@/features/auth/session-provider";
 import { startReviewEvents, stopReviewEvents } from "@/features/review/review-events";
@@ -12,7 +12,12 @@ import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
 import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { Button } from "@/shared/components/ui/button";
-import { TableSearchInput } from "@/shared/components/table-search-input";
+import {
+  GlobalSearchBar,
+  filterBySearchTerms,
+  type SearchAccessor,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
@@ -113,19 +118,57 @@ export default function ApprovalQueuePage() {
   const { t } = useTranslation();
   const session = useSession();
   const queueQuery = useApprovalQueue(true);
-  const [search, setSearch] = useState("");
+  // ECS-style global search (owner feedback 2026-11-04): one left-aligned box
+  // covering 工单号/标题/工单状态/提交人/数据源 — free text matches any field,
+  // field-scoped chips narrow one field; the uncommitted input text filters
+  // live and Enter commits it as a chip. Filtering stays client-side.
+  const [terms, setTerms] = useState<SearchTerm[]>([]);
+  const [live, setLive] = useState<SearchTerm | null>(null);
   const [pageNo, setPageNo] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const keyword = search.trim().toLowerCase();
-  // The queue matches on order number, title and stage datasource names —
-  // the fields an approver uses to locate the order to work on.
-  const queue = (queueQuery.data ?? []).filter(
-    (order) =>
-      keyword === "" ||
-      order.display_number.toLowerCase().includes(keyword) ||
-      (order.title ?? "").toLowerCase().includes(keyword) ||
-      order.stages.some((stage) => stage.datasource_name.toLowerCase().includes(keyword)),
+  const searchAccessors = useMemo<SearchAccessor<ChangeOrder>[]>(
+    () => [
+      {
+        key: "number",
+        label: t("approvals.queue.column.number"),
+        value: (order) => order.display_number,
+      },
+      {
+        key: "title",
+        label: t("approvals.queue.column.title"),
+        value: (order) => order.title ?? "",
+      },
+      {
+        key: "state",
+        label: t("approvals.queue.column.state"),
+        // Raw enum + localized label so either spelling matches a chip.
+        value: (order) => `${order.state} ${t(`orders.state.${order.state}`)}`,
+        options: ORDER_STATES.map((state) => ({ label: t(`orders.state.${state}`) })),
+      },
+      {
+        key: "submitter",
+        label: t("approvals.queue.column.submitter"),
+        value: (order) => order.submitter_display_name ?? order.submitter_username ?? "",
+      },
+      {
+        key: "datasource",
+        label: t("approvals.queue.column.datasource"),
+        value: (order) => order.stages.map((stage) => stage.datasource_name).join(" "),
+      },
+      {
+        key: "submitted_at",
+        label: t("approvals.queue.column.submittedAt"),
+        value: (order) => formatTimestamp(order.submitted_at),
+        input: "date",
+      },
+    ],
+    [t],
   );
+  const effectiveTerms = live === null ? terms : [...terms, live];
+  // The queue matches on order number, title, state, submitter and stage
+  // datasource names — the fields an approver uses to locate the order to
+  // work on.
+  const queue = filterBySearchTerms(queueQuery.data ?? [], effectiveTerms, searchAccessors);
   // The queue arrives as one live 200-row package (event-fed, migration
   // contract §14.3), so paging is client-side slicing — same pattern as the
   // query result grid. A fresh search restarts the walk at page 1.
@@ -149,20 +192,33 @@ export default function ApprovalQueuePage() {
   return (
     <PageLayout data-testid="approval-queue-page">
       <PageHeader icon={Inbox} title={t("approvals.queue.title")} />
-      <Card>
+      {/* overflow-visible (review R2 H1): keep the search bar's suggestion
+          popup unclipped when the queue is empty or has a single row. */}
+      <Card className="overflow-visible">
         <ListToolbar
           busy={queueQuery.isFetching && queueQuery.isPlaceholderData}
-          search={
-          <TableSearchInput
-            value={search}
-            onChange={(value) => {
-              setSearch(value);
+          fill
+        >
+          {/* Owner feedback 2026-11-04: the search box sits on the LEFT of the
+              toolbar (Aliyun ECS console style) instead of a right-edge
+              column filter. Owner feedback 2026-11-05: it fills the toolbar —
+              no narrow max-width. */}
+          <GlobalSearchBar
+            fields={searchAccessors}
+            terms={terms}
+            onTermsChange={(next) => {
+              setTerms(next);
               setPageNo(1);
             }}
+            onLiveChange={(next) => {
+              setLive(next);
+              setPageNo(1);
+            }}
+            placeholder={t("approvals.queue.searchPlaceholder")}
             testId="approval-queue-search"
+            className="w-full min-w-0 flex-1"
           />
-          }
-        />
+        </ListToolbar>
         <CardContent className="px-0!">
           {queueQuery.isPending ? (
             <LoadingState variant="table" columns={8} />
@@ -172,7 +228,7 @@ export default function ApprovalQueuePage() {
               operationId="listChangeOrders"
               onRetry={() => void queueQuery.refetch()}
             />
-          ) : queue.length === 0 && keyword !== "" ? (
+          ) : queue.length === 0 && effectiveTerms.length > 0 ? (
             <EmptyState filtered title={t("table.emptySearch")} testId="approval-queue-search-empty" />
           ) : queueQuery.data.length === 0 ? (
             <EmptyState title={t("approvals.queue.empty")} testId="approval-queue-empty" />

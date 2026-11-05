@@ -584,6 +584,9 @@
       "auditTab": "Change orders",
       "queryTab": "Query orders",
       "draftsCard": "Drafts",
+      "draftsCardIdle": "Unsubmitted change drafts stay here",
+      "draftsCardDescription": "{{total}} draft(s) to continue — click a row to resume",
+      "draftsUpdated": "Updated {{time}}",
       "draftsEmpty": "No drafts yet. Pick a flow from \"Submit order\" to start.",
       "draftsDelete": "Delete draft",
       "draftsDeleteTitle": "Delete this draft?",
@@ -603,7 +606,7 @@
         "submittedAt": "Submitted"
       },
       "filter": {
-        "searchPlaceholder": "Search order no. / title",
+        "searchPlaceholder": "Search order no. / title, or filter by field",
         "state": "Filter by state",
         "allStates": "All states",
         "datasource": "Filter by datasource",
@@ -611,7 +614,8 @@
         "from": "Submitted from",
         "to": "Submitted to",
         "reset": "Clear filters",
-        "emptyFiltered": "No orders match the current filters."
+        "emptyFiltered": "No orders match the current filters.",
+        "datasourceField": "Datasource"
       }
     },
     "detail": {
@@ -849,6 +853,7 @@
     "queue": {
       "title": "Awaiting my decision",
       "empty": "No orders awaiting your decision",
+      "searchPlaceholder": "Search order no. / title / state / submitter / datasource",
       "column": {
         "number": "Order No.",
         "title": "Title",
@@ -994,7 +999,8 @@
       "tlsPairError": "Client certificate and key must be supplied together.",
       "formInvalidHint": "Save is disabled: fill in the name, host and version constraint (the constraint never echoes on edit and must be re-typed), keep the port within 1-65535, keep at least one purpose credential; a replace-mode row needs username + password and a reuse-mode row needs a picked source plus username; TLS needs at least one material with the certificate and key paired.",
       "credModeReadWrite": "Read-write",
-      "credModeReadOnly": "Read-only"
+      "credModeReadOnly": "Read-only",
+      "searchPlaceholder": "Search name / endpoint (engine, credential status: use a field condition)"
     },
     "reviewInput": {
       "knowledgeText": "Rule knowledge text",
@@ -1320,6 +1326,11 @@
       "grantExpires": "Valid until {{time}}",
       "renew": "Request renewal",
       "renewHint": "Renewal starts a fresh full approval and creates a new grant; the original stays valid until it expires.",
+      "renewTitle": "Request renewal",
+      "renewDescription": "A renewal starts a fresh full approval and creates a new grant; the current grant stays valid until it expires. The request awaits approval under My Orders · Query orders.",
+      "renewSubmit": "Submit renewal request",
+      "renewSubmitted": "Renewal request submitted — awaiting approval.",
+      "renewFailed": "Failed to submit the renewal request",
       "treeTab": "Databases",
       "historyTab": "History",
       "treeBlocked": "The session is no longer usable; metadata browsing is blocked.",
@@ -1410,6 +1421,18 @@
       "comment": "Comment"
     }
   },
+  "search": {
+    "placeholderAll": "Search",
+    "filterByField": "Filter by field",
+    "searchInAll": "Search for “{{query}}”",
+    "fieldValuePlaceholder": "Enter a {{field}} value",
+    "unscopeField": "Stop filtering by {{field}}",
+    "removeTerm": "Remove condition {{term}}",
+    "clearAll": "Clear all conditions",
+    "noMatches": "No matches",
+    "typeValueHint": "Type a {{field}} value and press Enter",
+    "pickDate": "Pick a date"
+  },
   "records": {
     "title": "Audit records",
     "description": "Append-only 90-day audit events (S004); readable by the builtin admin only.",
@@ -1499,6 +1522,7 @@
     "card": "Users",
     "cardDescription": "No disabled state: users have deletion only (P105).",
     "empty": "No users.",
+    "searchPlaceholder": "Search username / display name / email (kind: use a field condition)",
     "column": {
       "username": "Username",
       "displayName": "Display name",
@@ -1541,7 +1565,7 @@
     "preview": {
       "title": "Per-user effective permissions",
       "description": "Pick a user to see their enabled groups and the union of granted flows.",
-      "placeholder": "Enter a user id to preview",
+      "placeholder": "Select a user to preview",
       "user": "User",
       "noGroups": "Not a member of any enabled group",
       "noFlows": "No effective flow grants"
@@ -1549,6 +1573,7 @@
     "card": "Permission groups",
     "cardDescription": "The legacy datasource transfers (ddl/dml/query) are deleted (§3).",
     "empty": "No permission groups.",
+    "searchPlaceholder": "Search group name (enabled / members / flows: use a field condition)",
     "column": {
       "name": "Name",
       "enabled": "Enabled",
@@ -1583,6 +1608,7 @@
     "card": "Flows",
     "cardDescription": "Template edits never affect submitted orders (§3).",
     "empty": "No flows.",
+    "searchPlaceholder": "Search flow name (kind / enabled: use a field condition)",
     "column": {
       "name": "Name",
       "kind": "Kind",
@@ -1821,7 +1847,7 @@
       "restrictionHint": "When enabled, executions are allowed only inside windows.",
       "windows": "Execution windows",
       "windowsHint": "Weekdays and local start/end times.",
-      "weekdays": "weekdays (comma separated)",
+      "weekdays": "Select weekdays",
       "addWindow": "Add window",
       "oscTool": "OSC tool",
       "oscHint": "none or gh-ost.",
@@ -1830,7 +1856,17 @@
       "oscCriticalLoad": "Critical load threshold",
       "oscChunkSize": "Copy chunk size (1–100000)",
       "oscMaxLag": "Max replication lag seconds (0–86400)",
-      "oscRetries": "Retries (1–3)"
+      "oscRetries": "Retries (1–3)",
+      "weekday": {
+        "monday": "Mon",
+        "tuesday": "Tue",
+        "wednesday": "Wed",
+        "thursday": "Thu",
+        "friday": "Fri",
+        "saturday": "Sat",
+        "sunday": "Sun"
+      },
+      "weekdaySeparator": ", "
     },
     "branding": {
       "title": "Branding settings",

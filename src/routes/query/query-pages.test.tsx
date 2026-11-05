@@ -536,3 +536,55 @@ describe("SEC-0031: workspace export caliber (can_export gate + audited export r
     downloadSpy.mockRestore();
   });
 });
+
+describe("query renewal dialog — shadcn DatePicker with embedded time (owner 2026-11-05)", () => {
+  afterEach(() => {
+    server.events.removeAllListeners();
+  });
+
+  it("embeds the time input inside the shadcn DatePicker popover and submits requested_until", async () => {
+    seedQueryScenario("query-session");
+    stubSession(false);
+    const submittedPayloads: { path: string; body: Record<string, unknown> }[] = [];
+    server.events.on("request:start", ({ request }) => {
+      const path = new URL(request.url).pathname;
+      if (request.method === "POST" && path.endsWith("/renewal-requests")) {
+        void request.clone().json().then((body) => {
+          submittedPayloads.push({ path, body: body as Record<string, unknown> });
+        });
+      }
+    });
+
+    renderAt("/query/sessions/qs-fixture-active");
+    await screen.findByTestId("query-workspace");
+    await userEvent.click(await screen.findByTestId("query-grant-renew"));
+    const dialog = await screen.findByTestId("query-renew-dialog");
+    expect(dialog).toBeInTheDocument();
+
+    // Standalone time input is gone before the DatePicker popover opens.
+    expect(screen.queryByTestId("query-renew-until-time")).toBeNull();
+
+    const trigger = screen.getByTestId("query-renew-until");
+    expect(trigger.textContent).toMatch(/^\d{4}-\d{2}-\d{2} 23:59$/);
+
+    // Open the DatePicker popover: both the shadcn Calendar and the time
+    // InputGroupInput mount inside the same popover.
+    await userEvent.click(trigger);
+    expect(document.querySelector('[data-slot="calendar"]')).not.toBeNull();
+    const timeInput = await screen.findByTestId("query-renew-until-time");
+    expect(timeInput.closest('[data-slot="input-group"]')).not.toBeNull();
+    fireEvent.change(timeInput, { target: { value: "18:30" } });
+    expect(trigger.textContent).toMatch(/^\d{4}-\d{2}-\d{2} 18:30$/);
+
+    await userEvent.type(screen.getByTestId("query-renew-reason"), "extend analytics window");
+    await userEvent.click(screen.getByTestId("query-renew-submit"));
+
+    await waitFor(() => {
+      expect(submittedPayloads).toHaveLength(1);
+    });
+    expect(submittedPayloads[0]?.path).toMatch(/\/query-grants\/[0-9a-f-]+\/renewal-requests$/);
+    expect(submittedPayloads[0]?.body.reason).toBe("extend analytics window");
+    expect(String(submittedPayloads[0]?.body.requested_until)).toMatch(/^\d{4}-\d{2}-\d{2}T18:30:00Z$/);
+  });
+});
+

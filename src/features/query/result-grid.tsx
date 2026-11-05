@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { EyeOff } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import type { QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
@@ -132,14 +133,20 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
         </div>
         {/* Keyboard-scrollable region (WCAG 2.1.1/2.1.3, axe
             scrollable-region-focusable): the virtualized grid is the page's
-            primary scroll surface, so it must be reachable by Tab. */}
-        <div
-          ref={parentRef}
-          role="region"
-          aria-label={t("query.result.gridLabel")}
-          tabIndex={0}
-          className="min-h-0 flex-1 overflow-auto rounded-md border focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
-          style={{ maxHeight: "100%" }}
+            primary scroll surface, so it must be reachable by Tab. Owner
+            feedback 2026-11-04 (滚动条要使用scrollarea) + the 2026-11-03
+            ScrollArea ruling: the shared ScrollArea paints both scrollbars;
+            the virtualizer keeps its ref on the real scroll element — the
+            ScrollArea viewport. */}
+        <ScrollArea
+          className="min-h-0 flex-1 rounded-md border"
+          viewportClassName="focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-1"
+          viewportProps={{
+            ref: parentRef,
+            role: "region",
+            tabIndex: 0,
+            "aria-label": t("query.result.gridLabel"),
+          }}
         >
           <table
             className="w-full text-xs tabular-nums"
@@ -227,7 +234,7 @@ export function ResultGrid({ tab, continuationError }: ResultGridProps) {
             </tbody>
             {/* v8 ignore stop */}
           </table>
-        </div>
+        </ScrollArea>
         <div className="flex flex-wrap items-center gap-2">
           {/* Pure frontend paging (§18.50 follow-up): background draining
               grows the loaded rows; the pager never fetches. */}

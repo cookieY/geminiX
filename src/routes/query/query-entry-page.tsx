@@ -20,7 +20,6 @@ import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Label } from "@/shared/components/ui/label";
-import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import {
   useCreateAccessRequest,
@@ -395,20 +394,16 @@ function AccessRequestDialog({ flow, onClose }: { flow: Flow | null; onClose: ()
             <DatePicker
               value={until}
               onChange={(next) => { setUntil(next); }}
+              time={untilTime}
+              onTimeChange={(next) => { setUntilTime(next); }}
+              timeLabel={t("query.apply.untilTime")}
+              timeId="query-apply-until-time"
+              timeTestId="query-apply-until-time"
               testId="query-apply-until"
               ariaLabel={t("query.apply.until")}
               disableBefore={todayLocal()}
+              className="w-full"
             />
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="query-apply-until-time">{t("query.apply.untilTime")}</Label>
-              <Input
-                id="query-apply-until-time"
-                type="time"
-                value={untilTime}
-                onChange={(event) => { setUntilTime(event.target.value); }}
-                data-testid="query-apply-until-time"
-              />
-            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="query-apply-reason">{t("query.apply.reason")}</Label>

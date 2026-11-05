@@ -16,6 +16,31 @@ import { stageApprovalSteps } from "@/features/orders/approval-steps";
  * and 部分执行后撤回明确提示不可回滚).
  */
 
+/**
+ * All ChangeOrderState values in list display order — the single source for
+ * enum-driven UI (state filter options; labels resolve via orders.state.*).
+ */
+export const ORDER_STATES: readonly ChangeOrderState[] = [
+  "submitted",
+  "stage_approval_active",
+  "stage_execution_pending",
+  "scheduled",
+  "running",
+  "completed",
+  "rejected",
+  "withdrawn",
+  "withdrawn_after_partial_execution",
+  "voided",
+  "failed",
+  "partial_failed",
+  "cancelled",
+  "partial_cancelled",
+  "result_unknown",
+  "blocked_datasource_unavailable",
+  "missed_schedule",
+  "invalid",
+];
+
 /** States from which the submitter's withdraw action is legal. */
 const WITHDRAWABLE_STATES: readonly ChangeOrderState[] = [
   "submitted",

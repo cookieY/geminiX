@@ -112,43 +112,103 @@ describe("admin settings visual consistency", () => {
     await userEvent.click(registration);
     await waitFor(() => expect(registration).toBeChecked());
 
+    // Owner feedback 2026-11-05: the timezone is a shadcn Select. The system
+    // default locale stays editable — the header switcher only changes the
+    // current browser session, not the `general.default_locale` server setting.
     const locale = screen.getByTestId("settings-general-locale");
     expect(screen.getByRole("combobox", { name: "默认语言" })).toBe(locale);
     expect(locale).toHaveAttribute("data-slot", "select-trigger");
-    expect(locale.tagName).not.toBe("SELECT");
+    expect(locale).toHaveTextContent("zh-CN");
     await userEvent.click(locale);
     await userEvent.click(await screen.findByRole("option", { name: "en-US" }));
     expect(locale).toHaveTextContent("en-US");
+    const timezone = screen.getByTestId("settings-general-timezone");
+    expect(screen.getByRole("combobox", { name: "系统时区" })).toBe(timezone);
+    expect(timezone).toHaveAttribute("data-slot", "select-trigger");
+    expect(timezone.tagName).not.toBe("INPUT");
+    expect(timezone).toHaveTextContent("Asia/Shanghai");
+    await userEvent.click(timezone);
+    await userEvent.click(await screen.findByRole("option", { name: "UTC" }));
+    expect(timezone).toHaveTextContent("UTC");
   });
 
-  it("blocks a structurally invalid system timezone before any save (F-SET-001)", async () => {
+  it("edits execution-window weekdays through a multi-select, never a comma list", async () => {
     stubAdminSession();
+    server.use(
+      http.get("*/admin/settings/execution", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            namespace: "execution",
+            schema_version: 1,
+            settings: {
+              restriction_enabled: true,
+              windows: [{ days_of_week: ["monday"], start_local_time: "02:00", end_local_time: "06:00" }],
+              osc: { tool: "none", defaults: {} },
+            },
+          },
+          request_id: "x",
+        }),
+      ),
+    );
+    renderSettingsNamespace("execution");
+
+    const weekdays = await screen.findByTestId("settings-execution-weekdays-0");
+    expect(weekdays).toHaveAttribute("data-slot", "select-trigger");
+    expect(weekdays.tagName).not.toBe("INPUT");
+    expect(weekdays).toHaveTextContent("周一");
+    await userEvent.click(weekdays);
+    await userEvent.click(await screen.findByRole("option", { name: "周三" }));
+    await waitFor(() => { expect(weekdays).toHaveTextContent("周一、周三"); });
+  });
+
+  it("blocks a structurally invalid server-held timezone before any save (F-SET-001)", async () => {
+    stubAdminSession();
+    // The picker can only ever offer well-formed zones, so a malformed value
+    // can arrive solely from the server — it stays visible and blocks saving
+    // until the admin picks a valid zone.
+    server.use(
+      http.get("*/admin/settings/general", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            namespace: "general",
+            schema_version: 1,
+            settings: {
+              registration_enabled: false,
+              system_timezone: "Asia//Shanghai",
+              default_locale: "zh-CN",
+              public_base_url: "",
+            },
+            version: 1,
+            updated_by: SESSION_USER_ID,
+            updated_at: "2026-10-24T10:00:00Z",
+          },
+          request_id: "req-fset001-invalid",
+        }),
+      ),
+    );
     renderSettingsNamespace("general");
 
-    const input = await screen.findByTestId("settings-general-timezone");
-    await userEvent.clear(input);
-    await userEvent.type(input, "Asia//Shanghai");
-
-    expect(input).toHaveAttribute("aria-invalid", "true");
+    const trigger = await screen.findByTestId("settings-general-timezone");
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByTestId("settings-general-timezone-error")).toHaveTextContent("时区不合法");
     expect(screen.getByTestId("settings-timezone-blocked")).toBeInTheDocument();
     expect(screen.getByTestId("settings-save")).toBeDisabled();
     expect(screen.getByTestId("settings-assess")).toBeDisabled();
 
-    await userEvent.clear(input);
-    // A different valid zone keeps the draft dirty so the save button's
-    // remaining disabled arm (clean draft) is not what's holding it down.
-    await userEvent.type(input, "UTC");
-    expect(input).toHaveAttribute("aria-invalid", "false");
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "UTC" }));
+    expect(trigger).toHaveAttribute("aria-invalid", "false");
     expect(screen.queryByTestId("settings-general-timezone-error")).toBeNull();
     expect(screen.queryByTestId("settings-timezone-blocked")).toBeNull();
     expect(screen.getByTestId("settings-save")).toBeEnabled();
   });
 
-  it("surfaces the server-side rejection of a well-formed but unknown zone (F-SET-001)", async () => {
+  it("surfaces the server-side rejection of a picked zone (F-SET-001)", async () => {
     stubAdminSession();
-    // The v6.4 acceptance value passes every client-side structural rule —
-    // only the backend's IANA zone database can reject it (server-authoritative).
     server.use(
       http.put("*/admin/settings/general", () =>
         HttpResponse.json(
@@ -166,11 +226,10 @@ describe("admin settings visual consistency", () => {
     );
     renderSettingsNamespace("general");
 
-    const input = await screen.findByTestId("settings-general-timezone");
-    await userEvent.clear(input);
-    await userEvent.type(input, "UTCUTCAsia/Shanghai");
-
-    expect(input).toHaveAttribute("aria-invalid", "false");
+    const trigger = await screen.findByTestId("settings-general-timezone");
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "UTC" }));
+    expect(trigger).toHaveAttribute("aria-invalid", "false");
     expect(screen.queryByTestId("settings-timezone-blocked")).toBeNull();
 
     await userEvent.click(screen.getByTestId("settings-save"));

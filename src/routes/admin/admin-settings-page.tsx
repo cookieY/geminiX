@@ -24,6 +24,8 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { NumberInput } from "@/shared/components/ui/number-input";
+import { timezoneOptions } from "@/shared/lib/timezones";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import {
@@ -301,14 +303,32 @@ function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Dr
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-general-timezone">{t("adminSettings.general.timezone")}</Label>
-        <Input
-          id="settings-general-timezone"
+        {/* Owner feedback 2026-11-05: the timezone is picked, not typed. */}
+        <Select
           value={draft.system_timezone}
-          onChange={(event) => { setDraft({ ...draft, system_timezone: event.target.value }); }}
-          maxLength={64}
-          aria-invalid={!timezoneStructureOk(draft.system_timezone)}
-          data-testid="settings-general-timezone"
-        />
+          onValueChange={(value) => {
+            if (typeof value !== "string") return;
+            setDraft({ ...draft, system_timezone: value });
+          }}
+        >
+          <SelectTrigger
+            id="settings-general-timezone"
+            className="w-72"
+            aria-invalid={!timezoneStructureOk(draft.system_timezone)}
+            data-testid="settings-general-timezone"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            <ScrollArea viewportClassName="max-h-60">
+              {timezoneOptions(draft.system_timezone).map((zone) => (
+                <SelectItem key={zone} value={zone}>
+                  {zone}
+                </SelectItem>
+              ))}
+            </ScrollArea>
+          </SelectContent>
+        </Select>
         {!timezoneStructureOk(draft.system_timezone) && (
           <p className="text-destructive text-xs" data-testid="settings-general-timezone-error">
             {t("adminSettings.general.timezoneInvalid")}
@@ -317,6 +337,9 @@ function GeneralFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Dr
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="settings-general-locale">{t("adminSettings.general.locale")}</Label>
+        {/* The system default locale is a server setting (settings-namespaces
+            `general.default_locale`); the header switcher only changes this
+            browser's session, so the admin editor must stay. */}
         <Select
           value={draft.default_locale}
           onValueChange={(value) => {
@@ -391,6 +414,10 @@ function QueryFields({ draft, setDraft }: { draft: SettingsValue; setDraft: Draf
   );
 }
 
+const WEEKDAYS: readonly ExecutionWindowDaysOfWeekItem[] = [
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+];
+
 function ExecutionFields({ draft, setDraft }: { draft: SettingsValue; setDraft: DraftSetter }) {
   const { t } = useTranslation();
   if (!("restriction_enabled" in draft)) return null;
@@ -455,22 +482,44 @@ function ExecutionFields({ draft, setDraft }: { draft: SettingsValue; setDraft: 
                 className="h-8 font-mono text-xs"
                 placeholder="HH:MM"
               />
-              <Input
-                value={window.days_of_week.join(",")}
-                onChange={(event) => {
+              {/* Owner feedback 2026-11-05: weekdays are picked from the seven
+                  fixed values (multi-select), not typed as a comma list. */}
+              <Select
+                multiple
+                value={window.days_of_week}
+                onValueChange={(next) => {
+                  const picked = new Set<string>(next);
                   const windows = [...draft.windows];
                   windows[index] = {
                     ...window,
-                    days_of_week: event.target.value
-                    .split(",")
-                    .map((day) => day.trim())
-                    .filter((day): day is ExecutionWindowDaysOfWeekItem => day !== ""),
+                    days_of_week: WEEKDAYS.filter((day) => picked.has(day)),
                   };
                   setDraft({ ...draft, windows });
                 }}
-                className="h-8 font-mono text-xs"
-                placeholder={t("adminSettings.execution.weekdays")}
-              />
+              >
+                <SelectTrigger
+                  className="h-8 w-56 text-xs"
+                  aria-label={t("adminSettings.execution.weekdays")}
+                  data-testid={`settings-execution-weekdays-${String(index)}`}
+                >
+                  <SelectValue placeholder={t("adminSettings.execution.weekdays")}>
+                    {(selected: string[]) =>
+                      selected.length === 0
+                        ? t("adminSettings.execution.weekdays")
+                        : WEEKDAYS.filter((day) => selected.includes(day))
+                            .map((day) => t(`adminSettings.execution.weekday.${day}`))
+                            .join(t("adminSettings.execution.weekdaySeparator"))
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  {WEEKDAYS.map((day) => (
+                    <SelectItem key={day} value={day}>
+                      {t(`adminSettings.execution.weekday.${day}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 size="icon"
                 variant="ghost"

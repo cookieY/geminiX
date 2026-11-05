@@ -2,7 +2,7 @@ import i18next from "@/shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
   Copy,
@@ -17,8 +17,10 @@ import {
   X,
 } from "lucide-react";
 import type { QueryGrant, QueryResultPage } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
+import { createQueryGrantRenewalRequest } from "@/api/generated/client/query-access/query-access";
 import { useSession } from "@/features/auth/session-provider";
 import { describeError, type ErrorDisplay } from "@/shared/api/error-display";
+import { toast } from "sonner";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
 import { PageHeader, PageLayout } from "@/shared/components/page-layout";
@@ -32,6 +34,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { DatePicker } from "@/shared/components/ui/date-picker";
 import { Label } from "@/shared/components/ui/label";
 import { Progress } from "@/shared/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -173,6 +176,31 @@ export default function QueryWorkspacePage() {
     if (revoked.length === 0) return null;
     return revoked.reduce((latest, current) => (current.created_at > latest.created_at ? current : latest));
   }, [grantsQuery.data]);
+
+  // 续期申请 (owner feedback 2026-11-04: the banner button must actually
+  // work): POST /query-grants/{id}/renewal-requests starts a fresh approval
+  // flow; the current grant keeps running until it expires. The new request
+  // surfaces in 我的工单-查询工单 like any access request.
+  const [renewOpen, setRenewOpen] = useState(false);
+  const [renewError, setRenewError] = useState<string | null>(null);
+  const renewMutation = useMutation({
+    mutationFn: (input: { requested_until: string; reason: string }) => {
+      if (activeGrant === null) {
+        // Unreachable through the UI (the button only renders with an active
+        // grant); describeError maps this to the safe generic message.
+        return Promise.reject(new Error("no active grant"));
+      }
+      return createQueryGrantRenewalRequest(activeGrant.id, input);
+    },
+    onSuccess: () => {
+      toast.success(t("query.workspace.renewSubmitted"));
+      setRenewOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["query"] });
+    },
+    onError: (error) => {
+      setRenewError(describeErrorText(describeError(error, "createQueryGrantRenewalRequest")));
+    },
+  });
 
   const blocked = row !== null && row.state !== "active";
   // Per-datasource capability states (datasource_unavailable /
@@ -396,9 +424,12 @@ export default function QueryWorkspacePage() {
           <Button
             size="sm"
             variant="outline"
-            disabled
             title={t("query.workspace.renewHint")}
-            data-testid="query-grant-renew-disabled"
+            onClick={() => {
+              setRenewError(null);
+              setRenewOpen(true);
+            }}
+            data-testid="query-grant-renew"
           >
             {t("query.workspace.renew")}
           </Button>
@@ -679,6 +710,18 @@ export default function QueryWorkspacePage() {
         submitting={closeSession.isPending}
       />
 
+      <RenewGrantDialog
+        open={renewOpen}
+        grant={activeGrant}
+        submitting={renewMutation.isPending}
+        error={renewError}
+        onCancel={() => { setRenewOpen(false); }}
+        onSubmit={(input) => {
+          setRenewError(null);
+          renewMutation.mutate(input);
+        }}
+      />
+
       <ExportDialog context={exportContext} sessionId={sessionId} onClose={() => { setExportContext(null); }} />
     </PageLayout>
   );
@@ -739,6 +782,122 @@ interface ExportContext {
   datasourceId: string;
   schemaName: string;
   sql: string;
+}
+
+/** UX-006：本地时区的今天（YYYY-MM-DD），供日期选择器禁用过去日期。 */
+function todayLocal(): string {
+  const now = new Date();
+  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * 续期申请 dialog: mirrors the access-request form (date + time + reason →
+ * wall-clock Z timestamp at minute granularity, OBS-009) and defaults the
+ * target date to the current grant's expiry so a renewal extends it.
+ */
+function RenewGrantDialog({
+  open,
+  grant,
+  submitting,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  open: boolean;
+  grant: QueryGrant | null;
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (input: { requested_until: string; reason: string }) => void;
+}) {
+  const { t } = useTranslation();
+  const defaultUntil = (): string => {
+    // Review L3: the default must strictly extend the current grant. Derive
+    // from the expiry's UTC calendar date + 1 day (OBS-009 wall-clock — a
+    // west-of-UTC local date would otherwise land before the expiry once
+    // the server re-anchors the wall-clock digits).
+    const base =
+      grant === null || grant.expires_at === null || grant.expires_at === undefined
+        ? new Date()
+        : new Date(Date.parse(grant.expires_at));
+    const extended = new Date(base.getTime() + 24 * 60 * 60 * 1000);
+    return `${String(extended.getUTCFullYear())}-${String(extended.getUTCMonth() + 1).padStart(2, "0")}-${String(extended.getUTCDate()).padStart(2, "0")}`;
+  };
+  const [until, setUntil] = useState("");
+  const [untilTime, setUntilTime] = useState("23:59");
+  const [reason, setReason] = useState("");
+  const [armed, setArmed] = useState(false);
+  if (open && !armed) {
+    setArmed(true);
+    setUntil(defaultUntil());
+    setUntilTime("23:59");
+    setReason("");
+  }
+  if (!open && armed) {
+    setArmed(false);
+  }
+  const valid = until !== "" && untilTime !== "" && reason.trim() !== "";
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel(); }}>
+      <DialogContent data-testid="query-renew-dialog">
+        <DialogHeader>
+          <DialogTitle>{t("query.workspace.renewTitle")}</DialogTitle>
+          <DialogDescription>{t("query.workspace.renewDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="query-renew-until">{t("query.apply.until")}</Label>
+            <DatePicker
+              value={until}
+              onChange={(next) => { setUntil(next); }}
+              time={untilTime}
+              onTimeChange={(next) => { setUntilTime(next); }}
+              timeLabel={t("query.apply.untilTime")}
+              timeId="query-renew-until-time"
+              timeTestId="query-renew-until-time"
+              testId="query-renew-until"
+              ariaLabel={t("query.apply.until")}
+              disableBefore={todayLocal()}
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="query-renew-reason">{t("query.apply.reason")}</Label>
+            <Textarea
+              id="query-renew-reason"
+              value={reason}
+              onChange={(event) => { setReason(event.target.value); }}
+              maxLength={4096}
+              data-testid="query-renew-reason"
+            />
+          </div>
+          {error !== null && (
+            <Alert variant="destructive" data-testid="query-renew-error">
+              <AlertTitle>{t("query.workspace.renewFailed")}</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <PendingButton
+            onClick={() => {
+              // OBS-009：墙钟时间（Z标记）+分钟粒度，服务端按
+              // general.system_timezone重锚。
+              onSubmit({ requested_until: `${until}T${untilTime}:00Z`, reason });
+            }}
+            pending={submitting}
+            disabled={!valid}
+            data-testid="query-renew-submit"
+          >
+            {t("query.workspace.renewSubmit")}
+          </PendingButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function ExportDialog({

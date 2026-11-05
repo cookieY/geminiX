@@ -250,6 +250,7 @@ export const listUsersQueryLimitMax = 200;
 
 export const ListUsersQueryParams = zod.object({
   "q": zod.string().optional().describe('Case-insensitive substring matched against username, display_name or email (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.'),
+  "kind": zod.enum(['builtin_admin', 'local_user']).optional().describe('Narrows the admin user list by account kind: builtin_admin matches the built-in administrator, local_user matches local users. AND-composes with q and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.'),
   "limit": zod.int().min(1).max(listUsersQueryLimitMax).default(listUsersQueryLimitDefault),
   "after": zod.string().optional()
 })
@@ -470,6 +471,8 @@ export const listFlowsQueryLimitMax = 200;
 
 export const ListFlowsQueryParams = zod.object({
   "q": zod.string().optional().describe('Case-insensitive substring matched against the flow name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.'),
+  "flow_type": zod.enum(['change_review', 'query_access']).optional().describe('Narrows the admin flow list by flow type (exact enum match). AND-composes with q, enabled and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.'),
+  "enabled": zod.boolean().optional().describe('Narrows the admin flow list by enabled flag. AND-composes with q, flow_type and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.'),
   "limit": zod.int().min(1).max(listFlowsQueryLimitMax).default(listFlowsQueryLimitDefault),
   "after": zod.string().optional()
 })
@@ -2174,6 +2177,10 @@ export const listDatasourcesQueryLimitMax = 200;
 
 export const ListDatasourcesQueryParams = zod.object({
   "q": zod.string().optional().describe('Case-insensitive substring matched against the datasource name or host (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.'),
+  "engine": zod.enum(['mysql', 'postgresql', 'tidb', 'oceanbase', 'polardb']).optional().describe('Narrows the admin datasource list by engine (exact enum match). AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.'),
+  "compatibility_mode": zod.enum(['mysql', 'postgresql']).optional().describe('Narrows the admin datasource list by compatibility mode (exact enum match). AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.'),
+  "credential_mode": zod.enum(['read_write', 'read_only']).optional().describe('Narrows the admin datasource list by whether an enabled execution-purpose credential is stored: read_write means present, read_only means absent. Presence only — never exposes credential material. AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.'),
+  "referenced": zod.boolean().optional().describe('Narrows the admin datasource list to rows referenced (true) or not referenced (false) by at least one flow stage. AND-composes with q, the other column filters and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.'),
   "limit": zod.int().min(1).max(listDatasourcesQueryLimitMax).default(listDatasourcesQueryLimitDefault),
   "after": zod.string().optional()
 })
@@ -2586,6 +2593,9 @@ export const listPermissionGroupsQueryLimitMax = 200;
 
 export const ListPermissionGroupsQueryParams = zod.object({
   "q": zod.string().optional().describe('Case-insensitive substring matched against the group name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.'),
+  "enabled": zod.boolean().optional().describe('Narrows the admin permission-group list by enabled flag. AND-composes with q, the other column filters and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.'),
+  "member_user_id": zod.uuid().optional().describe('Narrows the admin permission-group list to groups whose membership contains this user id. AND-composes with q, the other column filters and the cursor walk; a value that is not a uuid is rejected with 1001; omitted keeps the unfiltered list.'),
+  "flow_id": zod.uuid().optional().describe('Narrows the admin permission-group list to groups granted this flow id. AND-composes with q, the other column filters and the cursor walk; a value that is not a uuid is rejected with 1001; omitted keeps the unfiltered list.'),
   "limit": zod.int().min(1).max(listPermissionGroupsQueryLimitMax).default(listPermissionGroupsQueryLimitDefault),
   "after": zod.string().optional()
 })

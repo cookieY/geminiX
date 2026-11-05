@@ -151,11 +151,32 @@ function ifMatch(version: number | undefined): Record<string, string> {
 
 // ---- datasources ---------------------------------------------------------
 
-export function useDatasources(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
+export function useDatasources(enabled: boolean, paging?: {
+  limit?: number;
+  after?: string;
+  q?: string;
+  /** RCP-20261105 分列过滤：全部为收窄条件，彼此AND，与q组合。 */
+  engine?: "mysql" | "postgresql" | "tidb" | "oceanbase" | "polardb";
+  compatibilityMode?: "mysql" | "postgresql";
+  credentialMode?: "read_write" | "read_only";
+  referenced?: boolean;
+}) {
   return useQuery({
-    queryKey: ["admin", "datasources", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
+    queryKey: [
+      "admin", "datasources", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? "",
+      paging?.engine ?? "", paging?.compatibilityMode ?? "", paging?.credentialMode ?? "",
+      paging?.referenced === undefined ? "" : String(paging.referenced),
+    ],
     queryFn: async () => {
-      const response = await listDatasources({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
+      const response = await listDatasources({
+        limit: paging?.limit ?? PAGE_LIMIT,
+        after: paging?.after || undefined,
+        q: paging?.q || undefined,
+        engine: paging?.engine,
+        compatibility_mode: paging?.compatibilityMode,
+        credential_mode: paging?.credentialMode,
+        referenced: paging?.referenced,
+      });
       return response as unknown as { items: Datasource[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     placeholderData: keepPreviousData,
@@ -629,11 +650,22 @@ export function useFlowsForRuleSetImpact(enabled: boolean) {
 
 // ---- users ---------------------------------------------------------------
 
-export function useUsers(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
+export function useUsers(enabled: boolean, paging?: {
+  limit?: number;
+  after?: string;
+  q?: string;
+  /** RCP-20261105 分列过滤：kind按账户类型收窄，与q AND组合。 */
+  kind?: "builtin_admin" | "local_user";
+}) {
   return useQuery({
-    queryKey: ["admin", "users", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
+    queryKey: ["admin", "users", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? "", paging?.kind ?? ""],
     queryFn: async () => {
-      const response = await listUsers({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
+      const response = await listUsers({
+        limit: paging?.limit ?? PAGE_LIMIT,
+        after: paging?.after || undefined,
+        q: paging?.q || undefined,
+        kind: paging?.kind,
+      });
       return response as unknown as { items: User[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     placeholderData: keepPreviousData,
@@ -690,11 +722,29 @@ export function useDeletionImpact(userId: string, enabled: boolean) {
 
 // ---- permission groups ---------------------------------------------------
 
-export function usePermissionGroups(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
+export function usePermissionGroups(enabled: boolean, paging?: {
+  limit?: number;
+  after?: string;
+  q?: string;
+  /** RCP-20261105 分列过滤：enabled/成员/授权流程，全部收窄、彼此AND。 */
+  enabled?: boolean;
+  memberUserId?: string;
+  flowId?: string;
+}) {
   return useQuery({
-    queryKey: ["admin", "permission-groups", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
+    queryKey: [
+      "admin", "permission-groups", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? "",
+      paging?.enabled === undefined ? "" : String(paging.enabled), paging?.memberUserId ?? "", paging?.flowId ?? "",
+    ],
     queryFn: async () => {
-      const response = await listPermissionGroups({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
+      const response = await listPermissionGroups({
+        limit: paging?.limit ?? PAGE_LIMIT,
+        after: paging?.after || undefined,
+        q: paging?.q || undefined,
+        enabled: paging?.enabled,
+        member_user_id: paging?.memberUserId,
+        flow_id: paging?.flowId,
+      });
       return response as unknown as { items: PermissionGroup[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     placeholderData: keepPreviousData,
@@ -741,11 +791,27 @@ export function useDeletePermissionGroup() {
 
 // ---- flows (full model + masking rules) -----------------------------------
 
-export function useFlows(enabled: boolean, paging?: { limit?: number; after?: string; q?: string }) {
+export function useFlows(enabled: boolean, paging?: {
+  limit?: number;
+  after?: string;
+  q?: string;
+  /** RCP-20261105 分列过滤：flow_type/enabled收窄，与q AND组合。 */
+  flowType?: "change_review" | "query_access";
+  enabled?: boolean;
+}) {
   return useQuery({
-    queryKey: ["admin", "flows", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? ""],
+    queryKey: [
+      "admin", "flows", paging?.after ?? "", paging?.limit ?? 0, paging?.q ?? "",
+      paging?.flowType ?? "", paging?.enabled === undefined ? "" : String(paging.enabled),
+    ],
     queryFn: async () => {
-      const response = await listFlows({ limit: paging?.limit ?? PAGE_LIMIT, after: paging?.after || undefined, q: paging?.q || undefined });
+      const response = await listFlows({
+        limit: paging?.limit ?? PAGE_LIMIT,
+        after: paging?.after || undefined,
+        q: paging?.q || undefined,
+        flow_type: paging?.flowType,
+        enabled: paging?.enabled,
+      });
       return response as unknown as { items: Flow[]; page: { has_more: boolean; next_cursor: string | null } };
     },
     placeholderData: keepPreviousData,

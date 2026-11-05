@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/features/auth/session-provider";
@@ -104,8 +104,22 @@ function grantSession(): void {
   );
 }
 
-describe("MinePage", () => {
-  it("renders draft and order sections separated, orders newest first", async () => {
+/** Pick a calendar day inside the date dialog, matched by its localized
+ * aria-label so the query never depends on DOM order (review R2-L1 nit). */
+async function pickCalendarDay(
+  user: ReturnType<typeof userEvent.setup>,
+  dialogName: string,
+  day: number,
+): Promise<void> {
+  const now = new Date();
+  const label = new RegExp(
+    `^${String(now.getFullYear())}年${String(now.getMonth() + 1)}月${String(day)}日`,
+  );
+  const dialog = screen.getByRole("dialog", { name: dialogName });
+  await user.click(within(dialog).getByRole("button", { name: label }));
+}
+
+describe("MinePage", () => {  it("renders draft and order sections separated, orders newest first", async () => {
     seedOrder();
     seedOrder({
       id: "9b6f1a2b-0000-4000-8000-00000000cd02",
@@ -347,21 +361,82 @@ describe("MinePage", () => {
     }, { timeout: 3000 });
   });
 
-  it("offers the reset affordance only while filters are active", async () => {
+  it("commits state, datasource, and date chips into server params and clears every filter (owner 2026-11-05)", async () => {
     const user = userEvent.setup();
-    seedOrder();
-    renderMine();
-    expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
-    expect(screen.queryByTestId("filter-reset")).toBeNull();
-
-    await user.type(screen.getByTestId("filter-keyword"), "YR");
-    await waitFor(() => {
-      expect(screen.getByTestId("filter-reset")).toBeVisible();
-    }, { timeout: 3000 });
-    await user.click(screen.getByTestId("filter-reset"));
-    await waitFor(() => {
-      expect(screen.queryByTestId("filter-reset")).toBeNull();
+    seedOrder({
+      stages: [
+        {
+          position: 1,
+          name: "审批",
+          datasource_id: "ds-1",
+          datasource_name: "prod-mysql",
+          database_name: "app",
+          state: "approval_pending",
+          approval_mode: "any",
+          approval_actors: [],
+          execution_actors: [],
+        },
+      ],
     });
-    expect(screen.getByTestId("filter-keyword")).toHaveValue("");
+    const seenParams: URLSearchParams[] = [];
+    const recordRequest = ({ request }: { request: Request }): void => {
+      const url = new URL(request.url);
+      if (url.pathname.endsWith("/change-orders") && url.searchParams.get("limit") === "20") {
+        seenParams.push(url.searchParams);
+      }
+    };
+    server.events.on("request:start", recordRequest);
+    try {
+      renderMine();
+      expect(await screen.findByTestId("mine-orders-table")).toBeVisible();
+      const input = screen.getByTestId("filter-keyword");
+      expect(screen.queryByTestId("filter-keyword-clear")).toBeNull();
+
+      // 1. State chip -> state=submitted (and Submitted-to is no longer offered)
+      await user.click(input);
+      expect(screen.queryByRole("option", { name: "提交截止日期" })).toBeNull();
+      await user.click(screen.getByRole("option", { name: "状态" }));
+      await user.click(screen.getByRole("option", { name: "已提交" }));
+
+      // 2. Datasource chip -> datasource=prod-mysql
+      await user.click(input);
+      await user.click(screen.getByRole("option", { name: "数据源" }));
+      await user.click(await screen.findByRole("option", { name: "prod-mysql" }));
+
+      // 3. Submitted-from date chip -> submitted_from=YYYY-MM-10
+      await user.click(input);
+      await user.click(screen.getByRole("option", { name: "提交起始日期" }));
+      await pickCalendarDay(user, "提交起始日期 — 选择日期", 10);
+
+      // 4. Live keyword -> q=YR (after debounce)
+      await user.type(input, "YR");
+
+      const now = new Date();
+      const ym = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      await waitFor(() => {
+        const last = seenParams[seenParams.length - 1];
+        expect(last?.get("q")).toBe("YR");
+        expect(last?.get("state")).toBe("submitted");
+        expect(last?.get("datasource")).toBe("prod-mysql");
+        expect(last?.get("submitted_from")).toBe(`${ym}-10`);
+        expect(last?.get("submitted_to")).toBeNull();
+      }, { timeout: 3000 });
+
+      // Clear-all resets all active server filter params in one gesture.
+      const countBeforeClear = seenParams.length;
+      await user.click(screen.getByTestId("filter-keyword-clear"));
+      await waitFor(() => {
+        expect(screen.queryByTestId("filter-keyword-clear")).toBeNull();
+        expect(seenParams.length).toBeGreaterThan(countBeforeClear);
+        const last = seenParams[seenParams.length - 1];
+        expect(last?.get("q")).toBeNull();
+        expect(last?.get("state")).toBeNull();
+        expect(last?.get("datasource")).toBeNull();
+        expect(last?.get("submitted_from")).toBeNull();
+      }, { timeout: 3000 });
+      expect(input).toHaveValue("");
+    } finally {
+      server.events.removeListener("request:start", recordRequest);
+    }
   });
 });

@@ -33,10 +33,16 @@ test("submitter lists real orders and opens one detail", async ({ page }) => {
 test("order state filters are served by the real backend", async ({ page }) => {
   await page.goto("/changes/mine");
   await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 20_000 });
-  // The state filter drives a server round-trip (F6 filter contract): pick
-  // one state and assert the table still renders — the exact row set depends
-  // on the live stack, the contract is that the query succeeds.
-  await page.getByTestId("filter-state").click();
-  await page.getByRole("option", { name: /已通过|进行中|已撤回/ }).first().click();
-  await expect(page.getByTestId("mine-orders-table")).toBeVisible();
+  // The ECS-style search bar's 状态 chip drives a server round-trip (F6
+  // filter contract): pick one state and assert the table still renders —
+  // the exact row set depends on the live stack, the contract is that the
+  // query succeeds.
+  await page.getByTestId("filter-keyword").click();
+  await page.getByRole("option", { name: "状态" }).click();
+  await page.getByRole("option", { name: /已通过|执行中|已撤回/ }).first().click();
+  await expect(
+    page.getByTestId("mine-orders-table").or(page.getByTestId("orders-empty")),
+  ).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("filter-keyword-clear").click();
+  await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 20_000 });
 });

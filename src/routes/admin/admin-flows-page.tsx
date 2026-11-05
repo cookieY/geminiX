@@ -15,7 +15,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Button } from "@/shared/components/ui/button";
-import { TableSearchInput } from "@/shared/components/table-search-input";
+import {
+  GlobalSearchBar,
+  filterBySearchTerms,
+  type SearchAccessor,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
@@ -91,18 +96,85 @@ export default function AdminFlowsPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const [search, setSearch] = useState("");
+  const [terms, setTerms] = useState<SearchTerm[]>([]);
+  const [live, setLive] = useState<SearchTerm | null>(null);
+  const effectiveTerms = useMemo(
+    () => (live === null ? terms : [...terms, live]),
+    [live, terms],
+  );
+  // §18.73 + RCP-20261105：名称/自由文本走服务端q；类型与启用是带值的
+  // 服务端分列过滤（flow_type / enabled），跨页收窄由服务端完成。
+  // 「结构」是本地化复合展示文本，不再是可搜索字段。
+  const serverQ = useMemo(
+    () =>
+      [...effectiveTerms]
+        .reverse()
+        .find((term) => term.field === null || term.field === "name")
+        ?.text.trim() ?? "",
+    [effectiveTerms],
+  );
+  const flowTypeParam = useMemo<"change_review" | "query_access" | undefined>(() => {
+    const TYPES = { [t("adminFlows.kind.change")]: "change_review", [t("adminFlows.kind.query")]: "query_access" } as const;
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "kind" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : TYPES[term.text as keyof typeof TYPES];
+  }, [effectiveTerms, t]);
+  const enabledParam = useMemo<boolean | undefined>(() => {
+    const LABELS = { [t("adminFlows.enabled")]: true, [t("adminFlows.disabled")]: false } as const;
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "enabled" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : LABELS[term.text as keyof typeof LABELS];
+  }, [effectiveTerms, t]);
 
-  const flowsQuery = useFlows(isAdmin, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
+  const flowsQuery = useFlows(isAdmin, {
+    limit: pager.pageSize,
+    after: pager.after,
+    q: serverQ || undefined,
+    flowType: flowTypeParam,
+    enabled: enabledParam,
+  });
   // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
   const flowsLoaded = !flowsQuery.isPending && !flowsQuery.isError;
   const [editing, setEditing] = useState<Flow | null>(null);
   const [createType, setCreateType] = useState<"change_review" | "query_access" | null>(null);
 
-  // §18.73：搜索走服务端q；keyword仅用于空态文案区分。
-  const keyword = search.trim();
-  const flows = flowsQuery.data?.items ?? [];
-  // 搜索在服务端收窄；行集合变化时把整行位移补间掉。
+  const searchAccessors = useMemo<SearchAccessor<Flow>[]>(
+    () => [
+      {
+        key: "name",
+        label: t("adminFlows.column.name"),
+        value: (flow) => flow.name,
+      },
+      {
+        key: "kind",
+        label: t("adminFlows.column.kind"),
+        value: (flow) =>
+          flow.flow_type === "query_access"
+            ? t("adminFlows.kind.query")
+            : t("adminFlows.kind.change"),
+        options: [
+          { label: t("adminFlows.kind.change") },
+          { label: t("adminFlows.kind.query") },
+        ],
+      },
+      {
+        key: "enabled",
+        label: t("adminFlows.column.enabled"),
+        value: (flow) =>
+          flow.enabled ? t("adminFlows.enabled") : t("adminFlows.disabled"),
+        options: [
+          { label: t("adminFlows.enabled") },
+          { label: t("adminFlows.disabled") },
+        ],
+      },
+    ],
+    [t],
+  );
+  const hasSearchFilter = effectiveTerms.some((term) => term.text.trim() !== "");
+  const flows = filterBySearchTerms(
+    flowsQuery.data?.items ?? [],
+    effectiveTerms,
+    searchAccessors,
+  );
+  // 搜索在服务端/客户端收窄；行集合变化时把整行位移补间掉。
   const flowsBodyRef = useFlipReorder<HTMLTableSectionElement>(
     JSON.stringify(flows.map((flow) => flow.id)),
   );
@@ -113,34 +185,43 @@ export default function AdminFlowsPage() {
         title={t("adminFlows.title")}
         description={t("adminFlows.description")}
         icon={Workflow}
-        actions={
-          <>
-          <Button variant="outline" onClick={() => { setCreateType("change_review"); }} data-testid="admin-flows-create-change">
-            <Plus />
-            {t("adminFlows.createChange")}
-          </Button>
-          <Button onClick={() => { setCreateType("query_access"); }} data-testid="admin-flows-create-query">
-            <Plus />
-            {t("adminFlows.createQuery")}
-          </Button>
-          </>
-        }
       />
 
-      <Card>
+      <Card className="overflow-visible">
         <ListToolbar
           busy={flowsQuery.isFetching && !flowsQuery.isPending}
-          search={
-            <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
-              }}
-              testId="admin-flows-search"
-            />
+          fill
+          actions={
+            <>
+              <Button variant="outline" onClick={() => { setCreateType("change_review"); }} data-testid="admin-flows-create-change">
+                <Plus />
+                {t("adminFlows.createChange")}
+              </Button>
+              <Button onClick={() => { setCreateType("query_access"); }} data-testid="admin-flows-create-query">
+                <Plus />
+                {t("adminFlows.createQuery")}
+              </Button>
+            </>
           }
-        />
+        >
+          {/* Owner feedback 2026-11-05: ECS-style multi-field search box on
+              the left, create actions on the right inside the toolbar. */}
+          <GlobalSearchBar
+            fields={searchAccessors}
+            terms={terms}
+            onTermsChange={(next) => {
+              setTerms(next);
+              pager.reset();
+            }}
+            onLiveChange={(next) => {
+              setLive(next);
+              pager.reset();
+            }}
+            placeholder={t("adminFlows.searchPlaceholder")}
+            testId="admin-flows-search"
+            className="w-full min-w-0 flex-1"
+          />
+        </ListToolbar>
         <CardContent className="px-0!">
           {flowsQuery.isPending ? (
             <LoadingState variant="table" columns={5} />
@@ -150,8 +231,8 @@ export default function AdminFlowsPage() {
             <>
               {flows.length === 0 ? (
                 <EmptyState
-                  title={keyword !== "" ? t("table.emptySearch") : t("adminFlows.empty")}
-                  filtered={keyword !== ""}
+                  title={hasSearchFilter ? t("table.emptySearch") : t("adminFlows.empty")}
+                  filtered={hasSearchFilter}
                   testId="admin-flows-empty"
                 />
               ) : (

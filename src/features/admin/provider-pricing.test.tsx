@@ -727,7 +727,7 @@ describe("S008 regression additions: pagination, field errors, a11y, error state
     expect(callsQueries.every((value) => value === ADMIN_FIXTURE_PROVIDER_PRIMARY_ID)).toBe(true);
   });
 
-  it("blocks invalid prices, until<from and blank timezone with per-field errors and no request", async () => {
+  it("blocks invalid prices and until<from with per-field errors and no request", async () => {
     const created: Array<Record<string, unknown>> = [];
     server.use(
       http.post("*/admin/ai-providers/:providerId/rate-versions", async ({ request }) => {
@@ -751,18 +751,22 @@ describe("S008 regression additions: pagination, field errors, a11y, error state
     expect(created).toHaveLength(0);
 
     fireEvent.change(screen.getByTestId("rate-until"), { target: { value: "2027-06-30" } });
-    fireEvent.change(screen.getByTestId("rate-timezone"), { target: { value: "  " } });
-    await userEvent.click(screen.getByTestId("rate-submit"));
-    expect(screen.getByTestId("provider-rate-form").textContent).toContain("计费时区");
-    expect(created).toHaveLength(0);
+    // The billing zone is a Select (owner 2026-11-05), not free text: it can
+    // only hold a listed zone, so pick one explicitly before the valid submit.
+    const zoneTrigger = screen.getByTestId("rate-timezone");
+    expect(zoneTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(zoneTrigger.tagName).not.toBe("INPUT");
+    await userEvent.click(zoneTrigger);
+    await userEvent.click(await screen.findByRole("option", { name: "UTC" }));
+    expect(screen.getByTestId("rate-timezone")).toHaveTextContent("UTC");
 
     // Everything valid again: zero is a legal price and the create goes out.
-    fireEvent.change(screen.getByTestId("rate-timezone"), { target: { value: "Asia/Shanghai" } });
     fireEvent.change(screen.getByTestId("rate-output-price-0"), { target: { value: "0" } });
     await userEvent.click(screen.getByTestId("rate-submit"));
     await waitFor(() => { expect(created).toHaveLength(1); });
     const windows = (created[0] as { windows: Array<Record<string, unknown>> }).windows;
     expect(windows[0]).toMatchObject({ input_price: "2.34", output_price: "0" });
+    expect(created[0]).toMatchObject({ timezone: "UTC" });
   });
 
   it("exposes accessible names for currency, price and window-end controls", async () => {

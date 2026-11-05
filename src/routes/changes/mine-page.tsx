@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type {
@@ -21,20 +21,17 @@ import { LoadingState } from "@/shared/components/status/loading-state";
 import { EmptyState } from "@/shared/components/status/empty-state";
 import { ListToolbar, PageHeader, PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
-import { TableSearchInput } from "@/shared/components/table-search-input";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
-import { DatePicker } from "@/shared/components/ui/date-picker";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useCursorPage } from "@/shared/lib/cursor-page";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
+import {
+  GlobalSearchBar,
+  type SearchFieldDef,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
+import { ORDER_STATES } from "@/features/orders/order-state";
 import {
   Table,
   TableBody,
@@ -45,7 +42,7 @@ import {
 } from "@/shared/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { TAB_PANEL_VARIANTS, TransitionPanel } from "@/shared/components/ui/transition-panel";
-import { ArrowRight, FileStack, FilterX, Trash2 } from "lucide-react";
+import { ArrowRight, FileStack, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteChangeDraft } from "@/api/generated/client/change-drafts/change-drafts";
 import { describeError } from "@/shared/api/error-display";
@@ -78,27 +75,6 @@ const ALL_STATES = "all" as const;
 const ALL_DATASOURCES = "all" as const;
 const KEYWORD_DEBOUNCE_MS = 300;
 
-const ORDER_STATES: ChangeOrderState[] = [
-  "submitted",
-  "stage_approval_active",
-  "stage_execution_pending",
-  "scheduled",
-  "running",
-  "completed",
-  "rejected",
-  "withdrawn",
-  "withdrawn_after_partial_execution",
-  "voided",
-  "failed",
-  "partial_failed",
-  "cancelled",
-  "partial_cancelled",
-  "result_unknown",
-  "blocked_datasource_unavailable",
-  "missed_schedule",
-  "invalid",
-];
-
 function formatTimestamp(value: string): string {
   return value.replace("T", " ").replace("Z", " UTC");
 }
@@ -114,23 +90,29 @@ function DraftRow({ draft, onDelete }: { draft: ChangeDraft; onDelete: (draft: C
       onKeyDown={(event) => {
         if (event.key === "Enter") void navigate(`/changes/drafts/${draft.id}`);
       }}
-      className="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+      className="group focus-visible:ring-ring/50 hover:border-border hover:bg-muted/40 focus-visible:border-ring flex w-full cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left outline-none transition-[background-color,border-color] duration-150 ease-out focus-visible:ring-[3px]"
       data-testid="mine-draft-row"
     >
-      <FileStack className="text-muted-foreground size-4 shrink-0" aria-hidden />
-      <span className="flex-1 truncate">{draft.title}</span>
+      <span className="bg-secondary text-secondary-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
+        <FileStack className="size-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block truncate text-sm font-medium">
+          {draft.title}
+        </span>
+        <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+          {t("orders.list.draftsUpdated", { time: formatTimestamp(draft.updated_at) })}
+        </span>
+      </span>
       {/* RCP-20261101：草稿列表不再有审核状态列——draft.state 只剩
           draft|submitted，提交即离开草稿列表，无需徽章。 */}
-      <span className="text-muted-foreground hidden text-xs sm:block">
-        {formatTimestamp(draft.updated_at)}
-      </span>
       {/* 草稿删除 (owner ruling 2026-10-24): the list row carries the only
           delete affordance; the confirm dialog lives at the card level. */}
       <Button
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="text-muted-foreground hover:text-destructive"
+        className="text-muted-foreground hover:text-destructive focus-visible:opacity-100 pointer-coarse:opacity-100 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
         aria-label={t("orders.list.draftsDelete")}
         onClick={(event) => {
           event.stopPropagation();
@@ -140,7 +122,10 @@ function DraftRow({ draft, onDelete }: { draft: ChangeDraft; onDelete: (draft: C
       >
         <Trash2 className="size-4" aria-hidden />
       </Button>
-      <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+      <ArrowRight
+        className="text-muted-foreground size-4 shrink-0 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
+        aria-hidden
+      />
     </div>
   );
 }
@@ -198,7 +183,6 @@ interface FilterState {
   /** "all" sentinel or an exact stage datasource_name. */
   datasource: string;
   submittedFrom: string;
-  submittedTo: string;
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -207,7 +191,6 @@ const INITIAL_FILTERS: FilterState = {
   state: ALL_STATES,
   datasource: ALL_DATASOURCES,
   submittedFrom: "",
-  submittedTo: "",
 };
 
 function hasActiveFilters(filters: FilterState): boolean {
@@ -215,93 +198,7 @@ function hasActiveFilters(filters: FilterState): boolean {
     filters.q !== "" ||
     filters.state !== ALL_STATES ||
     filters.datasource !== ALL_DATASOURCES ||
-    filters.submittedFrom !== "" ||
-    filters.submittedTo !== ""
-  );
-}
-
-function MineOrderFilters({
-  filters,
-  datasourceOptions,
-  onChange,
-  onReset,
-}: {
-  filters: FilterState;
-  datasourceOptions: string[];
-  onChange: (patch: Partial<FilterState>) => void;
-  onReset: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div
-      className="flex flex-wrap items-center gap-2"
-      data-testid="mine-order-filters"
-    >
-      <Select
-        value={filters.state}
-        onValueChange={(value) => { onChange({ state: value ?? ALL_STATES }); }}
-        items={{
-          [ALL_STATES]: t("orders.list.filter.allStates"),
-          ...Object.fromEntries(
-            ORDER_STATES.map((state) => [state, t(`orders.state.${state}`)]),
-          ),
-        }}
-      >
-        <SelectTrigger className="w-40" aria-label={t("orders.list.filter.state")} data-testid="filter-state">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_STATES}>{t("orders.list.filter.allStates")}</SelectItem>
-          {ORDER_STATES.map((state) => (
-            <SelectItem key={state} value={state}>
-              {t(`orders.state.${state}`)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.datasource}
-        onValueChange={(value) => { onChange({ datasource: value ?? ALL_DATASOURCES }); }}
-        items={{
-          [ALL_DATASOURCES]: t("orders.list.filter.allDatasources"),
-          ...Object.fromEntries(datasourceOptions.map((name) => [name, name])),
-        }}
-      >
-        <SelectTrigger
-          className="w-40"
-          aria-label={t("orders.list.filter.datasource")}
-          data-testid="filter-datasource"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_DATASOURCES}>{t("orders.list.filter.allDatasources")}</SelectItem>
-          {datasourceOptions.map((name) => (
-            <SelectItem key={name} value={name}>
-              {name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <DatePicker
-        value={filters.submittedFrom}
-        onChange={(next) => { onChange({ submittedFrom: next }); }}
-        aria-label={t("orders.list.filter.from")}
-        testId="filter-submitted-from"
-      />
-      <DatePicker
-        value={filters.submittedTo}
-        onChange={(next) => { onChange({ submittedTo: next }); }}
-        aria-label={t("orders.list.filter.to")}
-        testId="filter-submitted-to"
-      />
-      {hasActiveFilters(filters) && (
-        <Button variant="ghost" size="sm" onClick={onReset} data-testid="filter-reset">
-          <FilterX className="size-4" aria-hidden />
-          {t("orders.list.filter.reset")}
-        </Button>
-      )}
-    </div>
+    filters.submittedFrom !== ""
   );
 }
 
@@ -316,6 +213,49 @@ export default function MinePage() {
 
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
 
+  const patchFilters = (patch: Partial<FilterState>): void => {
+    setFilters((previous) => ({ ...previous, ...patch }));
+  };
+
+  // ECS-style global search (owner feedback 2026-11-04 + 2026-11-05): the ONE
+  // search box owns every server filter — free text maps to the q param
+  // (matches 工单号+标题 server-side), and 状态 / 数据源 / 提交起始日期 chips
+  // map to the state / datasource / submitted_from params (owner feedback:
+  // 提交截止时间 is not needed in the search box). The old datasource Select
+  // and date pickers are gone; the bar's clear-all resets all params in one
+  // gesture. Mapping happens in the event handlers (not an effect):
+  // onTermsChange fires before the bar's trailing onLiveChange, and the ref
+  // keeps the committed any-chip visible to both handlers within one batch.
+  const [searchTerms, setSearchTerms] = useState<SearchTerm[]>([]);
+  const committedTermsRef = useRef<SearchTerm[]>([]);
+  const lastAnyText = (terms: readonly SearchTerm[]): string =>
+    [...terms].reverse().find((term) => term.field === null)?.text ?? "";
+  const textOf = (terms: readonly SearchTerm[], field: string): string =>
+    [...terms].reverse().find((term) => term.field === field)?.text ?? "";
+  const stateOfTerms = (terms: readonly SearchTerm[]): string => {
+    const label = [...terms].reverse().find((term) => term.field === "state")?.text;
+    return label === undefined
+      ? ALL_STATES
+      : ORDER_STATES.find((candidate) => t(`orders.state.${candidate}`) === label) ?? ALL_STATES;
+  };
+  const handleTermsChange = (next: SearchTerm[]): void => {
+    committedTermsRef.current = next;
+    setSearchTerms(next);
+    patchFilters({
+      keywordInput: lastAnyText(next),
+      state: stateOfTerms(next),
+      datasource: textOf(next, "datasource") || ALL_DATASOURCES,
+      submittedFrom: textOf(next, "submitted_from"),
+    });
+  };
+  const handleLiveChange = (live: SearchTerm | null): void => {
+    // Live any-field text wins while typing; a scoped draft (状态 value) is
+    // chip-only; an emptied input falls back to the committed any-chip.
+    const keyword =
+      live !== null && live.field === null ? live.text : lastAnyText(committedTermsRef.current);
+    patchFilters({ keywordInput: keyword });
+  };
+
   // The keyword param is debounced; the select/date inputs commit directly.
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -328,16 +268,11 @@ export default function MinePage() {
     return () => { clearTimeout(timer); };
   }, [filters.keywordInput]);
 
-  const patchFilters = (patch: Partial<FilterState>): void => {
-    setFilters((previous) => ({ ...previous, ...patch }));
-  };
-
   const serverFilters: OrderListFilters = {
     q: filters.q === "" ? undefined : filters.q,
     state: filters.state === ALL_STATES ? undefined : (filters.state as ChangeOrderState),
     datasource: filters.datasource === ALL_DATASOURCES ? undefined : filters.datasource,
     submitted_from: filters.submittedFrom === "" ? undefined : filters.submittedFrom,
-    submitted_to: filters.submittedTo === "" ? undefined : filters.submittedTo,
   };
 
   // F-UX-004：工作台「待我执行」卡携带 ?scope=execution 到达——同一
@@ -364,6 +299,24 @@ export default function MinePage() {
   // keepPreviousData 会先展示上一页/上一关键词的行；在表体自证过期，避免点击旧行。
   const ordersStale = ordersQuery.isFetching && ordersQuery.isPlaceholderData;
   const datasourceOptionsQuery = useOrderDatasourceOptions(true);
+  const searchFields = useMemo<SearchFieldDef[]>(
+    () => [
+      {
+        key: "state",
+        label: t("orders.list.column.state"),
+        options: ORDER_STATES.map((state) => ({
+          label: t(`orders.state.${state}`),
+        })),
+      },
+      {
+        key: "datasource",
+        label: t("orders.list.filter.datasourceField"),
+        options: (datasourceOptionsQuery.data ?? []).map((name) => ({ label: name })),
+      },
+      { key: "submitted_from", label: t("orders.list.filter.from"), input: "date" },
+    ],
+    [t, datasourceOptionsQuery.data],
+  );
 
   const draftsError = draftsQuery.error ?? ordersQuery.error;
 
@@ -433,8 +386,15 @@ export default function MinePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>{t("orders.list.draftsCard")}</CardTitle>
+                  <CardDescription>
+                    {(draftsQuery.data ?? []).length === 0
+                      ? t("orders.list.draftsCardIdle")
+                      : t("orders.list.draftsCardDescription", {
+                          total: (draftsQuery.data ?? []).length,
+                        })}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-1">
+                <CardContent className="flex flex-col gap-1.5">
                   {(draftsQuery.data ?? []).length === 0 && (
                     <EmptyState title={t("orders.list.draftsEmpty")} />
                   )}
@@ -480,24 +440,28 @@ export default function MinePage() {
                   </DialogContent>
                 </Dialog>
               </Card>
-              <Card>
-                <ListToolbar
-                  busy={ordersStale}
-                  search={
-                    <TableSearchInput
-                      value={filters.keywordInput}
-                      onChange={(value) => { patchFilters({ keywordInput: value }); }}
-                      placeholder={t("orders.list.filter.searchPlaceholder")}
-                      testId="filter-keyword"
-                    />
-                  }
-                >
+              {/* overflow-visible (review R2 H1): the search bar's suggestion
+                  listbox and inline calendar extend below the card in empty or
+                  1-row states; the default Card overflow-hidden would clip
+                  late-month calendar days and make them unclickable. */}
+              <Card className="overflow-visible">
+                <ListToolbar busy={ordersStale} fill>
                   <CardTitle>{t("orders.list.ordersCard")}</CardTitle>
-                  <MineOrderFilters
-                    filters={filters}
-                    datasourceOptions={datasourceOptionsQuery.data ?? []}
-                    onChange={patchFilters}
-                    onReset={() => { setFilters(INITIAL_FILTERS); }}
+                  {/* Owner feedback 2026-11-04 + 2026-11-05: ONE full-width
+                      ECS-style search box replaces every filter control —
+                      工单号/标题 free text via the server q param, plus 状态/
+                      数据源 enum chips and 提交起始日期 calendar chip mapped
+                      to their server params (提交截止日期 is intentionally
+                      omitted). The bar's clear-all is the single reset
+                      affordance. */}
+                  <GlobalSearchBar
+                    fields={searchFields}
+                    terms={searchTerms}
+                    onTermsChange={handleTermsChange}
+                    onLiveChange={handleLiveChange}
+                    placeholder={t("orders.list.filter.searchPlaceholder")}
+                    testId="filter-keyword"
+                    className="w-full min-w-0 flex-1"
                   />
                 </ListToolbar>
                 <CardContent className="flex flex-col gap-3 px-0!">

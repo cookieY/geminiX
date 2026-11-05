@@ -202,20 +202,49 @@ test("server-side filters narrow the personal list without losing event freshnes
   await page.getByTestId("filter-keyword").fill("筛选验收");
   await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 8_000 });
 
-  // The state filter's trigger echoes the translated label, never the raw
-  // value (owner issue: the box showed literal "all").
-  await page.getByTestId("filter-state").click();
+  // The ECS-style global search bar scopes a 状态 chip from translated
+  // labels — never raw enum values (owner issue: the old box showed literal
+  // "all") — and the chip is removable through the clear affordance.
+  await page.getByTestId("filter-keyword-clear").click();
+  await page.getByTestId("filter-keyword").click();
+  await page.getByRole("option", { name: "状态" }).click();
   await page.getByRole("option", { name: "执行中" }).click();
-  await expect(page.getByTestId("filter-state")).toContainText("执行中");
-  await page.getByTestId("filter-state").click();
-  await page.getByRole("option", { name: "全部" }).click();
-  await expect(page.getByTestId("filter-state")).toContainText("全部");
+  await expect(page.getByText("状态: 执行中")).toBeVisible();
+  await page.getByTestId("filter-keyword-clear").click();
+  await expect(page.getByTestId("mine-orders-table")).toBeVisible({ timeout: 8_000 });
 
   // A keyword that matches nothing flips to the filtered-empty copy.
   await page.getByTestId("filter-keyword").fill("绝不匹配的词");
   await expect(page.getByTestId("orders-empty")).toContainText("没有符合筛选条件的工单", {
     timeout: 8_000,
   });
+
+  // Review R2 H1 + M1: commit the unmatched keyword chip so the card stays in
+  // the short empty-card state, then scope 提交起始日期 and verify the inline
+  // calendar dialog is not clipped by Card overflow (day 25 hits itself).
+  await page.getByTestId("filter-keyword").press("Enter");
+  await expect(page.getByTestId("orders-empty")).toBeVisible();
+  await page.getByRole("option", { name: "提交起始日期" }).click();
+  const dateDialog = page.getByRole("dialog", { name: "提交起始日期 — 选择日期" });
+  await expect(dateDialog).toBeVisible();
+  await expect(page.getByTestId("filter-keyword")).toHaveAttribute("aria-expanded", "true");
+  const day25Hittable = await page.evaluate(() => {
+    const dialogEl = document.querySelector('[data-testid="filter-keyword-menu"]');
+    const cardEl = dialogEl?.closest('[data-slot="card"]');
+    const day25 = Array.from(dialogEl?.querySelectorAll("button") ?? []).find(
+      (btn) => btn.textContent.trim() === "25",
+    );
+    if (!dialogEl || !cardEl || !day25) return false;
+    if (getComputedStyle(cardEl).overflow !== "visible") return false;
+    day25.scrollIntoView({ block: "nearest" });
+    const rect = day25.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return Boolean(hit && (hit === day25 || day25.contains(hit)));
+  });
+  expect(day25Hittable).toBe(true);
+  await dateDialog.getByRole("button", { name: /25/ }).click();
+  await expect(page.getByText(/提交起始日期: \d{4}-\d{2}-25/)).toBeVisible();
+  await page.getByTestId("filter-keyword-clear").click();
 
   // Back to a matching keyword, then withdraw from the API while the filter
   // is active: the event-driven re-read keeps exactly one row and updates

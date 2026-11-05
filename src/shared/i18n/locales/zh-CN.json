@@ -584,6 +584,9 @@
       "auditTab": "审核工单",
       "queryTab": "查询工单",
       "draftsCard": "草稿",
+      "draftsCardIdle": "未提交的变更草稿会保留在这里",
+      "draftsCardDescription": "{{total}} 份草稿待继续编辑，点击行即可恢复",
+      "draftsUpdated": "更新于 {{time}}",
       "draftsEmpty": "还没有草稿。从「工单提交」选择流程开始。",
       "draftsDelete": "删除草稿",
       "draftsDeleteTitle": "删除这份草稿？",
@@ -603,7 +606,7 @@
         "submittedAt": "提交时间"
       },
       "filter": {
-        "searchPlaceholder": "搜索工单号 / 标题",
+        "searchPlaceholder": "搜索工单号 / 标题，或按字段筛选",
         "state": "按状态筛选",
         "allStates": "全部状态",
         "datasource": "按数据源筛选",
@@ -611,7 +614,8 @@
         "from": "提交起始日期",
         "to": "提交截止日期",
         "reset": "清除筛选",
-        "emptyFiltered": "没有符合筛选条件的工单，请调整筛选。"
+        "emptyFiltered": "没有符合筛选条件的工单，请调整筛选。",
+        "datasourceField": "数据源"
       }
     },
     "detail": {
@@ -849,6 +853,7 @@
     "queue": {
       "title": "待我审批",
       "empty": "暂无待审批的工单",
+      "searchPlaceholder": "搜索工单号 / 标题 / 状态 / 提交人 / 数据源",
       "column": {
         "number": "工单号",
         "title": "标题",
@@ -994,7 +999,8 @@
       "tlsPairError": "客户端证书与私钥必须成对提供。",
       "formInvalidHint": "保存已禁用：请填写名称、主机与版本约束（编辑时版本约束不回显、需重新输入），端口需为 1–65535，并至少保留一个用途凭据；凭据行在替换模式下需用户名＋密码、复用模式下需选择来源并填用户名；TLS 材料需至少一项且证书与私钥成对。",
       "credModeReadWrite": "读写",
-      "credModeReadOnly": "只读"
+      "credModeReadOnly": "只读",
+      "searchPlaceholder": "搜索名称 / 端点（引擎、凭据状态请用条件筛选）"
     },
     "reviewInput": {
       "knowledgeText": "规则知识正文",
@@ -1320,6 +1326,11 @@
       "grantExpires": "剩余有效期至 {{time}}",
       "renew": "续期申请",
       "renewHint": "续期将发起新的完整审批并生成新授权，原授权到期前保持有效。",
+      "renewTitle": "续期申请",
+      "renewDescription": "续期将发起新的完整审批并生成新授权；当前授权在到期前保持有效。续期申请会出现在「我的工单 · 查询工单」中等待审批。",
+      "renewSubmit": "提交续期申请",
+      "renewSubmitted": "续期申请已提交，等待审批。",
+      "renewFailed": "提交续期申请失败",
       "treeTab": "数据库",
       "historyTab": "历史",
       "treeBlocked": "会话已不可用，元数据浏览被阻断。",
@@ -1410,6 +1421,18 @@
       "comment": "注释"
     }
   },
+  "search": {
+    "placeholderAll": "搜索",
+    "filterByField": "按字段筛选",
+    "searchInAll": "搜索 “{{query}}”",
+    "fieldValuePlaceholder": "输入{{field}}的值",
+    "unscopeField": "取消按{{field}}筛选",
+    "removeTerm": "移除条件 {{term}}",
+    "clearAll": "清空全部条件",
+    "noMatches": "无匹配项",
+    "typeValueHint": "输入{{field}}后按回车确认",
+    "pickDate": "选择日期"
+  },
   "records": {
     "title": "审计记录",
     "description": "只追加的90天审计事件（S004）；仅内置admin可读。",
@@ -1499,6 +1522,7 @@
     "card": "用户列表",
     "cardDescription": "无停用态：用户仅有删除（P105）。",
     "empty": "暂无用户。",
+    "searchPlaceholder": "搜索用户名 / 显示名 / 邮箱（类型、状态等请用条件筛选）",
     "column": {
       "username": "用户名",
       "displayName": "显示名",
@@ -1541,7 +1565,7 @@
     "preview": {
       "title": "逐用户有效权限预览",
       "description": "选择用户后展示其所属权限组与有效流程授权并集。",
-      "placeholder": "输入用户ID查看有效权限",
+      "placeholder": "选择用户查看有效权限",
       "user": "用户",
       "noGroups": "不属于任何启用的权限组",
       "noFlows": "无有效流程授权"
@@ -1549,6 +1573,7 @@
     "card": "权限组列表",
     "cardDescription": "旧版三个数据源Transfer（ddl/dml/query）已删除（§3）。",
     "empty": "暂无权限组。",
+    "searchPlaceholder": "搜索组名（启用、成员、授权流程请用条件筛选）",
     "column": {
       "name": "名称",
       "enabled": "启用",
@@ -1583,6 +1608,7 @@
     "card": "流程列表",
     "cardDescription": "模板修改不影响已提交工单（§3）。",
     "empty": "暂无流程。",
+    "searchPlaceholder": "搜索流程名（类型、启用请用条件筛选）",
     "column": {
       "name": "名称",
       "kind": "类型",
@@ -1821,7 +1847,7 @@
       "restrictionHint": "启用后仅在窗口内的执行被允许。",
       "windows": "执行窗口",
       "windowsHint": "星期、本地起止时间。",
-      "weekdays": "星期（逗号分隔）",
+      "weekdays": "选择星期",
       "addWindow": "添加窗口",
       "oscTool": "OSC工具",
       "oscHint": "none或gh-ost。",
@@ -1830,7 +1856,17 @@
       "oscCriticalLoad": "临界负载阈值",
       "oscChunkSize": "拷贝批量行数（1–100000）",
       "oscMaxLag": "最大复制延迟秒数（0–86400）",
-      "oscRetries": "重试次数（1–3）"
+      "oscRetries": "重试次数（1–3）",
+      "weekday": {
+        "monday": "周一",
+        "tuesday": "周二",
+        "wednesday": "周三",
+        "thursday": "周四",
+        "friday": "周五",
+        "saturday": "周六",
+        "sunday": "周日"
+      },
+      "weekdaySeparator": "、"
     },
     "branding": {
       "title": "品牌设置",

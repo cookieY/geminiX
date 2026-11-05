@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Database, Pencil, PlugZap, Plus, Trash2 } from "lucide-react";
 import type {
@@ -24,7 +24,12 @@ import { StatusBadge } from "@/shared/components/status/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { TableSearchInput } from "@/shared/components/table-search-input";
+import {
+  GlobalSearchBar,
+  filterBySearchTerms,
+  type SearchAccessor,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import {
   Card,
@@ -910,8 +915,11 @@ function DatasourceRow({
         {datasource.engine}/{datasource.compatibility_mode}
       </TableCell>
       <TableCell className="font-mono">
-        <div className="flex flex-col items-start gap-1">
-          <span>
+        {/* Owner feedback 2026-11-04 (管理表格行高对齐审批工单表格): host and
+            TLS badge sit on ONE line — the stacked layout pushed rows to
+            ~81px against the 64px approval-queue reference. */}
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="truncate">
             {datasource.host}:{datasource.port}
           </span>
           <StatusBadge
@@ -922,7 +930,7 @@ function DatasourceRow({
               ? t("admin.datasources.tlsVerifiedBadge")
               : t("admin.datasources.tlsPlaintextBadge")}
           </StatusBadge>
-        </div>
+        </span>
       </TableCell>
       <TableCell>
         {/* §18.58 owner ruling: the credential state is a single 只读/读写
@@ -1070,23 +1078,102 @@ function DeleteConfirmDialog({
   );
 }
 
+/** 引擎闭集：搜索条件选项与服务端engine过滤参数共用同一映射
+ * （RCP-20261105-ADMIN-LIST-FIELD-FILTERS）。 */
+const ENGINE_VALUES = {
+  mysql: "mysql", postgresql: "postgresql", tidb: "tidb", oceanbase: "oceanbase", polardb: "polardb",
+} as const;
+
 export default function AdminDatasourcesPage() {
   const { t } = useTranslation();
   const session = useSession();
   const enabled = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const [search, setSearch] = useState("");
+  const [terms, setTerms] = useState<SearchTerm[]>([]);
+  const [live, setLive] = useState<SearchTerm | null>(null);
+  const effectiveTerms = useMemo(
+    () => (live === null ? terms : [...terms, live]),
+    [live, terms],
+  );
+  // §18.73 + RCP-20261105：自由文本/名称/端点走服务端q（q覆盖name/host）；
+  // 引擎与凭据状态是带值的服务端分列过滤（engine / credential_mode），
+  // 跨页收窄由服务端完成。流程引用计数这类复合展示文本不再是可搜索字段。
+  const serverQ = useMemo(
+    () =>
+      [...effectiveTerms]
+        .reverse()
+        .find((term) => term.field === null || term.field === "name" || term.field === "endpoint")
+        ?.text.trim() ?? "",
+    [effectiveTerms],
+  );
+  const engineParam = useMemo<(typeof ENGINE_VALUES)[keyof typeof ENGINE_VALUES] | undefined>(() => {
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "engine" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : ENGINE_VALUES[term.text as keyof typeof ENGINE_VALUES];
+  }, [effectiveTerms]);
+  const credentialModeParam = useMemo<"read_write" | "read_only" | undefined>(() => {
+    const MODES = { [t("admin.datasources.credModeReadWrite")]: "read_write", [t("admin.datasources.credModeReadOnly")]: "read_only" } as const;
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "credentialStatus" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : MODES[term.text as keyof typeof MODES];
+  }, [effectiveTerms, t]);
 
-  const query = useDatasources(enabled, { limit: pager.pageSize, after: pager.after, q: search.trim() || undefined });
+  const query = useDatasources(enabled, {
+    limit: pager.pageSize,
+    after: pager.after,
+    q: serverQ || undefined,
+    engine: engineParam,
+    credentialMode: credentialModeParam,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Datasource | null>(null);
   const [deleting, setDeleting] = useState<Datasource | null>(null);
   // Expanded capability row: datasource id + the probe task id that keyed
   // the latest capabilities fetch (a re-test starts a fresh key).
   const [probe, setProbe] = useState<{ datasourceId: string; taskId: string } | null>(null);
-  // §18.73：搜索走服务端q（名称/主机子串）；keyword仅用于空态文案区分。
-  const keyword = search.trim();
-  const datasources = query.data?.items ?? [];
+  const searchAccessors = useMemo<SearchAccessor<Datasource>[]>(
+    () => [
+      {
+        key: "name",
+        label: t("admin.datasources.name"),
+        value: (ds) => `${ds.name} ${ds.enabled ? "" : t("admin.datasources.disabled")}`,
+      },
+      {
+        // 引擎是闭集：选项直接映射到服务端engine过滤参数（RCP-20261105）。
+        key: "engine",
+        label: t("admin.datasources.engine"),
+        value: (ds) => ds.engine,
+        options: Object.keys(ENGINE_VALUES).map((engine) => ({ label: engine })),
+      },
+      {
+        key: "endpoint",
+        label: t("admin.datasources.endpoint"),
+        value: (ds) =>
+          `${ds.host}:${String(ds.port)} ${
+            ds.tls_verified
+              ? t("admin.datasources.tlsVerifiedBadge")
+              : t("admin.datasources.tlsPlaintextBadge")
+          }`,
+      },
+      {
+        key: "credentialStatus",
+        label: t("admin.datasources.credentialStatus"),
+        value: (ds) =>
+          ds.credential_status.execution === true
+            ? t("admin.datasources.credModeReadWrite")
+            : t("admin.datasources.credModeReadOnly"),
+        options: [
+          { label: t("admin.datasources.credModeReadWrite") },
+          { label: t("admin.datasources.credModeReadOnly") },
+        ],
+      },
+    ],
+    [t],
+  );
+  const hasSearchFilter = effectiveTerms.some((term) => term.text.trim() !== "");
+  const datasources = filterBySearchTerms(
+    query.data?.items ?? [],
+    effectiveTerms,
+    searchAccessors,
+  );
   // 搜索/翻页改变行集合时，把整行位移补间掉；能力探测行不带 data-row-key，不参与。
   const datasourcesBodyRef = useFlipReorder<HTMLTableSectionElement>(
     JSON.stringify(datasources.map((datasource) => datasource.id)),
@@ -1098,44 +1185,53 @@ export default function AdminDatasourcesPage() {
         title={t("admin.datasources.title")}
         description={t("admin.datasources.description")}
         icon={Database}
-        actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
-            }}
-            data-testid="ds-create"
-          >
-            <Plus /> {t("admin.datasources.createTitle")}
-          </Button>
-        }
       />
-      <Card>
+      <Card className="overflow-visible">
         <ListToolbar
           busy={query.isFetching && !query.isPending}
-          search={
-            <TableSearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pager.reset();
+          fill
+          actions={
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
               }}
-              testId="admin-datasources-search"
-            />
+              data-testid="ds-create"
+            >
+              <Plus /> {t("admin.datasources.createTitle")}
+            </Button>
           }
-        />
+        >
+          {/* Owner feedback 2026-11-05: ECS-style multi-field search box on
+              the left, create action on the right inside the toolbar. */}
+          <GlobalSearchBar
+            fields={searchAccessors}
+            terms={terms}
+            onTermsChange={(next) => {
+              setTerms(next);
+              pager.reset();
+            }}
+            onLiveChange={(next) => {
+              setLive(next);
+              pager.reset();
+            }}
+            placeholder={t("admin.datasources.searchPlaceholder")}
+            testId="admin-datasources-search"
+            className="w-full min-w-0 flex-1"
+          />
+        </ListToolbar>
         <CardContent className="px-0!">
           {query.isPending ? (
             <LoadingState variant="table" columns={6} />
           ) : query.isError ? (
             <ErrorState error={query.error} operationId="listDatasources" onRetry={() => void query.refetch()} />
-          ) : datasources.length === 0 && keyword !== "" ? (
+          ) : datasources.length === 0 && hasSearchFilter ? (
             <EmptyState
               title={t("table.emptySearch")}
               filtered
               testId="admin-datasources-search-empty"
             />
-          ) : query.data.items.length === 0 ? (
+          ) : datasources.length === 0 ? (
             <EmptyState
               title={t("admin.datasources.emptyTitle")}
               description={t("admin.datasources.emptyDescription")}

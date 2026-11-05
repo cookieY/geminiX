@@ -8,9 +8,19 @@ import { mockSession } from "./helpers/auth";
 // neither the 160ms entry nor the 110ms exit can be missed by a round-trip.
 test("popover enter:exit duration ratio stays between 1.2 and 2.0", async ({ page }) => {
   await mockSession(page, "default");
-  await page.goto("/changes/mine");
+  // The /changes/mine date pickers are gone (owner feedback 2026-11-05: the
+  // ECS-style global search bar absorbed every filter control, its date
+  // values come from an inline calendar — no popover). The renewal dialog
+  // carries the shared DatePicker now, inside the query-session world that
+  // seeds the fixture grant.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("yearning-mock-scenario", "query-session");
+  });
+  await page.goto("/query/sessions/qs-fixture-active");
+  await expect(page.getByTestId("query-workspace")).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId("query-grant-renew").click();
 
-  const trigger = page.getByTestId("filter-submitted-from");
+  const trigger = page.getByTestId("query-renew-until");
   await expect(trigger).toBeVisible({ timeout: 15_000 });
 
   await page.evaluate(() => {
@@ -48,7 +58,9 @@ test("popover enter:exit duration ratio stays between 1.2 and 2.0", async ({ pag
     })
     .toBeGreaterThan(0);
 
-  await page.keyboard.press("Escape");
+  // Close by toggling the trigger: Escape would bubble to the host dialog and
+  // unmount the popover before its exit animation can play.
+  await trigger.click();
   await expect(content).toBeHidden({ timeout: 2_000 });
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { __animProbe: { exit: number[] } }).__animProbe.exit.length), {

@@ -335,9 +335,10 @@ export function ReviewInputListPage({ kind }: { kind: "skills" | "knowledge" }) 
                   motion discipline (<=500ms, named curves) and only
                   opacity/transform move. */}
               {/* 滚动条统一（owner 2026-11-03）：条目列表用ScrollArea覆盖式
-                thumb。卡片行高由内容决定（min-h-[600px]），列表通常随卡撑高、
-                由页面滚动，与改造前行为一致。 */}
-              <ScrollArea className="min-h-0 flex-1">
+                thumb。固定高度（owner 2026-11-05）：h-[728px] = 4张完整卡片
+                (4×173px，含用途行时) + 3×12px 间隙，恰好完整显示4条经验，
+                其余在列表内滚动。 */}
+              <ScrollArea className="h-[728px] shrink-0">
                 <div className="flex flex-col gap-3">
               <AnimatePresence initial={false} mode="popLayout">
                 {loading ? (

@@ -20,7 +20,9 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { timezoneOptions } from "@/shared/lib/timezones";
 import { TablePagination } from "@/shared/components/ui/table-pagination";
 import { ErrorState } from "@/shared/components/status/status-components";
 import { LoadingState } from "@/shared/components/status/loading-state";
@@ -249,6 +251,8 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
     }
     // 客户端字段校验（镜像合同）：币种由Select约束；时区必填；until不早
     // 于from；四类价格按PRICE_PATTERN逐字段定位（cached可空）。
+    // 时区现在是 Select（owner 2026-11-05），正常操作不会产生空值；这条
+    // 分支保留为防御：服务端持有空时区时草稿仍可能带空串。
     const errors: Record<string, string> = {};
     if (draft.timezone.trim() === "") {
       errors.timezone = t("admin.providers.pricing.timezoneRequired");
@@ -439,13 +443,31 @@ export function ProviderPricingPanel({ providerId }: { providerId: string }) {
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="rate-timezone">{t("admin.providers.pricing.timezone")}</Label>
-              <Input
-                id="rate-timezone"
+              {/* Owner feedback 2026-11-05: the billing zone is picked from the
+                  IANA list, not typed (server still validates the name). */}
+              <Select
                 value={draft.timezone}
-                onChange={(event) => { setDraft({ ...draft, timezone: event.target.value }); }}
-                aria-invalid={fieldErrors.timezone !== undefined}
-                data-testid="rate-timezone"
-              />
+                onValueChange={(value) => {
+                  if (typeof value !== "string") return;
+                  setDraft({ ...draft, timezone: value });
+                }}
+              >
+                <SelectTrigger
+                  id="rate-timezone"
+                  className="w-full"
+                  aria-invalid={fieldErrors.timezone !== undefined}
+                  data-testid="rate-timezone"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <ScrollArea viewportClassName="max-h-60">
+                    {timezoneOptions(draft.timezone).map((zone) => (
+                      <SelectItem key={zone} value={zone}>{zone}</SelectItem>
+                    ))}
+                  </ScrollArea>
+                </SelectContent>
+              </Select>
               {fieldErrors.timezone !== undefined && (
                 <p className="text-destructive text-xs">{fieldErrors.timezone}</p>
               )}

@@ -32,18 +32,28 @@ export function PageHeader({
   );
 }
 
-/** A Card header dedicated to data controls; search remains right aligned. */
-export function ListToolbar({ children, search, busy = false, className, ...props }: ComponentProps<"div"> & {
+/** A Card header dedicated to data controls; search remains right aligned.
+ * `fill` (owner feedback 2026-11-05) lets the children area stretch across
+ * the header — for the ECS-style global search bar that replaces every other
+ * filter control. The right slot then drops its `ml-auto` (the growing
+ * children area pushes it to the edge instead). */
+export function ListToolbar({ children, search, actions, busy = false, className, fill = false, ...props }: ComponentProps<"div"> & {
   search?: ReactNode;
+  actions?: ReactNode;
   busy?: boolean;
+  fill?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <CardHeader data-slot="list-toolbar" className={cn("flex flex-row flex-wrap items-center gap-3 rounded-none border-b", className)} {...props}>
-      {children && <div className="flex min-w-0 flex-wrap items-center gap-3">{children}</div>}
-      <div className="ml-auto flex w-full min-w-0 items-center justify-end gap-3 sm:w-auto sm:flex-1">
+      {children && <div className={cn("flex min-w-0 flex-wrap items-center gap-3", fill && "flex-1")}>{children}</div>}
+      <div className={cn(
+        "flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto",
+        fill ? "sm:flex-none" : "ml-auto sm:flex-1",
+      )}>
         {busy && <span role="status" aria-label={t("states.refreshing")} className="flex shrink-0 items-center gap-2 text-muted-foreground"><Spinner aria-hidden /><span className="sr-only">{t("states.refreshing")}</span></span>}
         {search}
+        {actions}
       </div>
     </CardHeader>
   );

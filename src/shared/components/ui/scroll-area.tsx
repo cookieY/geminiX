@@ -1,5 +1,6 @@
 "use client"
 
+import type * as React from "react"
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area"
 
 import { cn } from "@/shared/lib/utils"
@@ -19,14 +20,23 @@ import { cn } from "@/shared/lib/utils"
  *    height:100% falls back to auto and the viewport grows past the Root.
  *    Putting the height cap (`max-h-*`) directly on the viewport via this
  *    prop instead of on the Root keeps such surfaces clipped-and-scrolling.
+ * 3. `viewportProps` spreads onto the Viewport — surfaces that hand the
+ *    viewport to libraries (virtualizers need the real scroll element as
+ *    their ref) or own a11y semantics on the scroll region itself
+ *    (role/tabIndex, WCAG 2.1.1) pass them here instead of the Root.
  */
 function ScrollArea({
   className,
   viewportClassName,
+  viewportProps,
   children,
   ...props
 }: ScrollAreaPrimitive.Root.Props & {
   viewportClassName?: string
+  viewportProps?: Omit<
+    React.ComponentProps<typeof ScrollAreaPrimitive.Viewport>,
+    "className" | "children"
+  >
 }) {
   return (
     <ScrollAreaPrimitive.Root
@@ -40,6 +50,7 @@ function ScrollArea({
           "size-full rounded-[inherit] transition-color-shadow outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
           viewportClassName
         )}
+        {...viewportProps}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

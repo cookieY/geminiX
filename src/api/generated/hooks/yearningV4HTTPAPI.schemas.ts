@@ -3597,12 +3597,24 @@ export type ListUsersParams = {
  */
 q?: string;
 /**
+ * Narrows the admin user list by account kind: builtin_admin matches the built-in administrator, local_user matches local users. AND-composes with q and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+kind?: ListUsersKind;
+/**
  * @minimum 1
  * @maximum 200
  */
 limit?: LimitParameter;
 after?: AfterParameter;
 };
+
+export type ListUsersKind = typeof ListUsersKind[keyof typeof ListUsersKind];
+
+
+export const ListUsersKind = {
+  builtin_admin: 'builtin_admin',
+  local_user: 'local_user',
+} as const;
 
 export type ListUsers200 = {
   err_code: 0;
@@ -3648,12 +3660,28 @@ export type ListFlowsParams = {
  */
 q?: string;
 /**
+ * Narrows the admin flow list by flow type (exact enum match). AND-composes with q, enabled and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+flow_type?: ListFlowsFlowType;
+/**
+ * Narrows the admin flow list by enabled flag. AND-composes with q, flow_type and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+enabled?: boolean;
+/**
  * @minimum 1
  * @maximum 200
  */
 limit?: LimitParameter;
 after?: AfterParameter;
 };
+
+export type ListFlowsFlowType = typeof ListFlowsFlowType[keyof typeof ListFlowsFlowType];
+
+
+export const ListFlowsFlowType = {
+  change_review: 'change_review',
+  query_access: 'query_access',
+} as const;
 
 export type ListFlows200 = {
   err_code: 0;
@@ -3733,12 +3761,55 @@ export type ListDatasourcesParams = {
  */
 q?: string;
 /**
+ * Narrows the admin datasource list by engine (exact enum match). AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+engine?: ListDatasourcesEngine;
+/**
+ * Narrows the admin datasource list by compatibility mode (exact enum match). AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+compatibility_mode?: ListDatasourcesCompatibilityMode;
+/**
+ * Narrows the admin datasource list by whether an enabled execution-purpose credential is stored: read_write means present, read_only means absent. Presence only — never exposes credential material. AND-composes with q, the other column filters and the cursor walk; an unknown value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+credential_mode?: ListDatasourcesCredentialMode;
+/**
+ * Narrows the admin datasource list to rows referenced (true) or not referenced (false) by at least one flow stage. AND-composes with q, the other column filters and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+referenced?: boolean;
+/**
  * @minimum 1
  * @maximum 200
  */
 limit?: LimitParameter;
 after?: AfterParameter;
 };
+
+export type ListDatasourcesEngine = typeof ListDatasourcesEngine[keyof typeof ListDatasourcesEngine];
+
+
+export const ListDatasourcesEngine = {
+  mysql: 'mysql',
+  postgresql: 'postgresql',
+  tidb: 'tidb',
+  oceanbase: 'oceanbase',
+  polardb: 'polardb',
+} as const;
+
+export type ListDatasourcesCompatibilityMode = typeof ListDatasourcesCompatibilityMode[keyof typeof ListDatasourcesCompatibilityMode];
+
+
+export const ListDatasourcesCompatibilityMode = {
+  mysql: 'mysql',
+  postgresql: 'postgresql',
+} as const;
+
+export type ListDatasourcesCredentialMode = typeof ListDatasourcesCredentialMode[keyof typeof ListDatasourcesCredentialMode];
+
+
+export const ListDatasourcesCredentialMode = {
+  read_write: 'read_write',
+  read_only: 'read_only',
+} as const;
 
 export type ListDatasources200 = {
   err_code: 0;
@@ -3810,6 +3881,18 @@ export type ListPermissionGroupsParams = {
  * Case-insensitive substring matched against the group name (admin list server-side search, migration contract §18.73). Composes with the cursor walk; never widens authorization.
  */
 q?: string;
+/**
+ * Narrows the admin permission-group list by enabled flag. AND-composes with q, the other column filters and the cursor walk; an unparsable value is rejected with 1001; omitted keeps the unfiltered list.
+ */
+enabled?: boolean;
+/**
+ * Narrows the admin permission-group list to groups whose membership contains this user id. AND-composes with q, the other column filters and the cursor walk; a value that is not a uuid is rejected with 1001; omitted keeps the unfiltered list.
+ */
+member_user_id?: string;
+/**
+ * Narrows the admin permission-group list to groups granted this flow id. AND-composes with q, the other column filters and the cursor walk; a value that is not a uuid is rejected with 1001; omitted keeps the unfiltered list.
+ */
+flow_id?: string;
 /**
  * @minimum 1
  * @maximum 200

@@ -2,7 +2,7 @@ import i18next from "@/shared/i18n";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Trash2, X } from "lucide-react";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { Flow, PermissionGroup, User } from "@/api/generated/client/yearningV4HTTPAPI.schemas";
 import { useSession } from "@/features/auth/session-provider";
@@ -15,10 +15,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import {
+  GlobalSearchBar,
+  filterBySearchTerms,
+  type SearchAccessor,
+  type SearchTerm,
+} from "@/shared/components/global-search-bar";
 import { useFlipReorder } from "@/shared/lib/use-flip-reorder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
@@ -65,34 +72,112 @@ export default function AdminPermissionGroupsPage() {
   const session = useSession();
   const isAdmin = session.user?.can_access_admin === true;
   const pager = useCursorPage(20);
-  const [groupSearch, setGroupSearch] = useState("");
-  const groupsQuery = usePermissionGroups(isAdmin, { limit: pager.pageSize, after: pager.after, q: groupSearch.trim() || undefined });
-  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
-  const groupsLoaded = !groupsQuery.isPending && !groupsQuery.isError;
+  const [terms, setTerms] = useState<SearchTerm[]>([]);
+  const [live, setLive] = useState<SearchTerm | null>(null);
+  const effectiveTerms = useMemo(
+    () => (live === null ? terms : [...terms, live]),
+    [live, terms],
+  );
+  // §18.73 + RCP-20261105：组名/自由文本走服务端q；启用/成员/授权流程是
+  // 带值的服务端分列过滤（enabled / member_user_id / flow_id），跨页收窄
+  // 由服务端完成。成员与授权流程的选项来自已加载的用户/流程目录。
+  const serverQ = useMemo(
+    () =>
+      [...effectiveTerms]
+        .reverse()
+        .find((term) => term.field === null || term.field === "name")
+        ?.text.trim() ?? "",
+    [effectiveTerms],
+  );
   const usersQuery = useUsers(isAdmin);
   const flowsQuery = useFlows(isAdmin);
+  const users = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items]);
+  const flows = useMemo(() => flowsQuery.data?.items ?? [], [flowsQuery.data?.items]);
+  const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
+  const flowById = useMemo(() => new Map(flows.map((flow) => [flow.id, flow])), [flows]);
+  const enabledParam = useMemo<boolean | undefined>(() => {
+    const LABELS = { [t("adminGroups.enabled")]: true, [t("adminGroups.disabled")]: false } as const;
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "enabled" && candidate.text.trim() !== "");
+    return term === undefined ? undefined : LABELS[term.text as keyof typeof LABELS];
+  }, [effectiveTerms, t]);
+  const memberUserIdParam = useMemo<string | undefined>(() => {
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "members" && candidate.text.trim() !== "");
+    if (term === undefined) return undefined;
+    return users.find((user) => user.username === term.text.trim())?.id;
+  }, [effectiveTerms, users]);
+  const flowIdParam = useMemo<string | undefined>(() => {
+    const term = [...effectiveTerms].reverse().find((candidate) => candidate.field === "flows" && candidate.text.trim() !== "");
+    if (term === undefined) return undefined;
+    return flows.find((flow) => flow.name === term.text.trim())?.id;
+  }, [effectiveTerms, flows]);
+  const groupsQuery = usePermissionGroups(isAdmin, {
+    limit: pager.pageSize,
+    after: pager.after,
+    q: serverQ || undefined,
+    enabled: enabledParam,
+    memberUserId: memberUserIdParam,
+    flowId: flowIdParam,
+  });
+  // §18.82：先于穷尽三元捕获，避免收窄泄漏进分页守卫。
+  const groupsLoaded = !groupsQuery.isPending && !groupsQuery.isError;
   const [editing, setEditing] = useState<PermissionGroup | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [previewUser, setPreviewUser] = useState<string>("");
 
-  // §18.73：搜索走服务端q；groupKeyword仅用于空态文案区分。
-  const groupKeyword = groupSearch.trim();
-  const groups = groupsQuery.data?.items ?? [];
-  // 搜索在服务端收窄；行集合变化时把整行位移补间掉。
+  const rawGroups = useMemo(() => groupsQuery.data?.items ?? [], [groupsQuery.data?.items]);
+
+  const searchAccessors = useMemo<SearchAccessor<PermissionGroup>[]>(
+    () => [
+      {
+        key: "name",
+        label: t("adminGroups.column.name"),
+        value: (group) => group.name,
+      },
+      {
+        key: "enabled",
+        label: t("adminGroups.column.enabled"),
+        value: (group) =>
+          group.enabled ? t("adminGroups.enabled") : t("adminGroups.disabled"),
+        options: [
+          { label: t("adminGroups.enabled") },
+          { label: t("adminGroups.disabled") },
+        ],
+      },
+      {
+        key: "members",
+        label: t("adminGroups.column.members"),
+        value: (group) =>
+          group.member_user_ids
+            .map((id) => userById.get(id)?.username ?? id)
+            .join(" "),
+        // 成员选项=已加载用户名；选中后映射为member_user_id服务端过滤。
+        options: users.map((user) => ({ label: user.username })),
+      },
+      {
+        key: "flows",
+        label: t("adminGroups.column.flows"),
+        value: (group) =>
+          group.granted_flow_ids
+            .map((id) => flowById.get(id)?.name ?? id)
+            .join(" "),
+        options: flows.map((flow) => ({ label: flow.name })),
+      },
+    ],
+    [flowById, t, userById, users, flows],
+  );
+  const hasSearchFilter = effectiveTerms.some((term) => term.text.trim() !== "");
+  const groups = filterBySearchTerms(rawGroups, effectiveTerms, searchAccessors);
+  // 搜索在服务端/客户端收窄；行集合变化时把整行位移补间掉。
   const groupsBodyRef = useFlipReorder<HTMLTableSectionElement>(
     JSON.stringify(groups.map((group) => group.id)),
   );
-  const users = usersQuery.data?.items ?? [];
-  const flows = flowsQuery.data?.items ?? [];
-  const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
-  const flowById = useMemo(() => new Map(flows.map((flow) => [flow.id, flow])), [flows]);
 
   const preview = useMemo(() => {
     if (previewUser === "") return null;
-    const membership = groups.filter((group) => group.member_user_ids.includes(previewUser) && group.enabled);
+    const membership = rawGroups.filter((group) => group.member_user_ids.includes(previewUser) && group.enabled);
     const grantedFlowIds = new Set(membership.flatMap((group) => group.granted_flow_ids));
     return { groups: membership, flows: [...grantedFlowIds].map((id) => flowById.get(id)).filter((flow) => flow !== undefined) };
-  }, [flowById, groups, previewUser]);
+  }, [flowById, rawGroups, previewUser]);
 
   const loadError = groupsQuery.error ?? usersQuery.error ?? flowsQuery.error;
 
@@ -102,12 +187,6 @@ export default function AdminPermissionGroupsPage() {
         title={t("adminGroups.title")}
         description={t("adminGroups.description")}
         icon={ShieldCheck}
-        actions={
-          <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-groups-create">
-            <Plus />
-            {t("adminGroups.create")}
-          </Button>
-        }
       />
 
       {loadError === null && !groupsQuery.isPending && (
@@ -117,21 +196,41 @@ export default function AdminPermissionGroupsPage() {
               <CardDescription>{t("adminGroups.preview.description")}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Input
-                value={previewUser}
-                onChange={(event) => { setPreviewUser(event.target.value); }}
-                placeholder={t("adminGroups.preview.placeholder")}
-                className="max-w-sm"
-                list="admin-group-preview-users"
-                data-testid="admin-groups-preview-input"
-              />
-              <datalist id="admin-group-preview-users">
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.username}
-                  </option>
-                ))}
-              </datalist>
+              {/* Owner feedback 2026-11-05: the previewed user is picked from the
+                  loaded users (value = user id, label = username), not typed;
+                  popup height is capped at max-h-60 via ScrollArea, and a
+                  cancel button next to the Select clears the selection. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={previewUser === "" ? null : previewUser}
+                  onValueChange={(next) => { setPreviewUser(next ?? ""); }}
+                  items={Object.fromEntries(users.map((user) => [user.id, user.username]))}
+                >
+                  <SelectTrigger className="w-72" aria-label={t("adminGroups.preview.title")} data-testid="admin-groups-preview-input">
+                    <SelectValue placeholder={t("adminGroups.preview.placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <ScrollArea viewportClassName="max-h-60">
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.username}
+                        </SelectItem>
+                      ))}
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
+                {previewUser !== "" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setPreviewUser(""); }}
+                    data-testid="admin-groups-preview-clear"
+                  >
+                    <X />
+                    {t("common.cancel")}
+                  </Button>
+                )}
+              </div>
               {preview !== null && (
                 <div className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid="admin-groups-preview-result">
                   <p className="text-xs">
@@ -164,20 +263,35 @@ export default function AdminPermissionGroupsPage() {
           </Card>
       )}
 
-      <Card>
+      <Card className="overflow-visible">
         <ListToolbar
           busy={groupsQuery.isFetching && !groupsQuery.isPending}
-          search={
-            <TableSearchInput
-              value={groupSearch}
-              onChange={(value) => {
-                setGroupSearch(value);
-                pager.reset();
-              }}
-              testId="admin-groups-search"
-            />
+          fill
+          actions={
+            <Button onClick={() => { setCreateOpen(true); }} data-testid="admin-groups-create">
+              <Plus />
+              {t("adminGroups.create")}
+            </Button>
           }
-        />
+        >
+          {/* Owner feedback 2026-11-05: ECS-style multi-field search box on
+              the left, create action on the right inside the toolbar. */}
+          <GlobalSearchBar
+            fields={searchAccessors}
+            terms={terms}
+            onTermsChange={(next) => {
+              setTerms(next);
+              pager.reset();
+            }}
+            onLiveChange={(next) => {
+              setLive(next);
+              pager.reset();
+            }}
+            placeholder={t("adminGroups.searchPlaceholder")}
+            testId="admin-groups-search"
+            className="w-full min-w-0 flex-1"
+          />
+        </ListToolbar>
         <CardContent className="px-0!">
           {loadError !== null ? (
             <ErrorState
@@ -195,8 +309,8 @@ export default function AdminPermissionGroupsPage() {
             <>
               {groups.length === 0 ? (
                 <EmptyState
-                  title={groupKeyword !== "" ? t("table.emptySearch") : t("adminGroups.empty")}
-                  filtered={groupKeyword !== ""}
+                  title={hasSearchFilter ? t("table.emptySearch") : t("adminGroups.empty")}
+                  filtered={hasSearchFilter}
                   testId="admin-groups-empty"
                 />
               ) : (

@@ -289,8 +289,23 @@ function mockNodePlugin(): Plugin {
       // already written, `false` when vite must answer (SPA routes, unknown
       // paths). Registered inside configureServer so it runs before vite's
       // own middlewares — the skip list above keeps vite's requests out.
+      // Browser document navigations (full loads / refreshes of SPA routes)
+      // must reach vite's SPA fallback: several mock handlers use route-like
+      // wildcard patterns (`*/admin/users`, `*/admin/datasources`) that also
+      // match the page URL, and without this guard a refresh on those routes
+      // renders raw JSON instead of the app. App fetches carry
+      // sec-fetch-dest: empty / accept: application/json and still dispatch.
       server.middlewares.use(async (req, res, next) => {
         if (dispatcher === null || req.url === undefined || viteOwnedPath(req.url)) {
+          next();
+          return;
+        }
+        const fetchDest = req.headers["sec-fetch-dest"];
+        const accept = req.headers.accept;
+        if (
+          fetchDest === "document" ||
+          (typeof accept === "string" && accept.startsWith("text/html"))
+        ) {
           next();
           return;
         }
