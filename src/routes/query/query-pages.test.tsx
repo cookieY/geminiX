@@ -587,4 +587,3 @@ describe("query renewal dialog — shadcn DatePicker with embedded time (owner 2
     expect(String(submittedPayloads[0]?.body.requested_until)).toMatch(/^\d{4}-\d{2}-\d{2}T18:30:00Z$/);
   });
 });
-

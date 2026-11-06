@@ -220,10 +220,12 @@ test("server-side filters narrow the personal list without losing event freshnes
   });
 
   // Review R2 H1 + M1: commit the unmatched keyword chip so the card stays in
-  // the short empty-card state, then scope 提交起始日期 and verify the inline
-  // calendar dialog is not clipped by Card overflow (day 25 hits itself).
+  // the short empty-card state, reopen the closed dropdown (item 7 auto-closes
+  // on chip commit), then scope 提交起始日期 and verify the inline calendar
+  // dialog is not clipped by Card overflow (day 25 hits itself).
   await page.getByTestId("filter-keyword").press("Enter");
   await expect(page.getByTestId("orders-empty")).toBeVisible();
+  await page.getByTestId("filter-keyword").click();
   await page.getByRole("option", { name: "提交起始日期" }).click();
   const dateDialog = page.getByRole("dialog", { name: "提交起始日期 — 选择日期" });
   await expect(dateDialog).toBeVisible();
