@@ -89,6 +89,10 @@ export function OrderRollbackCard({ order }: { order: ChangeOrder }) {
     });
   }, [canRevealRollbackSql, order.id, order.state, reveal, status]);
 
+  if (!isRollbackTicket && !order.rollback_enabled && status === "not_requested") {
+    return null;
+  }
+
   const handleReveal = (): void => {
     reveal.mutate("rollback-order-sql", {
       onSuccess: (data) => {
