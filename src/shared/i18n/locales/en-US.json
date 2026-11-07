@@ -853,6 +853,46 @@
         "revoked": "Access has been revoked",
         "revokedMetaPending": "Revocation operator/time are not yet declared on the read contract (RCP-pending)."
       }
+    },
+    "rollback": {
+      "title": "Rollback SQL",
+      "ticketBadge": "Rollback Ticket",
+      "sourceOrderLabel": "Source change order",
+      "sourceOrderShort": "From {{number}}",
+      "isRollbackOrderDescription": "This ticket executes verified inverse SQL and validates live database row/schema preconditions before applying changes.",
+      "generateTicket": "Generate Rollback Ticket",
+      "revealHint": "Rollback SQL is deterministically generated from verified before/after images or schema snapshots; every reveal and copy is watermarked and audited.",
+      "revealAction": "Reveal Rollback SQL",
+      "copyAction": "Copy Rollback SQL",
+      "copiedToast": "Rollback SQL copied to clipboard",
+      "draftCreatedToast": "Rollback draft created; run precheck and submit for approval",
+      "unsupportedAlertTitle": "Automatic rollback unsupported",
+      "conflictAlertTitle": "Rollback conflict or execution failure detected",
+      "rolledBackAlertTitle": "Rolled back",
+      "rolledBackAlertDescription": "This change order has been restored to its prior state by a completed rollback ticket.",
+      "derivedOrdersLabel": "Generated rollback tickets",
+      "status": {
+        "not_requested": "Not requested",
+        "pending": "Pending",
+        "available": "Available",
+        "unsupported": "Unsupported",
+        "evidence_incomplete": "Evidence incomplete",
+        "conflicted": "Conflicted",
+        "rollback_in_progress": "Rollback in progress",
+        "rolled_back": "Rolled back",
+        "rollback_failed": "Rollback failed"
+      },
+      "statusDescription": {
+        "not_requested": "Rollback protection was not enabled when this ticket was submitted.",
+        "pending": "Rollback evidence and inverse SQL will be captured automatically when execution completes.",
+        "available": "Verified rollback evidence is durably stored; you can inspect the rollback SQL or generate a rollback ticket with one click.",
+        "unsupported": "Contains SQL statements that cannot be deterministically reversed.",
+        "evidence_incomplete": "Rollback evidence could not be completely verified; automatic rollback ticket generation is blocked for safety.",
+        "conflicted": "Current database state diverges from the post-execution image; automatic rollback was blocked.",
+        "rollback_in_progress": "A generated rollback ticket is currently in approval or execution.",
+        "rolled_back": "The generated rollback ticket completed successfully.",
+        "rollback_failed": "The previous rollback ticket did not complete; you may generate a new rollback ticket after investigating."
+      }
     }
   },
   "approvals": {

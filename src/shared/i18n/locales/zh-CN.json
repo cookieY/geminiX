@@ -853,6 +853,46 @@
         "revoked": "访问资格已被撤销",
         "revokedMetaPending": "撤销操作者与时间字段尚未在契约读面声明（RCP-pending）。"
       }
+    },
+    "rollback": {
+      "title": "回滚 SQL",
+      "ticketBadge": "回滚工单",
+      "sourceOrderLabel": "关联源变更工单",
+      "sourceOrderShort": "源自 {{number}}",
+      "isRollbackOrderDescription": "本工单为回滚工单，执行前将自动校验目标库当前行状态/表结构是否与回滚前置证据一致。",
+      "generateTicket": "一键生成回滚工单",
+      "revealHint": "回滚 SQL 由执行期验证的数据库前后像或 Schema 快照确定性生成，带查看者水印且每次查看与复制均写审计。",
+      "revealAction": "查看回滚 SQL",
+      "copyAction": "复制回滚 SQL",
+      "copiedToast": "回滚 SQL 已复制到剪贴板",
+      "draftCreatedToast": "已生成回滚工单草稿，请预审后提交审批",
+      "unsupportedAlertTitle": "当前工单不支持自动回滚",
+      "conflictAlertTitle": "检测到回滚冲突或执行异常",
+      "rolledBackAlertTitle": "已完成回滚",
+      "rolledBackAlertDescription": "该变更工单已通过回滚工单成功恢复至变更前状态。",
+      "derivedOrdersLabel": "已生成的回滚工单",
+      "status": {
+        "not_requested": "未启用",
+        "pending": "待生成",
+        "available": "可回滚",
+        "unsupported": "不支持回滚",
+        "evidence_incomplete": "证据不完整",
+        "conflicted": "检测到冲突",
+        "rollback_in_progress": "回滚进行中",
+        "rolled_back": "已回滚",
+        "rollback_failed": "回滚失败"
+      },
+      "statusDescription": {
+        "not_requested": "提交工单时未勾选启用回滚，本次执行未采集回滚证据。",
+        "pending": "工单执行完成后将自动采集数据库变更证据并生成回滚 SQL。",
+        "available": "已完整采集并持久化验证回滚证据，可查看回滚 SQL 或一键生成回滚工单。",
+        "unsupported": "包含不支持确定性自动回滚的 SQL 语句，无法生成安全回滚计划。",
+        "evidence_incomplete": "回滚证据未能完整落盘或校验未通过，为保证数据安全已禁止自动生成回滚工单。",
+        "conflicted": "目标数据库当前状态与原变更执行后镜像不一致，已阻止自动回滚。",
+        "rollback_in_progress": "关联的回滚工单正在审批或执行流程中。",
+        "rolled_back": "关联的回滚工单已执行成功。",
+        "rollback_failed": "上一次回滚工单执行未完成，排查原因后可重新生成回滚工单。"
+      }
     }
   },
   "approvals": {
