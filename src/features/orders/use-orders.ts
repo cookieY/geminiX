@@ -12,6 +12,7 @@ import {
 } from "@/api/generated/client/change-orders/change-orders";
 import {
   copyChangeOrderToDraft,
+  createRollbackDraft,
   listChangeOrderTimeline,
   voidChangeOrder,
   withdrawChangeOrder,
@@ -269,6 +270,23 @@ export function useCopyOrderToDraft(order: ChangeOrder | null) {
     mutationFn: (input: { target_flow_id: string; title: string; description?: string }) =>
       copyChangeOrderToDraft(order?.id as string, input),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["change-drafts"] });
+    },
+  });
+}
+
+export function useCreateRollbackDraft(order: ChangeOrder | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input?: { title?: string; description?: string }) =>
+      (await createRollbackDraft(order?.id ?? "", input ?? {}, {
+        headers: {
+          "Idempotency-Key": `rollback-draft-${randomUUID()}`,
+        },
+      })) as unknown as ChangeDraft,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["change-order", order?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["change-order-timeline", order?.id] });
       void queryClient.invalidateQueries({ queryKey: ["change-drafts"] });
     },
   });

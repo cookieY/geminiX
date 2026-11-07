@@ -355,7 +355,14 @@
       "requestedScheduleHint": "审批通过后预填为执行人的预约时间；到点自动执行仍需执行人确认预约。",
       "requestedScheduleInvalid": "期望执行时间格式不正确。",
       "requestedSchedulePast": "期望执行时间必须是未来时刻。",
-      "requestedSchedulePlaceholder": "选择期望执行时间"
+      "requestedSchedulePlaceholder": "选择期望执行时间",
+      "rollbackEnabledLabel": "启用回滚",
+      "rollbackEnabledHint": "启用后在执行期通过原生数据库事务/Schema快照采集回滚证据并自动生成确定性回滚 SQL；不支持安全回滚的语句将拒绝执行（Fail-Closed）。",
+      "rollbackDisabledOnRollbackDraftHint": "回滚工单默认关闭嵌套回滚，按已验证的回滚证据执行并校验前置冲突。",
+      "rollbackDraftBanner": "此草稿由回滚证据生成，将走标准审批与执行流程。",
+      "summary.rollback": "回滚保护",
+      "summary.rollbackEnabled": "已启用",
+      "summary.rollbackDisabled": "未启用"
     },
     "review": {
       "title": "审核进度",

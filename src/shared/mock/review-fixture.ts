@@ -2655,6 +2655,34 @@ export function reviewFixtureHandlers(): HttpHandler[] {
       return HttpResponse.json(successEnvelope(draftPublic(draft)));
     }),
 
+    http.post("*/change-orders/:orderId/rollback-drafts", ({ params }) => {
+      const order = world.orders.get(String(params.orderId));
+      if (order === undefined) return businessError(1002, "order not found");
+      if (order.state !== "completed") {
+        return businessError(1010, "order is not completed");
+      }
+      const draft: FixtureDraft = {
+        id: uuid(),
+        owner_user_id: currentIdentityId(),
+        flow_id: FIXTURE_FLOW_ID,
+        title: `回滚：${order.title}`,
+        description: `基于已完成工单 ${order.display_number} 的已验证回滚证据自动生成的回滚工单。`,
+        requested_scheduled_for: null,
+        revision: 1,
+        state: "draft",
+        has_sql: true,
+        sql: "DELETE FROM demo_items WHERE id = 1;",
+        sql_size_bytes: 36,
+        statement_count: 1,
+        review_run_id: null,
+        version: 1,
+        created_at: now(),
+        updated_at: now(),
+      };
+      world.drafts.set(draft.id, draft);
+      return HttpResponse.json(successEnvelope(draftPublic(draft)));
+    }),
+
     // ---- Approval decisions (FE-F7). Mirrors the backend decide command
     // (changeorder application/decide.go): same-level any-one reviewer wins
     // (W003), a non-final approve activates the next step and only bumps the

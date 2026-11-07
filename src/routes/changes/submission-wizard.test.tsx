@@ -289,7 +289,7 @@ describe("SubmissionWizard create mode (ephemeral precheck)", () => {
     expect(submissions[0]?.sql).toBe("UPDATE orders SET status = 1 WHERE user_id = 42;");
     expect(submissions[0]?.run_id).toBe(fixtureRunIds().at(-1));
     expect(submissions[0]?.draft_id).toBeUndefined();
-    expect(submissions[0]?.metadata).toEqual({ title: "直提工单" });
+    expect(submissions[0]?.metadata).toEqual({ title: "直提工单", rollback_enabled: true });
   });
 
   it("carries the desired execution time onto the implicitly created draft (§18.56)", async () => {

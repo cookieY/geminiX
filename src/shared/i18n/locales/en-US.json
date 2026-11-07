@@ -355,7 +355,14 @@
       "requestedScheduleHint": "Prefilled for the executor's schedule after approval; auto-run at the time still requires the executor to confirm the schedule.",
       "requestedScheduleInvalid": "The desired execution time format is invalid.",
       "requestedSchedulePast": "The desired execution time must be in the future.",
-      "requestedSchedulePlaceholder": "Pick a desired time"
+      "requestedSchedulePlaceholder": "Pick a desired time",
+      "rollbackEnabledLabel": "Enable rollback",
+      "rollbackEnabledHint": "Captures native database change evidence during execution and generates deterministic rollback SQL; unsupported statements fail closed.",
+      "rollbackDisabledOnRollbackDraftHint": "Nested rollback capture is disabled on rollback tickets; precondition checks still run before execution.",
+      "rollbackDraftBanner": "This draft was generated from verified rollback evidence and follows the standard approval workflow.",
+      "summary.rollback": "Rollback protection",
+      "summary.rollbackEnabled": "Enabled",
+      "summary.rollbackDisabled": "Disabled"
     },
     "review": {
       "title": "Review progress",

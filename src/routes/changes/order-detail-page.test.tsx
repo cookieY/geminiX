@@ -385,4 +385,91 @@ describe("execution wait note for non-executors (§18.57)", () => {
     await screen.findByTestId("execution-action-card");
     expect(screen.queryByTestId("execution-wait-note")).toBeNull();
   });
+
+  it("displays rollback SQL and generates a rollback draft on completed orders", async () => {
+    const id = seedOrder({ state: "completed" });
+    server.use(
+      http.get("*/change-orders/:orderId", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id,
+            display_number: "YR-20260830-000021",
+            submitter_user_id: FIXTURE_OWNER_ID,
+            title: "已完成可回滚工单",
+            state: "completed",
+            rollback_enabled: true,
+            ticket_type: "normal",
+            rollback_status: "available",
+            rollback_evidence_id: "0198d9cc-e65d-7b9d-a8aa-3c81945fa999",
+            stages: [
+              {
+                id: "9c6f1a2b-0000-4000-8000-00000000ef11",
+                position: 1,
+                datasource_name: "orders-mysql",
+                state: "succeeded",
+                approval_steps: [],
+                execution_actors: [],
+              },
+            ],
+            has_sql: true,
+            sql_hash: "hash-1",
+            snapshot_hash: "snap-1",
+            version: 2,
+            submitted_at: "2026-08-30T10:00:00Z",
+            terminal_at: "2026-08-30T10:05:00Z",
+          },
+          request_id: REQUEST_ID,
+        }),
+      ),
+      http.post("*/change-orders/:orderId/sql-reveals", async ({ request }) => {
+        const body = (await request.json()) as { purpose?: string };
+        return HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            reveal_id: "0198d9cc-e65d-7b9d-a8aa-3c81945fa998",
+            sql: body.purpose === "rollback-order-sql"
+              ? "DELETE FROM `demo`.`users` WHERE `id` = '1001';"
+              : "INSERT INTO `demo`.`users` (`id`, `name`) VALUES (1001, 'alice');",
+            watermark: "henry · 2026-11-07T02:00:00Z",
+            valid_until: "2026-11-07T02:05:00Z",
+          },
+          request_id: REQUEST_ID,
+        });
+      }),
+      http.post("*/change-orders/:orderId/rollback-drafts", () =>
+        HttpResponse.json({
+          err_code: 0,
+          message: "ok",
+          data: {
+            id: "0198d9cc-e65d-7b9d-a8aa-3c81945fa997",
+            owner_user_id: FIXTURE_OWNER_ID,
+            flow_id: "0198d9cc-e65d-7b9d-a8aa-3c81945fa111",
+            title: "[回滚] YR-20260901-000001",
+            rollback_enabled: false,
+            ticket_type: "rollback",
+            source_order_id: id,
+            revision: 1,
+            state: "draft",
+            has_sql: true,
+            version: 1,
+            created_at: "2026-11-07T02:00:00Z",
+            updated_at: "2026-11-07T02:00:00Z",
+          },
+          request_id: REQUEST_ID,
+        }),
+      ),
+    );
+    renderDetail(id);
+    const card = await screen.findByTestId("order-rollback-card");
+    expect(card).toBeVisible();
+    expect(screen.getByTestId("order-rollback-status-badge").textContent).toContain("可回滚");
+    expect(await screen.findByTestId("order-rollback-sql-view")).toBeVisible();
+    expect(screen.getByTestId("order-rollback-sql-readonly").textContent).toContain(
+      "DELETE FROM `demo`.`users` WHERE `id` = '1001';",
+    );
+    expect(screen.getByTestId("generate-rollback-order")).toBeEnabled();
+  });
 });

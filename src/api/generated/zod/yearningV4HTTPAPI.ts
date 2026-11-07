@@ -5866,7 +5866,7 @@ export const ListChangeDraftsQueryParams = zod.object({
   "after": zod.string().optional()
 })
 
-
+export const listChangeDraftsResponseOneDataTwoItemsItemRollbackEnabledDefault = true;
 export const listChangeDraftsResponseOneDataTwoItemsItemSqlSizeBytesMin = 0;
 export const listChangeDraftsResponseOneDataTwoItemsItemSqlSizeBytesMax = 33554432;
 
@@ -5893,6 +5893,11 @@ export const ListChangeDraftsResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(listChangeDraftsResponseOneDataTwoItemsItemRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
@@ -5922,16 +5927,17 @@ export const createChangeDraftBodyTitleMax = 256;
 
 export const createChangeDraftBodyDescriptionMax = 4096;
 
-
+export const createChangeDraftBodyRollbackEnabledDefault = true;
 
 export const CreateChangeDraftBody = zod.object({
   "flow_id": zod.uuid(),
   "title": zod.string().min(1).max(createChangeDraftBodyTitleMax),
   "description": zod.string().max(createChangeDraftBodyDescriptionMax).optional(),
-  "requested_scheduled_for": zod.iso.datetime({"offset":true}).optional().describe('Desired execution time (RFC3339, must be in the future at save time). Optional; §18.56 ruling B.')
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).optional().describe('Desired execution time (RFC3339, must be in the future at save time). Optional; §18.56 ruling B.'),
+  "rollback_enabled": zod.boolean().default(createChangeDraftBodyRollbackEnabledDefault)
 })
 
-
+export const createChangeDraftResponseOneDataRollbackEnabledDefault = true;
 export const createChangeDraftResponseOneDataSqlSizeBytesMin = 0;
 export const createChangeDraftResponseOneDataSqlSizeBytesMax = 33554432;
 
@@ -5951,6 +5957,11 @@ export const CreateChangeDraftResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(createChangeDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
@@ -5979,7 +5990,7 @@ export const GetChangeDraftParams = zod.object({
   "draft_id": zod.uuid()
 })
 
-
+export const getChangeDraftResponseOneDataRollbackEnabledDefault = true;
 export const getChangeDraftResponseOneDataSqlSizeBytesMin = 0;
 export const getChangeDraftResponseOneDataSqlSizeBytesMax = 33554432;
 
@@ -5999,6 +6010,11 @@ export const GetChangeDraftResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(getChangeDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
@@ -6044,10 +6060,11 @@ export const UpdateChangeDraftBody = zod.object({
   "title": zod.string().min(1).max(updateChangeDraftBodyTitleMax).optional(),
   "description": zod.string().max(updateChangeDraftBodyDescriptionMax).optional(),
   "flow_id": zod.uuid().optional(),
-  "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Set (future RFC3339) or clear (null); absent leaves the value unchanged. §18.56 ruling B.')
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Set (future RFC3339) or clear (null); absent leaves the value unchanged. §18.56 ruling B.'),
+  "rollback_enabled": zod.boolean().optional()
 })
 
-
+export const updateChangeDraftResponseOneDataRollbackEnabledDefault = true;
 export const updateChangeDraftResponseOneDataSqlSizeBytesMin = 0;
 export const updateChangeDraftResponseOneDataSqlSizeBytesMax = 33554432;
 
@@ -6067,6 +6084,11 @@ export const UpdateChangeDraftResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(updateChangeDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
@@ -6139,7 +6161,7 @@ export const ReplaceDraftSqlBody = zod.object({
   "sql": zod.string().max(replaceDraftSqlBodySqlMax)
 })
 
-
+export const replaceDraftSqlResponseOneDataRollbackEnabledDefault = true;
 export const replaceDraftSqlResponseOneDataSqlSizeBytesMin = 0;
 export const replaceDraftSqlResponseOneDataSqlSizeBytesMax = 33554432;
 
@@ -6159,6 +6181,11 @@ export const ReplaceDraftSqlResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(replaceDraftSqlResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
@@ -6421,7 +6448,7 @@ export const submitChangeDraftBodyMetadataTitleMax = 128;
 
 export const submitChangeDraftBodyMetadataDescriptionMax = 4096;
 
-
+export const submitChangeDraftBodyMetadataRollbackEnabledDefault = true;
 
 export const SubmitChangeDraftBody = zod.object({
   "flow_id": zod.uuid(),
@@ -6431,7 +6458,8 @@ export const SubmitChangeDraftBody = zod.object({
   "metadata": zod.object({
   "title": zod.string().min(1).max(submitChangeDraftBodyMetadataTitleMax).optional(),
   "description": zod.string().max(submitChangeDraftBodyMetadataDescriptionMax).optional(),
-  "requested_scheduled_for": zod.iso.datetime({"offset":true}).optional()
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).optional(),
+  "rollback_enabled": zod.boolean().default(submitChangeDraftBodyMetadataRollbackEnabledDefault)
 }).optional().describe('Required only for draftless create-mode submission.')
 })
 
@@ -6441,6 +6469,7 @@ export const submitChangeDraftResponseOneDataDisplayNumberRegExp = new RegExp('^
 
 
 export const submitChangeDraftResponseOneDataManuallyVerifiedDefault = false;
+export const submitChangeDraftResponseOneDataRollbackEnabledDefault = true;
 
 
 export const SubmitChangeDraftResponse = zod.union([zod.object({
@@ -6479,6 +6508,20 @@ export const SubmitChangeDraftResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(submitChangeDraftResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(submitChangeDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -6528,6 +6571,7 @@ export const listChangeOrdersResponseOneDataTwoItemsItemDisplayNumberRegExp = ne
 
 
 export const listChangeOrdersResponseOneDataTwoItemsItemManuallyVerifiedDefault = false;
+export const listChangeOrdersResponseOneDataTwoItemsItemRollbackEnabledDefault = true;
 
 
 export const ListChangeOrdersResponse = zod.union([zod.object({
@@ -6573,6 +6617,20 @@ export const ListChangeOrdersResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(listChangeOrdersResponseOneDataTwoItemsItemManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(listChangeOrdersResponseOneDataTwoItemsItemRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -6608,6 +6666,7 @@ export const getChangeOrderResponseOneDataDisplayNumberRegExp = new RegExp('^YR-
 
 
 export const getChangeOrderResponseOneDataManuallyVerifiedDefault = false;
+export const getChangeOrderResponseOneDataRollbackEnabledDefault = true;
 
 
 export const GetChangeOrderResponse = zod.union([zod.object({
@@ -6646,6 +6705,20 @@ export const GetChangeOrderResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(getChangeOrderResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(getChangeOrderResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -6954,7 +7027,7 @@ export const CopyChangeOrderToDraftBody = zod.object({
   "description": zod.string().max(copyChangeOrderToDraftBodyDescriptionMax).optional()
 })
 
-
+export const copyChangeOrderToDraftResponseOneDataRollbackEnabledDefault = true;
 export const copyChangeOrderToDraftResponseOneDataSqlSizeBytesMin = 0;
 export const copyChangeOrderToDraftResponseOneDataSqlSizeBytesMax = 33554432;
 
@@ -6974,11 +7047,90 @@ export const CopyChangeOrderToDraftResponse = zod.union([zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(copyChangeOrderToDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "revision": zod.int().min(1),
   "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
   "has_sql": zod.boolean(),
   "sql_size_bytes": zod.int().min(copyChangeOrderToDraftResponseOneDataSqlSizeBytesMin).max(copyChangeOrderToDraftResponseOneDataSqlSizeBytesMax).optional(),
   "statement_count": zod.int().min(copyChangeOrderToDraftResponseOneDataStatementCountMin).max(copyChangeOrderToDraftResponseOneDataStatementCountMax).optional(),
+  "review_run_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "version": zod.int().min(1),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}),
+  "request_id": zod.uuid()
+}),zod.object({
+  "err_code": zod.union([zod.literal(1001),zod.literal(1002),zod.literal(1003),zod.literal(1004),zod.literal(1005),zod.literal(1006),zod.literal(1007),zod.literal(1008),zod.literal(1009),zod.literal(1010),zod.literal(1011),zod.literal(1012),zod.literal(1101),zod.literal(1102),zod.literal(1103),zod.literal(1104),zod.literal(1105),zod.literal(1106),zod.literal(1107),zod.literal(1108),zod.literal(1109),zod.literal(2001),zod.literal(2002),zod.literal(2003),zod.literal(2004),zod.literal(2005),zod.literal(2006),zod.literal(2007),zod.literal(2008),zod.literal(2009),zod.literal(2010),zod.literal(2011),zod.literal(2012),zod.literal(2013),zod.literal(2014),zod.literal(3001),zod.literal(3002),zod.literal(3003),zod.literal(3004),zod.literal(3005),zod.literal(3006),zod.literal(3007),zod.literal(3008),zod.literal(3009),zod.literal(3010),zod.literal(3011),zod.literal(3012),zod.literal(4001),zod.literal(4002),zod.literal(4003),zod.literal(4004),zod.literal(4005),zod.literal(4006),zod.literal(4007),zod.literal(4008),zod.literal(4009),zod.literal(4010),zod.literal(4011),zod.literal(5001),zod.literal(5002),zod.literal(5003),zod.literal(5004),zod.literal(5005)]),
+  "message": zod.string(),
+  "data": zod.null(),
+  "request_id": zod.uuid(),
+  "retryable": zod.boolean(),
+  "meta": zod.object({
+  "detail": zod.string().optional(),
+  "fields": zod.record(zod.string(), zod.array(zod.string())).optional().describe('Field-level VALIDATION_FAILED reasons; keys are request field names (snake_case), values are human-readable constraint messages for that field.')
+}).optional().describe('Optional error metadata with a bounded, per-error-code key set. VALIDATION_FAILED (1001) may carry detail (free-text constraint sentence, R1 L-1) and fields (RCP-20261102-S008): field-level reasons keyed by request field name (snake_case, matching the request schema).')
+})])
+
+
+export const CreateRollbackDraftParams = zod.object({
+  "order_id": zod.uuid()
+})
+
+export const createRollbackDraftHeaderIdempotencyKeyMax = 128;
+
+
+export const createRollbackDraftHeaderIdempotencyKeyRegExp = new RegExp('^[\\x21-\\x7E]+$');
+
+
+export const CreateRollbackDraftHeader = zod.object({
+  "Idempotency-Key": zod.string().min(1).max(createRollbackDraftHeaderIdempotencyKeyMax).regex(createRollbackDraftHeaderIdempotencyKeyRegExp)
+})
+
+export const createRollbackDraftBodyTitleMax = 256;
+
+export const createRollbackDraftBodyDescriptionMax = 4096;
+
+
+
+export const CreateRollbackDraftBody = zod.object({
+  "title": zod.string().min(1).max(createRollbackDraftBodyTitleMax).optional(),
+  "description": zod.string().max(createRollbackDraftBodyDescriptionMax).optional()
+})
+
+export const createRollbackDraftResponseOneDataRollbackEnabledDefault = true;
+export const createRollbackDraftResponseOneDataSqlSizeBytesMin = 0;
+export const createRollbackDraftResponseOneDataSqlSizeBytesMax = 33554432;
+
+export const createRollbackDraftResponseOneDataStatementCountMin = 0;
+export const createRollbackDraftResponseOneDataStatementCountMax = 100000;
+
+
+
+
+export const CreateRollbackDraftResponse = zod.union([zod.object({
+  "err_code": zod.literal(0),
+  "message": zod.literal("ok"),
+  "data": zod.object({
+  "id": zod.uuid(),
+  "owner_user_id": zod.uuid(),
+  "flow_id": zod.uuid(),
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "requested_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('Submitter\'s desired execution time (§18.56 ruling B). Advisory only; frozen onto the order at submission and prefilled for the frozen executor\'s schedule confirmation. Never an execution authorization.'),
+  "rollback_enabled": zod.boolean().default(createRollbackDraftResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "revision": zod.int().min(1),
+  "state": zod.enum(['draft', 'reviewing', 'ready', 'blocked', 'partial', 'failed', 'outdated', 'submitted']),
+  "has_sql": zod.boolean(),
+  "sql_size_bytes": zod.int().min(createRollbackDraftResponseOneDataSqlSizeBytesMin).max(createRollbackDraftResponseOneDataSqlSizeBytesMax).optional(),
+  "statement_count": zod.int().min(createRollbackDraftResponseOneDataStatementCountMin).max(createRollbackDraftResponseOneDataStatementCountMax).optional(),
   "review_run_id": zod.union([zod.uuid(),zod.null()]).optional(),
   "version": zod.int().min(1),
   "created_at": zod.iso.datetime({"offset":true}),
@@ -7177,6 +7329,7 @@ export const decideChangeOrderResponseOneDataDisplayNumberRegExp = new RegExp('^
 
 
 export const decideChangeOrderResponseOneDataManuallyVerifiedDefault = false;
+export const decideChangeOrderResponseOneDataRollbackEnabledDefault = true;
 
 
 export const DecideChangeOrderResponse = zod.union([zod.object({
@@ -7215,6 +7368,20 @@ export const DecideChangeOrderResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(decideChangeOrderResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(decideChangeOrderResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -7624,6 +7791,7 @@ export const createExecutionVerificationResponseOneDataDisplayNumberRegExp = new
 
 
 export const createExecutionVerificationResponseOneDataManuallyVerifiedDefault = false;
+export const createExecutionVerificationResponseOneDataRollbackEnabledDefault = true;
 
 
 export const CreateExecutionVerificationResponse = zod.union([zod.object({
@@ -7662,6 +7830,20 @@ export const CreateExecutionVerificationResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(createExecutionVerificationResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(createExecutionVerificationResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -7716,6 +7898,7 @@ export const withdrawChangeOrderResponseOneDataDisplayNumberRegExp = new RegExp(
 
 
 export const withdrawChangeOrderResponseOneDataManuallyVerifiedDefault = false;
+export const withdrawChangeOrderResponseOneDataRollbackEnabledDefault = true;
 
 
 export const WithdrawChangeOrderResponse = zod.union([zod.object({
@@ -7754,6 +7937,20 @@ export const WithdrawChangeOrderResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(withdrawChangeOrderResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(withdrawChangeOrderResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),
@@ -7808,6 +8005,7 @@ export const voidChangeOrderResponseOneDataDisplayNumberRegExp = new RegExp('^YR
 
 
 export const voidChangeOrderResponseOneDataManuallyVerifiedDefault = false;
+export const voidChangeOrderResponseOneDataRollbackEnabledDefault = true;
 
 
 export const VoidChangeOrderResponse = zod.union([zod.object({
@@ -7846,6 +8044,20 @@ export const VoidChangeOrderResponse = zod.union([zod.object({
   "sql_hash": zod.string().optional(),
   "snapshot_hash": zod.string().optional(),
   "manually_verified": zod.boolean().default(voidChangeOrderResponseOneDataManuallyVerifiedDefault),
+  "rollback_enabled": zod.boolean().default(voidChangeOrderResponseOneDataRollbackEnabledDefault),
+  "ticket_type": zod.enum(['normal', 'rollback']).optional(),
+  "source_order_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "source_order_display_number": zod.string().nullish(),
+  "rollback_evidence_id": zod.union([zod.uuid(),zod.null()]).optional(),
+  "rollback_status": zod.enum(['not_requested', 'pending', 'available', 'unsupported', 'evidence_incomplete', 'conflicted', 'rollback_in_progress', 'rolled_back', 'rollback_failed']).optional(),
+  "rollback_unsupported_reason": zod.string().nullish(),
+  "rollback_conflict_reason": zod.string().nullish(),
+  "rollback_orders": zod.array(zod.object({
+  "id": zod.uuid(),
+  "display_number": zod.string(),
+  "state": zod.enum(['submitted', 'stage_approval_active', 'stage_execution_pending', 'scheduled', 'running', 'completed', 'rejected', 'withdrawn', 'withdrawn_after_partial_execution', 'voided', 'failed', 'partial_failed', 'cancelled', 'partial_cancelled', 'result_unknown', 'blocked_datasource_unavailable', 'missed_schedule', 'invalid']),
+  "submitted_at": zod.iso.datetime({"offset":true})
+})).optional(),
   "version": zod.int().min(1),
   "submitted_at": zod.iso.datetime({"offset":true}),
   "terminal_at": zod.union([zod.iso.datetime({"offset":true}),zod.null()]).optional(),

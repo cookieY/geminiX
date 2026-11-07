@@ -18,10 +18,10 @@ import {
 } from "@/api/generated/client/change-drafts/change-drafts";
 import {
   cancelExecutionAttempt, copyChangeOrderToDraft, createChangeOrderComment,
-  createExecutionAttempt, decideChangeOrder, getChangeOrder, getExecutionAttempt,
-  listChangeOrderComments, listChangeOrderTimeline, listExecutionAttemptStatements,
-  listOrderReviewFindings, recordOrderSqlCopy, revealOrderSql, submitChangeDraft,
-  voidChangeOrder, withdrawChangeOrder,
+  createExecutionAttempt, createRollbackDraft, decideChangeOrder, getChangeOrder,
+  getExecutionAttempt, listChangeOrderComments, listChangeOrderTimeline,
+  listExecutionAttemptStatements, listOrderReviewFindings, recordOrderSqlCopy,
+  revealOrderSql, submitChangeDraft, voidChangeOrder, withdrawChangeOrder,
 } from "@/api/generated/client/change-orders/change-orders";
 import { getTask } from "@/api/generated/client/tasks/tasks";
 import { bootContract } from "./boot";
@@ -213,6 +213,9 @@ describe("change chain", () => {
     const source = await draftToSubmittedOrder("f12 copy source");
     await record("copyChangeOrderToDraft", "submitter", () =>
       copyChangeOrderToDraft(source.orderId, {} as never, { headers: headers(1) }),
+      "real business-error envelope carries meta:null (divergence #003)");
+    await record("createRollbackDraft", "submitter", () =>
+      createRollbackDraft(source.orderId, {}, { headers: headers(1) }),
       "real business-error envelope carries meta:null (divergence #003)");
   }, 300_000);
 });

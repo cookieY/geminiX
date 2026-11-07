@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
@@ -63,8 +63,10 @@ import { EmptyState } from "@/shared/components/status/empty-state";
 import { PageLayout } from "@/shared/components/page-layout";
 import { PendingButton } from "@/shared/components/pending-button";
 import { TableSearchInput } from "@/shared/components/table-search-input";
+import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -82,6 +84,7 @@ import {
 import {
   CircleAlert,
   Play,
+  RotateCcw,
 } from "lucide-react";
 import { randomUUID } from "@/shared/lib/uuid";
 
@@ -128,17 +131,20 @@ interface DraftMetadataSnapshot {
   title: string;
   description: string | undefined;
   requested_scheduled_for: string | null;
+  rollback_enabled: boolean;
 }
 
 function draftMetadataSnapshot(
   title: string,
   description: string,
   requestedFor: string,
+  rollbackEnabled = true,
 ): DraftMetadataSnapshot {
   return {
     title: title.trim(),
     description: description === "" ? undefined : description,
     requested_scheduled_for: requestedForToIso(requestedFor),
+    rollback_enabled: rollbackEnabled,
   };
 }
 
@@ -148,7 +154,8 @@ function sameDraftMetadata(
 ): boolean {
   return left.title === right.title
     && left.description === right.description
-    && left.requested_scheduled_for === right.requested_scheduled_for;
+    && left.requested_scheduled_for === right.requested_scheduled_for
+    && left.rollback_enabled === right.rollback_enabled;
 }
 
 
@@ -180,9 +187,14 @@ interface MetaFieldsProps {
   requestedFor: string;
   onRequestedForChange: (value: string) => void;
   requestedForError?: string | null;
+  rollbackEnabled: boolean;
+  onRollbackEnabledChange: (checked: boolean) => void;
+  isRollbackDraft?: boolean;
+  sourceOrderId?: string | null;
+  sourceOrderDisplayNumber?: string | null;
 }
 
-/** 标题/说明/期望执行时间 fields of the 标题与说明 section in both modes. */
+/** 标题/说明/期望执行时间/启用回滚 fields of the 标题与说明 section in both modes. */
 function MetaFields({
   title,
   description,
@@ -192,10 +204,36 @@ function MetaFields({
   onRequestedForChange,
   titleError,
   requestedForError,
+  rollbackEnabled,
+  onRollbackEnabledChange,
+  isRollbackDraft = false,
+  sourceOrderId = null,
+  sourceOrderDisplayNumber = null,
 }: MetaFieldsProps) {
   const { t } = useTranslation();
   return (
     <div className="grid gap-y-4">
+      {isRollbackDraft && (
+        <div
+          className="bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3.5 py-2.5 text-sm"
+          data-testid="wizard-rollback-draft-banner"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <RotateCcw className="size-4 shrink-0" aria-hidden />
+            <Badge variant="outline">{t("orders.rollback.ticketBadge")}</Badge>
+            <span>{t("precheck.wizard.rollbackDraftBanner")}</span>
+          </span>
+          {sourceOrderId != null && (
+            <Link
+              to={`/changes/orders/${sourceOrderId}`}
+              className="text-foreground underline underline-offset-4 hover:opacity-80 font-mono text-xs"
+              data-testid="wizard-rollback-source-order-link"
+            >
+              {sourceOrderDisplayNumber ?? sourceOrderId}
+            </Link>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="draft-title-input" className="mb-1">{t("precheck.new.dialog.titleLabel")}<span className="text-destructive" aria-hidden>*</span></Label>
         <Input
@@ -231,6 +269,29 @@ function MetaFields({
         {requestedForError != null && (
           <p className="text-destructive text-xs" data-testid="wizard-requested-for-error">{requestedForError}</p>
         )}
+      </div>
+      <div className="flex flex-col gap-1.5 rounded-lg border p-3.5">
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="draft-rollback-enabled"
+            checked={isRollbackDraft ? false : rollbackEnabled}
+            disabled={isRollbackDraft}
+            onCheckedChange={(checked) => {
+              if (!isRollbackDraft) {
+                onRollbackEnabledChange(checked);
+              }
+            }}
+            data-testid="wizard-rollback-enabled"
+          />
+          <Label htmlFor="draft-rollback-enabled" className="cursor-pointer text-sm font-semibold">
+            {t("precheck.wizard.rollbackEnabledLabel")}
+          </Label>
+        </div>
+        <p className="text-muted-foreground pl-6 text-[13px]" data-testid="draft-rollback-enabled-hint">
+          {isRollbackDraft
+            ? t("precheck.wizard.rollbackDisabledOnRollbackDraftHint")
+            : t("precheck.wizard.rollbackEnabledHint")}
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="draft-description-input" className="text-sm font-semibold">{t("precheck.new.dialog.descriptionLabel")}</Label>
@@ -444,6 +505,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createRequestedFor, setCreateRequestedFor] = useState("");
+  const [createRollbackEnabled, setCreateRollbackEnabled] = useState(true);
   const [stepError, setStepError] = useState<string | null>(null);
   // Implicit drafts (owner ruling 2026-10-24 + RCP-20261101): the server
   // submission envelope is created silently by 保存并返回 — now the ONLY
@@ -492,9 +554,10 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
   const [metaDescription, setMetaDescription] = useState("");
   // §18.56方案B：期望执行时间（datetime-local；空=清除）。
   const [metaRequestedFor, setMetaRequestedFor] = useState("");
+  const [metaRollbackEnabled, setMetaRollbackEnabled] = useState(true);
   const metadataEditRevisionRef = useRef(0);
   const visibleMetadataRef = useRef<DraftMetadataSnapshot>(
-    draftMetadataSnapshot("", "", ""),
+    draftMetadataSnapshot("", "", "", true),
   );
 
   // ---- workspace engine; lives at the page level so the run keeps polling
@@ -558,13 +621,17 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     }
     if (sessionMetadataDraftId.current !== draft.id) {
       // A normal draft route starts from persisted metadata.
+      const hydratedRollbackEnabled =
+        draft.ticket_type === "rollback" ? false : (draft.rollback_enabled ?? true);
       setMetaTitle(draft.title ?? "");
       setMetaDescription(draft.description ?? "");
       setMetaRequestedFor(isoToRequestedFor(draft.requested_scheduled_for));
+      setMetaRollbackEnabled(hydratedRollbackEnabled);
       visibleMetadataRef.current = draftMetadataSnapshot(
         draft.title ?? "",
         draft.description ?? "",
         isoToRequestedFor(draft.requested_scheduled_for),
+        hydratedRollbackEnabled,
       );
     }
   }, [draft, store]);
@@ -723,6 +790,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         title: metadata.title,
         description: metadata.description,
         requested_scheduled_for: metadata.requested_scheduled_for ?? undefined,
+        rollback_enabled: metadata.rollback_enabled,
       }),
     onError: (error) => { showActionError(error, "createChangeDraft"); },
   });
@@ -822,6 +890,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
       setMetaTitle(metadataAtAdoption.title);
       setMetaDescription(metadataAtAdoption.description ?? "");
       setMetaRequestedFor(isoToRequestedFor(metadataAtAdoption.requested_scheduled_for));
+      setMetaRollbackEnabled(metadataAtAdoption.rollback_enabled);
       store.attach({
         id: created.id,
         state: created.state,
@@ -969,6 +1038,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 requested_scheduled_for:
                   requestedForToIso(metaBound ? metaRequestedFor : createRequestedFor)
                   ?? undefined,
+                rollback_enabled: metaBound ? metaRollbackEnabled : createRollbackEnabled,
               }
             : undefined,
         },
@@ -1204,6 +1274,12 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
     // draft模式下摘要读了恒空的createTitle，标题永远显示"未填写"。
     const title = metaBound ? metaTitle.trim() : createTitle.trim();
     const requestedFor = metaBound ? metaRequestedFor : createRequestedFor;
+    const rollbackEnabled =
+      draft?.ticket_type === "rollback"
+        ? false
+        : metaBound
+          ? metaRollbackEnabled
+          : createRollbackEnabled;
     const datasources = [...new Set((flow?.stages ?? []).map((stage) => stage.datasource_name))];
     return {
       presented,
@@ -1218,6 +1294,8 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
         requestedFor === ""
           ? t("precheck.wizard.summary.unselected")
           : requestedFor.replace("T", " "),
+      rollbackEnabled,
+      isRollbackDraft: draft?.ticket_type === "rollback",
       datasources:
         datasources.length > 0
           ? datasources.join("、")
@@ -1269,6 +1347,18 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
               label={t("precheck.wizard.summary.requestedFor")}
               value={values.requestedFor}
               muted={values.requestedFor === t("precheck.wizard.summary.unselected")}
+            />
+            <SummaryRow
+              label={t("precheck.wizard.summary.rollback")}
+              testId="wizard-summary-rollback"
+              muted={!values.rollbackEnabled && !values.isRollbackDraft}
+              value={
+                values.isRollbackDraft
+                  ? t("orders.rollback.ticketBadge")
+                  : values.rollbackEnabled
+                    ? t("precheck.wizard.summary.rollbackEnabled")
+                    : t("precheck.wizard.summary.rollbackDisabled")
+              }
             />
             <SummaryRow
               label={t("precheck.wizard.summary.datasources")}
@@ -1473,6 +1563,22 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                   : null
           }
           titleError={stepError}
+          rollbackEnabled={metaBound ? metaRollbackEnabled : createRollbackEnabled}
+          onRollbackEnabledChange={(checked) => {
+            metadataEditRevisionRef.current += 1;
+            visibleMetadataRef.current = {
+              ...visibleMetadataRef.current,
+              rollback_enabled: checked,
+            };
+            if (metaBound) {
+              setMetaRollbackEnabled(checked);
+            } else {
+              setCreateRollbackEnabled(checked);
+            }
+          }}
+          isRollbackDraft={draft?.ticket_type === "rollback"}
+          sourceOrderId={draft?.source_order_id ?? null}
+          sourceOrderDisplayNumber={draft?.source_order_display_number ?? null}
         />
       </FormSection>
     );
@@ -1630,7 +1736,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
                 <SqlEditorPanel
                   value={editorValue}
                   onChange={editorChange}
-                  readOnly={store.serverState === "submitted"}
+                  readOnly={store.serverState === "submitted" || draft?.ticket_type === "rollback"}
                   loadValue={loadValue}
                   onLocate={locate}
                   completionCatalog={completionCatalog}
@@ -1765,7 +1871,7 @@ export default function SubmissionWizard({ mode }: { mode: "create" | "draft" })
             >
               <div className="flex flex-col gap-[30px]">
                 <SqlFileDropzone
-                  disabled={adoptionPending}
+                  disabled={adoptionPending || draft?.ticket_type === "rollback"}
                   onOpen={() => { setDroppedFile(null); setImportOpen(true); }}
                   onDropFile={(file) => { setDroppedFile(file); setImportOpen(true); }}
                 />

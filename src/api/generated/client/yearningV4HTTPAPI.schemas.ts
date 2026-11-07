@@ -2044,6 +2044,14 @@ export const DraftState = {
   submitted: 'submitted',
 } as const;
 
+export type ChangeDraftTicketType = typeof ChangeDraftTicketType[keyof typeof ChangeDraftTicketType];
+
+
+export const ChangeDraftTicketType = {
+  normal: 'normal',
+  rollback: 'rollback',
+} as const;
+
 export interface ChangeDraft {
   id: Uuid;
   owner_user_id: Uuid;
@@ -2055,6 +2063,12 @@ export interface ChangeDraft {
      * @nullable
      */
   requested_scheduled_for?: string | null;
+  rollback_enabled?: boolean;
+  ticket_type?: ChangeDraftTicketType;
+  source_order_id?: Uuid | null;
+  /** @nullable */
+  source_order_display_number?: string | null;
+  rollback_evidence_id?: Uuid | null;
   /** @minimum 1 */
   revision: number;
   state: DraftState;
@@ -2087,6 +2101,7 @@ export interface CreateChangeDraftRequest {
   description?: string;
   /** Desired execution time (RFC3339, must be in the future at save time). Optional; §18.56 ruling B. */
   requested_scheduled_for?: string;
+  rollback_enabled?: boolean;
 }
 
 export interface UpdateChangeDraftRequest {
@@ -2103,6 +2118,7 @@ export interface UpdateChangeDraftRequest {
      * @nullable
      */
   requested_scheduled_for?: string | null;
+  rollback_enabled?: boolean;
 }
 
 export type ChangeOrderState = typeof ChangeOrderState[keyof typeof ChangeOrderState];
@@ -2159,6 +2175,36 @@ export interface OrderStage {
   execution_actors: User[];
 }
 
+export type ChangeOrderTicketType = typeof ChangeOrderTicketType[keyof typeof ChangeOrderTicketType];
+
+
+export const ChangeOrderTicketType = {
+  normal: 'normal',
+  rollback: 'rollback',
+} as const;
+
+export type ChangeOrderRollbackStatus = typeof ChangeOrderRollbackStatus[keyof typeof ChangeOrderRollbackStatus];
+
+
+export const ChangeOrderRollbackStatus = {
+  not_requested: 'not_requested',
+  pending: 'pending',
+  available: 'available',
+  unsupported: 'unsupported',
+  evidence_incomplete: 'evidence_incomplete',
+  conflicted: 'conflicted',
+  rollback_in_progress: 'rollback_in_progress',
+  rolled_back: 'rolled_back',
+  rollback_failed: 'rollback_failed',
+} as const;
+
+export type ChangeOrderRollbackOrdersItem = {
+  id: Uuid;
+  display_number: string;
+  state: ChangeOrderState;
+  submitted_at: Timestamp;
+};
+
 export type ExecutionScheduleState = typeof ExecutionScheduleState[keyof typeof ExecutionScheduleState];
 
 
@@ -2204,6 +2250,18 @@ export interface ChangeOrder {
   sql_hash?: string;
   snapshot_hash?: string;
   manually_verified?: boolean;
+  rollback_enabled?: boolean;
+  ticket_type?: ChangeOrderTicketType;
+  source_order_id?: Uuid | null;
+  /** @nullable */
+  source_order_display_number?: string | null;
+  rollback_evidence_id?: Uuid | null;
+  rollback_status?: ChangeOrderRollbackStatus;
+  /** @nullable */
+  rollback_unsupported_reason?: string | null;
+  /** @nullable */
+  rollback_conflict_reason?: string | null;
+  rollback_orders?: ChangeOrderRollbackOrdersItem[];
   /** @minimum 1 */
   version: number;
   submitted_at: Timestamp;
@@ -2238,6 +2296,16 @@ export interface CopyChangeOrderToDraftRequest {
      * @maxLength 256
      */
   title: string;
+  /** @maxLength 4096 */
+  description?: string;
+}
+
+export interface CreateRollbackDraftRequest {
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  title?: string;
   /** @maxLength 4096 */
   description?: string;
 }
@@ -4654,6 +4722,7 @@ export type SubmitChangeDraftBodyMetadata = {
   /** @maxLength 4096 */
   description?: string;
   requested_scheduled_for?: string;
+  rollback_enabled?: boolean;
 };
 
 export type SubmitChangeDraftBody = {
@@ -4785,6 +4854,13 @@ export type RecordRawReviewEvidenceCopy200 = {
 } | BusinessErrorResponse;
 
 export type CopyChangeOrderToDraft200 = {
+  err_code: 0;
+  message: 'ok';
+  data: ChangeDraft;
+  request_id: Uuid;
+} | BusinessErrorResponse;
+
+export type CreateRollbackDraft200 = {
   err_code: 0;
   message: 'ok';
   data: ChangeDraft;

@@ -19,6 +19,8 @@ import type {
   CreateExecutionAttempt200,
   CreateExecutionSchedule200,
   CreateExecutionVerification200,
+  CreateRollbackDraft200,
+  CreateRollbackDraftRequest,
   DecideChangeOrder200,
   ExecutionAttemptRequest,
   ExecutionVerificationRequest,
@@ -527,6 +529,52 @@ return customInstance<copyChangeOrderToDraftResponse>(getCopyChangeOrderToDraftU
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(copyChangeOrderToDraftRequest)
+  }
+);}
+
+
+export type createRollbackDraftResponse200 = {
+  data: CreateRollbackDraft200
+  status: 200
+}
+
+export type createRollbackDraftResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type createRollbackDraftResponseSuccess = (createRollbackDraftResponse200) & {
+  headers: Headers;
+};
+export type createRollbackDraftResponseError = (createRollbackDraftResponse403) & {
+  headers: Headers;
+};
+
+export type createRollbackDraftResponse = (createRollbackDraftResponseSuccess | createRollbackDraftResponseError)
+
+export const getCreateRollbackDraftUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/v4/change-orders/${orderId}/rollback-drafts`
+}
+
+export const createRollbackDraft = async (orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: Parameters<typeof customInstance>[1]): Promise<createRollbackDraftResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createRollbackDraftResponse>(getCreateRollbackDraftUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createRollbackDraftRequest)
   }
 );}
 

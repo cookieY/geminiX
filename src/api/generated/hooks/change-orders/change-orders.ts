@@ -38,6 +38,8 @@ import type {
   CreateExecutionAttempt200,
   CreateExecutionSchedule200,
   CreateExecutionVerification200,
+  CreateRollbackDraft200,
+  CreateRollbackDraftRequest,
   DecideChangeOrder200,
   ExecutionAttemptRequest,
   ExecutionVerificationRequest,
@@ -1301,6 +1303,132 @@ export function useCopyChangeOrderToDraft<TData = Awaited<ReturnType<typeof copy
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getCopyChangeOrderToDraftQueryOptions(orderId,copyChangeOrderToDraftRequest,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type createRollbackDraftResponse200 = {
+  data: CreateRollbackDraft200
+  status: 200
+}
+
+export type createRollbackDraftResponse403 = {
+  data: ProblemResponse
+  status: 403
+}
+
+export type createRollbackDraftResponseSuccess = (createRollbackDraftResponse200) & {
+  headers: Headers;
+};
+export type createRollbackDraftResponseError = (createRollbackDraftResponse403) & {
+  headers: Headers;
+};
+
+export type createRollbackDraftResponse = (createRollbackDraftResponseSuccess | createRollbackDraftResponseError)
+
+export const getCreateRollbackDraftUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/v4/change-orders/${orderId}/rollback-drafts`
+}
+
+export const createRollbackDraft = async (orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: Parameters<typeof customInstance>[1]): Promise<createRollbackDraftResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customInstance<createRollbackDraftResponse>(getCreateRollbackDraftUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createRollbackDraftRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateRollbackDraftQueryKey = (orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest,) => {
+    return [
+    'POST', `/api/v4/change-orders/${orderId}/rollback-drafts`, createRollbackDraftRequest
+    ] as const;
+    }
+
+
+export const getCreateRollbackDraftQueryOptions = <TData = Awaited<ReturnType<typeof createRollbackDraft>>, TError = ProblemResponse>(orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCreateRollbackDraftQueryKey(orderId,createRollbackDraftRequest);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof createRollbackDraft>>> = ({ signal }) => createRollbackDraft(orderId,createRollbackDraftRequest, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CreateRollbackDraftQueryResult = NonNullable<Awaited<ReturnType<typeof createRollbackDraft>>>
+export type CreateRollbackDraftQueryError = ProblemResponse
+
+
+export function useCreateRollbackDraft<TData = Awaited<ReturnType<typeof createRollbackDraft>>, TError = ProblemResponse>(
+ orderId: string,
+    createRollbackDraftRequest: undefined |  CreateRollbackDraftRequest, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createRollbackDraft>>,
+          TError,
+          Awaited<ReturnType<typeof createRollbackDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateRollbackDraft<TData = Awaited<ReturnType<typeof createRollbackDraft>>, TError = ProblemResponse>(
+ orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createRollbackDraft>>,
+          TError,
+          Awaited<ReturnType<typeof createRollbackDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateRollbackDraft<TData = Awaited<ReturnType<typeof createRollbackDraft>>, TError = ProblemResponse>(
+ orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useCreateRollbackDraft<TData = Awaited<ReturnType<typeof createRollbackDraft>>, TError = ProblemResponse>(
+ orderId: string,
+    createRollbackDraftRequest?: CreateRollbackDraftRequest, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createRollbackDraft>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCreateRollbackDraftQueryOptions(orderId,createRollbackDraftRequest,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

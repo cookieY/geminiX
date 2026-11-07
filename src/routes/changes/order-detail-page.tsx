@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { OrderStateBadge, StageStateBadge } from "@/features/orders/order-state-badge";
 import { activeApprovalStepFor, canVoid, withdrawOutcome } from "@/features/orders/order-state";
@@ -8,6 +8,7 @@ import { ApprovalDecisionCard, ApprovalStepStateBadge } from "@/features/orders/
 import { ApprovalProgress } from "@/features/orders/approval-progress";
 import { FrozenReviewCard } from "@/features/orders/frozen-review-card";
 import { OrderActivityCard, formatTimestamp } from "@/features/orders/order-activity-card";
+import { OrderRollbackCard } from "@/features/orders/order-rollback-card";
 import { OrderSqlCard } from "@/features/orders/order-sql-card";
 import { ExecutionWorkspaceCard } from "@/features/orders/execution-card";
 import {
@@ -165,6 +166,22 @@ export default function OrderDetailPage() {
           <span className="flex flex-wrap items-center gap-2">
             <span>{order.title}</span>
             <OrderStateBadge state={order.state} />
+            {order.ticket_type === "rollback" && (
+              <Badge variant="outline" data-testid="order-detail-rollback-badge">
+                {t("orders.rollback.ticketBadge")}
+              </Badge>
+            )}
+            {order.ticket_type === "rollback" && order.source_order_id != null && (
+              <Link
+                to={`/changes/orders/${order.source_order_id}`}
+                className="text-muted-foreground hover:text-foreground font-mono text-xs underline underline-offset-4"
+                data-testid="order-detail-source-order-link"
+              >
+                {t("orders.rollback.sourceOrderShort", {
+                  number: order.source_order_display_number ?? order.source_order_id,
+                })}
+              </Link>
+            )}
           </span>
         }
         actions={
@@ -252,6 +269,13 @@ export default function OrderDetailPage() {
             onAttemptCreated={setAttemptId}
             onRecover={() => void orderQuery.refetch()}
           />
+          {(order.state === "completed" ||
+            order.ticket_type === "rollback" ||
+            (order.rollback_status != null &&
+              order.rollback_status !== "not_requested" &&
+              order.rollback_status !== "pending")) && (
+            <OrderRollbackCard order={order} />
+          )}
           {/* One card, two sections: the frozen SQL and the review frozen with it. */}
           <Card className="gap-0 py-0" data-testid="order-sql-review">
             <OrderSqlCard orderId={order.id} embedded />

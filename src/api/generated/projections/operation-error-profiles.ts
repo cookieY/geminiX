@@ -693,7 +693,8 @@ export const OPERATION_ERROR_PROFILES: {
       1008
     ],
     "operations": [
-      "copyChangeOrderToDraft"
+      "copyChangeOrderToDraft",
+      "createRollbackDraft"
     ]
   },
   "ai_provider_create": {
